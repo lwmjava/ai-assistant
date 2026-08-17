@@ -1,0 +1,23 @@
+# ai-assistant 依赖（版本锁定，保证可复现构建）
+# 安装：pip install -r requirements.txt
+# 开发依赖见 pyproject.toml [project.optional-dependencies].dev
+
+# Web 框架
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sse-starlette==2.2.1
+
+# 数据 & ORM（SQLModel 依赖 SQLAlchemy）
+sqlmodel==0.0.22
+sqlalchemy==2.0.36
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# 认证 & 安全
+pyjwt==2.10.1
+bcrypt==4.2.1
+
+# 工具
+python-dotenv==1.0.1
+python-multipart==0.0.20
+httpx==0.28.1

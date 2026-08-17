@@ -1,0 +1,41 @@
+# ai-assistant — 本地一键编排（应用 + PostgreSQL）
+# 启动：docker compose up -d
+# 停止：docker compose down
+#
+# 默认使用 Postgres；如需快速本地试用 SQLite，可注释掉 app 的 DATABASE_URL 覆盖，
+# 并将 volumes 中挂载 ./data 以持久化 SQLite 文件。
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiassistant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiassistant}
+      POSTGRES_DB: ${POSTGRES_DB:-aiassistant}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiassistant}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    environment:
+      ENV: ${ENV:-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aiassistant}:${POSTGRES_PASSWORD:-aiassistant}@db:5432/${POSTGRES_DB:-aiassistant}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production-use-a-random-secret}
+      AUTH_ENABLED: ${AUTH_ENABLED:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -55,11 +55,14 @@ class Settings(BaseSettings):
     PORT: int = 8000
     LOG_LEVEL: str = "INFO"
 
-    # ── LLM 路由（当前仅配置，调用实现见后续模块）──
-    LLM_PROVIDER: str = "openai"  # openai | ollama
+    # ── LLM 提供商 ──
+    LLM_PROVIDER: str = "openai"  # openai | ollama | mock
     LLM_BASE_URL: str = "https://api.openai.com/v1"
-    LLM_API_KEY: str = ""  # 通过环境变量注入
+    LLM_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
     LLM_DEFAULT_MODEL: str = "gpt-4o-mini"
+    LLM_TEMPERATURE: float = 0.7
+    LLM_MAX_TOKENS: int = 2048
+    LLM_TIMEOUT: float = 60.0
 
     @property
     def is_production(self) -> bool:

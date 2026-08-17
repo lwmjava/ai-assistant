@@ -38,6 +38,7 @@ def init_db() -> None:
     """
     # 导入模型以注册表结构（Side-effect import）。
     from app.models import user  # noqa: F401
+    from app.models import conversation  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
 

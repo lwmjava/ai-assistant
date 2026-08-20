@@ -38,6 +38,9 @@ dev = [
 milvus = [
     "pymilvus==2.4.7",
 ]
+mcp = [
+    "mcp>=1.2.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

@@ -13,6 +13,7 @@ from sse_starlette.sse import EventSourceResponse
 from sqlmodel import Session
 
 from app.api.deps import get_current_user, get_db
+from app.core.config import settings
 from app.models.conversation import Conversation
 from app.models.user import User
 from app.services.chat_service import ChatService
@@ -188,9 +189,19 @@ def delete_conversation(
 
 
 @router.get("/tools")
-def list_tools() -> list[dict]:
-    """列出当前可用的工具（名称、描述与参数 Schema）。"""
+async def list_tools() -> list[dict]:
+    """列出当前可用的工具（内置 + MCP）：名称、描述与参数 Schema。"""
     registry = ToolRegistry(default_tools())
+    if settings.MCP_ENABLED:
+        try:
+            from app.mcp.manager import get_mcp_manager
+
+            mgr = await get_mcp_manager()
+            if mgr is not None:
+                for tool in await mgr.collect_tools():
+                    registry.register(tool)
+        except Exception:  # noqa: BLE001
+            logger.exception("收集 MCP 工具失败")
     return [
         {
             "name": t.name,

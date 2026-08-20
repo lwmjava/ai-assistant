@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from sqlmodel import Session, select
 
 from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
-from app.agents.tools.base import ToolRegistry
+from app.agents.tools.base import Tool, ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
@@ -97,9 +97,25 @@ class ChatService:
         rag = RAGService(session, user.tenant_id)
         return rag.make_retriever()
 
-    def _build_tools(self) -> ToolRegistry:
-        """构建工具注册表（内置工具集，可在运行时扩展）。"""
-        return ToolRegistry(default_tools())
+    async def _build_tools(self) -> ToolRegistry:
+        """构建工具注册表：内置工具 +（启用时）MCP 服务器工具。
+
+        MCP 工具通过进程级单例管理器连接，连接失败仅告警并回退到内置工具，
+        不阻断对话。MCP 未启用时完全不触碰 MCP 模块。
+        """
+        tools: list[Tool] = list(default_tools())
+        if settings.MCP_ENABLED:
+            try:
+                from app.mcp.manager import get_mcp_manager
+
+                mgr = await get_mcp_manager()
+                if mgr is not None:
+                    mcp_tools = await mgr.collect_tools()
+                    tools.extend(mcp_tools)
+                    logger.info("已向 Agent 注入 %d 个 MCP 工具", len(mcp_tools))
+            except Exception:  # noqa: BLE001 — MCP 异常不应影响基础对话能力
+                logger.exception("加载 MCP 工具失败，仅使用内置工具")
+        return ToolRegistry(tools)
 
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
@@ -113,7 +129,7 @@ class ChatService:
             self.llm,
             options=self._options,
             retriever=self._build_retriever(session, user),
-            tools=self._build_tools(),
+            tools=await self._build_tools(),
         )
         pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         result = await pipeline.run(state)
@@ -135,7 +151,7 @@ class ChatService:
             self.llm,
             options=self._options,
             retriever=self._build_retriever(session, user),
-            tools=self._build_tools(),
+            tools=await self._build_tools(),
         )
         pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         collected: list[str] = []

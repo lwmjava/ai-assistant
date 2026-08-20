@@ -21,3 +21,9 @@ bcrypt==4.2.1
 python-dotenv==1.0.1
 python-multipart==0.0.20
 httpx==0.28.1
+
+# 向量检索（本地向量库依赖 numpy 做稠密余弦与 BM25 融合）
+numpy==2.1.3
+
+# 可选：启用 Milvus 向量库时安装（RAG_VECTOR_STORE=milvus）
+# pymilvus==2.4.7

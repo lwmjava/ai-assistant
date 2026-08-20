@@ -64,6 +64,27 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 2048
     LLM_TIMEOUT: float = 60.0
 
+    # ── 嵌入模型（RAG 检索）──
+    # 与大模型共用 OpenAI 兼容协议：OpenAI 官方与 Ollama 的嵌入接口均可用。
+    RAG_ENABLED: bool = False  # 是否将检索上下文注入对话管线
+    EMBEDDING_PROVIDER: str = "openai"  # openai | ollama | mock
+    EMBEDDING_BASE_URL: str = "https://api.openai.com/v1"
+    EMBEDDING_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_DIM: int = 1536
+
+    # ── 向量库与检索 ──
+    RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus
+    RAG_CHUNK_SIZE: int = 500  # 分块字符数上限
+    RAG_CHUNK_OVERLAP: int = 64  # 分块重叠字符数
+    RAG_TOP_K: int = 5  # 每次检索返回的最大块数
+    RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
+
+    # ── Milvus（可选，仅当 RAG_VECTOR_STORE=milvus 时使用）──
+    MILVUS_URI: str = "http://localhost:19530"
+    MILVUS_TOKEN: str = ""
+    MILVUS_COLLECTION: str = "ai_assistant_chunks"
+
     @property
     def is_production(self) -> bool:
         """是否为生产环境。"""

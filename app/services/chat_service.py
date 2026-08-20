@@ -18,6 +18,7 @@ from app.llm.base import ChatMessage, ChatRole, LLMOptions
 from app.llm.factory import get_llm_provider
 from app.models.conversation import Conversation, Message
 from app.models.user import User
+from app.rag.service import RAGService
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,13 @@ class ChatService:
             ChatMessage(role=ChatRole(m.role), content=m.content) for m in recent
         ]
 
+    def _build_retriever(self, session: Session, user: User):
+        """按配置构建检索钩子（未开启 RAG 时返回 None）。"""
+        if not settings.RAG_ENABLED:
+            return None
+        rag = RAGService(session, user.tenant_id)
+        return rag.make_retriever()
+
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> tuple[Conversation, str]:
@@ -95,7 +103,9 @@ class ChatService:
         history = self._history_messages(conv)
         state = AgentState(user_input=message, history=history)
 
-        pipeline = AgentPipeline(self.llm, options=self._options)
+        pipeline = AgentPipeline(
+            self.llm, options=self._options, retriever=self._build_retriever(session, user)
+        )
         result = await pipeline.run(state)
 
         self._persist_user(session, conv, message)
@@ -111,7 +121,9 @@ class ChatService:
         history = self._history_messages(conv)
         state = AgentState(user_input=message, history=history)
 
-        pipeline = AgentPipeline(self.llm, options=self._options)
+        pipeline = AgentPipeline(
+            self.llm, options=self._options, retriever=self._build_retriever(session, user)
+        )
         collected: list[str] = []
         async for event in pipeline.run_stream(state):
             if event.type == "token":

@@ -21,6 +21,7 @@ from app.agents.prompts import (
     SYSTEM_RESPOND,
     SYSTEM_UNDERSTAND,
 )
+from app.agents.tools.base import ToolRegistry, parse_tool_call
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,8 @@ class AgentState:
     history: list[ChatMessage] = field(default_factory=list)
     understanding: str = ""
     plan: str = ""
-    context: str = ""  # 检索 / 工具产出的外部上下文
+    context: str = ""  # 检索产出的外部上下文
+    tool_results: list[str] = field(default_factory=list)  # 工具调用的观测结果
     draft: str = ""
     reflection: str = ""
     answer: str = ""
@@ -86,10 +88,13 @@ class AgentPipeline:
         llm: LLMProvider,
         options: LLMOptions | None = None,
         retriever: Retriever | None = None,
+        tools: ToolRegistry | None = None,
     ) -> None:
         self.llm = llm
         self.options = options or LLMOptions()
         self.retriever = retriever
+        self.tools = tools
+        self.max_tool_rounds: int = 5
 
     def _messages(self, system: str, user_content: str) -> list[ChatMessage]:
         return [
@@ -135,12 +140,35 @@ class AgentPipeline:
 
     def _build_act(self, state: AgentState) -> str:
         context = state.context or "（未接入外部检索，仅基于模型知识作答）"
+        tools_text = ""
+        if self.tools is not None:
+            tools_text = (
+                "## 可用外部工具\n"
+                + self.tools.describe()
+                + "\n\n如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
+                '<tool_call>{"name": "工具名", "arguments": {参数键值对}}</tool_call>'
+            )
+        tool_results = ""
+        if state.tool_results:
+            tool_results = "## 已调用工具结果\n" + "\n".join(state.tool_results)
         return (
             f"## 回答计划\n{state.plan}\n\n"
             f"## 外部上下文\n{context}\n\n"
+            f"{tools_text}\n\n"
+            f"{tool_results}\n\n"
             f"## 用户消息\n{state.user_input}\n\n"
-            "请按系统要求撰写回答草稿。"
+            "请按系统要求撰写回答草稿，或输出工具调用指令。"
         )
+
+    async def _run_action_once(self, state: AgentState) -> str:
+        """执行一次「行动」环节，返回模型原始输出（可能是草稿或工具调用）。"""
+        return await self._stage(SYSTEM_ACT, "_build_act", state)
+
+    async def _execute_tool(self, call, state: AgentState) -> str:
+        """执行工具调用并追加观测结果到状态。"""
+        if self.tools is None:
+            return "[工具调用失败] 当前未配置任何工具。"
+        return await self.tools.run(call)
 
     def _build_reflect(self, state: AgentState) -> str:
         return (
@@ -167,6 +195,9 @@ class AgentPipeline:
         """一次性执行全部环节，返回填充后的状态。"""
         try:
             for attr, _name, system, builder in _STAGES:
+                if attr == "draft":
+                    state.draft = await self._run_action_loop(state)
+                    continue
                 setattr(state, attr, await self._stage(system, builder, state))
                 if attr == "plan" and self.retriever is not None:
                     state.context = await self.retriever.retrieve(
@@ -182,10 +213,35 @@ class AgentPipeline:
                 state.answer = "抱歉，处理你的请求时出现问题，请稍后重试。"
         return state
 
+    async def _run_action_loop(self, state: AgentState) -> str:
+        """执行「行动」环节：如需工具则循环调用，直至产出最终草稿。"""
+        draft = ""
+        for _ in range(self.max_tool_rounds):
+            draft = await self._run_action_once(state)
+            call = parse_tool_call(draft)
+            if call is None:
+                break
+            observation = await self._execute_tool(call, state)
+            state.tool_results.append(observation)
+        return draft
+
     async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
         """流式执行：广播阶段进度事件，最终环节逐字吐出 token。"""
         try:
             for attr, name, system, builder in _STAGES:
+                if attr == "draft":
+                    draft = ""
+                    for _ in range(self.max_tool_rounds):
+                        yield AgentEvent("stage", "行动")
+                        draft = await self._run_action_once(state)
+                        call = parse_tool_call(draft)
+                        if call is None:
+                            break
+                        yield AgentEvent("tool", f"调用工具：{call.name}")
+                        observation = await self._execute_tool(call, state)
+                        state.tool_results.append(observation)
+                    state.draft = draft
+                    continue
                 yield AgentEvent("stage", name)
                 setattr(state, attr, await self._stage(system, builder, state))
                 if attr == "plan" and self.retriever is not None:

@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
 
+    # ── Agent 工具调用（Function Calling）──
+    AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数
+
     # ── Milvus（可选，仅当 RAG_VECTOR_STORE=milvus 时使用）──
     MILVUS_URI: str = "http://localhost:19530"
     MILVUS_TOKEN: str = ""

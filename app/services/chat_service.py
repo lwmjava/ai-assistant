@@ -13,6 +13,8 @@ from collections.abc import AsyncIterator
 from sqlmodel import Session, select
 
 from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
+from app.agents.tools.base import ToolRegistry
+from app.agents.tools.builtin import default_tools
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
 from app.llm.factory import get_llm_provider
@@ -95,6 +97,10 @@ class ChatService:
         rag = RAGService(session, user.tenant_id)
         return rag.make_retriever()
 
+    def _build_tools(self) -> ToolRegistry:
+        """构建工具注册表（内置工具集，可在运行时扩展）。"""
+        return ToolRegistry(default_tools())
+
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> tuple[Conversation, str]:
@@ -104,8 +110,12 @@ class ChatService:
         state = AgentState(user_input=message, history=history)
 
         pipeline = AgentPipeline(
-            self.llm, options=self._options, retriever=self._build_retriever(session, user)
+            self.llm,
+            options=self._options,
+            retriever=self._build_retriever(session, user),
+            tools=self._build_tools(),
         )
+        pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         result = await pipeline.run(state)
 
         self._persist_user(session, conv, message)
@@ -122,8 +132,12 @@ class ChatService:
         state = AgentState(user_input=message, history=history)
 
         pipeline = AgentPipeline(
-            self.llm, options=self._options, retriever=self._build_retriever(session, user)
+            self.llm,
+            options=self._options,
+            retriever=self._build_retriever(session, user),
+            tools=self._build_tools(),
         )
+        pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         collected: list[str] = []
         async for event in pipeline.run_stream(state):
             if event.type == "token":

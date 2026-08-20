@@ -16,6 +16,8 @@ from app.api.deps import get_current_user, get_db
 from app.models.conversation import Conversation
 from app.models.user import User
 from app.services.chat_service import ChatService
+from app.agents.tools.base import ToolRegistry
+from app.agents.tools.builtin import default_tools
 
 logger = logging.getLogger(__name__)
 
@@ -183,3 +185,17 @@ def delete_conversation(
             status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
         )
     return {"deleted": True}
+
+
+@router.get("/tools")
+def list_tools() -> list[dict]:
+    """列出当前可用的工具（名称、描述与参数 Schema）。"""
+    registry = ToolRegistry(default_tools())
+    return [
+        {
+            "name": t.name,
+            "description": t.description,
+            "parameters": t.parameters,
+        }
+        for t in registry.all()
+    ]

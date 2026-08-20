@@ -79,3 +79,6 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Project local data / agent working memory (do not commit)
+.workbuddy/

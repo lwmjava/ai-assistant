@@ -29,12 +29,31 @@ class IngestRequest(BaseModel):
     title: str
     source: str | None = None
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "text": "人工智能（Artificial Intelligence，简称 AI）是计算机科学的一个分支，旨在创建能够模拟人类智能的系统。这些系统可以执行通常需要人类智能的任务，如视觉感知、语音识别、决策制定和语言翻译。",
+                "title": "人工智能概述",
+                "source": "内部知识库",
+            }
+        }
+    }
+
 
 class SearchRequest(BaseModel):
     """检索请求体。"""
 
     query: str
     top_k: int | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "query": "什么是人工智能",
+                "top_k": 5,
+            }
+        }
+    }
 
 
 class DocumentOut(BaseModel):

@@ -11,11 +11,28 @@ class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=128)
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "username": "admin",
+                "password": "your-password",
+            }
+        }
+    }
+
 
 class RefreshRequest(BaseModel):
     """刷新令牌请求。"""
 
     refresh_token: str
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "refresh_token": "your-refresh-token",
+            }
+        }
+    }
 
 
 class Token(BaseModel):

@@ -38,6 +38,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
         norm = math.sqrt(sum(b * b for b in buckets))
         if norm == 0.0:
             return buckets
+        # 归一化
         return [b / norm for b in buckets]
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:

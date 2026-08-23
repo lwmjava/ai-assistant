@@ -56,10 +56,11 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # ── LLM 提供商 ──
-    LLM_PROVIDER: str = "openai"  # openai | ollama | mock
-    LLM_BASE_URL: str = "https://api.openai.com/v1"
+    # 以下为代码默认值，运行时会被 .env / 环境变量覆盖
+    LLM_PROVIDER: str = "openai"  # openai | ollama | mock（兼容 OpenAI 接口的均可）
+    LLM_BASE_URL: str = "https://api.deepseek.com/v1"
     LLM_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
-    LLM_DEFAULT_MODEL: str = "gpt-4o-mini"
+    LLM_DEFAULT_MODEL: str = "deepseek-chat"
     LLM_TEMPERATURE: float = 0.7
     LLM_MAX_TOKENS: int = 2048
     LLM_TIMEOUT: float = 60.0

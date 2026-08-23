@@ -116,7 +116,7 @@ fix(auth): 修复多租户场景下 token 刷新失败的问题
 
 1. PR 标题遵循提交信息规范，描述中说明 **动机、改动内容与测试方式**；
 2. 保持 PR 聚焦单一改动，过大的改动请拆分；
-3. 提交前同步上游最新代码：`git fetch upstream && git rebase upstream/main`；
+3. 提交前同步官方仓库最新代码：`git fetch upstream && git rebase upstream/main`；
 4. 确保 CI 检查（测试、lint）全部通过；
 5. 维护者会在合理时间内进行 Review，请按评审意见迭代修改。
 

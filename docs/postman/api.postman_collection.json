@@ -1,0 +1,106 @@
+{
+  "info": {
+    "name": "ai-assistant API 接口",
+    "description": "ai-assistant 接口集合。导入后请先设置集合变量 base_url（默认 http://127.0.0.1:8000）。\n\n登录请求会自动把 access_token / refresh_token 写入集合变量，后续 /me 与 /refresh 直接可用。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "access_token", "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "健康检查 (无需认证)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/api/health", "host": ["{{base_url}}"], "path": ["api", "health"] }
+      }
+    },
+    {
+      "name": "登录 Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"change-me-admin-password\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var json = pm.response.json();",
+              "if (pm.response.code === 200) {",
+              "    pm.collection.variables.set('access_token', json.access_token);",
+              "    pm.collection.variables.set('refresh_token', json.refresh_token);",
+              "    console.log('已保存 access_token / refresh_token');",
+              "} else {",
+              "    console.log('登录失败：' + JSON.stringify(json));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "当前用户 Me (需 Bearer)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": { "raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api", "auth", "me"] }
+      }
+    },
+    {
+      "name": "刷新令牌 Refresh",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/refresh", "host": ["{{base_url}}"], "path": ["api", "auth", "refresh"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var json = pm.response.json();",
+              "if (pm.response.code === 200) {",
+              "    pm.collection.variables.set('access_token', json.access_token);",
+              "    pm.collection.variables.set('refresh_token', json.refresh_token);",
+              "    console.log('令牌已轮转更新');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "错误凭证登录 (应 401)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrong-password\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "无 Token 访问 Me (应 401)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api", "auth", "me"] }
+      }
+    }
+  ]
+}

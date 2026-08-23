@@ -100,14 +100,17 @@ class ChatService:
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
         conv = self._resolve_conversation(session, user, conversation_id, message)
+         # 1. 取历史对话（最近 20 轮）
         history = self._history_messages(conv)
         state = AgentState(user_input=message, history=history)
-
+        # 3. 创建管线，注入 LLM + 检索器
         pipeline = AgentPipeline(
+            # 2. 构建检索器（通过 RAGService）
             self.llm, options=self._options, retriever=self._build_retriever(session, user)
         )
+        # 4. 执行
         result = await pipeline.run(state)
-
+        # 5. 持久化用户消息和助手回复
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, result.answer, self._model_name())
         session.refresh(conv)

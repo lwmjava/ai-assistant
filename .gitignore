@@ -79,3 +79,4 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+/.workbuddy/

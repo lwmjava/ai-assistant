@@ -25,7 +25,7 @@
 - **五阶段 Agent 管线**：理解 → 规划 → 行动（含工具调用循环）→ 反思 → 响应，逐步逼近高质量回答。
 - **流式与非流式双模式**：支持 SSE 流式增量输出（逐字推送 + 阶段进度广播），也支持一次性返回。
 - **原生 MCP 协议**：作为 AI 与企业系统的「万能连接器」，将 MCP 服务器工具动态注入 Agent 工具箱。
-- **多 LLM 提供商**：OpenAI 兼容接口 / Ollama 本地部署 / Mock 离线占位，无 API Key 时自动降级。
+- **多 LLM 提供商**：DeepSeek / OpenAI 兼容接口 / Ollama 本地部署 / Mock 离线占位，默认适配 DeepSeek，无 API Key 时自动降级为 Mock。
 - **灵活向量库**：本地模式（SQLite + numpy，零额外依赖）或生产模式（Milvus 分布式）。
 - **企业级安全**：JWT 双令牌（access + refresh）、RBAC 五级角色权限矩阵、多租户数据隔离。
 
@@ -55,8 +55,8 @@ graph TD
 | 后端框架 | Python 3.11+ · FastAPI 0.115 · SQLModel 0.0.22 · Pydantic v2 |
 | 数据库 | SQLite（开发）/ PostgreSQL 16（生产） |
 | 向量库 | Local（SQLite + numpy）或 Milvus 2.4（分布式） |
-| LLM | OpenAI 兼容接口 · Ollama 本地 · Mock 离线 |
-| 嵌入模型 | OpenAI 兼容 `/embeddings` 协议 |
+| LLM | DeepSeek / OpenAI 兼容接口 · Ollama 本地 · Mock 离线 |
+| 嵌入模型 | OpenAI 兼容 `/embeddings` 协议（DeepSeek / OpenAI / 智谱 / BGE-M3 等） |
 | 协议 | MCP（Model Context Protocol） |
 | 部署 | Docker Compose |
 
@@ -124,8 +124,9 @@ docker compose up -d --build
 | `JWT_SECRET_KEY` | JWT 签名密钥（生产环境必须修改） | 默认占位值 |
 | `AUTH_ENABLED` | 是否启用认证 | `true` |
 | `LLM_PROVIDER` | 大模型提供商：`openai` / `ollama` / `mock` | `openai` |
+| `LLM_BASE_URL` | 大模型 API 地址（兼容 OpenAI 协议均可） | `https://api.deepseek.com/v1` |
 | `LLM_API_KEY` | 大模型 API Key（为空时开发环境自动降级 Mock） | — |
-| `LLM_DEFAULT_MODEL` | 默认模型名 | `gpt-4o-mini` |
+| `LLM_DEFAULT_MODEL` | 默认模型名 | `deepseek-chat` |
 | `RAG_ENABLED` | 是否启用 RAG 检索 | `false` |
 | `RAG_VECTOR_STORE` | 向量库后端：`local` / `milvus` | `local` |
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |

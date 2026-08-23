@@ -15,6 +15,7 @@
 
 ### 1.2 项目边界
 - **当前范围**：后端 API 服务（FastAPI），无前端代码
+- **默认 LLM**：DeepSeek（`deepseek-chat`），兼容所有 OpenAI 协议接口
 - **文档解析**：仅支持 `.txt` / `.md` 文本文件，不支持 PDF/Word/Excel/PPTX
 - **Agent 引擎**：自定义五阶段管线，**不依赖** LangGraph 或 LangChain
 - **未实现功能**：敏感词护栏、审计日志、记忆模块、工作流引擎（均在规划中，不可在代码中声称已实现）
@@ -270,7 +271,7 @@ mypy app/                       # 类型检查
 <type>(<scope>): <subject>
 
 类型：feat / fix / docs / refactor / test / chore / perf
-范围：rag / agent / auth / chat / mcp / llm / core / api
+范围：rag / agent / auth / chat / mcp / llm / embedding / vectorstore / core / api / config
 ```
 
 ### 8.2 新增功能检查清单
@@ -375,11 +376,12 @@ stmt = select(Document).where(
 
 | 修改内容 | 需更新的文档 |
 |----------|-------------|
-| 新增/修改 API 端点 | `README.md` 的 API 端点表 |
+| 新增/修改 API 端点 | `README.md` 的 API 端点表 + 运行 `python docs/export_swagger.py` 重新生成 `swagger.json` |
 | 新增/修改配置项 | `.env.example` + `README.md` 的关键配置项表 |
+| 新增/修改 Pydantic Schema | 运行 `python docs/export_swagger.py` 重新生成 `swagger.json` |
 | 新增模块 | `README.md` 的项目结构说明 |
 | 修改架构/模式 | 本 `AGENT.md` |
 
 ---
 
-*最后更新：2026-08-22*
+*最后更新：2026-08-23*

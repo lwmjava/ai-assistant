@@ -41,6 +41,9 @@ milvus = [
 mcp = [
     "mcp>=1.2.0",
 ]
+workflow = [
+    "croniter>=2.0.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

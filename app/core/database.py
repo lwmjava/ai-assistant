@@ -40,6 +40,7 @@ def init_db() -> None:
     from app.models import user  # noqa: F401
     from app.models import conversation  # noqa: F401
     from app.models import rag  # noqa: F401
+    from app.models import workflow  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
 

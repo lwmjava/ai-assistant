@@ -30,3 +30,6 @@ numpy==2.1.3
 
 # 可选：启用 MCP 客户端时安装（MCP_ENABLED=true，打通 AI↔企业系统）
 # mcp>=1.2.0
+
+# 可选：启用 Workflow 工作流引擎的 cron 调度时安装（WORKFLOW_ENABLED=true）
+# croniter>=2.0.0

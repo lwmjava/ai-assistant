@@ -10,7 +10,7 @@
 | 设计阶段 | 关键内容 | 状态 |
 |---|---|---|
 | Phase 0 基座 | ,配置/DB/JWT/RBAC/Channel/Docker | ✅ initial-foundation，已合 main |
-| Phase 1 Agent | 五阶段 + 工具 + Skill + Supervisor | ⚠️ 自研五阶段 + 工具调用已合 main；Supervisor / Skill / QualityGate 未做 |
+| Phase 1 Agent | 五阶段 + 工具 + Skill + Supervisor | ⚠️ 五阶段/工具调用已合 main；Supervisor + QualityGate 已在 `agent-supervisor` 分支完成（代码就绪、未合 main）；**Skill 完全未做**。详见 `overview_supervisor_qualitygate.md` |
 | Phase 2 RAG | Milvus + 混合检索 + 重排 + 引用 | ⚠️ 自研本地版已合；Milvus/重排4策略/父文档/RAG评估未做 |
 | Phase 3 工作流 | cron 引擎 + 执行历史 | 🔶 workflow 分支，未合 main |
 | Phase 4 记忆与进化 | 记忆压缩/Reflect/Skill进化/蒸馏 | ❌ 全部未做 |

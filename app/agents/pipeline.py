@@ -17,11 +17,15 @@ from typing import Protocol
 from app.agents.prompts import (
     SYSTEM_ACT,
     SYSTEM_PLAN,
+    SYSTEM_PREFLOW,
+    SYSTEM_QUALITY_CRITIQUE,
+    SYSTEM_QUALITY_GATE,
     SYSTEM_REFLECT,
     SYSTEM_RESPOND,
     SYSTEM_UNDERSTAND,
 )
 from app.agents.tools.base import ToolRegistry, parse_tool_call
+from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -52,6 +56,9 @@ class AgentState:
     reflection: str = ""
     answer: str = ""
     error: str | None = None
+    needs_full_pipeline: bool = True  # Preflight 意图短路：False 表示简单问题，跳过规划/检索/反思
+    quality_score: float = 0.0  # QualityGate 最近一次质量评分
+    revision: int = 0  # QualityGate 自纠错已执行的轮数
 
 
 class AgentEvent:
@@ -192,26 +199,108 @@ class AgentPipeline:
 
     # ── 执行入口 ────────────────────────────────────
     async def run(self, state: AgentState) -> AgentState:
-        """一次性执行全部环节，返回填充后的状态。"""
+        """一次性执行全部环节，返回填充后的状态。
+
+        流程：理解 → Preflight 意图短路 →（复杂则）规划 → 检索 → 行动 →
+        QualityGate 自纠错 → 反思 → 响应；（简单则）直接行动 → 响应。
+        """
         try:
-            for attr, _name, system, builder in _STAGES:
-                if attr == "draft":
-                    state.draft = await self._run_action_loop(state)
-                    continue
-                setattr(state, attr, await self._stage(system, builder, state))
-                if attr == "plan" and self.retriever is not None:
-                    state.context = await self.retriever.retrieve(
-                        state.user_input, state.plan
-                    )
-            state.answer = await self._stage(
-                _FINAL_SYSTEM, _FINAL_BUILDER, state
+            # 1. 理解
+            state.understanding = await self._stage(
+                SYSTEM_UNDERSTAND, "_build_understand", state
             )
+            # 2. Preflight 意图短路
+            state.needs_full_pipeline = await self._needs_plan(state)
+            if not state.needs_full_pipeline:
+                # 简单问题：跳过规划/检索/反思，直接行动 → 响应
+                state.draft = await self._run_action_once(state)
+                state.answer = await self._stage(
+                    _FINAL_SYSTEM, _FINAL_BUILDER, state
+                )
+                return state
+
+            # 3. 规划
+            state.plan = await self._stage(SYSTEM_PLAN, "_build_plan", state)
+            # 4. 检索（可选）
+            if self.retriever is not None:
+                state.context = await self.retriever.retrieve(
+                    state.user_input, state.plan
+                )
+            # 5. 行动 → QualityGate 自纠错
+            state.draft = await self._run_action_loop(state)
+            state.draft = await self._quality_gate_loop(state)
+            # 6. 反思
+            state.reflection = await self._stage(
+                SYSTEM_REFLECT, "_build_reflect", state
+            )
+            # 7. 响应
+            state.answer = await self._stage(_FINAL_SYSTEM, _FINAL_BUILDER, state)
         except Exception as exc:  # noqa: BLE001 — 管线级兜底，避免向上吞没请求
             logger.exception("Agent 管线执行失败")
             state.error = str(exc)
             if not state.answer:
                 state.answer = "抱歉，处理你的请求时出现问题，请稍后重试。"
         return state
+
+    async def _needs_plan(self, state: AgentState) -> bool:
+        """Preflight 意图分流：返回是否需要完整规划流程。
+
+        解析失败时默认走完整流程（不轻易短路），避免漏掉需要检索/推理的问题。
+        """
+        decision = await self.llm.chat(
+            [
+                ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_PREFLOW),
+                ChatMessage(role=ChatRole.USER, content=state.user_input),
+            ],
+            self.options,
+        )
+        return "NO" not in (decision or "").upper()
+
+    async def _quality_gate_loop(self, state: AgentState) -> str:
+        """QualityGate 自纠错：低于阈值则把评审意见回灌「行动」并重跑，至多 N 轮。"""
+        if not settings.AGENT_QUALITY_GATE_ENABLED:
+            return state.draft
+        draft = state.draft
+        for _ in range(max(0, settings.AGENT_MAX_REVISIONS)):
+            score = await self._evaluate_quality(state, draft)
+            state.quality_score = score
+            if score >= settings.AGENT_QUALITY_THRESHOLD:
+                state.revision = 0
+                return draft
+            # 自纠错：生成修正要点作为补充上下文，重跑「行动」
+            critique = await self._stage(SYSTEM_QUALITY_CRITIQUE, "_build_critique", state)
+            state.context = (state.context + "\n" + critique).strip()
+            draft = await self._run_action_loop(state)
+            state.revision += 1
+        return draft
+
+    async def _evaluate_quality(self, state: AgentState, draft: str) -> float:
+        """对草稿打分（0~1）。解析失败时视为合格（1.0），不触发无谓重跑。"""
+        prompt = (
+            f"## 用户目标\n{state.user_input}\n\n"
+            f"## 回答计划\n{state.plan}\n\n"
+            f"## 回答草稿\n{draft}\n\n"
+            "请输出 0~1 的质量评分。"
+        )
+        raw = await self.llm.chat(
+            [
+                ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_QUALITY_GATE),
+                ChatMessage(role=ChatRole.USER, content=prompt),
+            ],
+            self.options,
+        )
+        try:
+            return float((raw or "").strip())
+        except (ValueError, TypeError):
+            return 1.0
+
+    def _build_critique(self, state: AgentState) -> str:
+        return (
+            f"## 当前质量评分\n{state.quality_score:.2f}（合格线 "
+            f"{settings.AGENT_QUALITY_THRESHOLD:.2f}）\n\n"
+            f"## 当前草稿\n{state.draft}\n\n"
+            "请基于上述要点给出具体修正方向（仅要点，不要重写整段）。"
+        )
 
     async def _run_action_loop(self, state: AgentState) -> str:
         """执行「行动」环节：如需工具则循环调用，直至产出最终草稿。"""
@@ -228,29 +317,79 @@ class AgentPipeline:
     async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
         """流式执行：广播阶段进度事件，最终环节逐字吐出 token。"""
         try:
-            for attr, name, system, builder in _STAGES:
-                if attr == "draft":
-                    draft = ""
+            # 1. 理解
+            yield AgentEvent("stage", "理解")
+            state.understanding = await self._stage(
+                SYSTEM_UNDERSTAND, "_build_understand", state
+            )
+            # 2. Preflight 意图短路
+            yield AgentEvent("stage", "意图分流")
+            state.needs_full_pipeline = await self._needs_plan(state)
+            if not state.needs_full_pipeline:
+                yield AgentEvent("stage", "行动")
+                state.draft = await self._run_action_once(state)
+                yield AgentEvent("stage", "响应")
+                chunks: list[str] = []
+                async for delta in self.llm.stream_chat(
+                    self._messages(_FINAL_SYSTEM, self._build_respond(state)),
+                    self.options,
+                ):
+                    chunks.append(delta)
+                    yield AgentEvent("token", delta)
+                state.answer = "".join(chunks)
+                yield AgentEvent("done", state.answer)
+                return
+
+            # 3. 规划
+            yield AgentEvent("stage", "规划")
+            state.plan = await self._stage(SYSTEM_PLAN, "_build_plan", state)
+            # 4. 检索（可选）
+            if self.retriever is not None:
+                yield AgentEvent("stage", "检索")
+                state.context = await self.retriever.retrieve(
+                    state.user_input, state.plan
+                )
+            # 5. 行动
+            yield AgentEvent("stage", "行动")
+            draft = ""
+            for _ in range(self.max_tool_rounds):
+                draft = await self._run_action_once(state)
+                call = parse_tool_call(draft)
+                if call is None:
+                    break
+                yield AgentEvent("tool", f"调用工具：{call.name}")
+                observation = await self._execute_tool(call, state)
+                state.tool_results.append(observation)
+            state.draft = draft
+            # 5b. QualityGate 自纠错
+            if settings.AGENT_QUALITY_GATE_ENABLED:
+                for _ in range(max(0, settings.AGENT_MAX_REVISIONS)):
+                    score = await self._evaluate_quality(state, state.draft)
+                    state.quality_score = score
+                    if score >= settings.AGENT_QUALITY_THRESHOLD:
+                        break
+                    yield AgentEvent("stage", "质量门自纠错")
+                    critique = await self._stage(
+                        SYSTEM_QUALITY_CRITIQUE, "_build_critique", state
+                    )
+                    state.context = (state.context + "\n" + critique).strip()
+                    new_draft = ""
                     for _ in range(self.max_tool_rounds):
-                        yield AgentEvent("stage", "行动")
-                        draft = await self._run_action_once(state)
-                        call = parse_tool_call(draft)
+                        new_draft = await self._run_action_once(state)
+                        call = parse_tool_call(new_draft)
                         if call is None:
                             break
-                        yield AgentEvent("tool", f"调用工具：{call.name}")
                         observation = await self._execute_tool(call, state)
                         state.tool_results.append(observation)
-                    state.draft = draft
-                    continue
-                yield AgentEvent("stage", name)
-                setattr(state, attr, await self._stage(system, builder, state))
-                if attr == "plan" and self.retriever is not None:
-                    yield AgentEvent("stage", "检索")
-                    state.context = await self.retriever.retrieve(
-                        state.user_input, state.plan
-                    )
-
-            yield AgentEvent("stage", _FINAL_NAME)
+                    state.draft = new_draft
+                    state.revision += 1
+            # 6. 反思
+            yield AgentEvent("stage", "反思")
+            state.reflection = await self._stage(
+                SYSTEM_REFLECT, "_build_reflect", state
+            )
+            # 7. 响应
+            yield AgentEvent("stage", "响应")
             chunks: list[str] = []
             async for delta in self.llm.stream_chat(
                 self._messages(_FINAL_SYSTEM, self._build_respond(state)),

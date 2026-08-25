@@ -191,6 +191,10 @@ class ChatService:
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
+        # 0. 安全治理：输入过滤 + 注入检测
+        sec_ctx = self._apply_input_security(message, user)
+        if sec_ctx and sec_ctx.blocked and settings.SECURITY_BLOCK_ON_INJECTION:
+            raise ValueError("输入被安全策略拒绝")
         conv = self._resolve_conversation(session, user, conversation_id, message)
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
@@ -209,11 +213,13 @@ class ChatService:
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         # 6. 执行
         result = await pipeline.run(state)
-        # 7. 持久化用户消息和助手回复
+        # 7. 安全治理：输出过滤
+        self._apply_output_security(result.answer, sec_ctx)
+        # 8. 持久化用户消息和助手回复
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, result.answer, self._model_name())
         session.refresh(conv)
-        # 8. 异步反思（不阻塞对话响应）
+        # 9. 异步反思（不阻塞对话响应）
         self._maybe_reflect(conv, result)
         return conv, result.answer
 
@@ -221,6 +227,11 @@ class ChatService:
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> AsyncIterator[AgentEvent]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
+        # 0. 安全治理：输入过滤 + 注入检测
+        sec_ctx = self._apply_input_security(message, user)
+        if sec_ctx and sec_ctx.blocked and settings.SECURITY_BLOCK_ON_INJECTION:
+            yield AgentEvent("error", "输入被安全策略拒绝")
+            return
         conv = self._resolve_conversation(session, user, conversation_id, message)
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
@@ -244,6 +255,8 @@ class ChatService:
             yield event
 
         answer = "".join(collected) or state.answer
+        # 安全治理：输出过滤
+        self._apply_output_security(answer, sec_ctx)
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, answer, self._model_name())
         session.refresh(conv)
@@ -373,3 +386,79 @@ class ChatService:
             role_label = role_map.get(m.role, m.role)
             lines.append(f"{role_label}：{m.content}")
         return "\n".join(lines)
+
+    # ── 安全治理 ──────────────────────────────────
+
+    @staticmethod
+    def _apply_input_security(message: str, user: User) -> "SecurityContext | None":
+        """对用户输入执行安全过滤。
+
+        包含：输入过滤（PII 检测 + 敏感词）+ Prompt 注入检测。
+        失败时仅记录日志，不阻断对话。
+
+        SKELETON：当前仅做模式匹配告警；
+        内核打磨阶段补充：可配置阻断策略、LLM 语义审查。
+        """
+        if not settings.SECURITY_ENABLED:
+            return None
+        try:
+            from app.security import (
+                InputFilter,
+                PromptInjectionDetector,
+                SecurityContext,
+            )
+
+            ctx = SecurityContext()
+
+            # 输入过滤
+            if settings.SECURITY_INPUT_FILTER:
+                input_filter = InputFilter()
+                result = input_filter.filter(message, ctx)
+                if result.flagged:
+                    logger.warning(
+                        "输入安全告警: user=%s, reasons=%s",
+                        user.id,
+                        result.reasons,
+                    )
+
+            # 注入检测
+            if settings.SECURITY_INJECTION_DETECTION:
+                detector = PromptInjectionDetector(
+                    threshold=settings.SECURITY_INJECTION_THRESHOLD
+                )
+                inj_result = detector.detect(message, ctx)
+                if inj_result.detected:
+                    logger.warning(
+                        "注入检测告警: user=%s, confidence=%.2f, matches=%s",
+                        user.id,
+                        inj_result.confidence,
+                        inj_result.matches,
+                    )
+
+            return ctx
+
+        except Exception:  # noqa: BLE001 — 安全过滤失败不应影响对话
+            logger.exception("输入安全过滤失败")
+            return None
+
+    @staticmethod
+    def _apply_output_security(answer: str, ctx: "SecurityContext | None") -> None:
+        """对模型输出执行安全过滤。
+
+        包含：输出过滤（有害内容检测）。
+        失败时仅记录日志，不阻断对话。
+        """
+        if not settings.SECURITY_ENABLED or not settings.SECURITY_OUTPUT_FILTER:
+            return
+        try:
+            from app.security import OutputFilter
+
+            output_filter = OutputFilter()
+            result = output_filter.filter(answer, ctx)
+            if result.flagged:
+                logger.warning(
+                    "输出安全告警: reasons=%s",
+                    result.reasons,
+                )
+        except Exception:  # noqa: BLE001
+            logger.exception("输出安全过滤失败")

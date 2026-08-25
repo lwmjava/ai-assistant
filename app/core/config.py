@@ -89,6 +89,15 @@ class Settings(BaseSettings):
     SKILL_ENABLED: bool = True  # 是否启用技能系统
     SKILL_DIRS: str = ""  # 自定义技能目录（逗号分隔）；为空时仅使用内置技能
 
+    # ── 记忆系统（Memory System）──
+    # 对话窗口管理 + LLM 压缩，超长对话自动摘要保留关键信息
+    MEMORY_ENABLED: bool = True  # 是否启用记忆系统
+    MEMORY_WINDOW_SIZE: int = 20  # 对话窗口大小（最多保留最近 N 轮）
+    MEMORY_COMPRESSION_THRESHOLD: int = 30  # 压缩阈值（超过此数量触发 LLM 压缩）
+    MEMORY_STRATEGY: str = "summary"  # 压缩策略：summary | key_points | none
+    MEMORY_MAX_SUMMARY_CHARS: int = 2000  # 压缩摘要最大字符数
+    MEMORY_KEEP_RECENT: int = 5  # 压缩时保留最近 N 轮不压缩
+
     # ── 代码沙箱（Code Sandbox）──
     # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
     SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）

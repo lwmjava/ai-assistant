@@ -7,6 +7,7 @@
 - 基于多租户 RBAC 做归属校验（普通用户仅可见自己的会话，系统管理员可见同租户全部）。
 """
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 
@@ -212,6 +213,8 @@ class ChatService:
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, result.answer, self._model_name())
         session.refresh(conv)
+        # 8. 异步反思（不阻塞对话响应）
+        self._maybe_reflect(conv, result)
         return conv, result.answer
 
     async def chat_stream(
@@ -244,6 +247,8 @@ class ChatService:
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, answer, self._model_name())
         session.refresh(conv)
+        # 异步反思（不阻塞流式响应）
+        self._maybe_reflect(conv, state)
 
     # ── 内部辅助 ──────────────────────────────────
     def _resolve_conversation(
@@ -301,3 +306,70 @@ class ChatService:
         except Exception:  # noqa: BLE001 — 技能匹配失败不应影响对话
             logger.exception("技能匹配失败")
             return None
+
+    # ── 进化系统（Reflect 反思）───────────────────
+
+    def _maybe_reflect(self, conv: Conversation, state: AgentState) -> None:
+        """对话结束后触发异步反思。
+
+        仅在 EVOLUTION_ENABLED + EVOLUTION_REFLECT_ENABLED 时触发；
+        反思失败不影响对话响应，仅记录日志。
+
+        SKELETON：当前仅做 LLM 反思并记录日志；
+        内核打磨阶段补充：改进点持久化、Skill 自动更新、Action Item 调度。
+        """
+        if not settings.EVOLUTION_ENABLED or not settings.EVOLUTION_REFLECT_ENABLED:
+            return
+        try:
+            conversation_text = self._build_reflect_conversation_text(conv)
+            if not conversation_text.strip():
+                return
+
+            async def _do_reflect():
+                try:
+                    from app.evolution.reflector import Reflector
+
+                    reflector = Reflector(self.llm)
+                    result = await reflector.reflect(
+                        conversation_text=conversation_text,
+                        conversation_id=conv.id,
+                        quality_score=state.quality_score,
+                        revision_count=state.revision,
+                    )
+                    if result.error:
+                        logger.warning("反思异常: %s", result.error)
+                    elif result.has_improvements:
+                        logger.info(
+                            "反思发现 %d 个改进点（严重: %d）: %s",
+                            len(result.improvements),
+                            result.critical_count,
+                            result.summary,
+                        )
+                    if result.has_action_items:
+                        logger.info(
+                            "反思提取 %d 个待办事项: %s",
+                            len(result.action_items),
+                            [item.description[:50] for item in result.action_items],
+                        )
+                except Exception:  # noqa: BLE001 — 反思失败不应影响对话
+                    logger.exception("异步反思执行失败")
+
+            if settings.EVOLUTION_REFLECT_ASYNC:
+                # 异步执行：fire-and-forget，不阻塞对话响应
+                asyncio.create_task(_do_reflect())
+            else:
+                # 同步执行（调试用）
+                asyncio.get_event_loop().run_until_complete(_do_reflect())
+
+        except Exception:  # noqa: BLE001
+            logger.exception("触发反思失败")
+
+    @staticmethod
+    def _build_reflect_conversation_text(conv: Conversation) -> str:
+        """将对话消息序列化为反思器可读的文本。"""
+        role_map = {"user": "用户", "assistant": "助手", "system": "系统"}
+        lines: list[str] = []
+        for m in sorted(conv.messages, key=lambda x: x.created_at):
+            role_label = role_map.get(m.role, m.role)
+            lines.append(f"{role_label}：{m.content}")
+        return "\n".join(lines)

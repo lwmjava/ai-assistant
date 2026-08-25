@@ -10,6 +10,7 @@ sse-starlette==2.2.1
 # 数据 & ORM（SQLModel 依赖 SQLAlchemy）
 sqlmodel==0.0.22
 sqlalchemy==2.0.36
+alembic==1.14.1
 pydantic==2.10.4
 pydantic-settings==2.7.0
 

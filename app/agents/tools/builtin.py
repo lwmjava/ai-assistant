@@ -2,6 +2,7 @@
 
 提供一组开箱即用的安全工具，便于在「行动」阶段直接复用：
 - ``calculator``：仅允许四则运算与括号的安全算术求值；
+- ``code_sandbox``：四层防护的 Python 代码沙箱安全执行；
 - ``get_current_datetime``：返回当前本地时间；
 - ``web_fetch``：对给定 URL 发起 GET 请求并截取响应正文（便于接入外部 API）。
 
@@ -61,6 +62,24 @@ async def get_current_datetime(arguments: dict) -> str:
         return now.isoformat()
 
 
+async def code_sandbox(arguments: dict) -> str:
+    """在四层防护沙箱中执行 Python 代码，返回执行结果。
+
+    SKELETON：当前为骨架实现，四层防护中 Layer 2/3/4 为最简版本。
+    内核打磨阶段将补充：进程隔离加固、资源限制增强、进程树强杀。
+    """
+    from app.agents.tools.sandbox import CodeSandbox, SandboxConfig
+
+    code = str(arguments.get("code", "")).strip()
+    if not code:
+        return "未提供 code 参数。"
+    timeout = float(arguments.get("timeout", 30))
+    sandbox = CodeSandbox()
+    config = SandboxConfig(timeout_seconds=timeout)
+    result = await sandbox.execute(code, config)
+    return result.to_observation()
+
+
 async def web_fetch(arguments: dict) -> str:
     """对给定 URL 发起 GET 请求并返回截断后的响应正文。"""
     import httpx
@@ -93,6 +112,30 @@ def default_tools() -> list[Tool]:
                 "required": ["expression"],
             },
             func=calculator,
+        ),
+        Tool(
+            name="code_sandbox",
+            description=(
+                "在四层安全防护的 Python 沙箱中执行代码。"
+                "支持标准 Python 语法（数学、字符串、列表、字典、循环、函数等），"
+                "禁止文件 I/O、网络、系统调用、子进程等危险操作。"
+                "超时默认 30 秒，可配置。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "要执行的 Python 代码",
+                    },
+                    "timeout": {
+                        "type": "number",
+                        "description": "超时秒数，默认 30",
+                    },
+                },
+                "required": ["code"],
+            },
+            func=code_sandbox,
         ),
         Tool(
             name="get_current_datetime",

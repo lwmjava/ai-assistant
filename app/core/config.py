@@ -98,6 +98,11 @@ class Settings(BaseSettings):
     MEMORY_MAX_SUMMARY_CHARS: int = 2000  # 压缩摘要最大字符数
     MEMORY_KEEP_RECENT: int = 5  # 压缩时保留最近 N 轮不压缩
 
+    # ── 审计日志（Audit Log）──
+    # 可审计事件记录：DB 持久化 + structlog 降级，Admin API 查询/过滤/分页
+    AUDIT_ENABLED: bool = True  # 是否启用审计日志
+    AUDIT_RETENTION_DAYS: int = 90  # 日志保留天数（≥90 天，符合 PRD 要求）
+
     # ── 代码沙箱（Code Sandbox）──
     # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
     SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）

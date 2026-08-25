@@ -152,7 +152,7 @@ class ChatService:
                 logger.exception("加载 MCP 工具失败，仅使用内置工具")
         return ToolRegistry(tools)
 
-    def _build_pipeline(self, retriever, tools, skill_ctx: SkillContext | None = None):
+    def _build_pipeline(self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None):
         """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
 
         当配置 ``AGENT_ORCHESTRATION=langgraph`` 但 ``langgraph`` 未安装时，
@@ -162,10 +162,11 @@ class ChatService:
             retriever: 检索器钩子（可选）。
             tools: 工具注册表。
             skill_ctx: 技能激活上下文（可选），用于提示词注入。
+            trace: 调试追踪对象（可选）。
         """
         if settings.AGENT_ORCHESTRATION != "langgraph":
             pipeline = AgentPipeline(
-                self.llm, options=self._options, retriever=retriever, tools=tools
+                self.llm, options=self._options, retriever=retriever, tools=tools, trace=trace
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
@@ -207,15 +208,19 @@ class ChatService:
         tools = await self._build_tools()
         # 4. 技能匹配与激活
         skill_ctx = self._match_skills(message)
-        # 5. 按配置构造编排器
-        pipeline = self._build_pipeline(retriever, tools, skill_ctx)
+        # 5. 调试追踪
+        trace = self._create_trace()
+        # 6. 按配置构造编排器
+        pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
-        # 6. 执行
+        # 7. 执行
         result = await pipeline.run(state)
-        # 7. 安全治理：输出过滤
+        # 8. 收集追踪
+        self._collect_trace(trace)
+        # 9. 安全治理：输出过滤
         self._apply_output_security(result.answer, sec_ctx)
-        # 8. 持久化用户消息和助手回复
+        # 10. 持久化用户消息和助手回复
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, result.answer, self._model_name())
         session.refresh(conv)
@@ -462,3 +467,30 @@ class ChatService:
                 )
         except Exception:  # noqa: BLE001
             logger.exception("输出安全过滤失败")
+
+    # ── 调试追踪 ──────────────────────────────────
+
+    @staticmethod
+    def _create_trace() -> "AgentTrace | None":
+        """创建调试追踪对象（仅在 DEBUG_ENABLED 时）。"""
+        if not settings.DEBUG_ENABLED:
+            return None
+        try:
+            from app.debug.trace import AgentTrace
+            return AgentTrace(debug_mode=True)
+        except Exception:  # noqa: BLE001
+            return None
+
+    @staticmethod
+    def _collect_trace(trace: "AgentTrace | None") -> None:
+        """收集追踪到全局缓存。"""
+        if trace is None:
+            return
+        try:
+            from app.debug.trace import TraceCollector
+            collector = TraceCollector.get_instance()
+            collector.add(trace)
+            logger.debug("Trace 已收集: run_id=%s, duration=%.0fms, events=%d",
+                         trace.run_id, trace.duration_ms, len(trace.events))
+        except Exception:  # noqa: BLE001
+            pass

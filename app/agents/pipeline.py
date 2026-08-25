@@ -10,6 +10,7 @@
 """
 
 import logging
+import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -96,6 +97,7 @@ class AgentPipeline:
         options: LLMOptions | None = None,
         retriever: Retriever | None = None,
         tools: ToolRegistry | None = None,
+        trace: "AgentTrace | None" = None,
     ) -> None:
         self.llm = llm
         self.options = options or LLMOptions()
@@ -104,6 +106,8 @@ class AgentPipeline:
         self.max_tool_rounds: int = 5
         # 技能系统：Prompt 注入文本（由 ChatService 匹配技能后设置）
         self.skill_prompt_injection: str = ""
+        # 调试追踪
+        self.trace = trace
 
     def _messages(self, system: str, user_content: str) -> list[ChatMessage]:
         return [
@@ -117,7 +121,18 @@ class AgentPipeline:
         # 注入技能提示词（若已激活）
         if self.skill_prompt_injection:
             system = f"{system}\n\n---\n# 激活的技能指令\n{self.skill_prompt_injection}"
+        t0 = time.monotonic()
         result = await self.llm.chat(self._messages(system, content), self.options)
+        elapsed = (time.monotonic() - t0) * 1000
+        # 记录 LLM 调用 trace
+        if self.trace and self.trace.debug_mode:
+            self.trace.llm_call(
+                getattr(self.llm, "model", "unknown"),
+                prompt=content,
+                response=result,
+                latency_ms=elapsed,
+                stage=builder_name,
+            )
         return result.strip()
 
     # ── 各环节内容构造 ──────────────────────────────
@@ -210,37 +225,75 @@ class AgentPipeline:
         QualityGate 自纠错 → 反思 → 响应；（简单则）直接行动 → 响应。
         """
         try:
+            # 0. 启动 trace
+            if self.trace:
+                self.trace.start()
             # 1. 理解
+            if self.trace:
+                self.trace.stage_start("理解")
             state.understanding = await self._stage(
                 SYSTEM_UNDERSTAND, "_build_understand", state
             )
+            if self.trace:
+                self.trace.stage_end("理解")
             # 2. Preflight 意图短路
             state.needs_full_pipeline = await self._needs_plan(state)
             if not state.needs_full_pipeline:
                 # 简单问题：跳过规划/检索/反思，直接行动 → 响应
+                if self.trace:
+                    self.trace.stage_start("行动（短路）")
                 state.draft = await self._run_action_once(state)
+                if self.trace:
+                    self.trace.stage_end("行动（短路）")
+                    self.trace.stage_start("响应")
                 state.answer = await self._stage(
                     _FINAL_SYSTEM, _FINAL_BUILDER, state
                 )
+                if self.trace:
+                    self.trace.stage_end("响应")
+                    self.trace.finish()
                 return state
 
             # 3. 规划
+            if self.trace:
+                self.trace.stage_start("规划")
             state.plan = await self._stage(SYSTEM_PLAN, "_build_plan", state)
+            if self.trace:
+                self.trace.stage_end("规划")
             # 4. 检索（可选）
             if self.retriever is not None:
+                if self.trace:
+                    self.trace.stage_start("检索")
                 state.context = await self.retriever.retrieve(
                     state.user_input, state.plan
                 )
+                if self.trace:
+                    self.trace.stage_end("检索")
             # 5. 行动 → QualityGate 自纠错
+            if self.trace:
+                self.trace.stage_start("行动")
             state.draft = await self._run_action_loop(state)
+            if self.trace:
+                self.trace.stage_end("行动")
             state.draft = await self._quality_gate_loop(state)
             # 6. 反思
+            if self.trace:
+                self.trace.stage_start("反思")
             state.reflection = await self._stage(
                 SYSTEM_REFLECT, "_build_reflect", state
             )
+            if self.trace:
+                self.trace.stage_end("反思")
             # 7. 响应
+            if self.trace:
+                self.trace.stage_start("响应")
             state.answer = await self._stage(_FINAL_SYSTEM, _FINAL_BUILDER, state)
+            if self.trace:
+                self.trace.stage_end("响应")
+                self.trace.finish()
         except Exception as exc:  # noqa: BLE001 — 管线级兜底，避免向上吞没请求
+            if self.trace:
+                self.trace.finish(error=str(exc))
             logger.exception("Agent 管线执行失败")
             state.error = str(exc)
             if not state.answer:
@@ -269,6 +322,8 @@ class AgentPipeline:
         for _ in range(max(0, settings.AGENT_MAX_REVISIONS)):
             score = await self._evaluate_quality(state, draft)
             state.quality_score = score
+            if self.trace:
+                self.trace.quality_gate(score, settings.AGENT_QUALITY_THRESHOLD)
             if score >= settings.AGENT_QUALITY_THRESHOLD:
                 state.revision = 0
                 return draft

@@ -122,6 +122,11 @@ class Settings(BaseSettings):
     SECURITY_INJECTION_THRESHOLD: float = 0.5  # 注入检测置信度阈值
     SECURITY_BLOCK_ON_INJECTION: bool = False  # 检测到注入时是否阻断（默认仅告警）
 
+    # ── 调试与追踪（Debug / Trace）──
+    # Agent 管线执行全链路追踪，开发者模式查看完整工具调用与阶段耗时
+    DEBUG_ENABLED: bool = False  # 是否启用调试模式（全局开关）
+    DEBUG_TRACE_MAX_SIZE: int = 100  # 内存中保留最近 N 条 trace
+
     # ── 代码沙箱（Code Sandbox）──
     # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
     SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）

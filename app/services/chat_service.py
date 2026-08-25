@@ -13,6 +13,7 @@ from collections.abc import AsyncIterator
 from sqlmodel import Session, select
 
 from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
+from app.agents.skills.base import SkillContext
 from app.agents.tools.base import Tool, ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.core.config import settings
@@ -117,16 +118,24 @@ class ChatService:
                 logger.exception("加载 MCP 工具失败，仅使用内置工具")
         return ToolRegistry(tools)
 
-    def _build_pipeline(self, retriever, tools):
+    def _build_pipeline(self, retriever, tools, skill_ctx: SkillContext | None = None):
         """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
 
         当配置 ``AGENT_ORCHESTRATION=langgraph`` 但 ``langgraph`` 未安装时，
         记录告警并以自研管线兜底，避免直接中断服务。
+
+        Args:
+            retriever: 检索器钩子（可选）。
+            tools: 工具注册表。
+            skill_ctx: 技能激活上下文（可选），用于提示词注入。
         """
         if settings.AGENT_ORCHESTRATION != "langgraph":
-            return AgentPipeline(
+            pipeline = AgentPipeline(
                 self.llm, options=self._options, retriever=retriever, tools=tools
             )
+            if skill_ctx and skill_ctx.prompt_injection:
+                pipeline.skill_prompt_injection = skill_ctx.prompt_injection
+            return pipeline
         try:
             from app.agents.supervisor import SupervisorGraph
 
@@ -137,9 +146,12 @@ class ChatService:
             logger.warning(
                 "AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc
             )
-            return AgentPipeline(
+            pipeline = AgentPipeline(
                 self.llm, options=self._options, retriever=retriever, tools=tools
             )
+            if skill_ctx and skill_ctx.prompt_injection:
+                pipeline.skill_prompt_injection = skill_ctx.prompt_injection
+            return pipeline
 
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
@@ -149,15 +161,18 @@ class ChatService:
         # 1. 取历史对话（最近 20 轮）
         history = self._history_messages(conv)
         state = AgentState(user_input=message, history=history)
-        # 2. 构建检索器（通过 RAGService）/ 工具箱；3. 按配置构造编排器
+        # 2. 构建检索器（通过 RAGService）/ 工具箱
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
-        pipeline = self._build_pipeline(retriever, tools)
+        # 3. 技能匹配与激活
+        skill_ctx = self._match_skills(message)
+        # 4. 按配置构造编排器
+        pipeline = self._build_pipeline(retriever, tools, skill_ctx)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
-        # 4. 执行
+        # 5. 执行
         result = await pipeline.run(state)
-        # 5. 持久化用户消息和助手回复
+        # 6. 持久化用户消息和助手回复
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, result.answer, self._model_name())
         session.refresh(conv)
@@ -171,8 +186,11 @@ class ChatService:
         history = self._history_messages(conv)
         state = AgentState(user_input=message, history=history)
 
+        # 技能匹配与激活
+        skill_ctx = self._match_skills(message)
+
         pipeline = self._build_pipeline(
-            self._build_retriever(session, user), await self._build_tools()
+            self._build_retriever(session, user), await self._build_tools(), skill_ctx
         )
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
@@ -221,3 +239,25 @@ class ChatService:
 
     def _model_name(self) -> str | None:
         return getattr(self.llm, "model", None)
+
+    # ── 技能系统 ──────────────────────────────────
+
+    @staticmethod
+    def _match_skills(message: str) -> SkillContext | None:
+        """匹配用户输入到技能，返回激活上下文。
+
+        SKELETON：当前仅做关键词匹配；内核打磨阶段补充 LLM 语义匹配。
+        """
+        if not settings.SKILL_ENABLED:
+            return None
+        try:
+            from app.agents.skills import get_skill_manager
+
+            mgr = get_skill_manager()
+            matches = mgr.match(message)
+            if not matches:
+                return None
+            return mgr.activate(matches)
+        except Exception:  # noqa: BLE001 — 技能匹配失败不应影响对话
+            logger.exception("技能匹配失败")
+            return None

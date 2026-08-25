@@ -102,6 +102,8 @@ class AgentPipeline:
         self.retriever = retriever
         self.tools = tools
         self.max_tool_rounds: int = 5
+        # 技能系统：Prompt 注入文本（由 ChatService 匹配技能后设置）
+        self.skill_prompt_injection: str = ""
 
     def _messages(self, system: str, user_content: str) -> list[ChatMessage]:
         return [
@@ -112,6 +114,9 @@ class AgentPipeline:
     async def _stage(self, system: str, builder_name: str, state: AgentState) -> str:
         builder = getattr(self, builder_name)
         content = builder(state)
+        # 注入技能提示词（若已激活）
+        if self.skill_prompt_injection:
+            system = f"{system}\n\n---\n# 激活的技能指令\n{self.skill_prompt_injection}"
         result = await self.llm.chat(self._messages(system, content), self.options)
         return result.strip()
 

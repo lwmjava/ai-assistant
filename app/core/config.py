@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     # ── Agent 工具调用（Function Calling）──
     AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数
 
+    # ── 技能系统（Skill System）──
+    # YAML 声明式技能注册，Agent 按条件匹配激活（Prompt 注入 / 工具模式）
+    SKILL_ENABLED: bool = True  # 是否启用技能系统
+    SKILL_DIRS: str = ""  # 自定义技能目录（逗号分隔）；为空时仅使用内置技能
+
     # ── 代码沙箱（Code Sandbox）──
     # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
     SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）

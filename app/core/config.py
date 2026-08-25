@@ -104,6 +104,16 @@ class Settings(BaseSettings):
     WORKFLOW_SCHEDULER_INTERVAL: float = 30.0  # 调度循环扫描间隔（秒）
     WORKFLOW_MAX_EXECUTION_SECONDS: float = 300.0  # 单次任务执行超时（秒）
 
+    # ── Evolution 进化系统（夜间蒸馏）──
+    # 定时批量分析近期对话，提炼改进建议与技能改善方向
+    EVOLUTION_DISTILL_ENABLED: bool = False  # 是否启用夜间蒸馏调度器（默认关闭）
+    EVOLUTION_DISTILL_INTERVAL_SECONDS: float = 3600.0  # 调度器扫描间隔（秒）
+    EVOLUTION_DISTILL_HOURS: int = 24  # 分析最近多少小时的对话
+    EVOLUTION_DISTILL_MAX_CONVERSATIONS: int = 50  # 单次蒸馏最多分析的会话数
+    EVOLUTION_DISTILL_MIN_INTERVAL_HOURS: int = 6  # 两次蒸馏之间的最小间隔（小时）
+    EVOLUTION_DISTILL_WINDOW_START_HOUR: int = 2  # 蒸馏时间窗口起始（UTC 小时）
+    EVOLUTION_DISTILL_WINDOW_END_HOUR: int = 5  # 蒸馏时间窗口结束（UTC 小时）
+
     # ── Milvus（可选，仅当 RAG_VECTOR_STORE=milvus 时使用）──
     MILVUS_URI: str = "http://localhost:19530"
     MILVUS_TOKEN: str = ""

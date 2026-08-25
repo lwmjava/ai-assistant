@@ -50,6 +50,11 @@ async def lifespan(app: FastAPI):
 
     await start_scheduler()
 
+    # 4.6 启动 Evolution 蒸馏调度器（内部校验 EVOLUTION_DISTILL_ENABLED）
+    from app.evolution.scheduler import start_scheduler as start_evolution
+
+    await start_evolution()
+
     yield
     logger.info("ai-assistant 正在关闭。")
 
@@ -57,6 +62,10 @@ async def lifespan(app: FastAPI):
     from app.workflow.scheduler import stop_scheduler
 
     await stop_scheduler()
+
+    from app.evolution.scheduler import stop_scheduler as stop_evolution
+
+    await stop_evolution()
 
 
 app = FastAPI(

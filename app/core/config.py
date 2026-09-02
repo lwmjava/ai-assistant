@@ -109,6 +109,19 @@ class Settings(BaseSettings):
     EVOLUTION_REFLECT_ENABLED: bool = True  # 对话结束后是否触发异步反思
     EVOLUTION_REFLECT_ASYNC: bool = True  # 反思是否异步执行（不阻塞对话响应）
 
+    # ── 安全治理（Security）──
+    # 6 层防护：输入过滤 / 输出过滤 / Prompt 注入检测 / 日志脱敏 / 速率限制
+    SECURITY_ENABLED: bool = True  # 是否启用安全治理
+    SECURITY_INPUT_FILTER: bool = True  # 输入过滤（PII 检测 + 敏感词）
+    SECURITY_OUTPUT_FILTER: bool = True  # 输出过滤（有害内容检测）
+    SECURITY_INJECTION_DETECTION: bool = True  # Prompt 注入检测
+    SECURITY_LOG_SANITIZE: bool = True  # 日志脱敏
+    SECURITY_RATE_LIMIT: bool = False  # 速率限制（默认关闭，按需开启）
+    SECURITY_RATE_LIMIT_RATE: float = 60.0  # 每秒补充 token 数
+    SECURITY_RATE_LIMIT_CAPACITY: float = 60.0  # 桶容量
+    SECURITY_INJECTION_THRESHOLD: float = 0.5  # 注入检测置信度阈值
+    SECURITY_BLOCK_ON_INJECTION: bool = False  # 检测到注入时是否阻断（默认仅告警）
+
     # ── 代码沙箱（Code Sandbox）──
     # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
     SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）

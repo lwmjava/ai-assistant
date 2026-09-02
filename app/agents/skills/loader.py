@@ -1,7 +1,7 @@
 """技能清单加载器。
 
 负责从 YAML 文件目录发现、解析、校验技能清单。
-骨架阶段仅支持 YAML 文件；内核打磨阶段补充 Python Class 模式。
+当前实现：仅支持 YAML 文件。可按需扩展：Python Class 模式。
 """
 
 import logging

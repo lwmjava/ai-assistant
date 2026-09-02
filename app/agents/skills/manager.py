@@ -6,11 +6,11 @@
 3. 激活技能上下文（匹配结果 → SkillContext，注入管线）
 4. 技能注册为工具（Tool 模式：SkillManifest → AgentTool）
 
-骨架阶段仅支持 YAML 声明式技能；内核打磨阶段补充：
+当前实现：仅支持 YAML 声明式技能。可按需扩展：
 - Python Class 模式（SkillProtocol）
 - LLM 语义匹配（替代关键词/正则的粗粒度匹配）
 - 技能热加载（文件监控 + 自动重载）
-- 技能效果评估与自动淘汰（Phase 4 Reflect 闭环）
+- 技能效果评估与自动淘汰（结合 Reflect 闭环）
 """
 
 import logging

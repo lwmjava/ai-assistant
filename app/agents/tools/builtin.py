@@ -66,7 +66,7 @@ async def code_sandbox(arguments: dict) -> str:
     """在四层防护沙箱中执行 Python 代码，返回执行结果。
 
     SKELETON：当前为骨架实现，四层防护中 Layer 2/3/4 为最简版本。
-    内核打磨阶段将补充：进程隔离加固、资源限制增强、进程树强杀。
+    可按需扩展：进程隔离加固、资源限制增强、进程树强杀。
     """
     from app.agents.tools.sandbox import CodeSandbox, SandboxConfig
 

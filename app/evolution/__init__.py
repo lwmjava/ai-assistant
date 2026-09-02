@@ -1,26 +1,15 @@
-"""进化系统模块。
+"""进化系统模块 — Reflect 异步反思 + Distill 夜间蒸馏的自我改进闭环。
 
 提供 Agent 自我进化能力：
 - ``Reflector``：对话结束后异步反思，提取改进点与待办事项
-- ``ReflectResult`` / ``ImprovementPoint`` / ``ActionItem``：数据类型
-- ``Severity`` / ``ImprovementCategory``：枚举
-
-对外暴露：
-- ``Reflector``：反思器
-- ``ReflectResult``：反思结果
-- ``ImprovementPoint``：改进建议
-- ``ActionItem``：待办事项
-- ``Severity`` / ``ImprovementCategory``：枚举
-"""
-"""进化系统 — 自我改进闭环。
-
-提供：
+- ``ReflectResult`` / ``ImprovementPoint`` / ``ActionItem``：反思结果数据类型
+- ``Severity`` / ``ImprovementCategory``：反思相关枚举
 - ``Distiller``：夜间蒸馏器，批量分析近期对话提炼改进建议
-- ``EvolutionScheduler``：cron 定时调度器，按配置触发蒸馏任务
-- ``DistillResult`` / ``DistillInsight``：蒸馏结果数据模型
+- ``EvolutionScheduler``：定时调度器，按配置触发蒸馏任务
+- ``DistillResult`` / ``DistillInsight`` / ``SkillSuggestion``：蒸馏结果数据类型
 
-骨架阶段仅支持 LLM 驱动的批量对话分析；内核打磨阶段补充：
-- Skill 自动更新（蒸馏结果 → Skill manifest）
+当前实现：LLM 驱动的单轮反思与批量对话分析，结果以日志输出。可按需扩展：
+- Skill 自动更新（反思 / 蒸馏结果 → Skill manifest）
 - 知识库缺口自动发现与补充
 - 改进趋势追踪（时间序列分析）
 """

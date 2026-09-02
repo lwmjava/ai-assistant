@@ -174,8 +174,8 @@ def auto_migrate() -> bool:
         return False
 
 
-# ── CLI 入口（骨架阶段用 python -m 调用，后续迁移到 click/typer CLI）──
-# SKELETON：CLI 完整实现 — 当前为最简骨架，待 Phase 0 内核打磨时补充：
+# ── CLI 入口（当前通过 python -m 调用，后续可迁移到 click/typer CLI）──
+# SKELETON：CLI 完整实现 — 当前为最简骨架，可按需补充：
 #   - click/typer 命令行框架
 #   - `ai-assistant migrate` 入口
 #   - 彩色输出（rich 库）
@@ -233,8 +233,8 @@ def _cli_history() -> None:
 
 
 if __name__ == "__main__":
-    # Skeleton CLI: python -m app.core.migration [check|migrate|history]
-    # Will be migrated to a proper CLI framework (click/typer) in Phase 0 polish.
+    # 最简 CLI：python -m app.core.migration [check|migrate|history]
+    # 后续可迁移到成熟的命令行框架（click/typer）。
     args = sys.argv[1:]
     cmd = args[0] if args else "check"
 

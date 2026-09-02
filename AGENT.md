@@ -9,16 +9,20 @@
 ### 1.1 项目定位
 **ai-assistant** 是一个企业级开源 AI 助手平台后端，提供：
 - **RAG 检索增强生成**（混合检索：向量 + BM25 + RRF 融合）
-- **Agent 五阶段编排管线**（理解 → 规划 → 行动 → 反思 → 响应）
+- **Agent 五阶段编排管线**（理解 → 规划 → 行动 → 反思 → 响应；可选 LangGraph Supervisor）
 - **MCP 协议集成**（连接企业系统 ERP/CRM/DB/API）
+- **工作流引擎**（cron 定时触发，经 Bridge 复用 ChatService）
 - **多租户 RBAC 权限体系**（五级角色 + 权限矩阵）
+- **横切能力**（均有独立开关）：记忆压缩、内容安全治理、审计日志、进化（Reflect/Distill）、调试 Trace
 
 ### 1.2 项目边界
 - **当前范围**：后端 API 服务（FastAPI），无前端代码
 - **默认 LLM**：DeepSeek（`deepseek-chat`），兼容所有 OpenAI 协议接口
 - **文档解析**：仅支持 `.txt` / `.md` 文本文件，不支持 PDF/Word/Excel/PPTX
-- **Agent 引擎**：自定义五阶段管线，**不依赖** LangGraph 或 LangChain
-- **未实现功能**：敏感词护栏、审计日志、记忆模块、工作流引擎（均在规划中，不可在代码中声称已实现）
+- **Agent 引擎**：默认自研五阶段管线（`AGENT_ORCHESTRATION=self`），**不把 LangGraph/LangChain 作为主路径依赖**；可选 `langgraph` 仅覆盖 Supervisor 多 Worker 协作，且为可选依赖
+- **工具调用**：提示词驱动的 `<tool_call>` 信封，而非 LLM 原生 Function Calling API
+- **骨架模块**：`memory/`、`security/`、`audit/`、`evolution/`、`debug/` 已落地并可开关，部分能力仍为骨架（如记忆不跨会话持久化、安全默认多告警少阻断）。**不可再声称这些模块「未实现」**，也不可把骨架写成生产完备
+- **JWT 鉴权 ≠ 内容安全**：鉴权/RBAC 在 `app/core/security.py`；输入输出过滤、注入检测在 `app/security/`
 
 ---
 
@@ -28,22 +32,31 @@
 
 ```
 app/
-├── core/          # 基础设施：配置、数据库、安全（纯逻辑，不依赖 FastAPI）
-├── models/        # 数据模型层（SQLModel 表定义，不含业务逻辑）
-├── schemas/       # 请求/响应 Pydantic 模型（API 契约）
-├── api/           # HTTP 路由层（薄层，仅做参数校验、调用 service、返回响应）
-│   ├── deps.py    # 依赖注入（get_db, get_current_user, require_permission）
-│   └── routes/    # 按领域拆分路由文件
-├── services/      # 业务逻辑层（编排 Agent、持久化、权限校验）
-├── agents/        # Agent 编排引擎（管线 + 提示词 + 工具）
-│   └── tools/     # 工具抽象与内置工具
-├── llm/           # LLM 抽象层（接口 + 工厂 + 多提供商实现）
-├── rag/           # RAG 检索（摄取 + 嵌入 + 向量库 + 检索器）
+├── core/              # 基础设施：配置、数据库、JWT/RBAC（纯逻辑，不依赖 FastAPI）
+├── models/            # 数据模型层（SQLModel 表定义，不含业务逻辑）
+├── schemas/           # 请求/响应 Pydantic 模型（API 契约）
+├── api/               # HTTP 路由层（薄层，仅做参数校验、调用 service、返回响应）
+│   ├── deps.py        # 依赖注入（get_db, get_current_user, require_permission）
+│   └── routes/        # 按领域拆分：health / auth / chat / rag / mcp / workflow / audit
+├── services/          # 业务逻辑层（编排 Agent、持久化、权限校验）
+├── agents/            # Agent 编排引擎（管线 + Supervisor + 提示词）
+│   ├── tools/         # 工具抽象、内置工具、代码沙箱
+│   └── skills/        # YAML 声明式技能（匹配后注入系统提示）
+├── llm/               # LLM 抽象层（接口 + 工厂 + 多提供商实现）
+├── rag/               # RAG 检索（摄取 + 嵌入 + 向量库 + 检索器）
 │   ├── embeddings/    # 嵌入模型抽象与实现
 │   └── vectorstore/   # 向量库抽象与实现
-├── mcp/           # MCP 协议集成（客户端 + 管理器 + 适配器）
-└── channels/      # Channel 抽象层（多入口扩展点）
+├── mcp/               # MCP 协议集成（客户端 + 管理器 + 适配器）
+├── workflow/          # 工作流引擎（cron 调度 + 执行引擎 + ChatService 桥）
+├── memory/            # 对话窗口裁剪与 LLM 压缩（当前不跨会话持久化）
+├── security/          # 内容安全治理（输入/输出过滤、注入检测、脱敏、限流）
+├── audit/             # 审计日志（写入器 + 模型；Admin 路由在 api/routes）
+├── evolution/         # 进化：Reflect 异步反思 + Distill 夜间蒸馏
+├── debug/             # Agent 执行 Trace（内存环形缓冲）
+└── channels/          # Channel 抽象层（多入口扩展点；HTTP 流量仍走 FastAPI）
 ```
+
+分层目录（`core` / `models` / `schemas` / `api` / `services`）保持稳定。能力模块（`agents` / `llm` / `rag` / `mcp` / `workflow` 等）按可复用技术域平铺，**不要**为业务场景（面试官、质检）或基础设施切片（网关、鉴权、缓存、录音、录屏）各开一个顶层包。
 
 ### 2.2 层级规则
 
@@ -59,17 +72,33 @@ app/
 
 ```
 允许的依赖方向（单向，不可逆）：
-  api/routes → services → core / models / agents / rag / llm / mcp
-  agents → llm / rag / tools
+  api/routes → services → core / models / agents / rag / llm / mcp / workflow / memory / security / audit
+  agents → llm / rag / tools / skills
+  workflow → services（经 Bridge 调用 ChatService，禁止再造一套 Agent 运行时）
   rag → embeddings / vectorstore / models
   mcp → agents/tools / core
+  memory / security / audit / evolution / debug → llm / core / models（按需）
   channels → core
 
 禁止的依赖方向：
   core → api（基础设施不依赖路由层）
   models → services（数据模型不依赖业务层）
   llm → agents（LLM 抽象不依赖 Agent 编排）
+  rag / mcp / llm → api（能力层不依赖路由）
 ```
+
+### 2.4 何时新开顶层目录
+
+**只有独立技术能力域**才在 `app/` 下新增包，需同时大致满足：可被多个上层复用、有自己的生命周期或可替换实现、塞进现有包会越界、需要独立开关与测试。
+
+| 应新开（能力域） | 不应新开（放现有位置） |
+|------------------|------------------------|
+| 可替换运行时：ASR、对象存储+转码、新协议客户端 | 业务场景：面试官、质检、陪练 → `services/` + `api/routes/` |
+| 独立调度/引擎（类似 `workflow/`） | 网关 / JWT 鉴权 / 缓存 → `core/` + `api/`（`core` 变厚则在 `core/` 内分子包） |
+| | 同一种媒体的不同形态：录音、录屏、视频生成 → 至多一个 `media/`，不要三个包 |
+| | 新工具、新 Skill、新向量库实现 → 放进 `agents/tools`、`agents/skills`、`rag/vectorstore` |
+
+目录按「可 import 的零件」命名，不按「用户菜单上的功能」命名。
 
 ---
 
@@ -130,7 +159,7 @@ def get_some_provider() -> SomeProvider:
     # 按配置选择实现...
 ```
 
-**已应用此模式的模块**：`llm/`, `rag/embeddings/`, `rag/vectorstore/`, `channels/`
+**已应用此模式的模块**：`llm/`、`rag/embeddings/`、`rag/vectorstore/`、`channels/`；MCP / Skill / Memory / Audit 等使用进程级单例工厂（`get_*` / `set_*_override` 或 `reset_*`）。
 
 ### 4.2 配置管理
 
@@ -271,7 +300,7 @@ mypy app/                       # 类型检查
 <type>(<scope>): <subject>
 
 类型：feat / fix / docs / refactor / test / chore / perf
-范围：rag / agent / auth / chat / mcp / llm / embedding / vectorstore / core / api / config
+范围：rag / agent / auth / chat / mcp / llm / embedding / vectorstore / workflow / memory / security / audit / evolution / debug / skill / core / api / config
 ```
 
 ### 8.2 新增功能检查清单
@@ -342,7 +371,7 @@ stmt = select(Document).where(
 | 在 `core/` 中导入 FastAPI 模块 | `core/` 保持纯 Python |
 | 直接返回 SQLModel 对象给 API | 使用 Pydantic Schema 转换 |
 | 忘记 `noqa: BLE001` 注释 | 对已知的宽泛异常捕获添加注释说明原因 |
-| 修改 `main.py` 的启动流程导致破坏 | 理解 `lifespan` 四步流程，谨慎修改 |
+| 修改 `main.py` 的启动流程导致破坏 | 理解 `lifespan`：建库 → 引导管理员 → JWT 校验 → 登记 Channel → 启动 Workflow/Evolution 调度器，关闭时停止调度器 |
 
 ---
 
@@ -360,6 +389,7 @@ stmt = select(Document).where(
   - `dev`：pytest, ruff, mypy
   - `milvus`：pymilvus
   - `mcp`：mcp>=1.2.0
+  - `workflow`：croniter
 - 新增依赖时同步更新 `requirements.txt` 和 `pyproject.toml`
 
 ### 10.3 数据库
@@ -379,9 +409,10 @@ stmt = select(Document).where(
 | 新增/修改 API 端点 | `README.md` 的 API 端点表 + 运行 `python docs/export_swagger.py` 重新生成 `swagger.json` |
 | 新增/修改配置项 | `.env.example` + `README.md` 的关键配置项表 |
 | 新增/修改 Pydantic Schema | 运行 `python docs/export_swagger.py` 重新生成 `swagger.json` |
-| 新增模块 | `README.md` 的项目结构说明 |
+| 新增模块 | `README.md` 的项目结构说明 + 本 `AGENT.md` 的模块分层 |
 | 修改架构/模式 | 本 `AGENT.md` |
+| 新增顶层包 | 先对照 §2.4；同步 `README.md` 项目结构与本节目录树 |
 
 ---
 
-*最后更新：2026-08-23*
+*最后更新：2026-09-03*

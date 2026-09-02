@@ -1,11 +1,13 @@
-"""Smoke test for evolution (Reflect) system."""
+"""进化系统（Reflect 反思）的冒烟测试。
+
+覆盖数据类型构造、枚举取值，以及 Reflector 对各类 LLM 返回内容的解析行为
+（合法 JSON、空改进项、Markdown 包裹、畸形 JSON、缺字段、非法枚举值）。
+"""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-import asyncio
 
 from app.evolution import (
     ActionItem,
@@ -15,15 +17,13 @@ from app.evolution import (
     Reflector,
     Severity,
 )
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, LLMOptions, LLMProvider
 
-
-# ── Mock LLM that returns controlled JSON ──
 
 class MockLLM(LLMProvider):
-    """Mock LLM that returns pre-defined responses."""
+    """返回预设响应的 Mock LLM，用于隔离外部依赖。"""
 
-    def __init__(self, response: str = ""):
+    def __init__(self, response: str = "") -> None:
         self._response = response
         self._model = "mock"
 
@@ -40,65 +40,62 @@ class MockLLM(LLMProvider):
         return
 
 
-# ── Test 1: Data types ──
-print("Test 1: Data types instantiation")
-imp = ImprovementPoint(
-    severity=Severity.HIGH,
-    category=ImprovementCategory.ACCURACY,
-    summary="事实错误",
-    detail="回答了错误的数据",
-    suggestion="建议核实数据来源",
-)
-assert imp.severity == Severity.HIGH
-assert imp.category == ImprovementCategory.ACCURACY
-assert imp.to_dict()["severity"] == "high"
+def test_data_types_instantiation() -> None:
+    """改进点、待办事项与反思结果的数据类可正确构造并序列化。"""
+    imp = ImprovementPoint(
+        severity=Severity.HIGH,
+        category=ImprovementCategory.ACCURACY,
+        summary="事实错误",
+        detail="回答了错误的数据",
+        suggestion="建议核实数据来源",
+    )
+    assert imp.severity == Severity.HIGH
+    assert imp.category == ImprovementCategory.ACCURACY
+    assert imp.to_dict()["severity"] == "high"
 
-item = ActionItem(
-    description="明天提交报告",
-    priority="high",
-    assignee_hint="用户",
-    deadline_hint="明天",
-)
-assert item.description == "明天提交报告"
-assert item.to_dict()["priority"] == "high"
+    item = ActionItem(
+        description="明天提交报告",
+        priority="high",
+        assignee_hint="用户",
+        deadline_hint="明天",
+    )
+    assert item.description == "明天提交报告"
+    assert item.to_dict()["priority"] == "high"
 
-result = ReflectResult(
-    conversation_id="conv-1",
-    summary="质量良好",
-    improvements=[imp],
-    action_items=[item],
-    quality_score=0.85,
-    revision_count=1,
-)
-assert result.has_improvements
-assert result.has_action_items
-assert result.critical_count == 0  # HIGH is not CRITICAL
-assert len(result.to_dict()["improvements"]) == 1
-print("  OK")
-
-
-# ── Test 2: ReflectResult empty ──
-print("Test 2: ReflectResult empty")
-empty = ReflectResult()
-assert not empty.has_improvements
-assert not empty.has_action_items
-assert empty.critical_count == 0
-assert empty.to_dict()["improvements"] == []
-print("  OK")
+    result = ReflectResult(
+        conversation_id="conv-1",
+        summary="质量良好",
+        improvements=[imp],
+        action_items=[item],
+        quality_score=0.85,
+        revision_count=1,
+    )
+    assert result.has_improvements
+    assert result.has_action_items
+    assert result.critical_count == 0  # HIGH 不属于 CRITICAL
+    assert len(result.to_dict()["improvements"]) == 1
 
 
-# ── Test 3: Severity and Category enums ──
-print("Test 3: Severity and Category enums")
-assert len(list(Severity)) == 4
-assert len(list(ImprovementCategory)) >= 7
-assert Severity.CRITICAL.value == "critical"
-assert ImprovementCategory.SKILL.value == "skill"
-print("  OK")
+def test_reflect_result_empty() -> None:
+    """默认构造的反思结果应为空且可安全序列化。"""
+    empty = ReflectResult()
+    assert not empty.has_improvements
+    assert not empty.has_action_items
+    assert empty.critical_count == 0
+    assert empty.to_dict()["improvements"] == []
 
 
-# ── Test 4: Reflector with valid JSON ──
-print("Test 4: Reflector with valid JSON response")
-valid_json = """{
+def test_severity_and_category_enums() -> None:
+    """严重程度与分类枚举的成员数量与取值正确。"""
+    assert len(list(Severity)) == 4
+    assert len(list(ImprovementCategory)) >= 7
+    assert Severity.CRITICAL.value == "critical"
+    assert ImprovementCategory.SKILL.value == "skill"
+
+
+async def test_reflector_with_valid_json() -> None:
+    """Reflector 能解析合法 JSON 并还原为结构化结果。"""
+    valid_json = """{
   "summary": "对话质量良好，但有一处事实错误",
   "improvements": [
     {
@@ -118,94 +115,85 @@ valid_json = """{
     }
   ]
 }"""
-reflector = Reflector(MockLLM(valid_json))
-result = asyncio.run(reflector.reflect(
-    "用户：你好\n助手：你好",
-    conversation_id="test-1",
-    quality_score=0.85,
-))
-assert result.error is None
-assert result.summary != ""
-assert len(result.improvements) == 1
-assert result.improvements[0].severity == Severity.HIGH
-assert result.improvements[0].category == ImprovementCategory.ACCURACY
-assert len(result.action_items) == 1
-assert result.action_items[0].description == "明天提交报告"
-print("  OK")
+    reflector = Reflector(MockLLM(valid_json))
+    result = await reflector.reflect(
+        "用户：你好\n助手：你好",
+        conversation_id="test-1",
+        quality_score=0.85,
+    )
+    assert result.error is None
+    assert result.summary != ""
+    assert len(result.improvements) == 1
+    assert result.improvements[0].severity == Severity.HIGH
+    assert result.improvements[0].category == ImprovementCategory.ACCURACY
+    assert len(result.action_items) == 1
+    assert result.action_items[0].description == "明天提交报告"
 
 
-# ── Test 5: Reflector with empty improvements ──
-print("Test 5: Reflector with empty improvements")
-empty_json = """{
+async def test_reflector_with_empty_improvements() -> None:
+    """改进项与待办事项均为空时，结果应标记为空而不报错。"""
+    empty_json = """{
   "summary": "对话质量良好，无需改进",
   "improvements": [],
   "action_items": []
 }"""
-reflector = Reflector(MockLLM(empty_json))
-result = asyncio.run(reflector.reflect("用户：你好\n助手：你好"))
-assert result.error is None
-assert not result.has_improvements
-assert not result.has_action_items
-print("  OK")
+    reflector = Reflector(MockLLM(empty_json))
+    result = await reflector.reflect("用户：你好\n助手：你好")
+    assert result.error is None
+    assert not result.has_improvements
+    assert not result.has_action_items
 
 
-# ── Test 6: Reflector with markdown-wrapped JSON ──
-print("Test 6: Reflector with markdown-wrapped JSON")
-markdown_json = """```json
+async def test_reflector_with_markdown_wrapped_json() -> None:
+    """Reflector 能剥离 Markdown 代码围栏后再解析 JSON。"""
+    markdown_json = """```json
 {
   "summary": "ok",
   "improvements": [],
   "action_items": []
 }
 ```"""
-reflector = Reflector(MockLLM(markdown_json))
-result = asyncio.run(reflector.reflect("test"))
-assert result.error is None
-assert result.summary == "ok"
-print("  OK")
+    reflector = Reflector(MockLLM(markdown_json))
+    result = await reflector.reflect("test")
+    assert result.error is None
+    assert result.summary == "ok"
 
 
-# ── Test 7: Reflector with malformed JSON ──
-print("Test 7: Reflector with malformed JSON (should survive)")
-reflector = Reflector(MockLLM("not valid json at all"))
-result = asyncio.run(reflector.reflect("test"))
-assert result.error is not None, "Should have parse error"
-assert not result.has_improvements
-print("  OK")
+async def test_reflector_with_malformed_json() -> None:
+    """JSON 解析失败时应记录错误而非抛出异常。"""
+    reflector = Reflector(MockLLM("not valid json at all"))
+    result = await reflector.reflect("test")
+    assert result.error is not None, "Should have parse error"
+    assert not result.has_improvements
 
 
-# ── Test 8: Reflector with missing optional fields ──
-print("Test 8: Reflector with missing optional fields")
-partial_json = """{
+async def test_reflector_with_missing_optional_fields() -> None:
+    """改进项缺少可选字段时回落到默认值。"""
+    partial_json = """{
   "summary": "good",
   "improvements": [
     {"severity": "low", "category": "clarity", "summary": "minor issue"}
   ],
   "action_items": []
 }"""
-reflector = Reflector(MockLLM(partial_json))
-result = asyncio.run(reflector.reflect("test"))
-assert result.error is None
-assert len(result.improvements) == 1
-assert result.improvements[0].detail == ""  # missing field → default
-assert result.improvements[0].suggestion == ""  # missing field → default
-print("  OK")
+    reflector = Reflector(MockLLM(partial_json))
+    result = await reflector.reflect("test")
+    assert result.error is None
+    assert len(result.improvements) == 1
+    assert result.improvements[0].detail == ""  # 缺失字段回落默认值
+    assert result.improvements[0].suggestion == ""  # 缺失字段回落默认值
 
 
-# ── Test 9: Reflector with invalid severity/category ──
-print("Test 9: Reflector with invalid severity/category (should skip)")
-invalid_json = """{
+async def test_reflector_with_invalid_enum_values() -> None:
+    """非法枚举值应被跳过且不导致解析失败。"""
+    invalid_json = """{
   "summary": "test",
   "improvements": [
     {"severity": "INVALID", "category": "INVALID", "summary": "bad data"}
   ],
   "action_items": []
 }"""
-reflector = Reflector(MockLLM(invalid_json))
-result = asyncio.run(reflector.reflect("test"))
-# Should survive without crashing - invalid enums are skipped
-assert result.error is None
-print("  OK")
-
-
-print("\n=== All 9 tests passed ===")
+    reflector = Reflector(MockLLM(invalid_json))
+    result = await reflector.reflect("test")
+    # 非法枚举值被跳过，整体解析不应失败
+    assert result.error is None

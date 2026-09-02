@@ -27,15 +27,14 @@ from app.evolution.distiller import Distiller
 from app.evolution.models import DistillInsight, DistillResult, SkillSuggestion
 from app.evolution.scheduler import EvolutionScheduler
 __all__ = [
+    # Reflect（单轮对话反思）
     "Reflector",
     "ReflectResult",
     "ImprovementPoint",
     "ActionItem",
     "Severity",
     "ImprovementCategory",
-]
-
-__all__ = [
+    # Distill（批量对话蒸馏）
     "Distiller",
     "DistillResult",
     "DistillInsight",

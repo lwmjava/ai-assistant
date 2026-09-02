@@ -103,6 +103,30 @@ class Settings(BaseSettings):
     AUDIT_ENABLED: bool = True  # 是否启用审计日志
     AUDIT_RETENTION_DAYS: int = 90  # 日志保留天数（≥90 天，符合 PRD 要求）
 
+    # ── 进化系统（Evolution）──
+    # Reflect 异步反思 + 夜间蒸馏调度器，Agent 自我改进闭环
+    EVOLUTION_ENABLED: bool = False  # 是否启用进化系统（默认关闭，需显式开启）
+    EVOLUTION_REFLECT_ENABLED: bool = True  # 对话结束后是否触发异步反思
+    EVOLUTION_REFLECT_ASYNC: bool = True  # 反思是否异步执行（不阻塞对话响应）
+
+    # ── 安全治理（Security）──
+    # 6 层防护：输入过滤 / 输出过滤 / Prompt 注入检测 / 日志脱敏 / 速率限制
+    SECURITY_ENABLED: bool = True  # 是否启用安全治理
+    SECURITY_INPUT_FILTER: bool = True  # 输入过滤（PII 检测 + 敏感词）
+    SECURITY_OUTPUT_FILTER: bool = True  # 输出过滤（有害内容检测）
+    SECURITY_INJECTION_DETECTION: bool = True  # Prompt 注入检测
+    SECURITY_LOG_SANITIZE: bool = True  # 日志脱敏
+    SECURITY_RATE_LIMIT: bool = False  # 速率限制（默认关闭，按需开启）
+    SECURITY_RATE_LIMIT_RATE: float = 60.0  # 每秒补充 token 数
+    SECURITY_RATE_LIMIT_CAPACITY: float = 60.0  # 桶容量
+    SECURITY_INJECTION_THRESHOLD: float = 0.5  # 注入检测置信度阈值
+    SECURITY_BLOCK_ON_INJECTION: bool = False  # 检测到注入时是否阻断（默认仅告警）
+
+    # ── 调试与追踪（Debug / Trace）──
+    # Agent 管线执行全链路追踪，开发者模式查看完整工具调用与阶段耗时
+    DEBUG_ENABLED: bool = False  # 是否启用调试模式（全局开关）
+    DEBUG_TRACE_MAX_SIZE: int = 100  # 内存中保留最近 N 条 trace
+
     # ── 代码沙箱（Code Sandbox）──
     # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
     SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）

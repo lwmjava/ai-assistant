@@ -7,6 +7,7 @@
 - 基于多租户 RBAC 做归属校验（普通用户仅可见自己的会话，系统管理员可见同租户全部）。
 """
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 
@@ -151,7 +152,7 @@ class ChatService:
                 logger.exception("加载 MCP 工具失败，仅使用内置工具")
         return ToolRegistry(tools)
 
-    def _build_pipeline(self, retriever, tools, skill_ctx: SkillContext | None = None):
+    def _build_pipeline(self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None):
         """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
 
         当配置 ``AGENT_ORCHESTRATION=langgraph`` 但 ``langgraph`` 未安装时，
@@ -161,10 +162,11 @@ class ChatService:
             retriever: 检索器钩子（可选）。
             tools: 工具注册表。
             skill_ctx: 技能激活上下文（可选），用于提示词注入。
+            trace: 调试追踪对象（可选）。
         """
         if settings.AGENT_ORCHESTRATION != "langgraph":
             pipeline = AgentPipeline(
-                self.llm, options=self._options, retriever=retriever, tools=tools
+                self.llm, options=self._options, retriever=retriever, tools=tools, trace=trace
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
@@ -190,6 +192,10 @@ class ChatService:
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
+        # 0. 安全治理：输入过滤 + 注入检测
+        sec_ctx = self._apply_input_security(message, user)
+        if sec_ctx and sec_ctx.blocked and settings.SECURITY_BLOCK_ON_INJECTION:
+            raise ValueError("输入被安全策略拒绝")
         conv = self._resolve_conversation(session, user, conversation_id, message)
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
@@ -202,22 +208,35 @@ class ChatService:
         tools = await self._build_tools()
         # 4. 技能匹配与激活
         skill_ctx = self._match_skills(message)
-        # 5. 按配置构造编排器
-        pipeline = self._build_pipeline(retriever, tools, skill_ctx)
+        # 5. 调试追踪
+        trace = self._create_trace()
+        # 6. 按配置构造编排器
+        pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
-        # 6. 执行
+        # 7. 执行
         result = await pipeline.run(state)
-        # 7. 持久化用户消息和助手回复
+        # 8. 收集追踪
+        self._collect_trace(trace)
+        # 9. 安全治理：输出过滤
+        self._apply_output_security(result.answer, sec_ctx)
+        # 10. 持久化用户消息和助手回复
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, result.answer, self._model_name())
         session.refresh(conv)
+        # 9. 异步反思（不阻塞对话响应）
+        self._maybe_reflect(conv, result)
         return conv, result.answer
 
     async def chat_stream(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> AsyncIterator[AgentEvent]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
+        # 0. 安全治理：输入过滤 + 注入检测
+        sec_ctx = self._apply_input_security(message, user)
+        if sec_ctx and sec_ctx.blocked and settings.SECURITY_BLOCK_ON_INJECTION:
+            yield AgentEvent("error", "输入被安全策略拒绝")
+            return
         conv = self._resolve_conversation(session, user, conversation_id, message)
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
@@ -241,9 +260,13 @@ class ChatService:
             yield event
 
         answer = "".join(collected) or state.answer
+        # 安全治理：输出过滤
+        self._apply_output_security(answer, sec_ctx)
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, answer, self._model_name())
         session.refresh(conv)
+        # 异步反思（不阻塞流式响应）
+        self._maybe_reflect(conv, state)
 
     # ── 内部辅助 ──────────────────────────────────
     def _resolve_conversation(
@@ -301,3 +324,173 @@ class ChatService:
         except Exception:  # noqa: BLE001 — 技能匹配失败不应影响对话
             logger.exception("技能匹配失败")
             return None
+
+    # ── 进化系统（Reflect 反思）───────────────────
+
+    def _maybe_reflect(self, conv: Conversation, state: AgentState) -> None:
+        """对话结束后触发异步反思。
+
+        仅在 EVOLUTION_ENABLED + EVOLUTION_REFLECT_ENABLED 时触发；
+        反思失败不影响对话响应，仅记录日志。
+
+        SKELETON：当前仅做 LLM 反思并记录日志；
+        内核打磨阶段补充：改进点持久化、Skill 自动更新、Action Item 调度。
+        """
+        if not settings.EVOLUTION_ENABLED or not settings.EVOLUTION_REFLECT_ENABLED:
+            return
+        try:
+            conversation_text = self._build_reflect_conversation_text(conv)
+            if not conversation_text.strip():
+                return
+
+            async def _do_reflect():
+                try:
+                    from app.evolution.reflector import Reflector
+
+                    reflector = Reflector(self.llm)
+                    result = await reflector.reflect(
+                        conversation_text=conversation_text,
+                        conversation_id=conv.id,
+                        quality_score=state.quality_score,
+                        revision_count=state.revision,
+                    )
+                    if result.error:
+                        logger.warning("反思异常: %s", result.error)
+                    elif result.has_improvements:
+                        logger.info(
+                            "反思发现 %d 个改进点（严重: %d）: %s",
+                            len(result.improvements),
+                            result.critical_count,
+                            result.summary,
+                        )
+                    if result.has_action_items:
+                        logger.info(
+                            "反思提取 %d 个待办事项: %s",
+                            len(result.action_items),
+                            [item.description[:50] for item in result.action_items],
+                        )
+                except Exception:  # noqa: BLE001 — 反思失败不应影响对话
+                    logger.exception("异步反思执行失败")
+
+            if settings.EVOLUTION_REFLECT_ASYNC:
+                # 异步执行：fire-and-forget，不阻塞对话响应
+                asyncio.create_task(_do_reflect())
+            else:
+                # 同步执行（调试用）
+                asyncio.get_event_loop().run_until_complete(_do_reflect())
+
+        except Exception:  # noqa: BLE001
+            logger.exception("触发反思失败")
+
+    @staticmethod
+    def _build_reflect_conversation_text(conv: Conversation) -> str:
+        """将对话消息序列化为反思器可读的文本。"""
+        role_map = {"user": "用户", "assistant": "助手", "system": "系统"}
+        lines: list[str] = []
+        for m in sorted(conv.messages, key=lambda x: x.created_at):
+            role_label = role_map.get(m.role, m.role)
+            lines.append(f"{role_label}：{m.content}")
+        return "\n".join(lines)
+
+    # ── 安全治理 ──────────────────────────────────
+
+    @staticmethod
+    def _apply_input_security(message: str, user: User) -> "SecurityContext | None":
+        """对用户输入执行安全过滤。
+
+        包含：输入过滤（PII 检测 + 敏感词）+ Prompt 注入检测。
+        失败时仅记录日志，不阻断对话。
+
+        SKELETON：当前仅做模式匹配告警；
+        内核打磨阶段补充：可配置阻断策略、LLM 语义审查。
+        """
+        if not settings.SECURITY_ENABLED:
+            return None
+        try:
+            from app.security import (
+                InputFilter,
+                PromptInjectionDetector,
+                SecurityContext,
+            )
+
+            ctx = SecurityContext()
+
+            # 输入过滤
+            if settings.SECURITY_INPUT_FILTER:
+                input_filter = InputFilter()
+                result = input_filter.filter(message, ctx)
+                if result.flagged:
+                    logger.warning(
+                        "输入安全告警: user=%s, reasons=%s",
+                        user.id,
+                        result.reasons,
+                    )
+
+            # 注入检测
+            if settings.SECURITY_INJECTION_DETECTION:
+                detector = PromptInjectionDetector(
+                    threshold=settings.SECURITY_INJECTION_THRESHOLD
+                )
+                inj_result = detector.detect(message, ctx)
+                if inj_result.detected:
+                    logger.warning(
+                        "注入检测告警: user=%s, confidence=%.2f, matches=%s",
+                        user.id,
+                        inj_result.confidence,
+                        inj_result.matches,
+                    )
+
+            return ctx
+
+        except Exception:  # noqa: BLE001 — 安全过滤失败不应影响对话
+            logger.exception("输入安全过滤失败")
+            return None
+
+    @staticmethod
+    def _apply_output_security(answer: str, ctx: "SecurityContext | None") -> None:
+        """对模型输出执行安全过滤。
+
+        包含：输出过滤（有害内容检测）。
+        失败时仅记录日志，不阻断对话。
+        """
+        if not settings.SECURITY_ENABLED or not settings.SECURITY_OUTPUT_FILTER:
+            return
+        try:
+            from app.security import OutputFilter
+
+            output_filter = OutputFilter()
+            result = output_filter.filter(answer, ctx)
+            if result.flagged:
+                logger.warning(
+                    "输出安全告警: reasons=%s",
+                    result.reasons,
+                )
+        except Exception:  # noqa: BLE001
+            logger.exception("输出安全过滤失败")
+
+    # ── 调试追踪 ──────────────────────────────────
+
+    @staticmethod
+    def _create_trace() -> "AgentTrace | None":
+        """创建调试追踪对象（仅在 DEBUG_ENABLED 时）。"""
+        if not settings.DEBUG_ENABLED:
+            return None
+        try:
+            from app.debug.trace import AgentTrace
+            return AgentTrace(debug_mode=True)
+        except Exception:  # noqa: BLE001
+            return None
+
+    @staticmethod
+    def _collect_trace(trace: "AgentTrace | None") -> None:
+        """收集追踪到全局缓存。"""
+        if trace is None:
+            return
+        try:
+            from app.debug.trace import TraceCollector
+            collector = TraceCollector.get_instance()
+            collector.add(trace)
+            logger.debug("Trace 已收集: run_id=%s, duration=%.0fms, events=%d",
+                         trace.run_id, trace.duration_ms, len(trace.events))
+        except Exception:  # noqa: BLE001
+            pass

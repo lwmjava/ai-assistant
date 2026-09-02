@@ -201,7 +201,11 @@ ROLE_PERMISSIONS: dict[str, dict[str, list[str]]] = {
             Role.TENANT_ADMIN.value,
             Role.MEMBER.value,
         ],
-        "write": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value],
+        "write": [
+            Role.SYSTEM_ADMIN.value,
+            Role.TENANT_ADMIN.value,
+            Role.MEMBER.value,
+        ],
         "delete": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value],
     },
 }

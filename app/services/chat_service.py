@@ -117,24 +117,45 @@ class ChatService:
                 logger.exception("加载 MCP 工具失败，仅使用内置工具")
         return ToolRegistry(tools)
 
+    def _build_pipeline(self, retriever, tools):
+        """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
+
+        当配置 ``AGENT_ORCHESTRATION=langgraph`` 但 ``langgraph`` 未安装时，
+        记录告警并以自研管线兜底，避免直接中断服务。
+        """
+        if settings.AGENT_ORCHESTRATION != "langgraph":
+            return AgentPipeline(
+                self.llm, options=self._options, retriever=retriever, tools=tools
+            )
+        try:
+            from app.agents.supervisor import SupervisorGraph
+
+            return SupervisorGraph(
+                self.llm, options=self._options, retriever=retriever, tools=tools
+            )
+        except ImportError as exc:
+            logger.warning(
+                "AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc
+            )
+            return AgentPipeline(
+                self.llm, options=self._options, retriever=retriever, tools=tools
+            )
+
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
         conv = self._resolve_conversation(session, user, conversation_id, message)
-         # 1. 取历史对话（最近 20 轮）
+        # 1. 取历史对话（最近 20 轮）
         history = self._history_messages(conv)
         state = AgentState(user_input=message, history=history)
-        # 3. 创建管线，注入 LLM + 检索器
-        pipeline = AgentPipeline(
-            # 2. 构建检索器（通过 RAGService）
-            self.llm,
-            options=self._options,
-            retriever=self._build_retriever(session, user),
-            tools=await self._build_tools(),
-        )
+        # 2. 构建检索器（通过 RAGService）/ 工具箱；3. 按配置构造编排器
+        retriever = self._build_retriever(session, user)
+        tools = await self._build_tools()
+        pipeline = self._build_pipeline(retriever, tools)
+        if isinstance(pipeline, AgentPipeline):
+            pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         # 4. 执行
-        pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         result = await pipeline.run(state)
         # 5. 持久化用户消息和助手回复
         self._persist_user(session, conv, message)
@@ -150,13 +171,11 @@ class ChatService:
         history = self._history_messages(conv)
         state = AgentState(user_input=message, history=history)
 
-        pipeline = AgentPipeline(
-            self.llm,
-            options=self._options,
-            retriever=self._build_retriever(session, user),
-            tools=await self._build_tools(),
+        pipeline = self._build_pipeline(
+            self._build_retriever(session, user), await self._build_tools()
         )
-        pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
+        if isinstance(pipeline, AgentPipeline):
+            pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         collected: list[str] = []
         async for event in pipeline.run_stream(state):
             if event.type == "token":

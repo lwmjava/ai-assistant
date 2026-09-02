@@ -45,8 +45,18 @@ async def lifespan(app: FastAPI):
     registry.register(HttpApiChannel(asgi_app=app))
     logger.info("ai-assistant 启动完成，已登记 %d 个 Channel。", len(registry.all()))
 
+    # 4.5 启动工作流调度器（内部校验 WORKFLOW_ENABLED 与 croniter，不可运行时不启动）
+    from app.workflow.scheduler import start_scheduler
+
+    await start_scheduler()
+
     yield
     logger.info("ai-assistant 正在关闭。")
+
+    # 关闭时停止调度器（幂等）
+    from app.workflow.scheduler import stop_scheduler
+
+    await stop_scheduler()
 
 
 app = FastAPI(

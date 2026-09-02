@@ -84,10 +84,25 @@ class Settings(BaseSettings):
     # ── Agent 工具调用（Function Calling）──
     AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数
 
+    # ── Agent 编排与质量 ──
+    # 编排实现：self（自研五阶段管线，默认）| langgraph（LangGraph Supervisor 子编排）
+    # LangGraph 仅覆盖「多 Agent 协作」这一层，由本开关切换，不影响自研路径。
+    AGENT_ORCHESTRATION: str = "self"
+    AGENT_QUALITY_GATE_ENABLED: bool = False  # 质量门：低于阈值触发自纠错（默认关闭）
+    AGENT_QUALITY_THRESHOLD: float = 0.6  # 质量门合格阈值
+    AGENT_MAX_REVISIONS: int = 2  # 「行动」草稿不合格时的最大自纠错轮数
+
     # ── MCP（Model Context Protocol）客户端 ──
     # 将企业系统的 MCP 服务器工具注入 Agent 工具箱，打通「AI ↔ 企业系统」。
     MCP_ENABLED: bool = False  # 是否启用 MCP 客户端（默认关闭，避免无配置时尝试连接）
     MCP_SERVERS: str = ""  # JSON 数组：MCP 服务器清单，见 app/mcp/config.py 的格式说明
+
+    # ── Workflow 工作流引擎（Phase 3）──
+    # 定时任务（cron）触发 Agent 执行，打通「自动化」场景。
+    WORKFLOW_ENABLED: bool = False  # 是否启用工作流引擎（调度器 + 路由）；默认关闭
+    WORKFLOW_DEFAULT_TIMEZONE: str = "Asia/Shanghai"  # cron 解析默认时区（IANA 名称）
+    WORKFLOW_SCHEDULER_INTERVAL: float = 30.0  # 调度循环扫描间隔（秒）
+    WORKFLOW_MAX_EXECUTION_SECONDS: float = 300.0  # 单次任务执行超时（秒）
 
     # ── Milvus（可选，仅当 RAG_VECTOR_STORE=milvus 时使用）──
     MILVUS_URI: str = "http://localhost:19530"

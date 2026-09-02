@@ -103,6 +103,12 @@ class Settings(BaseSettings):
     AUDIT_ENABLED: bool = True  # 是否启用审计日志
     AUDIT_RETENTION_DAYS: int = 90  # 日志保留天数（≥90 天，符合 PRD 要求）
 
+    # ── 进化系统（Evolution）──
+    # Reflect 异步反思 + 夜间蒸馏调度器，Agent 自我改进闭环
+    EVOLUTION_ENABLED: bool = False  # 是否启用进化系统（默认关闭，需显式开启）
+    EVOLUTION_REFLECT_ENABLED: bool = True  # 对话结束后是否触发异步反思
+    EVOLUTION_REFLECT_ASYNC: bool = True  # 反思是否异步执行（不阻塞对话响应）
+
     # ── 代码沙箱（Code Sandbox）──
     # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
     SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）

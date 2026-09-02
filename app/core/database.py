@@ -31,10 +31,13 @@ engine = create_engine(
 )
 
 
-def init_db() -> None:
-    """创建所有数据表。
+def init_db(*, auto_migrate: bool = True) -> None:
+    """创建所有数据表并执行自动迁移。
 
     必须在使用模型之前导入模型模块，以确保 SQLModel.metadata 已注册对应表。
+
+    Args:
+        auto_migrate: 是否在启动时自动执行 Alembic 迁移（默认 True）。
     """
     # 导入模型以注册表结构（Side-effect import）。
     from app.models import user  # noqa: F401
@@ -42,7 +45,14 @@ def init_db() -> None:
     from app.models import rag  # noqa: F401
     from app.models import workflow  # noqa: F401
 
+    # 1. 创建表（SQLModel.metadata.create_all 幂等）
     SQLModel.metadata.create_all(engine)
+
+    # 2. 执行 Alembic 自动迁移
+    if auto_migrate:
+        from app.core.migration import auto_migrate as _auto_migrate
+
+        _auto_migrate()
 
 
 def get_session() -> Generator[Session, None, None]:

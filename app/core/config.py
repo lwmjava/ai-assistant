@@ -84,6 +84,15 @@ class Settings(BaseSettings):
     # ── Agent 工具调用（Function Calling）──
     AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数
 
+    # ── 代码沙箱（Code Sandbox）──
+    # 四层防护：AST 白名单 → 进程隔离 → 资源限制 → 超时 Kill
+    SANDBOX_ENABLED: bool = True  # 是否启用代码沙箱工具（关闭后 code_sandbox 不注册）
+    SANDBOX_TIMEOUT_SECONDS: float = 30.0  # 单次执行最大秒数
+    SANDBOX_MAX_MEMORY_MB: int = 256  # 最大内存（MB）
+    SANDBOX_MAX_CPU_SECONDS: int = 10  # 最大 CPU 时间（秒）
+    SANDBOX_MAX_OUTPUT_CHARS: int = 100_000  # stdout+stderr 最大字符数
+    SANDBOX_MAX_DISK_MB: int = 50  # 最大写入磁盘量（MB）
+
     # ── Agent 编排与质量 ──
     # 编排实现：self（自研五阶段管线，默认）| langgraph（LangGraph Supervisor 子编排）
     # LangGraph 仅覆盖「多 Agent 协作」这一层，由本开关切换，不影响自研路径。

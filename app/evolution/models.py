@@ -1,18 +1,23 @@
-"""进化系统数据类型 — Reflect 反思 + 改进点 + Action Item。
+"""进化系统数据类型 — Reflect 反思与 Distill 蒸馏的数据结构定义。
 
-定义：
-- ``ReflectResult``：一次反思的完整产出（改进点 + 待办事项）
+Reflect（单轮对话反思）：
+- ``Severity``：改进建议的严重程度枚举
+- ``ImprovementCategory``：改进建议的分类枚举
 - ``ImprovementPoint``：单条改进建议（严重程度 + 分类 + 建议操作）
-- ``ActionItem``：对话中提取的待办事项
-- ``Severity`` / ``ImprovementCategory``：枚举类型
+- ``ActionItem``：从对话中提取的待办事项
+- ``ReflectResult``：一次反思的完整产出（改进点 + 待办事项 + 摘要 + 元信息）
 
-骨架阶段仅支持内存中的数据类型；内核打磨阶段补充：
-- DB 持久化模型（ReflectRecord SQLModel）
-- 改进点 → Skill manifest 自动更新
-- Action Item → Workflow 调度器写入
-进化系统数据模型。
+Distill（批量对话蒸馏）：
+- ``InsightSeverity``：洞察严重程度枚举
+- ``InsightCategory``：洞察分类枚举
+- ``DistillInsight``：单条蒸馏洞察（可追溯来源会话 + 发生频次）
+- ``SkillSuggestion``：技能创建 / 修改建议
+- ``DistillResult``：一次蒸馏分析的完整结果（洞察 + 技能建议 + 统计）
 
-定义蒸馏分析的结果结构：蒸馏洞察、技能改善建议、批量分析结果。
+当前实现：以上均为内存级数据类型，随进程生命周期存在。可按需扩展：
+- 反思与蒸馏结果的数据库持久化模型（如 ReflectRecord SQLModel）
+- 改进点 / 技能建议 → Skill manifest 自动更新
+- 待办事项 → Workflow 调度器写入
 """
 
 from dataclasses import dataclass, field
@@ -38,6 +43,9 @@ class ImprovementCategory(str, Enum):
     SAFETY = "safety"  # 安全性
     EFFICIENCY = "efficiency"  # 效率（工具调用 / 步骤数）
     SKILL = "skill"  # 技能相关（触发 / 提示词 / 工具）
+    OTHER = "other"  # 其他：未归入上述分类的改进建议
+
+
 class InsightSeverity(str, Enum):
     """洞察严重程度。"""
 
@@ -147,6 +155,9 @@ class ReflectResult:
             "revision_count": self.revision_count,
             "error": self.error,
         }
+
+
+@dataclass
 class DistillInsight:
     """单条蒸馏洞察。
 

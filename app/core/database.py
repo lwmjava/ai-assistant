@@ -44,6 +44,7 @@ def init_db(*, auto_migrate: bool = True) -> None:
     from app.models import conversation  # noqa: F401
     from app.models import rag  # noqa: F401
     from app.models import workflow  # noqa: F401
+    from app.audit import models as _audit_models  # noqa: F401
 
     # 1. 创建表（SQLModel.metadata.create_all 幂等）
     SQLModel.metadata.create_all(engine)

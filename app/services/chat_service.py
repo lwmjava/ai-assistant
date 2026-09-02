@@ -19,6 +19,8 @@ from app.agents.tools.builtin import default_tools
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
 from app.llm.factory import get_llm_provider
+from app.memory.base import ConversationMemory
+from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.rag.service import RAGService
@@ -86,10 +88,41 @@ class ChatService:
 
     # ── 对话执行 ──────────────────────────────────
     def _history_messages(self, conv: Conversation) -> list[ChatMessage]:
+        """从会话中提取历史消息（最近 N 轮）。
+
+        注意：此方法仅做简单窗口裁剪；记忆压缩由 MemoryManager 负责。
+        """
         recent = conv.messages[-_HISTORY_LIMIT:]
         return [
             ChatMessage(role=ChatRole(m.role), content=m.content) for m in recent
         ]
+
+    async def _build_memory(
+        self, conv: Conversation
+    ) -> ConversationMemory:
+        """构建对话记忆：窗口裁剪 + 必要时压缩。
+
+        SKELETON：当前使用 MemoryManager 做内存级管理；
+        内核打磨阶段补充数据库持久化与跨会话记忆。
+        """
+        if not settings.MEMORY_ENABLED:
+            return ConversationMemory(
+                recent_messages=self._history_messages(conv),
+                total_messages=len(conv.messages),
+            )
+        try:
+            all_messages = [
+                ChatMessage(role=ChatRole(m.role), content=m.content)
+                for m in conv.messages
+            ]
+            mgr = MemoryManager(self.llm)
+            return await mgr.manage(all_messages)
+        except Exception:  # noqa: BLE001 — 记忆管理失败不应阻塞对话
+            logger.exception("记忆管理失败，回退到简单窗口")
+            return ConversationMemory(
+                recent_messages=self._history_messages(conv),
+                total_messages=len(conv.messages),
+            )
 
     def _build_retriever(self, session: Session, user: User):
         """按配置构建检索钩子（未开启 RAG 时返回 None）。"""
@@ -158,21 +191,24 @@ class ChatService:
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
         conv = self._resolve_conversation(session, user, conversation_id, message)
-        # 1. 取历史对话（最近 20 轮）
-        history = self._history_messages(conv)
-        state = AgentState(user_input=message, history=history)
-        # 2. 构建检索器（通过 RAGService）/ 工具箱
+        # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
+        memory = await self._build_memory(conv)
+        state = AgentState(user_input=message, history=memory.recent_messages)
+        # 2. 注入记忆上下文到管线
+        if memory.memory_context:
+            state.context = memory.memory_context
+        # 3. 构建检索器（通过 RAGService）/ 工具箱
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
-        # 3. 技能匹配与激活
+        # 4. 技能匹配与激活
         skill_ctx = self._match_skills(message)
-        # 4. 按配置构造编排器
+        # 5. 按配置构造编排器
         pipeline = self._build_pipeline(retriever, tools, skill_ctx)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
-        # 5. 执行
+        # 6. 执行
         result = await pipeline.run(state)
-        # 6. 持久化用户消息和助手回复
+        # 7. 持久化用户消息和助手回复
         self._persist_user(session, conv, message)
         self._persist_assistant(session, conv, result.answer, self._model_name())
         session.refresh(conv)
@@ -183,8 +219,12 @@ class ChatService:
     ) -> AsyncIterator[AgentEvent]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
         conv = self._resolve_conversation(session, user, conversation_id, message)
-        history = self._history_messages(conv)
-        state = AgentState(user_input=message, history=history)
+        # 构建对话记忆（窗口裁剪 + 必要时压缩）
+        memory = await self._build_memory(conv)
+        state = AgentState(user_input=message, history=memory.recent_messages)
+        # 注入记忆上下文
+        if memory.memory_context:
+            state.context = memory.memory_context
 
         # 技能匹配与激活
         skill_ctx = self._match_skills(message)

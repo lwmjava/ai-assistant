@@ -170,8 +170,13 @@ class Distiller:
                         frequency=imp_data.get("frequency", 0),
                     )
                     result.insights.append(insight)
-                except (ValueError, TypeError) as exc:
-                    logger.debug("跳过无效的蒸馏洞察: %s", exc)
+                except ValueError as exc:
+                    # LLM 返回的枚举值或字段非法，属数据问题，跳过该条并继续处理其余条目
+                    logger.warning("跳过无效的蒸馏洞察（数据问题）: %s", exc)
+                except TypeError as exc:
+                    # 构造签名不匹配属代码缺陷（如数据类丢失 @dataclass），
+                    # 记录完整堆栈以便定位；此处不向上抛出，避免单条异常中断整批夜间蒸馏
+                    logger.exception("蒸馏洞察构造失败（疑似代码缺陷）: %s", exc)
 
             # 解析技能建议
             for i, skill_data in enumerate(parsed.get("skill_suggestions", [])):
@@ -186,8 +191,13 @@ class Distiller:
                     )
                     if skill.skill_name.strip():
                         result.skill_suggestions.append(skill)
-                except (ValueError, TypeError) as exc:
-                    logger.debug("跳过无效的技能建议: %s", exc)
+                except ValueError as exc:
+                    # LLM 返回的字段非法，属数据问题，跳过该条并继续处理其余条目
+                    logger.warning("跳过无效的技能建议（数据问题）: %s", exc)
+                except TypeError as exc:
+                    # 构造签名不匹配属代码缺陷，记录完整堆栈以便定位；
+                    # 此处不向上抛出，避免单条异常中断整批夜间蒸馏
+                    logger.exception("技能建议构造失败（疑似代码缺陷）: %s", exc)
 
             result.calculate_stats()
 

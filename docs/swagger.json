@@ -20,6 +20,7 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "additionalProperties": true,
                   "type": "object",
                   "title": "Response Health Check Api Health Get"
                 }
@@ -340,6 +341,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "additionalProperties": true,
                   "title": "Response Delete Conversation Api Chat Conversations  Conversation Id  Delete"
                 }
               }
@@ -356,6 +358,38 @@
             }
           }
         }
+      }
+    },
+    "/api/chat/tools": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "List Tools",
+        "description": "列出当前可用的工具（内置 + MCP）：名称、描述与参数 Schema。\n\n工具清单会暴露服务端可用能力，因此要求认证与 ``agents:read`` 权限，\n不对外公开。",
+        "operationId": "list_tools_api_chat_tools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response List Tools Api Chat Tools Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/rag/documents/ingest": {
@@ -560,6 +594,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "additionalProperties": true,
                   "title": "Response Delete Document Api Rag Documents  Document Id  Delete"
                 }
               }
@@ -629,6 +664,645 @@
         ]
       }
     },
+    "/api/mcp/servers": {
+      "get": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "List Servers",
+        "description": "列出已配置的 MCP 服务器（不含密钥类字段）。",
+        "operationId": "list_servers_api_mcp_servers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response List Servers Api Mcp Servers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/mcp/tools": {
+      "get": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "List Mcp Tools",
+        "description": "列出已连接 MCP 服务器暴露的工具。",
+        "operationId": "list_mcp_tools_api_mcp_tools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response List Mcp Tools Api Mcp Tools Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/workflows": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "List Workflows",
+        "description": "列出当前可见的定时任务（系统管理员跨租户，其余本租户）。",
+        "operationId": "list_workflows_api_workflows_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Workflows Api Workflows Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Create Workflow",
+        "description": "创建定时任务（WFL-01）。以当前用户为 owner，归属其租户。",
+        "operationId": "create_workflow_api_workflows_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/workflows/{workflow_id}": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Get Workflow",
+        "operationId": "get_workflow_api_workflows__workflow_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Update Workflow",
+        "operationId": "update_workflow_api_workflows__workflow_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Delete Workflow",
+        "operationId": "delete_workflow_api_workflows__workflow_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Workflow Api Workflows  Workflow Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflows/{workflow_id}/executions": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "List Executions",
+        "description": "查看任务执行历史（WFL-02）：时间 / 状态 / 输出 / 耗时。",
+        "operationId": "list_executions_api_workflows__workflow_id__executions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExecutionOut"
+                  },
+                  "title": "Response List Executions Api Workflows  Workflow Id  Executions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflows/{workflow_id}/run": {
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Run Workflow",
+        "description": "手动触发一次执行（WFL-03）。执行身份为任务创建者（owner）。",
+        "operationId": "run_workflow_api_workflows__workflow_id__run_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflows/{workflow_id}/toggle": {
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Toggle Workflow",
+        "description": "启用 / 禁用定时任务（不影响手动触发）。",
+        "operationId": "toggle_workflow_api_workflows__workflow_id__toggle_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/audit-logs": {
+      "get": {
+        "tags": [
+          "admin-audit"
+        ],
+        "summary": "List Audit Logs",
+        "description": "查询审计日志（支持多条件过滤 + 分页）。\n\n默认按创建时间倒序排列。",
+        "operationId": "list_audit_logs_api_admin_audit_logs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按事件类型过滤（如 user_login）",
+              "title": "Action"
+            },
+            "description": "按事件类型过滤（如 user_login）"
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按操作者 ID 过滤",
+              "title": "User Id"
+            },
+            "description": "按操作者 ID 过滤"
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按租户 ID 过滤",
+              "title": "Tenant Id"
+            },
+            "description": "按租户 ID 过滤"
+          },
+          {
+            "name": "resource_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按资源类型过滤（如 user / tenant）",
+              "title": "Resource Type"
+            },
+            "description": "按资源类型过滤（如 user / tenant）"
+          },
+          {
+            "name": "resource_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按资源 ID 过滤",
+              "title": "Resource Id"
+            },
+            "description": "按资源 ID 过滤"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "起始时间（ISO 8601），含此时间点",
+              "title": "Since"
+            },
+            "description": "起始时间（ISO 8601），含此时间点"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "结束时间（ISO 8601），含此时间点",
+              "title": "Until"
+            },
+            "description": "结束时间（ISO 8601），含此时间点"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码（1-based）",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码（1-based）"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "每页条数（上限 200）",
+              "default": 50,
+              "title": "Page Size"
+            },
+            "description": "每页条数（上限 200）"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -643,6 +1317,7 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "additionalProperties": true,
                   "type": "object",
                   "title": "Response Root  Get"
                 }
@@ -655,11 +1330,151 @@
   },
   "components": {
     "schemas": {
+      "AuditLogOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Type"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "tenant_id",
+          "action",
+          "resource_type",
+          "resource_id",
+          "details",
+          "ip_address",
+          "user_agent",
+          "created_at"
+        ],
+        "title": "AuditLogOut",
+        "description": "审计日志条目（对外输出）。"
+      },
+      "AuditLogPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditLogOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AuditLogPage",
+        "description": "分页审计日志响应。"
+      },
       "Body_upload_document_api_rag_documents_upload_post": {
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -936,6 +1751,125 @@
         "title": "DocumentOut",
         "description": "文档概要。"
       },
+      "ExecutionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "triggered_by": {
+            "type": "string",
+            "title": "Triggered By"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workflow_id",
+          "tenant_id",
+          "triggered_by",
+          "status",
+          "input",
+          "output",
+          "error",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExecutionOut"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -969,6 +1903,17 @@
               }
             ],
             "title": "Source"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
           }
         },
         "type": "object",
@@ -979,6 +1924,7 @@
         "title": "IngestRequest",
         "description": "文本摄取请求体。",
         "example": {
+          "backend": "native",
           "source": "内部知识库",
           "text": "人工智能（Artificial Intelligence，简称 AI）是计算机科学的一个分支，旨在创建能够模拟人类智能的系统。这些系统可以执行通常需要人类智能的任务，如视觉感知、语音识别、决策制定和语言翻译。",
           "title": "人工智能概述"
@@ -1097,6 +2043,17 @@
               }
             ],
             "title": "Top K"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
           }
         },
         "type": "object",
@@ -1106,6 +2063,7 @@
         "title": "SearchRequest",
         "description": "检索请求体。",
         "example": {
+          "backend": "native",
           "query": "什么是人工智能",
           "top_k": 5
         }
@@ -1145,6 +2103,19 @@
         ],
         "title": "SearchResultOut",
         "description": "检索命中结果。"
+      },
+      "ToggleIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "ToggleIn"
       },
       "Token": {
         "properties": {
@@ -1237,6 +2208,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",
@@ -1246,6 +2224,239 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkflowCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "cron_expr": {
+            "type": "string",
+            "title": "Cron Expr"
+          },
+          "prompt_template": {
+            "type": "string",
+            "title": "Prompt Template"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "webhook_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Url"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "cron_expr",
+          "prompt_template"
+        ],
+        "title": "WorkflowCreate"
+      },
+      "WorkflowOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "owner_id": {
+            "type": "string",
+            "title": "Owner Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "cron_expr": {
+            "type": "string",
+            "title": "Cron Expr"
+          },
+          "prompt_template": {
+            "type": "string",
+            "title": "Prompt Template"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "suspended_owner": {
+            "type": "boolean",
+            "title": "Suspended Owner"
+          },
+          "webhook_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Url"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "owner_id",
+          "name",
+          "description",
+          "cron_expr",
+          "prompt_template",
+          "timezone",
+          "enabled",
+          "suspended_owner",
+          "webhook_url",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WorkflowOut"
+      },
+      "WorkflowUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "cron_expr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cron Expr"
+          },
+          "prompt_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Template"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "webhook_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Url"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "title": "WorkflowUpdate"
       }
     },
     "securitySchemes": {

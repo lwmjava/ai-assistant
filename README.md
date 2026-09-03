@@ -171,6 +171,8 @@ docker compose up -d --build
 | `LLM_DEFAULT_MODEL` | 默认模型名 | `deepseek-chat` |
 | `RAG_ENABLED` | 是否启用 RAG 检索 | `false` |
 | `RAG_VECTOR_STORE` | 向量库后端：`local` / `milvus` | `local` |
+| `RAG_BACKEND` | 切分/检索策略：`native` / `langchain` / `llamaindex` | `native` |
+| `RAG_LANGCHAIN_SPLITTER` | LangChain 切分器（当前仅 `recursive`） | `recursive` |
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |
 | `MCP_ENABLED` | 是否启用 MCP 客户端 | `false` |
 | `MCP_SERVERS` | MCP 服务器清单（JSON 数组） | — |

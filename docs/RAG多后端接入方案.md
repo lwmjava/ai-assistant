@@ -1,7 +1,7 @@
 # RAG 多技术栈后端接入方案
 
 - 分支：`feat/rag-backend`（自 `main` 切出）
-- 状态：**提交 1 进行中**（抽象 + native 包装，零新依赖）
+- 状态：**提交 1 已完成；提交 2（LangChain + RAG_BACKEND）已完成**
 - 记录时间：2026-09-03
 - 已确认默认（开工）：
   - 请求级覆盖：全局配置 + ingest/search **请求体可选字段**，不用 header

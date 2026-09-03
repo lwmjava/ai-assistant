@@ -21,7 +21,7 @@ from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
 from app.models.user import User
 from app.rag.backend.base import RagBackend
-from app.rag.backend.factory import get_rag_backend
+from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
@@ -55,19 +55,43 @@ class RAGService:
         self._embedding = embedding_provider or get_embedding_provider()
         self._vector_store = vector_store or get_vector_store(session)
         self._tokenizer = tokenizer or tokenize
+        self._default_backend_name = settings.RAG_BACKEND
         self._backend = backend or get_rag_backend(
             self._embedding,
             self._vector_store,
+            backend=self._default_backend_name,
+            tokenizer=self._tokenizer,
+            rrf_k=settings.RAG_HYBRID_RRF_K,
+        )
+
+    def _resolve_backend(self, backend: str | None = None) -> RagBackend:
+        """按请求级覆盖或默认配置返回后端实例。"""
+        if backend is None:
+            return self._backend
+        normalized = normalize_rag_backend(backend)
+        if normalized == self._backend.name:
+            return self._backend
+        return get_rag_backend(
+            self._embedding,
+            self._vector_store,
+            backend=normalized,
             tokenizer=self._tokenizer,
             rrf_k=settings.RAG_HYBRID_RRF_K,
         )
 
     # ── 摄取 ────────────────────────────────────────
     async def ingest_text(
-        self, text: str, title: str, source: str | None, user_id: str
+        self,
+        text: str,
+        title: str,
+        source: str | None,
+        user_id: str,
+        *,
+        backend: str | None = None,
     ) -> Document:
         """摄取一段文本：分块、嵌入、落库，返回文档记录。"""
-        chunks = await self._backend.split(
+        rag_backend = self._resolve_backend(backend)
+        chunks = await rag_backend.split(
             text, chunk_size=settings.RAG_CHUNK_SIZE, overlap=settings.RAG_CHUNK_OVERLAP
         )
         if not chunks:
@@ -124,10 +148,13 @@ class RAGService:
         self.session.commit()
 
     # ── 检索 ────────────────────────────────────────
-    async def search(self, query: str, top_k: int | None = None) -> list[ChunkResult]:
+    async def search(
+        self, query: str, top_k: int | None = None, *, backend: str | None = None
+    ) -> list[ChunkResult]:
         """对查询做混合检索，返回融合排序后的分块。"""
         top_k = top_k or settings.RAG_TOP_K
-        return await self._backend.retrieve(
+        rag_backend = self._resolve_backend(backend)
+        return await rag_backend.retrieve(
             query, tenant_id=self.tenant_id, top_k=top_k
         )
 

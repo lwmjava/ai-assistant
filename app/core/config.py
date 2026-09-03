@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     RAG_CHUNK_OVERLAP: int = 64  # 分块重叠字符数
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
+    # RAG 切分/检索策略后端：native（自研，默认）| langchain | llamaindex
+    RAG_BACKEND: str = "native"
+    # LangChain TextSplitter 类型（当前仅 recursive）
+    RAG_LANGCHAIN_SPLITTER: str = "recursive"
 
     # ── Agent 工具调用（Function Calling）──
     AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数

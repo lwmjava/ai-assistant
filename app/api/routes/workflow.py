@@ -9,11 +9,12 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, select
 
-from app.api.deps import get_current_user, get_db, require_permission
+from app.api.deps import audit_event, get_current_user, get_db, require_permission
+from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.security import Role
 from app.models.user import User
@@ -125,6 +126,7 @@ def _get_owned(session: Session, user: User, workflow_id: str) -> Workflow | Non
 # ── 端点 ──────────────────────────────────
 @router.post("", response_model=WorkflowOut, status_code=status.HTTP_201_CREATED)
 async def create_workflow(
+    request: Request,
     payload: WorkflowCreate,
     session: Session = Depends(get_db),
     user: User = Depends(require_permission("workflows", "write")),
@@ -144,6 +146,14 @@ async def create_workflow(
     session.add(wf)
     session.commit()
     session.refresh(wf)
+    await audit_event(
+        request,
+        AuditAction.WORKFLOW_CREATE,
+        user=user,
+        resource_type="workflow",
+        resource_id=wf.id,
+        details={"name": wf.name, "cron_expr": wf.cron_expr, "enabled": wf.enabled},
+    )
     return wf
 
 
@@ -170,6 +180,7 @@ async def get_workflow(
 
 @router.put("/{workflow_id}", response_model=WorkflowOut)
 async def update_workflow(
+    request: Request,
     workflow_id: str,
     payload: WorkflowUpdate,
     session: Session = Depends(get_db),
@@ -184,11 +195,21 @@ async def update_workflow(
     session.add(wf)
     session.commit()
     session.refresh(wf)
+    await audit_event(
+        request,
+        AuditAction.WORKFLOW_UPDATE,
+        user=user,
+        resource_type="workflow",
+        resource_id=wf.id,
+        # 只记录变更了哪些字段，不记录完整内容，避免日志膨胀与敏感值落库。
+        details={"updated_fields": sorted(data.keys())},
+    )
     return wf
 
 
 @router.delete("/{workflow_id}", status_code=status.HTTP_200_OK)
 async def delete_workflow(
+    request: Request,
     workflow_id: str,
     session: Session = Depends(get_db),
     user: User = Depends(require_permission("workflows", "delete")),
@@ -198,6 +219,13 @@ async def delete_workflow(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工作流不存在或无权访问")
     session.delete(wf)
     session.commit()
+    await audit_event(
+        request,
+        AuditAction.WORKFLOW_DELETE,
+        user=user,
+        resource_type="workflow",
+        resource_id=workflow_id,
+    )
     return {"deleted": True, "id": workflow_id}
 
 
@@ -221,6 +249,7 @@ async def list_executions(
 
 @router.post("/{workflow_id}/run", response_model=ExecutionOut, status_code=status.HTTP_201_CREATED)
 async def run_workflow(
+    request: Request,
     workflow_id: str,
     session: Session = Depends(get_db),
     user: User = Depends(require_permission("workflows", "write")),
@@ -234,6 +263,18 @@ async def run_workflow(
     engine = WorkflowEngine()
     execution = await engine.execute(
         session, wf, owner, triggered_by=TriggerSource.MANUAL.value
+    )
+    await audit_event(
+        request,
+        AuditAction.WORKFLOW_EXECUTE,
+        user=user,
+        resource_type="workflow",
+        resource_id=workflow_id,
+        details={
+            "trigger": TriggerSource.MANUAL.value,
+            "status": execution.status,
+            "execution_id": execution.id,
+        },
     )
     return execution
 

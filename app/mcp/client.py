@@ -113,7 +113,7 @@ class MCPClient:
             if not url:
                 raise ValueError(f"MCP 服务器 {self.config.name} 使用 http 但未配置 url")
             read, write, _ = await self._stack.enter_async_context(
-                streamablehttp_client(url, headers=self.config.headers or None)
+                streamable_http_client(url, headers=self.config.headers or None)
             )
         elif transport == "sse":
             url = self.config.url

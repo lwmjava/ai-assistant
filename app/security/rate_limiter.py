@@ -9,7 +9,6 @@
 """
 
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from threading import Lock
 
@@ -46,7 +45,7 @@ class RateLimiter:
 
     def __init__(self, config: RateLimitConfig | None = None) -> None:
         self._config = config or RateLimitConfig()
-        self._buckets: dict[str, _Bucket] = defaultdict(_Bucket)
+        self._buckets: dict[str, _Bucket] = {}
         self._lock = Lock()
 
     def allow(self, key: str, cost: float = 1.0, ctx: SecurityContext | None = None) -> tuple[bool, int]:
@@ -65,9 +64,16 @@ class RateLimiter:
 
         now = time.monotonic()
         with self._lock:
-            bucket = self._buckets[key]
-            # 补充 token
-            elapsed = now - bucket.last_refill
+            bucket = self._buckets.get(key)
+            if bucket is None:
+                # 新桶必须满桶启动。初始 token 为 0 时，键的首次请求会被误判为超限；
+                # 补充量又取决于进程已运行时长，会让「首请求能否通过」变得不可预测。
+                bucket = _Bucket(tokens=self._config.capacity, last_refill=now)
+                self._buckets[key] = bucket
+                elapsed = 0.0
+            else:
+                # 补充 token
+                elapsed = now - bucket.last_refill
             bucket.tokens = min(self._config.capacity, bucket.tokens + elapsed * self._config.rate)
             bucket.last_refill = now
 

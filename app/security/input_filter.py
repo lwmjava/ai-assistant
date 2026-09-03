@@ -3,10 +3,9 @@
 基于正则表达式的模式匹配，无需外部 NLP 依赖。
 检测类型：身份证号、手机号、银行卡号、邮箱、IP 地址、API Key 模式。
 
-当前实现：仅正则匹配。可按需扩展：
-- 基于 NLP 的语义敏感内容检测
-- 可配置的黑名单词库（YAML/JSON 文件）
-- 规则热重载（文件变更自动生效）
+边界说明：Python 的 ``\\b`` 是 Unicode 词边界，中文汉字同属词字符，
+因此 ``\\b1[3-9]\\d{9}\\b`` 无法匹配「我的手机号是13800138000」这类紧贴中文的号码。
+本模块统一改用只针对 ASCII 字母数字的边界断言，保证中文语境下同样生效。
 """
 
 import re
@@ -14,32 +13,36 @@ from dataclasses import dataclass, field
 
 from app.security.types import SecurityContext
 
+# ASCII 词边界：中文汉字不算定界字符，因此不能用 \b
+_LB = r"(?<![0-9A-Za-z_])"  # 词首：左侧不是 ASCII 字母数字
+_RB = r"(?![0-9A-Za-z_])"  # 词尾：右侧不是 ASCII 字母数字
+
 # ── PII 正则模式 ──
 
 _PII_PATTERNS: dict[str, re.Pattern] = {
     # 中国大陆身份证号（18 位，含校验位 X）
     "id_card": re.compile(
-        r"\b[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]\b"
+        r"(?<![0-9A-Za-z])[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx](?![0-9A-Za-z])"
     ),
     # 中国大陆手机号（1 开头，第二位 3-9）
     "phone": re.compile(
-        r"\b1[3-9]\d{9}\b"
+        r"(?<!\d)1[3-9]\d{9}(?!\d)"
     ),
     # 银行卡号（16-19 位数字）
     "bank_card": re.compile(
-        r"\b\d{16,19}\b"
+        r"(?<!\d)\d{16,19}(?!\d)"
     ),
     # 邮箱
     "email": re.compile(
-        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
+        r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?![A-Za-z0-9.-])"
     ),
     # IPv4 地址
     "ip_address": re.compile(
-        r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
+        r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])"
     ),
     # API Key 模式（常见前缀：sk-、api-、key-）
     "api_key": re.compile(
-        r"\b(sk-[A-Za-z0-9_-]{20,}|api-[A-Za-z0-9_-]{20,}|key-[A-Za-z0-9_-]{20,})\b"
+        r"(?<![A-Za-z0-9_-])(sk-[A-Za-z0-9_-]{20,}|api-[A-Za-z0-9_-]{20,}|key-[A-Za-z0-9_-]{20,})(?![A-Za-z0-9_-])"
     ),
 }
 
@@ -48,15 +51,20 @@ _PII_PATTERNS: dict[str, re.Pattern] = {
 _SENSITIVE_PATTERNS: list[tuple[str, re.Pattern]] = [
     # SQL 注入探测
     ("sql_injection", re.compile(
-        r"(?i)(\bselect\b.*\bfrom\b|\binsert\b.*\binto\b|\bdelete\b.*\bfrom\b|\bdrop\b.*\btable\b|\bunion\b.*\bselect\b)"
+        rf"(?i)({_LB}select{_RB}.*{_LB}from{_RB}"
+        rf"|{_LB}insert{_RB}.*{_LB}into{_RB}"
+        rf"|{_LB}delete{_RB}.*{_LB}from{_RB}"
+        rf"|{_LB}drop{_RB}.*{_LB}table{_RB}"
+        rf"|{_LB}union{_RB}.*{_LB}select{_RB})"
     )),
     # 系统命令注入
     ("command_injection", re.compile(
-        r"(?i)(\brm\s+-rf\b|\b/.*/passwd\b|\b/etc/shadow\b|\bcurl\b.*\bpipe\b|\bwget\b.*\b-O\b)"
+        rf"(?i)({_LB}rm\s+-rf{_RB}|/.*/passwd{_RB}|/etc/shadow{_RB}"
+        rf"|{_LB}curl{_RB}.*{_LB}pipe{_RB}|{_LB}wget{_RB}.*-O{_RB})"
     )),
     # XSS 探测
     ("xss_attempt", re.compile(
-        r"(?i)(<script\b|javascript:|onerror\s*=|onload\s*=|<\/?iframe\b)"
+        rf"(?i)(<script{_RB}|javascript:|onerror\s*=|onload\s*=|</?iframe{_RB})"
     )),
 ]
 

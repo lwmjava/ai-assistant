@@ -150,11 +150,21 @@ class RAGService:
             return None
         return doc
 
-    def delete_document(self, document_id: str, user: User) -> bool:
-        """删除文档（级联删除分块与主库记录，并清理向量索引）。"""
+    async def delete_document(self, document_id: str, user: User) -> bool:
+        """删除文档（清理向量索引，再级联删除分块与主库记录）。
+
+        必须先清理向量再删主库记录：分块随 Document 级联删除后，
+        向量库里已无从得知该文档关联哪些分块，残留向量会持续被检索命中。
+        向量清理失败只记日志不阻断，避免数据库记录无法删除而成为孤儿数据。
+        """
         doc = self.get_document(document_id, user)
         if doc is None:
             return False
+        try:
+            removed = await self._vector_store.delete_by_document(document_id, self.tenant_id)
+            logger.info("文档向量已清理: document=%s, removed=%s", document_id, removed)
+        except Exception:  # noqa: BLE001 — 向量清理失败不应阻断主库删除
+            logger.exception("清理文档向量失败: document=%s", document_id)
         self.session.delete(doc)
         self.session.commit()
         return True

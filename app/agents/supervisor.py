@@ -18,12 +18,14 @@ from typing import Optional, TypedDict
 
 from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
 from app.agents.tools.base import ToolRegistry
-from app.llm.base import LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 
 logger = logging.getLogger(__name__)
 
 _WORKERS = ("research", "draft")
 _ROUTES = (*_WORKERS, "FINISH")
+# 流式回放的单次 token 事件字符数：过小会放大事件开销，过大则失去增量意义。
+_STREAM_CHUNK = 24
 
 _SUPERVISOR_SYSTEM = (
     "你是编排调度器。根据「用户目标」「调研记录」判断下一步动作。\n"
@@ -57,6 +59,7 @@ class SupervisorState(TypedDict, total=False):
     research: str  # 调研 worker 累积的发现
     draft: str
     next: str
+    revisions: int  # 已完成的调研轮数，用于收敛循环
 
 
 class SupervisorGraph:
@@ -125,8 +128,8 @@ class SupervisorGraph:
         )
         decision = await self.llm.chat(
             [
-                {"role": "system", "content": _SUPERVISOR_SYSTEM},
-                {"role": "user", "content": prompt},
+                ChatMessage(role=ChatRole.SYSTEM, content=_SUPERVISOR_SYSTEM),
+                ChatMessage(role=ChatRole.USER, content=prompt),
             ],
             self.options,
         )
@@ -145,7 +148,7 @@ class SupervisorGraph:
         draft = await self._pipeline._run_action_loop(agent_state)
         prior = state.get("research", "")
         updated = (prior + "\n" + draft).strip() if prior else draft
-        return {"research": updated}
+        return {"research": updated, "revisions": state.get("revisions", 0) + 1}
 
     async def _node_draft(self, state: dict) -> dict:
         user_input = state.get("user_input", "")
@@ -159,16 +162,26 @@ class SupervisorGraph:
         )
         answer = await self.llm.chat(
             [
-                {"role": "system", "content": _DRAFT_SYSTEM},
-                {"role": "user", "content": prompt},
+                ChatMessage(role=ChatRole.SYSTEM, content=_DRAFT_SYSTEM),
+                ChatMessage(role=ChatRole.USER, content=prompt),
             ],
             self.options,
         )
         return {"draft": answer.strip()}
 
-    @staticmethod
-    def _route(state: dict) -> str:
-        return state.get("next", "draft")
+    def _route(self, state: dict) -> str:
+        """决定下一步节点，并在调研轮数用尽时强制收敛。
+
+        supervisor 与 research 构成回环，若模型持续输出 ``research`` 会无限循环，
+        因此达到 ``max_revisions`` 后不再调研，直接转撰写。
+        """
+        action = state.get("next", "draft")
+        if action == "research" and state.get("revisions", 0) >= self.max_revisions:
+            logger.info(
+                "Supervisor 调研轮数已达上限 %s，强制转入撰写", self.max_revisions
+            )
+            return "draft"
+        return action
 
     # ── 对外契约（与 AgentPipeline 对齐）──
     async def run(self, state: AgentState) -> AgentState:
@@ -180,6 +193,7 @@ class SupervisorGraph:
             "research": "",
             "draft": "",
             "next": "research",
+            "revisions": 0,
         }
         try:
             final = await self._graph.ainvoke(graph_state)
@@ -194,11 +208,15 @@ class SupervisorGraph:
         return state
 
     async def run_stream(self, state: AgentState):
-        """流式执行：以 AgentEvent 广播进度，最终吐出 token。"""
-        # LangGraph 侧的逐节点流式可后续改为 graph.astream_events，
-        # 这里先以「先编排出草稿，再逐字回放」保持与管线一致的事件协议。
+        """流式执行：以 AgentEvent 广播进度，再分块回放正文 token。
+
+        先由 Supervisor 编排出完整草稿，再按固定长度切分为多个 token 事件回放。
+        若整段答案只发一个 token 事件，客户端无法增量渲染、也失去流式的意义。
+        逐节点真正的流式可后续改为 ``graph.astream_events``。
+        """
         result = await self.run(state)
         yield AgentEvent("stage", "Supervisor 协作")
-        if result.answer:
-            yield AgentEvent("token", result.answer)
-        yield AgentEvent("done", result.answer)
+        answer = result.answer or ""
+        for start in range(0, len(answer), _STREAM_CHUNK):
+            yield AgentEvent("token", answer[start : start + _STREAM_CHUNK])
+        yield AgentEvent("done", answer)

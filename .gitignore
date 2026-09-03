@@ -82,6 +82,7 @@ Thumbs.db
 
 # Project local data / agent working memory (do not commit)
 .workbuddy/
+.serena/
 
 # Product requirement documents (internal planning, not part of the repository)
 docs/product/

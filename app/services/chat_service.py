@@ -104,7 +104,7 @@ class ChatService:
         """构建对话记忆：窗口裁剪 + 必要时压缩。
 
         SKELETON：当前使用 MemoryManager 做内存级管理；
-        内核打磨阶段补充数据库持久化与跨会话记忆。
+        可按需扩展数据库持久化与跨会话记忆。
         """
         if not settings.MEMORY_ENABLED:
             return ConversationMemory(
@@ -309,7 +309,7 @@ class ChatService:
     def _match_skills(message: str) -> SkillContext | None:
         """匹配用户输入到技能，返回激活上下文。
 
-        SKELETON：当前仅做关键词匹配；内核打磨阶段补充 LLM 语义匹配。
+        SKELETON：当前仅做关键词匹配；可按需扩展 LLM 语义匹配。
         """
         if not settings.SKILL_ENABLED:
             return None
@@ -334,7 +334,7 @@ class ChatService:
         反思失败不影响对话响应，仅记录日志。
 
         SKELETON：当前仅做 LLM 反思并记录日志；
-        内核打磨阶段补充：改进点持久化、Skill 自动更新、Action Item 调度。
+        可按需扩展：改进点持久化、Skill 自动更新、Action Item 调度。
         """
         if not settings.EVOLUTION_ENABLED or not settings.EVOLUTION_REFLECT_ENABLED:
             return
@@ -402,7 +402,7 @@ class ChatService:
         失败时仅记录日志，不阻断对话。
 
         SKELETON：当前仅做模式匹配告警；
-        内核打磨阶段补充：可配置阻断策略、LLM 语义审查。
+        可按需扩展：可配置阻断策略、LLM 语义审查。
         """
         if not settings.SECURITY_ENABLED:
             return None

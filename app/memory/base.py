@@ -54,7 +54,7 @@ class MemoryConfig:
 class MemorySnapshot:
     """记忆快照 — 压缩后的记忆状态。
 
-    可序列化，用于持久化到数据库（Phase 4 内核打磨）。
+    可序列化，为后续持久化到数据库预留。
     """
 
     # 压缩后的摘要文本

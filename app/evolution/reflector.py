@@ -5,7 +5,7 @@
 2. 提取待办事项（用户隐含或明确的后续任务）
 3. 评估整体对话质量
 
-骨架阶段仅支持 LLM 驱动的反思；内核打磨阶段补充：
+当前实现：LLM 驱动的反思。可按需扩展：
 - 改进点 → Skill manifest 自动更新
 - Action Item → Workflow 调度器写入
 - 改进趋势追踪（时间序列分析）
@@ -149,8 +149,13 @@ class Reflector:
                         affected_skill=imp_data.get("affected_skill"),
                     )
                     result.improvements.append(imp)
-                except (ValueError, TypeError) as exc:
-                    logger.debug("跳过无效的改进点: %s", exc)
+                except ValueError as exc:
+                    # LLM 返回的枚举值或字段非法，属数据问题，跳过该条并继续处理其余条目
+                    logger.warning("跳过无效的改进点（数据问题）: %s", exc)
+                except TypeError as exc:
+                    # 构造签名不匹配属代码缺陷（如数据类丢失 @dataclass），
+                    # 记录完整堆栈以便定位；此处不向上抛出，避免单条异常中断整轮反思
+                    logger.exception("改进点构造失败（疑似代码缺陷）: %s", exc)
 
             # 解析待办事项
             for item_data in parsed.get("action_items", []):
@@ -163,8 +168,13 @@ class Reflector:
                     )
                     if item.description.strip():
                         result.action_items.append(item)
-                except (ValueError, TypeError) as exc:
-                    logger.debug("跳过无效的待办事项: %s", exc)
+                except ValueError as exc:
+                    # LLM 返回的字段非法，属数据问题，跳过该条并继续处理其余条目
+                    logger.warning("跳过无效的待办事项（数据问题）: %s", exc)
+                except TypeError as exc:
+                    # 构造签名不匹配属代码缺陷，记录完整堆栈以便定位；
+                    # 此处不向上抛出，避免单条异常中断整轮反思
+                    logger.exception("待办事项构造失败（疑似代码缺陷）: %s", exc)
 
             logger.info(
                 "反思完成：conversation=%s, improvements=%d, action_items=%d, critical=%d",

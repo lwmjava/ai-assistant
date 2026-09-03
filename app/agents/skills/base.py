@@ -88,7 +88,7 @@ class SkillTrigger:
 class SkillManifest:
     """技能的完整 YAML 声明。
 
-    骨架阶段仅支持 YAML 文件定义；内核打磨阶段补充 Python Class 模式。
+    当前实现：仅支持 YAML 文件定义。可按需扩展：Python Class 模式。
     """
 
     name: str

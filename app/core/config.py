@@ -149,7 +149,7 @@ class Settings(BaseSettings):
     MCP_ENABLED: bool = False  # 是否启用 MCP 客户端（默认关闭，避免无配置时尝试连接）
     MCP_SERVERS: str = ""  # JSON 数组：MCP 服务器清单，见 app/mcp/config.py 的格式说明
 
-    # ── Workflow 工作流引擎（Phase 3）──
+    # ── Workflow 工作流引擎 ──
     # 定时任务（cron）触发 Agent 执行，打通「自动化」场景。
     WORKFLOW_ENABLED: bool = False  # 是否启用工作流引擎（调度器 + 路由）；默认关闭
     WORKFLOW_DEFAULT_TIMEZONE: str = "Asia/Shanghai"  # cron 解析默认时区（IANA 名称）

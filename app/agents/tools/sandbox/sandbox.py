@@ -11,7 +11,7 @@
 - Windows：Layer 1/2/4 可用；Layer 3 资源限制通过 Job Object 部分实现，
   不可用时不阻塞执行，仅记录告警
 
-未实现的能力（待内核打磨阶段补充）：
+未实现的能力（可按需扩展）：
 - SKELETON：Layer 2 进程隔离 — 当前 subprocess.run 未限制文件系统访问
 - SKELETON：Layer 3 资源限制 — Windows 上 Job Object 未实现，仅 Unix setrlimit 包装
 - SKELETON：Layer 3 输出截断 — 当前未在子进程内做流式截断，依赖 stdout 全量捕获
@@ -111,7 +111,7 @@ _BLOCKED_IMPORTS: frozenset[str] = frozenset({
     "asyncio",  # 禁止异步事件循环
     "traceback", "inspect", "ast", "compile",  # 反射/代码生成禁止
     "atexit", "gc", "warnings",
-    # SKELETON：此列表待内核打磨阶段补充完整，参考 Python 3.11 标准库全量审计
+    # SKELETON：此列表尚未覆盖完整，可参考 Python 3.11 标准库全量审计后补充
 })
 
 # 允许的内置函数
@@ -439,7 +439,7 @@ exec(open('{script_path.as_posix()}', encoding='utf-8').read())
             args = [sys.executable, "-c", code_or_path]
 
         # SKELETON：使用 subprocess.run 阻塞执行。
-        # 内核打磨时改为 asyncio.create_subprocess_exec + 流式读取。
+        # 可按需改为 asyncio.create_subprocess_exec + 流式读取。
         return subprocess.run(
             args,
             capture_output=True,

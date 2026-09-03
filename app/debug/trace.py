@@ -5,7 +5,7 @@
 - ``TraceEvent``：单次追踪事件（阶段/LLM 调用/工具调用）
 - ``TraceCollector``：全局 trace 收集器（可选持久化）
 
-骨架阶段仅支持内存级 trace；内核打磨阶段补充：
+当前实现：内存级 trace，不持久化。可按需扩展：
 - Trace 持久化到数据库（按 run_id 查询历史）
 - Trace 可视化（前端时间线展示）
 - 性能分析（各阶段耗时统计）
@@ -201,7 +201,7 @@ class TraceCollector:
     """全局 trace 收集器。
 
     维护最近 N 条 trace 的内存缓存，供调试 API 查询。
-    骨架阶段仅支持内存缓存；内核打磨阶段补充 DB 持久化。
+    当前实现：仅内存缓存。可按需扩展：DB 持久化。
     """
 
     _instance: "TraceCollector | None" = None

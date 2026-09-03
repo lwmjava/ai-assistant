@@ -48,6 +48,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Vite 启动开发服务器时生成的临时配置文件（异常退出时会残留）
+*.timestamp-*.mjs
+
 # Build output
 frontend/dist/
 *.tsbuildinfo

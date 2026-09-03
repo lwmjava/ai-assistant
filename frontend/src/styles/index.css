@@ -1,0 +1,272 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── 设计令牌 ────────────────────────────────────────────
+   深色为默认基调（长时间盯屏的控制台场景），浅色完整实现可切换。
+   全部用 HSL 分量存储，便于 Tailwind 的 <alpha-value> 透传。      */
+@layer base {
+  :root,
+  [data-theme='dark'] {
+    --bg: 220 34% 6%;
+    --surface: 220 28% 9%;
+    --surface-2: 220 24% 13%;
+    --surface-3: 220 22% 17%;
+    --border: 220 18% 20%;
+    --border-strong: 220 16% 30%;
+    --text: 210 22% 96%;
+    --text-muted: 214 16% 68%;
+    --text-faint: 215 12% 48%;
+    --primary: 189 94% 55%;
+    --primary-fg: 220 40% 7%;
+    --primary-soft: 189 60% 18%;
+    --accent: 38 92% 60%;
+    --danger: 0 76% 63%;
+    --success: 152 58% 50%;
+    --warning: 38 92% 60%;
+    --shadow: 220 60% 2%;
+    --grid-line: 189 94% 55%;
+    --grid-opacity: 0.05;
+  }
+
+  [data-theme='light'] {
+    --bg: 210 32% 96%;
+    --surface: 0 0% 100%;
+    --surface-2: 210 34% 94%;
+    --surface-3: 210 30% 89%;
+    --border: 214 22% 86%;
+    --border-strong: 214 18% 72%;
+    --text: 220 34% 12%;
+    --text-muted: 218 14% 40%;
+    --text-faint: 218 12% 55%;
+    --primary: 192 88% 32%;
+    --primary-fg: 0 0% 100%;
+    --primary-soft: 189 62% 92%;
+    --accent: 30 88% 42%;
+    --danger: 0 72% 45%;
+    --success: 152 55% 34%;
+    --warning: 32 88% 40%;
+    --shadow: 220 40% 30%;
+    --grid-line: 192 88% 32%;
+    --grid-opacity: 0.06;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+    /* 纵深：底部径向光晕 + 顶部极淡网格，避免纯色平铺 */
+    background-image:
+      radial-gradient(
+        120% 80% at 15% -10%,
+        hsl(var(--primary) / 0.11) 0%,
+        transparent 55%
+      ),
+      radial-gradient(90% 70% at 100% 0%, hsl(var(--accent) / 0.07) 0%, transparent 50%),
+      linear-gradient(
+          to right,
+          hsl(var(--grid-line) / var(--grid-opacity)) 1px,
+          transparent 1px
+        ),
+      linear-gradient(
+          to bottom,
+          hsl(var(--grid-line) / var(--grid-opacity)) 1px,
+          transparent 1px
+        );
+    background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* 焦点态：键盘用户必须能看见落点 */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-bg rounded-[6px];
+  }
+
+  ::selection {
+    @apply bg-primary/30 text-text;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-strong/60 rounded-full;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border-strong;
+  }
+}
+
+@layer components {
+  /* 面板：细边框 + 轻微层次，配合 body 的背景纵深 */
+  .panel {
+    @apply rounded-card border border-border bg-surface/80 backdrop-blur-sm;
+  }
+
+  .panel-inset {
+    @apply rounded-lg border border-border bg-surface-2/60;
+  }
+
+  /* 噪点纹理：给大面积面板加细微颗粒，消除塑料感 */
+  .grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-surface-2;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--text) / 0.06),
+      transparent
+    );
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  /* 长内容滚动区：移动端惯性滚动 */
+  .scroll-y {
+    @apply overflow-y-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 粗指针设备（触屏）下把小控件的可点击区扩展到 44px，不影响视觉尺寸 */
+  @media (pointer: coarse) {
+    .tap-target::after {
+      content: '';
+      position: absolute;
+      inset: 50% 0 0 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* ── Markdown 正文（助手回复） ─────────────────────────
+   手写而非引入 typography 插件：可控地同时适配明暗两套令牌。 */
+@layer components {
+  .markdown {
+    @apply text-base leading-[1.7] text-text;
+  }
+
+  .markdown > * + * {
+    @apply mt-3;
+  }
+
+  .markdown h1,
+  .markdown h2,
+  .markdown h3,
+  .markdown h4 {
+    @apply mt-5 font-display font-semibold tracking-tight text-text;
+  }
+  .markdown h1 {
+    @apply text-xl;
+  }
+  .markdown h2 {
+    @apply text-lg;
+  }
+  .markdown h3,
+  .markdown h4 {
+    @apply text-base;
+  }
+
+  .markdown p {
+    @apply text-text-muted;
+  }
+
+  .markdown strong {
+    @apply font-semibold text-text;
+  }
+
+  .markdown a {
+    @apply text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary;
+  }
+
+  .markdown ul,
+  .markdown ol {
+    @apply space-y-1.5 pl-5 text-text-muted;
+  }
+  .markdown ul {
+    @apply list-disc;
+  }
+  .markdown ol {
+    @apply list-decimal;
+  }
+  .markdown li::marker {
+    @apply text-text-faint;
+  }
+
+  .markdown blockquote {
+    @apply border-l-2 border-primary/40 pl-3 text-text-muted italic;
+  }
+
+  .markdown code {
+    @apply rounded bg-surface-3/80 px-1.5 py-0.5 font-mono text-[0.85em] text-text;
+  }
+
+  .markdown pre {
+    @apply overflow-x-auto rounded-lg border border-border bg-surface-2/80 p-3;
+  }
+  .markdown pre code {
+    @apply bg-transparent p-0 text-sm leading-relaxed;
+  }
+
+  .markdown table {
+    @apply block w-full overflow-x-auto border-collapse text-sm;
+  }
+  .markdown th,
+  .markdown td {
+    @apply border border-border px-3 py-2 text-left;
+  }
+  .markdown th {
+    @apply bg-surface-2/70 font-medium text-text;
+  }
+
+  .markdown hr {
+    @apply border-border;
+  }
+
+  .markdown img {
+    @apply max-w-full rounded-lg border border-border;
+  }
+}
+
+/* 尊重减少动效偏好：关掉位移与脉冲，保留必要的状态色变化 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

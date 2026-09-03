@@ -26,6 +26,22 @@ logger = logging.getLogger(__name__)
 _struct_logger = logging.getLogger("audit")
 
 
+def _sanitize(text: str | None) -> str | None:
+    """对写入日志的文本做脱敏，失败时原样返回。
+
+    脱敏属尽力而为：脱敏器本身异常时不应阻断日志降级，
+    因此这里宁可保留原文也不能丢掉整条审计记录。
+    """
+    if not text:
+        return text
+    try:
+        from app.security import get_log_sanitizer
+
+        return get_log_sanitizer().sanitize(text)
+    except Exception:  # noqa: BLE001 — 脱敏失败不应中断审计降级
+        return text
+
+
 class AuditLogger:
     """审计日志写入器。
 
@@ -105,7 +121,9 @@ class AuditLogger:
             )
             return record
         except Exception:
-            # 降级：写入 structlog，不丢失审计信息
+            # 降级：写入 structlog，不丢失审计信息。
+            # details 可能含文档标题等用户输入，落日志前先脱敏，
+            # 避免 DB 不可用时敏感内容以明文进入日志系统。
             _struct_logger.warning(
                 "审计日志写入 DB 失败，降级到 structlog",
                 extra={
@@ -114,7 +132,7 @@ class AuditLogger:
                     "audit_tenant_id": tenant_id,
                     "audit_resource_type": resource_type,
                     "audit_resource_id": resource_id,
-                    "audit_details": details_str,
+                    "audit_details": _sanitize(details_str),
                     "audit_ip": ip_address,
                 },
                 exc_info=True,

@@ -1,16 +1,19 @@
 """RAG 接口：文档摄取、管理与检索。
 
-所有接口均需认证（依赖 get_current_user）。归属校验在 RAG 服务内完成：
-普通用户仅能操作自己创建的文档，系统管理员可见同租户全部。
+所有接口均需认证，并按角色校验 ``knowledge_bases`` 资源权限（依赖 require_permission）。
+知识库是租户共享资产，删除权限仅授予管理员，写入与读取对成员开放。
+归属校验在 RAG 服务内完成：普通用户仅能操作自己创建的文档，
+系统管理员可见同租户全部。
 """
 
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, status, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, status, UploadFile
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import audit_event, get_db, require_permission
+from app.audit.models import AuditAction
 from app.models.rag import Document
 from app.models.user import User
 from app.rag.service import RAGService
@@ -98,7 +101,8 @@ def _doc_out(doc: Document) -> DocumentOut:
 @router.post("/documents/ingest", response_model=DocumentOut)
 async def ingest_document(
     req: IngestRequest,
-    current_user: User = Depends(get_current_user),
+    request: Request,
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
 ) -> DocumentOut:
     """摄取一段文本为知识文档（自动分块与嵌入）。"""
@@ -111,13 +115,22 @@ async def ingest_document(
         doc = await rag.ingest_text(req.text, req.title, req.source, current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    await audit_event(
+        request,
+        AuditAction.KNOWLEDGE_BASE_UPLOAD,
+        user=current_user,
+        resource_type="document",
+        resource_id=doc.id,
+        details={"title": doc.title, "chunk_count": doc.chunk_count, "source": "text"},
+    )
     return _doc_out(doc)
 
 
 @router.post("/documents/upload", response_model=DocumentOut)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
 ) -> DocumentOut:
     """上传文本文件（.txt / .md）并摄取为知识文档。"""
@@ -139,12 +152,25 @@ async def upload_document(
         doc = await rag.ingest_text(text, title, file.filename, current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    await audit_event(
+        request,
+        AuditAction.KNOWLEDGE_BASE_UPLOAD,
+        user=current_user,
+        resource_type="document",
+        resource_id=doc.id,
+        details={
+            "title": doc.title,
+            "chunk_count": doc.chunk_count,
+            "source": "upload",
+            "filename": file.filename,
+        },
+    )
     return _doc_out(doc)
 
 
 @router.get("/documents", response_model=list[DocumentOut])
 def list_documents(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> list[DocumentOut]:
     """列出当前用户可见的文档。"""
@@ -155,7 +181,7 @@ def list_documents(
 @router.get("/documents/{document_id}", response_model=DocumentDetail)
 def get_document(
     document_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> DocumentDetail:
     """获取文档详情。"""
@@ -169,25 +195,33 @@ def get_document(
 
 
 @router.delete("/documents/{document_id}")
-def delete_document(
+async def delete_document(
     document_id: str,
-    current_user: User = Depends(get_current_user),
+    request: Request,
+    current_user: User = Depends(require_permission("knowledge_bases", "delete")),
     session: Session = Depends(get_db),
 ) -> dict:
     """删除文档及其分块。"""
     rag = RAGService(session, current_user.tenant_id)
-    ok = rag.delete_document(document_id, current_user)
+    ok = await rag.delete_document(document_id, current_user)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
         )
+    await audit_event(
+        request,
+        AuditAction.KNOWLEDGE_BASE_DELETE,
+        user=current_user,
+        resource_type="document",
+        resource_id=document_id,
+    )
     return {"deleted": True}
 
 
 @router.post("/search", response_model=list[SearchResultOut])
 async def search(
     req: SearchRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> list[SearchResultOut]:
     """对知识库做混合检索，返回融合排序后的分块。"""

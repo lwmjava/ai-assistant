@@ -170,6 +170,8 @@ class Settings(BaseSettings):
     MILVUS_URI: str = "http://localhost:19530"
     MILVUS_TOKEN: str = ""
     MILVUS_COLLECTION: str = "ai_assistant_chunks"
+    MILVUS_INDEX_TYPE: str = "AUTOINDEX"  # 向量索引类型，IVF_* 时检索参数带 nprobe
+    MILVUS_NPROBE: int = 16  # IVF_* 索引的查询聚类数，仅对该类索引生效
 
     @property
     def is_production(self) -> bool:

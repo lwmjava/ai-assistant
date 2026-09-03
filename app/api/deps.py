@@ -3,10 +3,11 @@
 import logging
 from collections.abc import Callable
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
+from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.database import get_session
 from app.core.security import Role, TokenRevokedError, check_permission, decode_token
@@ -101,3 +102,44 @@ def require_permission(resource: str, action: str) -> Callable[[User], User]:
         return current_user
 
     return _guard
+
+
+async def audit_event(
+    request: Request,
+    action: AuditAction,
+    user: User | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """记录一条审计日志，供路由在关键操作完成后调用。
+
+    审计属旁路记录：写入失败只记日志，绝不向调用方抛出异常，
+    否则一个日志问题会演变成整条业务链路不可用。
+
+    Args:
+        request: 当前 HTTP 请求，用于提取 IP 与 User-Agent。
+        action: 审计事件类型。
+        user: 操作者；为 None 时记录匿名操作（如登录失败）。
+        resource_type: 被操作资源类型（conversation / document / workflow ...）。
+        resource_id: 被操作资源 ID。
+        details: 附加上下文，会序列化为 JSON。
+    """
+    if not settings.AUDIT_ENABLED:
+        return
+    try:
+        from app.audit.logger import get_audit_logger
+
+        client_host = request.client.host if request.client else None
+        await get_audit_logger().log(
+            action=action,
+            user_id=user.id if user else None,
+            tenant_id=user.tenant_id if user else None,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            details=details,
+            ip_address=client_host,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except Exception:  # noqa: BLE001 — 审计失败不应影响业务响应
+        logger.exception("写入审计日志失败: action=%s", getattr(action, "value", action))

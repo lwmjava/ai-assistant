@@ -24,10 +24,29 @@ from app.rag.service import RAGService
 
 @pytest.fixture()
 def client():
+    # 知识库删除属管理员权限，生命周期用例含删除步骤，故主体用租户管理员。
     fake_user = User(
         id="rag-user",
         tenant_id="rag-tenant",
         username="rag-tester",
+        hashed_password="",
+        role=Role.TENANT_ADMIN.value,
+        token_version=0,
+        is_active=True,
+    )
+    app.dependency_overrides[get_current_user] = lambda: fake_user
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def member_client():
+    """以普通成员身份访问（成员无知识库删除权限）。"""
+    fake_user = User(
+        id="rag-member",
+        tenant_id="rag-tenant",
+        username="rag-member",
         hashed_password="",
         role=Role.MEMBER.value,
         token_version=0,
@@ -127,6 +146,23 @@ def test_ingest_validation(client: TestClient) -> None:
         "/api/rag/documents/ingest", json={"text": "", "title": ""}
     )
     assert resp.status_code == 400
+
+
+def test_member_cannot_delete_document(member_client: TestClient) -> None:
+    """知识库删除仅管理员可用：成员请求应被权限守卫拦为 403 而非误报 404。"""
+    ingest = member_client.post(
+        "/api/rag/documents/ingest",
+        json={"text": "成员可读写的知识条目。", "title": "成员文档", "source": "rbac"},
+    )
+    assert ingest.status_code == 200
+    doc_id = ingest.json()["id"]
+
+    denied = member_client.delete(f"/api/rag/documents/{doc_id}")
+    assert denied.status_code == 403
+
+    # 权限不足不应产生任何副作用。
+    still = member_client.get(f"/api/rag/documents/{doc_id}")
+    assert still.status_code == 200
 
 
 def test_upload_rejects_non_text(client: TestClient) -> None:

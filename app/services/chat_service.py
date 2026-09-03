@@ -192,14 +192,14 @@ class ChatService:
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
-        # 0. 安全治理：输入过滤 + 注入检测
-        sec_ctx = self._apply_input_security(message, user)
-        if sec_ctx and sec_ctx.blocked and settings.SECURITY_BLOCK_ON_INJECTION:
-            raise ValueError("输入被安全策略拒绝")
+        # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
+        sec_ctx, safe_message = self._apply_input_security(message, user)
+        if sec_ctx and sec_ctx.blocked:
+            raise self._rejection_error(sec_ctx)
         conv = self._resolve_conversation(session, user, conversation_id, message)
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
-        state = AgentState(user_input=message, history=memory.recent_messages)
+        state = AgentState(user_input=safe_message, history=memory.recent_messages)
         # 2. 注入记忆上下文到管线
         if memory.memory_context:
             state.context = memory.memory_context
@@ -232,15 +232,15 @@ class ChatService:
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> AsyncIterator[AgentEvent]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
-        # 0. 安全治理：输入过滤 + 注入检测
-        sec_ctx = self._apply_input_security(message, user)
-        if sec_ctx and sec_ctx.blocked and settings.SECURITY_BLOCK_ON_INJECTION:
-            yield AgentEvent("error", "输入被安全策略拒绝")
+        # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
+        sec_ctx, safe_message = self._apply_input_security(message, user)
+        if sec_ctx and sec_ctx.blocked:
+            yield AgentEvent("error", str(self._rejection_error(sec_ctx)))
             return
         conv = self._resolve_conversation(session, user, conversation_id, message)
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
-        state = AgentState(user_input=message, history=memory.recent_messages)
+        state = AgentState(user_input=safe_message, history=memory.recent_messages)
         # 注入记忆上下文
         if memory.memory_context:
             state.context = memory.memory_context
@@ -395,35 +395,51 @@ class ChatService:
     # ── 安全治理 ──────────────────────────────────
 
     @staticmethod
-    def _apply_input_security(message: str, user: User) -> "SecurityContext | None":
+    def _apply_input_security(message: str, user: User) -> "tuple[SecurityContext | None, str]":
         """对用户输入执行安全过滤。
 
         包含：输入过滤（PII 检测 + 敏感词）+ Prompt 注入检测。
         失败时仅记录日志，不阻断对话。
 
-        SKELETON：当前仅做模式匹配告警；
-        可按需扩展：可配置阻断策略、LLM 语义审查。
+        Returns:
+            (安全上下文, 送模型的文本)。开启输入过滤时返回脱敏后文本，
+            使 PII 不会进入模型；未开启或过滤失败时原样返回 ``message``。
         """
         if not settings.SECURITY_ENABLED:
-            return None
+            return None, message
+        # 本方法是静态方法，告警落日志必须用类名调用脱敏器。
+        # 误用 self 会抛 NameError，被下方兜底 except 吞掉后整条过滤链路静默失效，
+        # 恰好只影响被判定为敏感的输入——属于最危险的 fail-open。
         try:
             from app.security import (
                 InputFilter,
                 PromptInjectionDetector,
                 SecurityContext,
+                get_rate_limiter,
             )
 
             ctx = SecurityContext()
+            sanitized = message
+
+            # 速率限制：以「用户 + 租户」为键，先于内容检测执行，
+            # 被限流的请求无需再消耗过滤与模型算力。
+            if settings.SECURITY_RATE_LIMIT:
+                limiter = get_rate_limiter()
+                allowed, remaining = limiter.allow(f"{user.tenant_id}:{user.id}", ctx=ctx)
+                if not allowed:
+                    logger.warning("请求被限流: user=%s, remaining=%s", user.id, remaining)
+                    return ctx, sanitized
 
             # 输入过滤
             if settings.SECURITY_INPUT_FILTER:
                 input_filter = InputFilter()
                 result = input_filter.filter(message, ctx)
+                sanitized = result.sanitized_text or message
                 if result.flagged:
                     logger.warning(
                         "输入安全告警: user=%s, reasons=%s",
                         user.id,
-                        result.reasons,
+                        ChatService._sanitize_for_log("; ".join(result.reasons)),
                     )
 
             # 注入检测
@@ -437,14 +453,44 @@ class ChatService:
                         "注入检测告警: user=%s, confidence=%.2f, matches=%s",
                         user.id,
                         inj_result.confidence,
-                        inj_result.matches,
+                        ChatService._sanitize_for_log("; ".join(inj_result.matches)),
                     )
 
-            return ctx
+            return ctx, sanitized
 
         except Exception:  # noqa: BLE001 — 安全过滤失败不应影响对话
             logger.exception("输入安全过滤失败")
-            return None
+            return None, message
+
+    @staticmethod
+    def _sanitize_for_log(text: str) -> str:
+        """对写入日志的文本做脱敏。
+
+        安全告警里的匹配内容可能携带用户原文（如命中的敏感片段），
+        直接写入日志会让 PII 从「被过滤」变成「被记录」，
+        因此落日志前统一过一遍脱敏器；脱敏器异常时退化为截断而非丢弃。
+        """
+        try:
+            from app.security import get_log_sanitizer
+
+            return get_log_sanitizer().sanitize(text)
+        except Exception:  # noqa: BLE001 — 脱敏失败不应影响告警记录
+            return text[:200]
+
+    @staticmethod
+    def _rejection_error(ctx: "SecurityContext") -> "SecurityRejectedError":
+        """把被阻断的安全上下文转换为带状态码的异常。
+
+        限流与内容阻断需要不同状态码：限流是 429（客户端应退避重试），
+        内容阻断是 403（重试无意义）。合并成一种会误导调用方。
+        """
+        from app.security.types import SecurityRejectedError
+
+        if ctx.rate_limited:
+            return SecurityRejectedError("请求过于频繁，请稍后再试", status_code=429)
+        if ctx.injection_detected:
+            return SecurityRejectedError("输入被安全策略拒绝（疑似提示词注入）", status_code=403)
+        return SecurityRejectedError("输入被安全策略拒绝", status_code=403)
 
     @staticmethod
     def _apply_output_security(answer: str, ctx: "SecurityContext | None") -> None:

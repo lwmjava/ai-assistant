@@ -12,6 +12,7 @@
 import json
 import logging
 
+import numpy as np
 from sqlmodel import Session, select
 
 from app.core.config import settings
@@ -20,6 +21,9 @@ from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.local import _bm25_scores, _rrf
 
 logger = logging.getLogger(__name__)
+
+# 集合中的分块归属字段：删除分块时用它定位，缺失会导致向量残留。
+_DOCUMENT_ID_FIELD = "document_id"
 
 
 class MilvusUnavailableError(RuntimeError):
@@ -59,6 +63,7 @@ class MilvusVectorStore(VectorStore):
         fields = [
             FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=64),
             FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=64),
+            FieldSchema(name=_DOCUMENT_ID_FIELD, dtype=DataType.VARCHAR, max_length=64),
             FieldSchema(
                 name="embedding",
                 dtype=DataType.FLOAT_VECTOR,
@@ -68,11 +73,71 @@ class MilvusVectorStore(VectorStore):
         schema = CollectionSchema(fields, description="ai-assistant 文档分块向量")
         try:
             collection = Collection(name, schema)
-        except Exception:  # 已存在则直接加载
+            created = True
+        except Exception:  # noqa: BLE001 - 集合已存在时由下分支加载
             collection = Collection(name)
+            created = False
+
+        if not created:
+            self._verify_schema(collection, name)
+        self._ensure_index(collection)
         collection.load()
         self._collection = collection
         return collection
+
+    def _verify_schema(self, collection, name: str) -> None:
+        """校验既有集合含有按文档删除所需的字段。
+
+        早期版本的集合缺少 ``document_id``，此时删除过滤表达式必然失败，
+        若不显式报错会导致向量永久残留且无任何提示。
+
+        Args:
+            collection: 已加载的 Milvus 集合。
+            name: 集合名，用于错误信息。
+
+        Raises:
+            MilvusUnavailableError: 集合缺少 ``document_id`` 字段时抛出。
+        """
+        existing = {f.name for f in (collection.schema.fields or [])}
+        if _DOCUMENT_ID_FIELD not in existing:
+            raise MilvusUnavailableError(
+                f"Milvus 集合 {name} 缺少 {_DOCUMENT_ID_FIELD} 字段，无法按文档删除向量。"
+                f"请重建集合或迁移 schema 后重试（当前字段：{sorted(existing)}）。"
+            )
+
+    def _ensure_index(self, collection) -> None:
+        """确保向量字段已建索引，否则检索会退化为全表扫描甚至报错。"""
+        try:
+            indexed = {idx.field_name for idx in collection.indexes}
+        except Exception:  # noqa: BLE001 - 无索引时接口可能抛错，按未建处理
+            indexed = set()
+        if "embedding" in indexed:
+            return
+        collection.create_index(
+            field_name="embedding",
+            params={
+                "index_type": settings.MILVUS_INDEX_TYPE,
+                "metric_type": "COSINE",
+                "params": {"nlist": 128},
+            },
+        )
+        logger.info("Milvus 集合 %s 已创建向量索引", settings.MILVUS_COLLECTION)
+
+    def _search_params(self, collection) -> dict:
+        """按集合实际索引类型构造检索参数。
+
+        ``nprobe`` 仅对 IVF 系列索引有意义；传给 AUTOINDEX 会被忽略甚至报错，
+        因此按索引类型决定是否携带。
+        """
+        index_type = ""
+        try:
+            for idx in collection.indexes:
+                index_type = str((idx.params or {}).get("index_type", "") or "")
+                break
+        except Exception:  # noqa: BLE001 - 取不到索引信息时按默认参数检索
+            index_type = ""
+        params = {"nprobe": settings.MILVUS_NPROBE} if "IVF" in index_type.upper() else {}
+        return {"metric_type": "COSINE", "params": params}
 
     async def add(self, chunks: list) -> None:
         collection = self._connect()
@@ -80,6 +145,7 @@ class MilvusVectorStore(VectorStore):
             {
                 "id": c.id,
                 "tenant_id": c.tenant_id,
+                _DOCUMENT_ID_FIELD: c.document_id,
                 "embedding": json.loads(c.embedding) if c.embedding else None,
             }
             for c in chunks
@@ -89,13 +155,23 @@ class MilvusVectorStore(VectorStore):
             collection.upsert(entities)
 
     async def delete_by_document(self, document_id: str, tenant_id: str) -> int:
+        """删除某文档的全部分块向量，返回实际删除条数。
+
+        先按主键查出命中条数再删除，因为 Milvus 的 ``delete`` 返回值不含删除计数，
+        早期实现直接 ``return len([document_id])`` 恒为 1，会掩盖删除失败。
+        """
         collection = self._connect()
-        expr = f'document_id == "{document_id}" and tenant_id == "{tenant_id}"'
+        expr = f'{_DOCUMENT_ID_FIELD} == "{document_id}" and tenant_id == "{tenant_id}"'
         try:
-            collection.delete(expr)
-        except Exception:  # 集合为空或字段未建索引时静默跳过
-            logger.warning("Milvus 删除文档分块失败（可能集合为空）：%s", document_id)
-        return len([document_id])
+            matched = collection.query(expr=expr, output_fields=["id"])
+            ids = [row.get("id") for row in matched or []]
+            if not ids:
+                return 0
+            collection.delete(expr=expr)
+        except Exception as exc:  # noqa: BLE001 - 集合不可用时降级为未删除
+            logger.warning("Milvus 删除文档分块失败：%s（%s）", document_id, exc)
+            return 0
+        return len(ids)
 
     async def count(self, tenant_id: str) -> int:
         stmt = select(DocumentChunk).where(DocumentChunk.tenant_id == tenant_id)
@@ -112,12 +188,11 @@ class MilvusVectorStore(VectorStore):
         collection = self._connect()
         expr = f'tenant_id == "{tenant_id}"'
         expand = max(top_k * 4, 20)
-        search_params = {"metric_type": "COSINE", "params": {"nprobe": 16}}
         try:
             hits = collection.search(
                 data=[query_embedding],
                 anns_field="embedding",
-                param=search_params,
+                param=self._search_params(collection),
                 limit=expand,
                 expr=expr,
                 output_fields=["id"],
@@ -139,9 +214,7 @@ class MilvusVectorStore(VectorStore):
         tokens = [json.loads(r.tokens) if r.tokens else [] for r in ordered]
         bm25 = _bm25_scores(query_tokens, tokens)
         if any(s > 0 for s in bm25):
-            sparse_order = list(
-                __import__("numpy").argsort(-__import__("numpy").array(bm25)).tolist()
-            )
+            sparse_order = list(np.argsort(-np.array(bm25)).tolist())
         else:
             sparse_order = list(range(len(ordered)))
         dense_order = list(range(len(ordered)))  # 已是按距离升序

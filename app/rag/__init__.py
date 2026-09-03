@@ -5,11 +5,12 @@
 """
 
 from app.models.rag import Document, DocumentChunk  # noqa: F401
+from app.rag.backend.factory import get_rag_backend  # noqa: F401
 from app.rag.embeddings.factory import (  # noqa: F401
     get_embedding_provider,
     set_embedding_override,
 )
 from app.rag.ingestion import split_text  # noqa: F401
-from app.rag.retriever import HybridRetriever  # noqa: F401
+from app.rag.retriever import HybridRetriever, format_context  # noqa: F401
 from app.rag.service import RAGService  # noqa: F401
 from app.rag.vectorstore.factory import get_vector_store  # noqa: F401

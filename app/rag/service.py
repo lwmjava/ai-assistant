@@ -13,16 +13,18 @@
 import json
 import logging
 import os
+from collections.abc import Callable
 
 from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
 from app.models.user import User
+from app.rag.backend.base import RagBackend
+from app.rag.backend.factory import get_rag_backend
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
-from app.rag.ingestion import split_text
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.factory import get_vector_store
@@ -31,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 # 单次批量嵌入的最大文本数，避免超长文档一次性压垮嵌入接口。
 _EMBED_BATCH = 32
+
+Tokenizer = Callable[[str], list[str]]
 
 
 class RAGService:
@@ -42,19 +46,29 @@ class RAGService:
         tenant_id: str,
         embedding_provider: EmbeddingProvider | None = None,
         vector_store: VectorStore | None = None,
+        *,
+        tokenizer: Tokenizer | None = None,
+        backend: RagBackend | None = None,
     ) -> None:
         self.session = session
         self.tenant_id = tenant_id
         self._embedding = embedding_provider or get_embedding_provider()
         self._vector_store = vector_store or get_vector_store(session)
+        self._tokenizer = tokenizer or tokenize
+        self._backend = backend or get_rag_backend(
+            self._embedding,
+            self._vector_store,
+            tokenizer=self._tokenizer,
+            rrf_k=settings.RAG_HYBRID_RRF_K,
+        )
 
     # ── 摄取 ────────────────────────────────────────
     async def ingest_text(
         self, text: str, title: str, source: str | None, user_id: str
     ) -> Document:
         """摄取一段文本：分块、嵌入、落库，返回文档记录。"""
-        chunks = split_text(
-            text, settings.RAG_CHUNK_SIZE, settings.RAG_CHUNK_OVERLAP
+        chunks = await self._backend.split(
+            text, chunk_size=settings.RAG_CHUNK_SIZE, overlap=settings.RAG_CHUNK_OVERLAP
         )
         if not chunks:
             raise ValueError("文本为空或无法切分为任何分块")
@@ -78,7 +92,7 @@ class RAGService:
                 chunk_index=index,
                 content=content,
                 source=source,
-                tokens=json.dumps(tokenize(content), ensure_ascii=False),
+                tokens=json.dumps(self._tokenizer(content), ensure_ascii=False),
             )
             chunk_rows.append(row)
             self.session.add(row)
@@ -113,20 +127,16 @@ class RAGService:
     async def search(self, query: str, top_k: int | None = None) -> list[ChunkResult]:
         """对查询做混合检索，返回融合排序后的分块。"""
         top_k = top_k or settings.RAG_TOP_K
-        embedding = (await self._embedding.embed([query]))[0]
-        results = await self._vector_store.hybrid_search(
-            embedding, tokenize(query), self.tenant_id, top_k, settings.RAG_HYBRID_RRF_K
+        return await self._backend.retrieve(
+            query, tenant_id=self.tenant_id, top_k=top_k
         )
-        return results
 
     def make_retriever(self, top_k: int | None = None) -> HybridRetriever:
         """生成可注入 Agent 管线的混合检索器。"""
         return HybridRetriever(
-            self._embedding,
-            self._vector_store,
+            self._backend,
             self.tenant_id,
             top_k or settings.RAG_TOP_K,
-            settings.RAG_HYBRID_RRF_K,
         )
 
     # ── 文档管理 ────────────────────────────────────

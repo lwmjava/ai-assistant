@@ -45,7 +45,8 @@ app/
 ├── llm/               # LLM 抽象层（接口 + 工厂 + 多提供商实现）
 ├── rag/               # RAG 检索（摄取 + 嵌入 + 向量库 + 检索器）
 │   ├── embeddings/    # 嵌入模型抽象与实现
-│   └── vectorstore/   # 向量库抽象与实现
+│   ├── vectorstore/   # 向量库抽象与实现
+│   └── backend/       # 切分/检索策略（默认 native；langchain / llamaindex 后续接入）
 ├── mcp/               # MCP 协议集成（客户端 + 管理器 + 适配器）
 ├── workflow/          # 工作流引擎（cron 调度 + 执行引擎 + ChatService 桥）
 ├── memory/            # 对话窗口裁剪与 LLM 压缩（当前不跨会话持久化）
@@ -75,7 +76,7 @@ app/
   api/routes → services → core / models / agents / rag / llm / mcp / workflow / memory / security / audit
   agents → llm / rag / tools / skills
   workflow → services（经 Bridge 调用 ChatService，禁止再造一套 Agent 运行时）
-  rag → embeddings / vectorstore / models
+  rag → embeddings / vectorstore / models / backend
   mcp → agents/tools / core
   memory / security / audit / evolution / debug → llm / core / models（按需）
   channels → core

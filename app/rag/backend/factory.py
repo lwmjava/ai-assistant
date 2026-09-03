@@ -10,7 +10,7 @@ import logging
 from collections.abc import Callable
 
 from app.core.config import settings
-from app.rag.backend.base import BackendNotAvailableError, RagBackend
+from app.rag.backend.base import RagBackend
 from app.rag.backend.native import NativeRagBackend
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.mock import tokenize
@@ -73,9 +73,17 @@ def get_rag_backend(
                 vector_store,
                 tok,
                 rrf_k=rrf,
+                splitter=settings.RAG_LLAMAINDEX_SPLITTER,
             )
-        except (ImportError, BackendNotAvailableError) as exc:
-            logger.warning("RAG_BACKEND=llamaindex 不可用（%s），降级 native", exc)
+        except ImportError as exc:
+            logger.warning(
+                "RAG_BACKEND=llamaindex 但未安装 llamaindex extras（%s），降级 native。"
+                "请执行 pip install \"ai-assistant[llamaindex]\"",
+                exc,
+            )
+            name = "native"
+        except Exception as exc:  # noqa: BLE001 — 适配器构造失败不应阻断主路径
+            logger.warning("RAG_BACKEND=llamaindex 初始化失败（%s），降级 native", exc)
             name = "native"
 
     return NativeRagBackend(embedding, vector_store, tokenizer=tok, rrf_k=rrf)

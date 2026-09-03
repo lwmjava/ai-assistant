@@ -58,7 +58,8 @@ graph TD
 | LLM | DeepSeek / OpenAI 兼容接口 · Ollama 本地 · Mock 离线 |
 | 嵌入模型 | OpenAI 兼容 `/embeddings` 协议（DeepSeek / OpenAI / 智谱 / BGE-M3 等） |
 | 协议 | MCP（Model Context Protocol） |
-| 部署 | Docker Compose |
+| Web 控制台 | TypeScript · React 18 · Vite 5 · Tailwind CSS 3 · TanStack Query |
+| 部署 | Docker Compose；或由 FastAPI 单进程同时提供 API 与控制台 |
 
 ## 项目结构
 
@@ -87,6 +88,7 @@ ai-assistant/
 │   ├── debug/                   # Agent 执行 Trace
 │   └── channels/                # 多入口抽象（当前登记 HTTP）
 ├── tests/                       # pytest 测试
+├── frontend/                    # Web 控制台（Vite + React + TS，见 frontend/README.md）
 ├── alembic/                     # 数据库迁移
 ├── docs/                        # 设计文档与 OpenAPI 导出
 ├── AGENT.md                     # AI / 贡献者开发规则（模块边界与扩展约定）
@@ -150,6 +152,22 @@ uvicorn app.main:app --reload
 # 打开 http://127.0.0.1:8000/docs 查看交互式 API 文档
 ```
 
+### Web 控制台（可选）
+
+`frontend/` 下是配套 Web 控制台，覆盖对话、知识库、工具与 MCP、工作流、审计日志六个模块。
+
+```bash
+# 方式一：开发模式（前后端分离，前端热更新，/api 自动代理到 8000）
+cd frontend && npm install && npm run dev     # http://localhost:5173
+
+# 方式二：单进程托管（构建产物由 FastAPI 直接提供，无需 Nginx 或 Node 进程）
+cd frontend && npm install && npm run build
+cd .. && echo "SERVE_FRONTEND=true" >> .env
+uvicorn app.main:app                          # http://127.0.0.1:8000
+```
+
+两种方式的差别与托管细节见 [frontend/README.md](frontend/README.md)。
+
 ### Docker 一键部署
 
 ```bash
@@ -173,6 +191,7 @@ docker compose up -d --build
 | `RAG_VECTOR_STORE` | 向量库后端：`local` / `milvus` | `local` |
 | `RAG_BACKEND` | 切分/检索策略：`native` / `langchain` / `llamaindex` | `native` |
 | `RAG_LANGCHAIN_SPLITTER` | LangChain 切分器（当前仅 `recursive`） | `recursive` |
+| `RAG_LLAMAINDEX_SPLITTER` | LlamaIndex 切分器：`sentence` / `markdown` | `sentence` |
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |
 | `MCP_ENABLED` | 是否启用 MCP 客户端 | `false` |
 | `MCP_SERVERS` | MCP 服务器清单（JSON 数组） | — |
@@ -182,6 +201,8 @@ docker compose up -d --build
 | `AUDIT_ENABLED` | 是否启用审计日志 | `true` |
 | `SECURITY_ENABLED` | 是否启用内容安全治理 | `true` |
 | `AGENT_ORCHESTRATION` | 编排实现：`self` / `langgraph` | `self` |
+| `SERVE_FRONTEND` | 是否由本进程托管 `frontend/dist`（开启后 `GET /` 返回控制台） | `false` |
+| `CORS_ORIGINS` | 允许的跨域来源（前后端分离部署时必填） | `*` |
 
 完整配置项见 [`.env.example`](.env.example)。
 

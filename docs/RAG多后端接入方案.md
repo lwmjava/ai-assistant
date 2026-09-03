@@ -1,7 +1,7 @@
 # RAG 多技术栈后端接入方案
 
 - 分支：`feat/rag-backend`（自 `main` 切出）
-- 状态：**提交 1 已完成；提交 2（LangChain + RAG_BACKEND）已完成**
+- 状态：**提交 1–3 已完成**（native / LangChain / LlamaIndex 三套骨架）
 - 记录时间：2026-09-03
 - 已确认默认（开工）：
   - 请求级覆盖：全局配置 + ingest/search **请求体可选字段**，不用 header
@@ -116,7 +116,7 @@ api/routes/rag.py
    （编排：主库读写、       │
     租户隔离、审计）        ├── native.py       自研：split_text + hybrid_search
                           ├── langchain_backend.py
-                          └── llamaindex_backend.py（预留）
+                          └── llamaindex_backend.py
                                    │
                                    ▼
                     共用底层：EmbeddingProvider + VectorStore（不动）
@@ -132,7 +132,7 @@ app/rag/backend/              新增
 ├── base.py                   RagBackend 抽象
 ├── native.py                 现有 split_text + hybrid_search 包装（默认后端）
 ├── langchain_backend.py      LangChain 实现，函数内延迟导入
-├── llamaindex_backend.py     预留：接口齐全，实现抛 BackendNotAvailableError
+├── llamaindex_backend.py     SentenceSplitter / MarkdownNodeParser + BasePydanticVectorStore 只读适配
 └── factory.py                按配置/上下文路由 + ImportError 降级
 ```
 
@@ -313,7 +313,7 @@ separators=[
 |---|---|---|---|
 | **1** | `RagBackend` 抽象 + native 包装 + factory + ABC 补 `rrf_k` + `service.py` 改为委托 / `tokenize` 可注入 + `format_context` 抽取 | **零** | 118 测试全绿、**行为零变化** |
 | **2** | LangChain 全链路：中文切分器 + 两个适配器 + 检索编排 + `RAG_BACKEND` 配置 + 请求级覆盖 + 缺依赖降级 | langchain extras | 不装包时 118 全绿；装包后新测试通过 |
-| **3** | LlamaIndex 骨架与 factory 分支 + extras 声明 | 仅声明，不装包 | 结构对称，不装包不报错 |
+| **3** | LlamaIndex 骨架与 factory 分支 + extras 声明 | 仅声明，不装包 | 结构对称，不装包不报错；装包后 split/retrieve 测试通过 |
 
 **提交 1 单独出来的原因**：在引入任何第三方依赖之前先锁死回归。它是纯重构——抽象层立住、行为不变，后面两步就都在安全网里做。
 
@@ -329,7 +329,7 @@ separators=[
 - [ ] `add_texts()` 被调用时抛 `NotImplementedError` 且错误信息明确
 - [ ] 开发中无 LangSmith 外发请求（`LANGCHAIN_TRACING_V2=false`）
 - [ ] `pyproject.toml` 与 `requirements.txt` 均已同步
-- [ ] README 配置项表补充 `RAG_BACKEND` / `RAG_LANGCHAIN_SPLITTER`
+- [ ] README 配置项表补充 `RAG_BACKEND` / `RAG_LANGCHAIN_SPLITTER` / `RAG_LLAMAINDEX_SPLITTER`
 
 ---
 
@@ -342,7 +342,7 @@ separators=[
 | `split()` | `split_text` | `TextSplitter.split_text()` | `SentenceSplitter` / `MarkdownNodeParser` |
 | `EmbeddingProvider` | `MockEmbedding` 等 | `langchain_core.embeddings.Embeddings` | `BaseEmbedding` |
 | `VectorStore` | `LocalVectorStore` / `MilvusVectorStore` | `langchain_core.vectorstores.VectorStore` | `BasePydanticVectorStore` |
-| `retrieve()` | `hybrid_search` | `VectorStoreRetriever` | `VectorIndexRetriever` |
+| `retrieve()` | `hybrid_search` | `VectorStoreRetriever`（骨架阶段委托 `hybrid_search`） | `hybrid_search`（骨架阶段；后续可换 `VectorIndexRetriever`） |
 
 ---
 

@@ -19,4 +19,8 @@ def __getattr__(name: str):
         from app.rag.backend.langchain_backend import LangChainRagBackend
 
         return LangChainRagBackend
+    if name == "LlamaIndexRagBackend":
+        from app.rag.backend.llamaindex_backend import LlamaIndexRagBackend
+
+        return LlamaIndexRagBackend
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -140,7 +140,13 @@ class _ProjectVectorStoreAdapter(VectorStore):
 
 def _build_text_splitter(chunk_size: int, overlap: int, splitter: str):
     """按配置构造 LangChain TextSplitter（延迟导入）。"""
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    try:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+    except ImportError as exc:  # pragma: no cover - 仅在依赖缺失时触发
+        raise ImportError(
+            "RAG_BACKEND=langchain 需要 langchain-text-splitters，"
+            '请执行 pip install "ai-assistant[langchain]"'
+        ) from exc
 
     name = (splitter or "recursive").strip().lower()
     if name != "recursive":

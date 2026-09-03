@@ -9,9 +9,12 @@
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from app.api.router import api_router
@@ -88,12 +91,66 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api")
 
 
-@app.get("/", tags=["system"])
-def root() -> dict:
-    """根路径：返回服务基本信息。"""
+# ── 前端构建产物托管 ────────────────────────────────────
+#
+# 开启 `SERVE_FRONTEND` 且 `frontend/dist` 存在时，本进程同时提供 API 与界面，
+# 部署只需一个 Python 进程。托管与否由配置显式决定，不随磁盘上是否有构建产物
+# 而改变——否则 `GET /` 的契约会随本地构建状态漂移。
+
+FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+_SERVE_FRONTEND = settings.SERVE_FRONTEND and FRONTEND_DIST.is_dir()
+
+if settings.SERVE_FRONTEND and not FRONTEND_DIST.is_dir():
+    logger.warning(
+        "SERVE_FRONTEND 已开启，但未找到构建产物 %s；"
+        "请先在 frontend/ 下执行 npm run build。本次启动不托管前端。",
+        FRONTEND_DIST,
+    )
+
+
+@app.get("/", tags=["system"], include_in_schema=not _SERVE_FRONTEND)
+def root():
+    """根路径：托管前端时返回应用入口，否则返回服务基本信息。"""
+    if _SERVE_FRONTEND:
+        # index.html 不缓存，保证前端发版后客户端能立即取到新入口
+        return FileResponse(
+            FRONTEND_DIST / "index.html",
+            headers={"Cache-Control": "no-cache"},
+        )
     return {
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "docs": "/docs",
         "health": "/api/health",
     }
+
+
+if _SERVE_FRONTEND:
+    # 带内容哈希的产物可长期强缓存
+    app.mount(
+        "/assets",
+        StaticFiles(directory=FRONTEND_DIST / "assets"),
+        name="frontend-assets",
+    )
+    logger.info("已托管前端构建产物：%s", FRONTEND_DIST)
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa_fallback(full_path: str) -> FileResponse:
+        """前端路由回退：非 API 路径交给 index.html 由前端路由接管。
+
+        `/api/*` 未命中的请求不参与回退，仍由 FastAPI 返回 JSON 404——
+        否则 API 消费者会收到 HTML 而误判为接口异常。
+        """
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="接口不存在")
+
+        # 目录穿越防护：解析后必须仍位于产物目录内
+        target = (FRONTEND_DIST / full_path).resolve()
+        if target.is_file() and target.is_relative_to(FRONTEND_DIST.resolve()):
+            return FileResponse(target)
+
+        # index.html 不缓存，保证前端发版后客户端能立即取到新入口
+        return FileResponse(
+            FRONTEND_DIST / "index.html",
+            headers={"Cache-Control": "no-cache"},
+        )

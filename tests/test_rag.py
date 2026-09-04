@@ -9,17 +9,21 @@ import io
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import engine
-from app.main import app
 from app.core.security import Role
+from app.main import app
+from app.models.rag import DocumentChunk
 from app.models.user import User
-from app.rag.embeddings.mock import MockEmbeddingProvider
+from app.rag.backend.native import NativeRagBackend
+from app.rag.embeddings.mock import MockEmbeddingProvider, tokenize
 from app.rag.ingestion import split_text
+from app.rag.retriever import format_context
 from app.rag.service import RAGService
+from app.rag.vectorstore.base import ChunkResult
 
 
 @pytest.fixture()
@@ -79,6 +83,36 @@ def test_split_text_empty() -> None:
     assert split_text("   \n  ") == []
 
 
+async def test_native_backend_split_matches_split_text() -> None:
+    """策略层 native.split 必须与既有 split_text 结果一致（提交 1 行为零变化）。"""
+    backend = NativeRagBackend(
+        MockEmbeddingProvider(dim=8),
+        vector_store=None,  # type: ignore[arg-type]  # split 不访问存储
+        tokenizer=tokenize,
+    )
+    text = "第一句。第二句。第三句很长需要被保留。" * 10
+    chunks = await backend.split(text, chunk_size=50, overlap=10)
+    assert chunks == split_text(text, 50, 10)
+
+
+def test_format_context_empty_and_with_source() -> None:
+    assert format_context([]) == ""
+    rendered = format_context(
+        [
+            ChunkResult(
+                id="c1",
+                content="混合检索结合稠密与稀疏信号。",
+                source="手册",
+                document_id="d1",
+                score=0.9,
+            )
+        ]
+    )
+    assert "资料 1" in rendered
+    assert "来源：手册" in rendered
+    assert "混合检索" in rendered
+
+
 # ── 摄取与混合检索（服务层）────────────────────────
 async def test_ingest_and_search(session: Session) -> None:
     rag = RAGService(session, "unit-tenant")
@@ -95,6 +129,31 @@ async def test_ingest_and_search(session: Session) -> None:
     assert results
     # 查询词「检索」应命中包含该词的块。
     assert any("检索" in r.content for r in results)
+
+
+async def test_ingest_uses_injected_tokenizer(session: Session) -> None:
+    """tokenize 可注入：自定义分词结果应写入分块 tokens 字段。"""
+    seen: list[str] = []
+
+    def fake_tokenize(text: str) -> list[str]:
+        seen.append(text)
+        return ["custom", "token"]
+
+    rag = RAGService(session, "tok-tenant", tokenizer=fake_tokenize)
+    doc = await rag.ingest_text(
+        "自定义分词应被持久化。",
+        title="分词",
+        source="tok",
+        user_id="tok-user",
+    )
+    rows = list(
+        session.exec(
+            select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
+        ).all()
+    )
+    assert rows
+    assert any("custom" in (r.tokens or "") for r in rows)
+    assert seen
 
 
 async def test_retriever_as_pipeline_hook(session: Session) -> None:

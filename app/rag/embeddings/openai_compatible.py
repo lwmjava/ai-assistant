@@ -22,7 +22,7 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
         base_url: str,
         api_key: str,
         model: str,
-        dim: int = 1536,
+        dim: int = 1024,
         timeout: float = 60.0,
     ) -> None:
         self.base_url = base_url.rstrip("/")

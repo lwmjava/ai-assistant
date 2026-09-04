@@ -40,8 +40,12 @@ class VectorStore(ABC):
         query_tokens: list[str],
         tenant_id: str,
         top_k: int,
+        rrf_k: int = 60,
     ) -> list[ChunkResult]:
-        """混合检索：融合稠密与稀疏结果，返回按融合分排序的前 top_k 个分块。"""
+        """混合检索：融合稠密与稀疏结果，返回按融合分排序的前 top_k 个分块。
+
+        ``rrf_k`` 为倒数排名融合常数，须与实现类签名保持一致，避免新后端漏参。
+        """
 
     @abstractmethod
     async def delete_by_document(self, document_id: str, tenant_id: str) -> int:

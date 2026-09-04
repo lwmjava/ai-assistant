@@ -31,6 +31,7 @@ class IngestRequest(BaseModel):
     text: str
     title: str
     source: str | None = None
+    backend: str | None = None  # 可选：native | langchain | llamaindex，覆盖 RAG_BACKEND
 
     model_config = {
         "json_schema_extra": {
@@ -38,6 +39,7 @@ class IngestRequest(BaseModel):
                 "text": "人工智能（Artificial Intelligence，简称 AI）是计算机科学的一个分支，旨在创建能够模拟人类智能的系统。这些系统可以执行通常需要人类智能的任务，如视觉感知、语音识别、决策制定和语言翻译。",
                 "title": "人工智能概述",
                 "source": "内部知识库",
+                "backend": "native",
             }
         }
     }
@@ -48,12 +50,14 @@ class SearchRequest(BaseModel):
 
     query: str
     top_k: int | None = None
+    backend: str | None = None  # 可选：native | langchain | llamaindex，覆盖 RAG_BACKEND
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "query": "什么是人工智能",
                 "top_k": 5,
+                "backend": "native",
             }
         }
     }
@@ -112,7 +116,9 @@ async def ingest_document(
         )
     rag = RAGService(session, current_user.tenant_id)
     try:
-        doc = await rag.ingest_text(req.text, req.title, req.source, current_user.id)
+        doc = await rag.ingest_text(
+            req.text, req.title, req.source, current_user.id, backend=req.backend
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     await audit_event(
@@ -230,7 +236,7 @@ async def search(
             status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空"
         )
     rag = RAGService(session, current_user.tenant_id)
-    results = await rag.search(req.query, req.top_k)
+    results = await rag.search(req.query, req.top_k, backend=req.backend)
     return [
         SearchResultOut(
             document_id=r.document_id,

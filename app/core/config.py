@@ -7,9 +7,14 @@
 - 生产环境（ENV=production）下由安全校验强制要求关键配置。
 """
 
-from functools import lru_cache
+import functools
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 项目根目录下的 .env（相对路径会随进程工作目录变化，这里固定为绝对路径）
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_ENV_FILE = _PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -19,7 +24,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -30,6 +35,12 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     ENV: str = "development"  # development | production
     DEBUG: bool = False
+
+    # 是否由本进程托管 frontend/dist 构建产物（单进程同时提供 API 与界面）。
+    # 默认关闭：GET / 是既有的服务信息 JSON 契约，是否改为返回前端入口应取决于
+    # 部署意图，而不是磁盘上恰好有没有构建产物——后者会让接口行为随本地构建
+    # 状态漂移，测试也无法稳定断言。
+    SERVE_FRONTEND: bool = False
 
     # ── 数据库 ──
     DATABASE_URL: str = "sqlite:///./data/ai_assistant.db"
@@ -66,13 +77,15 @@ class Settings(BaseSettings):
     LLM_TIMEOUT: float = 60.0
 
     # ── 嵌入模型（RAG 检索）──
-    # 与大模型共用 OpenAI 兼容协议：OpenAI 官方与 Ollama 的嵌入接口均可用。
+    # 默认使用阿里通义千问（DashScope 兼容模式）：与 OpenAI 的 /embeddings 协议一致。
+    # 因 DeepSeek 不提供嵌入接口，向量模型与对话模型可以是不同厂商。
     RAG_ENABLED: bool = False  # 是否将检索上下文注入对话管线
-    EMBEDDING_PROVIDER: str = "openai"  # openai | ollama | mock
-    EMBEDDING_BASE_URL: str = "https://api.openai.com/v1"
+    EMBEDDING_PROVIDER: str = "openai"  # openai | ollama | mock（千问走 openai 兼容模式）
+    EMBEDDING_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     EMBEDDING_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
-    EMBEDDING_MODEL: str = "text-embedding-3-small"
-    EMBEDDING_DIM: int = 1536
+    EMBEDDING_MODEL: str = "text-embedding-v3"  # 千问通用向量模型
+    # 必须与模型实际返回维度一致：text-embedding-v3 默认 1024（可选 1024/768/512）
+    EMBEDDING_DIM: int = 1024
 
     # ── 向量库与检索 ──
     RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus
@@ -80,6 +93,12 @@ class Settings(BaseSettings):
     RAG_CHUNK_OVERLAP: int = 64  # 分块重叠字符数
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
+    # RAG 切分/检索策略后端：native（自研，默认）| langchain | llamaindex
+    RAG_BACKEND: str = "native"
+    # LangChain TextSplitter 类型（当前仅 recursive）
+    RAG_LANGCHAIN_SPLITTER: str = "recursive"
+    # LlamaIndex NodeParser 类型：sentence | markdown
+    RAG_LLAMAINDEX_SPLITTER: str = "sentence"
 
     # ── Agent 工具调用（Function Calling）──
     AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数
@@ -189,7 +208,7 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
 
-@lru_cache(maxsize=1)
+@functools.lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """返回全局配置单例（带缓存）。"""
     return Settings()

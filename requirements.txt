@@ -34,3 +34,10 @@ numpy==2.1.3
 
 # 可选：启用 Workflow 工作流引擎的 cron 调度时安装（WORKFLOW_ENABLED=true）
 # croniter>=2.0.0
+
+# 可选：RAG_BACKEND=langchain 时安装（中文 RecursiveCharacterTextSplitter + LC 检索适配）
+# langchain-core>=1.0,<2.0
+# langchain-text-splitters>=1.0,<2.0
+
+# 可选：RAG_BACKEND=llamaindex 时安装
+# llama-index-core>=0.12,<0.13

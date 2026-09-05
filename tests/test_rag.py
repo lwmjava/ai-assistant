@@ -230,6 +230,84 @@ def test_upload_rejects_non_text(client: TestClient) -> None:
     assert resp.status_code == 400
 
 
+def test_upload_accepts_supported_text_types(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.rag.document_parsers.base import ParsedDocument
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> ParsedDocument:
+        assert filename == "doc.json"
+        return ParsedDocument(
+            text='{"name": "alice"}',
+            title="doc",
+            source="doc.json",
+            extension="json",
+            content_type=content_type,
+            metadata={},
+        )
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("doc.json", io.BytesIO(b'{\"name\":\"alice\"}'), "application/json")},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "doc"
+
+
+def test_upload_returns_ocr_required_for_pdf(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.rag.document_parsers.base import DocumentOcrRequiredError
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> None:
+        raise DocumentOcrRequiredError("该 PDF 需要 OCR 才能提取文本，当前系统未启用 OCR")
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf")},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "该 PDF 需要 OCR 才能提取文本，当前系统未启用 OCR"
+
+
+def test_upload_returns_500_when_ingest_fails(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.rag.document_parsers.base import ParsedDocument
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> ParsedDocument:
+        return ParsedDocument(
+            text="解析后的文本",
+            title="doc",
+            source="doc.txt",
+            extension="txt",
+            content_type=content_type,
+            metadata={},
+        )
+
+    async def fake_ingest_text(
+        self,
+        text: str,
+        title: str,
+        source: str | None,
+        user_id: str,
+        *,
+        backend: str | None = None,
+    ):
+        raise RuntimeError("embedding service down")
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    monkeypatch.setattr("app.api.routes.rag.RAGService.ingest_text", fake_ingest_text)
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("doc.txt", io.BytesIO(b"hello"), "text/plain")},
+    )
+    assert resp.status_code == 500
+    assert resp.json()["detail"] == "文档已解析，但知识库摄取失败，请稍后重试或联系管理员"
+
+
 def test_search_endpoint(client: TestClient) -> None:
     client.post(
         "/api/rag/documents/ingest",

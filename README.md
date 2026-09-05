@@ -114,7 +114,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 对话 | `DELETE` | `/api/chat/conversations/{id}` | 删除会话 |
 | 对话 | `GET` | `/api/chat/tools` | 可用工具列表 |
 | 知识库 | `POST` | `/api/rag/documents/ingest` | 文本摄取（自动分块嵌入） |
-| 知识库 | `POST` | `/api/rag/documents/upload` | 上传 .txt/.md 文件 |
+| 知识库 | `POST` | `/api/rag/documents/upload` | 上传 txt/md/json/xml/csv/docx/xlsx/pptx/pdf 文件 |
 | 知识库 | `GET` | `/api/rag/documents` | 文档列表 |
 | 知识库 | `GET` | `/api/rag/documents/{id}` | 文档详情 |
 | 知识库 | `DELETE` | `/api/rag/documents/{id}` | 删除文档 |

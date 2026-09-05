@@ -8,7 +8,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, status, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlmodel import Session
 
@@ -16,6 +16,13 @@ from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
 from app.models.rag import Document
 from app.models.user import User
+from app.rag.document_parsers import (
+    DocumentOcrRequiredError,
+    DocumentParseError,
+    DocumentTextEmptyError,
+    UnsupportedDocumentTypeError,
+    parse_uploaded_document,
+)
 from app.rag.service import RAGService
 
 logger = logging.getLogger(__name__)
@@ -36,7 +43,11 @@ class IngestRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "text": "人工智能（Artificial Intelligence，简称 AI）是计算机科学的一个分支，旨在创建能够模拟人类智能的系统。这些系统可以执行通常需要人类智能的任务，如视觉感知、语音识别、决策制定和语言翻译。",
+                "text": (
+                    "人工智能（Artificial Intelligence，简称 AI）是计算机科学的一个分支，"
+                    "旨在创建能够模拟人类智能的系统。这些系统可以执行通常需要人类智能的任务，"
+                    "如视觉感知、语音识别、决策制定和语言翻译。"
+                ),
                 "title": "人工智能概述",
                 "source": "内部知识库",
                 "backend": "native",
@@ -109,18 +120,45 @@ async def ingest_document(
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
 ) -> DocumentOut:
-    """摄取一段文本为知识文档（自动分块与嵌入）。"""
+    """将一段纯文本摄取为当前租户的知识文档。
+
+    调用方提交标题与正文后，本接口会按所选 RAG 后端自动分块、生成嵌入向量并落库。
+    文档归属当前登录用户及其租户；需具备 ``knowledge_bases`` 的 write 权限。
+    摄取成功后写入审计日志（动作：知识库上传）。
+
+    请求参数:
+        req: 文本摄取请求体（``IngestRequest``）
+            text: 待摄取正文，去空白后不能为空
+            title: 文档标题，去空白后不能为空
+            source: 可选来源标识（如「内部知识库」）
+            backend: 可选 RAG 后端，取值 ``native`` / ``langchain`` / ``llamaindex``；
+                未传时沿用配置项 ``RAG_BACKEND``
+        request: FastAPI 请求对象，供审计记录客户端信息
+        current_user: 已认证且具备写入权限的当前用户（依赖注入）
+        session: 数据库会话（依赖注入）
+
+    返回:
+        DocumentOut: 新文档概要，包含 id、租户/用户、标题、来源、分块数及时间戳
+
+    异常:
+        400: text/title 为空，或文本无法切分为任何分块等业务校验失败
+    """
+    # 校验必填字段：正文与标题去空白后均不能为空
     if not req.text.strip() or not req.title.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="text 与 title 不能为空"
         )
+    # 按当前用户租户创建 RAG 服务，保证多租户数据隔离
     rag = RAGService(session, current_user.tenant_id)
     try:
+        # 分块、嵌入并落库；backend 可覆盖默认 RAG 后端
         doc = await rag.ingest_text(
             req.text, req.title, req.source, current_user.id, backend=req.backend
         )
     except ValueError as exc:
+        # 服务层业务错误（如无法切块）统一映射为 400
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    # 记录知识库上传审计：文档 id、标题、分块数及来源类型
     await audit_event(
         request,
         AuditAction.KNOWLEDGE_BASE_UPLOAD,
@@ -129,6 +167,7 @@ async def ingest_document(
         resource_id=doc.id,
         details={"title": doc.title, "chunk_count": doc.chunk_count, "source": "text"},
     )
+    # 将 ORM 文档转为接口响应模型（时间戳格式化为 ISO 字符串）
     return _doc_out(doc)
 
 
@@ -139,25 +178,32 @@ async def upload_document(
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
 ) -> DocumentOut:
-    """上传文本文件（.txt / .md）并摄取为知识文档。"""
-    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if file.filename else ""
-    if ext not in ("txt", "md"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="仅支持 .txt / .md 文件"
-        )
+    """上传文档并按文件类型自动提取文本后摄取为知识文档。"""
+    filename = file.filename or "未命名文档"
     try:
         raw = await file.read()
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
+        parsed = parse_uploaded_document(raw, filename, file.content_type)
+    except (
+        UnsupportedDocumentTypeError,
+        DocumentParseError,
+        DocumentTextEmptyError,
+        DocumentOcrRequiredError,
+    ) as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="文件不是有效的 UTF-8 文本"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
         )
-    title = (file.filename or "未命名文档").rsplit(".", 1)[0]
     rag = RAGService(session, current_user.tenant_id)
     try:
-        doc = await rag.ingest_text(text, title, file.filename, current_user.id)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        doc = await rag.ingest_text(
+            parsed.text, parsed.title, parsed.source, current_user.id
+        )
+    except Exception:  # noqa: BLE001 - 上传文件已解析成功，后续失败视为系统问题
+        logger.exception("上传文档解析成功，但知识库摄取失败: filename=%s", filename)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="文档已解析，但知识库摄取失败，请稍后重试或联系管理员",
+        )
     await audit_event(
         request,
         AuditAction.KNOWLEDGE_BASE_UPLOAD,
@@ -168,7 +214,11 @@ async def upload_document(
             "title": doc.title,
             "chunk_count": doc.chunk_count,
             "source": "upload",
-            "filename": file.filename,
+            "filename": filename,
+            "extension": parsed.extension,
+            "content_type": parsed.content_type,
+            "parser_name": parsed.metadata.get("parser_name"),
+            "used_ocr": parsed.metadata.get("used_ocr"),
         },
     )
     return _doc_out(doc)

@@ -11,6 +11,7 @@ import os
 from app.rag.document_parsers.base import (
     DocumentParseError,
     DocumentParser,
+    ParsedBlock,
     ParsedDocument,
 )
 
@@ -51,11 +52,27 @@ class TextDocumentParser(DocumentParser):
         self, file_bytes: bytes, filename: str, content_type: str | None
     ) -> ParsedDocument:
         """解码原始字节并返回文本解析结果，来源沿用原文件名。"""
+        text = decode_text_bytes(file_bytes)
+        blocks = [
+            ParsedBlock(
+                type="text",
+                text=line,
+                order=index,
+                metadata={
+                    "parser_name": "text",
+                    "reading_order": index + 1,
+                    "layout_role": "body",
+                },
+            )
+            for index, line in enumerate(part.strip() for part in text.splitlines())
+            if line
+        ]
         return ParsedDocument(
-            text=decode_text_bytes(file_bytes),
+            text=text,
             title=title_from_filename(filename),
             source=filename,
             extension=file_extension(filename),
             content_type=content_type,
             metadata={"parser_name": "text"},
+            blocks=blocks,
         )

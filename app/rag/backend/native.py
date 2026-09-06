@@ -1,10 +1,9 @@
-"""自研 RAG 后端：包装现有 ``split_text`` 与 ``hybrid_search``。"""
+"""自研 RAG 后端：切分委托策略层（结构化），检索走 ``hybrid_search``。"""
 
 from collections.abc import Callable
 
 from app.rag.backend.base import RagBackend
 from app.rag.embeddings.base import EmbeddingProvider
-from app.rag.ingestion import split_text
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
 Tokenizer = Callable[[str], list[str]]
@@ -28,7 +27,13 @@ class NativeRagBackend(RagBackend):
         self._rrf_k = rrf_k
 
     async def split(self, text: str, *, chunk_size: int, overlap: int) -> list[str]:
-        return split_text(text, chunk_size, overlap)
+        from app.rag.chunking.base import ChunkParams
+        from app.rag.chunking.factory import get_chunking_strategy
+
+        chunks = await get_chunking_strategy("structured").split(
+            text, params=ChunkParams(chunk_size=chunk_size, chunk_overlap=overlap)
+        )
+        return [c.text for c in chunks]
 
     async def retrieve(
         self, query: str, *, tenant_id: str, top_k: int

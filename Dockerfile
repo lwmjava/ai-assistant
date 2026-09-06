@@ -11,6 +11,12 @@ RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
 
 WORKDIR /app
 
+# 老 Office 格式（doc / ppt）依赖：headless LibreOffice 用于转换为现代格式。
+# 仅安装 writer 与 impress 组件，并清理 apt 缓存以控制镜像体积。
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-impress \
+    && rm -rf /var/lib/apt/lists/*
+
 # 先安装依赖（利用层缓存，仅依赖变更时重建）。
 COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt

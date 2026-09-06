@@ -35,12 +35,31 @@ class DocumentOcrRequiredError(DocumentParserError):
 
 
 @dataclass(slots=True)
+class ParsedBlock:
+    """解析后的结构块/版式块。
+
+    作为后续 `format_aware` / `layout_aware` 的统一输入模型。
+    第一阶段先保留最核心的块类型、文本、顺序与页码信息；
+    后续再逐步补充 section_path、bbox 等 richer metadata。
+    """
+
+    type: str
+    text: str
+    order: int
+    page: int | None = None
+    section_path: list[str] = field(default_factory=list)
+    bbox: tuple[float, float, float, float] | None = None
+    metadata: dict[str, str | int | float | bool | None] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class ParsedDocument:
     """统一的文档解析结果。
 
     各字段在解析完成后统一归一化，供路由层直接消费：
     ``text`` 为最终可摄取文本，``title``/``source`` 由文件名派生，
-    ``metadata`` 保留解析器名等扩展信息以便写入审计或后续扩展。
+    ``metadata`` 保留解析器名等扩展信息以便写入审计或后续扩展；
+    ``blocks`` 保留解析层提取到的结构/版式块，为后续高阶切分策略提供输入。
     """
 
     text: str
@@ -49,6 +68,7 @@ class ParsedDocument:
     extension: str
     content_type: str | None
     metadata: dict[str, str | int | bool | None] = field(default_factory=dict)
+    blocks: list[ParsedBlock] = field(default_factory=list)
 
 
 class DocumentParser(ABC):

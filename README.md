@@ -114,7 +114,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 对话 | `DELETE` | `/api/chat/conversations/{id}` | 删除会话 |
 | 对话 | `GET` | `/api/chat/tools` | 可用工具列表 |
 | 知识库 | `POST` | `/api/rag/documents/ingest` | 文本摄取（自动分块嵌入） |
-| 知识库 | `POST` | `/api/rag/documents/upload` | 上传 txt/md/json/xml/csv/docx/xlsx/pptx/pdf 文件 |
+| 知识库 | `POST` | `/api/rag/documents/upload` | 上传 txt/md/json/xml/csv/doc/xls/ppt/docx/xlsx/pptx/pdf 文件（扫描版 PDF 可配合 OCR） |
 | 知识库 | `GET` | `/api/rag/documents` | 文档列表 |
 | 知识库 | `GET` | `/api/rag/documents/{id}` | 文档详情 |
 | 知识库 | `DELETE` | `/api/rag/documents/{id}` | 删除文档 |
@@ -190,8 +190,16 @@ docker compose up -d --build
 | `RAG_ENABLED` | 是否启用 RAG 检索 | `false` |
 | `RAG_VECTOR_STORE` | 向量库后端：`local` / `milvus` | `local` |
 | `RAG_BACKEND` | 切分/检索策略：`native` / `langchain` / `llamaindex` | `native` |
+| `RAG_CHUNK_STRATEGY` | 文档切分策略（见下方「文档切分策略」） | `structured` |
 | `RAG_LANGCHAIN_SPLITTER` | LangChain 切分器（当前仅 `recursive`） | `recursive` |
 | `RAG_LLAMAINDEX_SPLITTER` | LlamaIndex 切分器：`sentence` / `markdown` | `sentence` |
+| `RAG_OCR_ENABLED` | 是否启用扫描版 PDF OCR | `false` |
+| `RAG_OCR_PROVIDER` | OCR provider：`tesseract` / `cloud` | `tesseract` |
+| `RAG_OCR_LANGUAGES` | OCR 语言包 | `chi_sim+eng` |
+| `RAG_OCR_TIMEOUT_SECONDS` | 单次 OCR 超时（秒） | `60.0` |
+| `RAG_OCR_BASE_URL` | 云 OCR OpenAI 兼容接口地址（优先于 LLM 配置） | — |
+| `RAG_OCR_API_KEY` | 云 OCR API Key（优先于 LLM 配置） | — |
+| `RAG_OCR_MODEL` | 云 OCR 模型名（优先于 LLM 配置） | — |
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |
 | `MCP_ENABLED` | 是否启用 MCP 客户端 | `false` |
 | `MCP_SERVERS` | MCP 服务器清单（JSON 数组） | — |
@@ -205,6 +213,86 @@ docker compose up -d --build
 | `CORS_ORIGINS` | 允许的跨域来源（前后端分离部署时必填） | `*` |
 
 完整配置项见 [`.env.example`](.env.example)。
+
+## 文档切分策略
+
+文档摄取时按 `RAG_CHUNK_STRATEGY` 选择切分方式，也可在调用 `ingest_text` 时用 `strategy` 参数按请求覆盖。支持六种模式：
+
+| 策略 | 说明 |
+|------|------|
+| `structured` | 默认。按 Markdown 标题分节，无标题时回退到句子切分 |
+| `paragraph` | 按空行/段落边界切分，超长段落内部按字符硬切 |
+| `sliding_window` | 固定窗口 + 步长，适合需要重叠上下文的场景 |
+| `token_aware` | 按 token 上限切分（tiktoken 优先，缺失时按字符估算） |
+| `semantic` | 复用 embedding 计算相邻句子相似度，低于阈值处断开 |
+| `parent_child` | 父子文档：父块为子块倍数粗块，检索命中子块时自动返回父块上下文 |
+
+设 `RAG_CHUNK_STRATEGY=auto` 时，系统按文档特征自动路由（含标题走 `structured`、英文占比高走 `token_aware`，其余走 `paragraph`）。
+
+## OCR（扫描版 PDF）
+
+当 `RAG_OCR_ENABLED=true` 且 PDF 没有可提取的文本层时，系统会尝试使用 OCR 提取文本。
+
+当前支持：
+
+- provider：`tesseract`、`cloud`
+- 本地 OCR 语言：`chi_sim+eng`
+
+配置优先级：
+
+1. `RAG_OCR_BASE_URL` / `RAG_OCR_API_KEY` / `RAG_OCR_MODEL`
+2. 若未配置，则回退到 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_DEFAULT_MODEL`
+
+本地 Tesseract 示例：
+
+```env
+RAG_OCR_ENABLED=true
+RAG_OCR_PROVIDER=tesseract
+RAG_OCR_LANGUAGES=chi_sim+eng
+RAG_OCR_TIMEOUT_SECONDS=60
+```
+
+云 OCR（OpenAI 兼容视觉）示例：
+
+```env
+RAG_OCR_ENABLED=true
+RAG_OCR_PROVIDER=cloud
+RAG_OCR_BASE_URL=https://your-openai-compatible-endpoint/v1
+RAG_OCR_API_KEY=your-api-key
+RAG_OCR_MODEL=gpt-4.1-mini
+RAG_OCR_TIMEOUT_SECONDS=60
+```
+
+部署要求：
+
+- Python 依赖中已包含 PDF 渲染库 `PyMuPDF`
+- 使用 `tesseract` 时，服务器需额外安装 `tesseract`
+- 使用 `tesseract` 时，服务器需安装 `chi_sim` 与 `eng` 语言包
+- 使用 `cloud` 时，需提供可访问的 OpenAI 兼容视觉接口与有效鉴权
+
+说明：
+
+- 带文本层的 PDF 不会走 OCR
+- 扫描版 PDF 仅在显式开启 OCR 时尝试识别
+- `pdf.py` 会先尝试文本层提取，只有无文本层时才走 OCR
+- 云 OCR 当前采用“PDF 按页渲染图片，再逐页调用视觉模型”的方式提取文本
+- OCR 未启用、环境缺失、配置缺失或云接口调用失败时，导入任务会失败并记录明确错误原因
+
+## 老 Office 格式（doc / xls / ppt）
+
+系统支持上传并摄取老 Office 二进制格式：
+
+- `.xls`：使用纯 Python 的 `xlrd` 直接提取，无需额外系统依赖；
+- `.doc` / `.ppt`：使用 headless LibreOffice（`soffice`）先转换为 `docx` / `pptx`，再复用现代解析器提取文本。
+
+部署要求：
+
+- `.doc` / `.ppt` 需要服务器安装 LibreOffice（Docker 镜像已内置 `libreoffice-writer` 与 `libreoffice-impress`）；
+- 若未安装 LibreOffice，`.doc` / `.ppt` 导入任务会失败并记录原因：`老 Office 格式依赖缺失：未检测到 LibreOffice（soffice）`。
+
+说明：
+
+- 老格式转换仅用于提取可读文本，不保证复杂版式、表格结构与嵌入对象被完整还原。
 
 ## 开发
 

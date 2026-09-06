@@ -16,7 +16,7 @@ import math
 import numpy as np
 from sqlmodel import Session, select
 
-from app.models.rag import DocumentChunk
+from app.models.rag import Document, DocumentChunk
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,14 @@ class LocalVectorStore(VectorStore):
         top_k: int,
         rrf_k: int = 60,
     ) -> list[ChunkResult]:
-        stmt = select(DocumentChunk).where(DocumentChunk.tenant_id == tenant_id)
+        stmt = (
+            select(DocumentChunk)
+            .join(Document, Document.id == DocumentChunk.document_id)
+            .where(
+                DocumentChunk.tenant_id == tenant_id,
+                Document.is_current.is_(True),
+            )
+        )
         rows = self.session.exec(stmt).all()
         if not rows:
             return []

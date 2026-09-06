@@ -15,13 +15,13 @@ import logging
 import sys
 from pathlib import Path
 
-from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
-from app.core.config import settings, Settings
+from alembic import command
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +111,115 @@ def get_migration_history() -> list[dict]:
     return history
 
 
+def _stamp_legacy_unversioned_schema() -> None:
+    """为旧的未版本化开发库补写基线版本号。
+
+    早期开发库可能由 ``SQLModel.metadata.create_all()`` 直接创建，已有业务表但没有
+    ``alembic_version``。这类库如果直接跑初始迁移会因“表已存在”失败，导致后续增量
+    迁移也无法执行。开发/测试环境下，若探测到这种状态，则先将数据库标记为最早的
+    迁移版本，再继续执行增量迁移。
+    """
+    current = get_current_revision()
+    if current is not None:
+        return
+
+    from app.core.database import engine
+
+    with engine.connect() as conn:
+        table_names = set(inspect(conn).get_table_names())
+    business_tables = {
+        "conversations",
+        "messages",
+        "rag_documents",
+        "rag_document_chunks",
+        "tenants",
+        "users",
+        "workflows",
+        "workflow_executions",
+    }
+    if not (table_names & business_tables):
+        return
+
+    history = get_migration_history()
+    if not history:
+        return
+    base_revision = history[-1]["revision"]
+    logger.warning(
+        "检测到未版本化的既有数据库，先标记到基线版本再执行增量迁移: revision=%s",
+        base_revision,
+    )
+    stamp(base_revision)
+
+
+def _ensure_rag_schema_columns() -> None:
+    """为历史数据库补齐 RAG 版本化与导入平台所需列。
+
+    某些 SQLite 开发库可能出现“修订号已更新，但表结构仍停留在旧版本”的情况。
+    这里做一次幂等补齐，避免服务层在访问新增列时直接失败。
+    """
+    from app.core.database import engine
+
+    expected_columns = {
+        "source_kind": "ALTER TABLE rag_documents ADD COLUMN source_kind VARCHAR NOT NULL DEFAULT 'file'",
+        "source_uri": "ALTER TABLE rag_documents ADD COLUMN source_uri VARCHAR",
+        "content_hash": "ALTER TABLE rag_documents ADD COLUMN content_hash VARCHAR",
+        "version_group_id": "ALTER TABLE rag_documents ADD COLUMN version_group_id VARCHAR",
+        "version_number": "ALTER TABLE rag_documents ADD COLUMN version_number INTEGER NOT NULL DEFAULT 1",
+        "previous_document_id": "ALTER TABLE rag_documents ADD COLUMN previous_document_id VARCHAR",
+        "is_current": "ALTER TABLE rag_documents ADD COLUMN is_current BOOLEAN NOT NULL DEFAULT 1",
+        "import_job_id": "ALTER TABLE rag_documents ADD COLUMN import_job_id VARCHAR",
+    }
+    with engine.begin() as conn:
+        table_names = set(inspect(conn).get_table_names())
+        if "rag_documents" not in table_names:
+            return
+        columns = {col["name"] for col in inspect(conn).get_columns("rag_documents")}
+        for name, ddl in expected_columns.items():
+            if name not in columns:
+                logger.warning("补齐缺失的 RAG 文档列: %s", name)
+                conn.execute(text(ddl))
+        columns = {col["name"] for col in inspect(conn).get_columns("rag_documents")}
+        if "version_group_id" in columns:
+            conn.execute(
+                text(
+                    "UPDATE rag_documents "
+                    "SET version_group_id = id "
+                    "WHERE version_group_id IS NULL OR version_group_id = ''"
+                )
+            )
+        for index_sql in [
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_source_kind ON rag_documents (source_kind)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_source_uri ON rag_documents (source_uri)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_content_hash ON rag_documents (content_hash)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_version_group_id ON rag_documents (version_group_id)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_previous_document_id ON rag_documents (previous_document_id)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_is_current ON rag_documents (is_current)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_import_job_id ON rag_documents (import_job_id)",
+        ]:
+            conn.execute(text(index_sql))
+
+        # 为历史库补齐分块元数据列（父子文档 / 策略 / 溯源）。
+        chunk_columns = {
+            "parent_id": "ALTER TABLE rag_document_chunks ADD COLUMN parent_id VARCHAR",
+            "strategy": "ALTER TABLE rag_document_chunks ADD COLUMN strategy VARCHAR",
+            "chunk_metadata": "ALTER TABLE rag_document_chunks ADD COLUMN chunk_metadata VARCHAR",
+        }
+        if "rag_document_chunks" in table_names:
+            chunk_existing = {
+                col["name"] for col in inspect(conn).get_columns("rag_document_chunks")
+            }
+            for name, ddl in chunk_columns.items():
+                if name not in chunk_existing:
+                    logger.warning("补齐缺失的 RAG 分块列: %s", name)
+                    conn.execute(text(ddl))
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_rag_document_chunks_parent_id "
+                    "ON rag_document_chunks (parent_id)"
+                )
+            )
+
+
 def upgrade(target: str = "head", sql: bool = False) -> None:
     """执行数据库升级。
 
@@ -153,14 +262,18 @@ def auto_migrate() -> bool:
     Returns:
         True 表示迁移成功或无待迁移项。
     """
+    if not settings.is_production:
+        _stamp_legacy_unversioned_schema()
     pending = get_pending_migrations()
     if not pending:
+        _ensure_rag_schema_columns()
         logger.info("数据库 schema 已是最新版本，无需迁移。")
         return True
 
     logger.info("检测到 %d 个待迁移版本：%s", len(pending), pending)
     try:
         upgrade("head")
+        _ensure_rag_schema_columns()
         logger.info("数据库迁移完成（%d 个版本）。", len(pending))
         return True
     except Exception as exc:

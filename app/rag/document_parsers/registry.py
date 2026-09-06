@@ -37,5 +37,5 @@ class DocumentParserRegistry:
             if parser.supports(filename, content_type):
                 return parser
         raise UnsupportedDocumentTypeError(
-            "当前仅支持 txt、md、json、xml、csv、docx、xlsx、pptx、pdf 文件"
+            "当前仅支持 txt、md、json、xml、csv、doc、xls、ppt、docx、xlsx、pptx、pdf 文件"
         )

@@ -9,7 +9,7 @@ import logging
 
 import httpx
 
-from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.embeddings.base import EmbeddingDimensionError, EmbeddingProvider
 
 logger = logging.getLogger(__name__)
 
@@ -49,4 +49,16 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
             data = resp.json()["data"]
         # 接口可能乱序返回，按 index 排序以保证与输入对齐。
         data_sorted = sorted(data, key=lambda d: d.get("index", 0))
-        return [d["embedding"] for d in data_sorted]
+        vectors = [d["embedding"] for d in data_sorted]
+        self._validate_dimensions(vectors)
+        return vectors
+
+    def _validate_dimensions(self, vectors: list[list[float]]) -> None:
+        """校验返回向量维度与配置一致，避免静默的检索错位。"""
+        for vector in vectors:
+            actual = len(vector)
+            if actual != self.dim:
+                raise EmbeddingDimensionError(
+                    f"嵌入模型返回维度 {actual} 与配置 EMBEDDING_DIM={self.dim} 不一致，"
+                    f"请检查模型 {self.model} 的实际输出维度并修正配置"
+                )

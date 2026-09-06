@@ -7,6 +7,11 @@
 from __future__ import annotations
 
 from app.rag.document_parsers.base import DocumentTextEmptyError, ParsedDocument
+from app.rag.document_parsers.legacy_office import (
+    DocDocumentParser,
+    PptDocumentParser,
+    XlsDocumentParser,
+)
 from app.rag.document_parsers.office import (
     DocxDocumentParser,
     PptxDocumentParser,
@@ -45,6 +50,7 @@ class DocumentParserService:
             extension=parsed.extension,
             content_type=parsed.content_type,
             metadata=dict(parsed.metadata),
+            blocks=list(parsed.blocks),
         )
 
 
@@ -56,6 +62,9 @@ def build_default_parser_service() -> DocumentParserService:
             DocxDocumentParser(),
             XlsxDocumentParser(),
             PptxDocumentParser(),
+            XlsDocumentParser(),
+            DocDocumentParser(),
+            PptDocumentParser(),
             PdfDocumentParser(),
         ]
     )

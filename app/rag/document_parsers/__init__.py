@@ -9,6 +9,7 @@ from app.rag.document_parsers.base import (
     DocumentParseError,
     DocumentParser,
     DocumentTextEmptyError,
+    ParsedBlock,
     ParsedDocument,
     UnsupportedDocumentTypeError,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "DocumentParser",
     "DocumentParserService",
     "DocumentTextEmptyError",
+    "ParsedBlock",
     "ParsedDocument",
     "UnsupportedDocumentTypeError",
     "build_default_parser_service",

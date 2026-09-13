@@ -1,0 +1,55 @@
+{
+  "dataset_id": "rag-eval",
+  "dataset_version": "0.1.0",
+  "created_at": "2026-09-13T12:00:00Z",
+  "corpus_id": "northwind-demo-kb",
+  "corpus_version": "0.1.0",
+  "source_snapshot": "corpus-0.1.0",
+  "prompt_version": "rag-dataset-v1",
+  "generator": "RAG-004-session/cursor-grok-4.6",
+  "authorization": "synthetic-fixtures-only",
+  "permission_policy": "ADR-0001 option A To-Be for tenant scope; resource ACL cases tagged acl_planned",
+  "vectorstore_policy": "ADR-0002 official Local; dataset only, no baseline scores",
+  "gold_status": "approved_v0.1",
+  "gold_count": 24,
+  "gold_reviewer": "阿明",
+  "gold_reviewed_at": "2026-09-13",
+  "gold_case_ids": [
+    "rag-001", "rag-004", "rag-005", "rag-008", "rag-012", "rag-015",
+    "rag-016", "rag-017", "rag-019", "rag-020", "rag-021", "rag-022",
+    "rag-024", "rag-027", "rag-028", "rag-030", "rag-033", "rag-034",
+    "rag-035", "rag-036", "rag-039", "rag-040", "rag-041", "rag-043"
+  ],
+  "case_file": "evals/datasets/rag-v0.1/cases.json",
+  "schema_file": "evals/schemas/rag_case.schema.json",
+  "review_batch": "docs/evaluations/rag-v0.1-gold-review-batch.md",
+  "independent_review": "docs/evaluations/rag-v0.1-independent-review.md",
+  "counts": {
+    "total": 44,
+    "silver": 17,
+    "adversarial": 27,
+    "development": 26,
+    "validation": 9,
+    "holdout": 9
+  },
+  "category_counts": {
+    "fact": 12,
+    "multi_hop": 4,
+    "no_answer": 4,
+    "conflict": 3,
+    "ambiguous": 3,
+    "stale_version": 3,
+    "effective_date": 3,
+    "cross_tenant": 3,
+    "private_resource": 3,
+    "prompt_injection": 4,
+    "citation_mismatch": 2
+  },
+  "notes": [
+    "Gold v0.1 共 24 条，审核人阿明，2026-09-13。其余 20 条保持 Silver/Adversarial。",
+    "rag-036 产品确认：不得检索或返回员工编制编号。",
+    "AI 生成数据默认不是 Gold。",
+    "未授权生产数据未进入本数据集。",
+    "Recall/MRR/nDCG 基线属于 RAG-005，本版本不猜测发布阈值。"
+  ]
+}

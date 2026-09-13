@@ -1,6 +1,8 @@
 # ai-assistant RAG 测评数据集生成与校验提示词
 
 > AI 只能基于已授权资料生成 Silver 候选；Gold 必须经过原文校验和人工确认。
+>
+> 当前落地：`evals/schemas/rag_case.schema.json`；合成语料 `evals/fixtures/corpus/`；候选 `evals/datasets/rag-v0.1/cases.json`。生成新案例前先读这些文件，避免重复或漂移。
 
 ## 1. Case Schema
 

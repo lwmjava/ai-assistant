@@ -277,7 +277,7 @@ tasks:
 
   - id: "RAG-004"
     title: "建立RAG Evaluation Schema和数据集v0.1"
-    status: "ready"
+    status: "done"
     priority: "P0"
     depends_on:
       - "RAG-001"
@@ -288,6 +288,8 @@ tasks:
       facts:
         - claim: "现有pytest覆盖实现行为，但没有Recall/MRR/nDCG/Citation基线数据集。"
           evidence: "tests/；docs/AI辅助开发迭代指导.md"
+        - claim: "Case Schema、44条合成候选、程序校验与 Gold v0.1（24条，阿明，2026-09-13）已落地。"
+          evidence: "evals/schemas/rag_case.schema.json；evals/datasets/rag-v0.1/；tests/eval/；docs/evaluations/rag-v0.1-gold-review-batch.md"
     scope:
       allowed_paths:
         - "evals/"

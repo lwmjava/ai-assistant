@@ -42,7 +42,7 @@
 | RAG Hybrid | Adopt | Dense + BM25 + RRF | 建立基线后单变量优化 |
 | 独立 Rerank | Defer | 未实现 | 由基线实验证明价值后进入 |
 | 结构化 Citation | Adapt | 仅弱来源文本 | 补 chunk/version/page/section |
-| RAG 权限 | Adapt | 租户过滤存在，资源语义待定 | ADR 后统一 |
+| RAG 权限 | Adapt | 检索按租户；列表仍按上传者。ADR-0001 已批准租户共享当前版本 | `RAG-006` 对齐列表/详情/导入任务 |
 | Persistent Trace | Defer/Adapt | 内存环形缓冲 | 先定义契约，再持久化关键 Trace |
 | HITL | Defer/Adapt | 尚无统一审批闭环 | 高风险能力引入前完成 |
 | Repository 层 | Defer/Adapt | Service 可直接使用 SQLModel Session | 新业务避免扩大，渐进提取 |

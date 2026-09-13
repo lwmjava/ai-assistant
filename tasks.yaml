@@ -120,7 +120,7 @@ tasks:
 
   - id: "RAG-001"
     title: "建立代码与产品文档事实基线"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     depends_on:
       - "GOV-001"
@@ -175,7 +175,7 @@ tasks:
 
   - id: "RAG-002"
     title: "确定知识库权限语义并形成ADR"
-    status: "blocked"
+    status: "done"
     priority: "P0"
     depends_on:
       - "RAG-001"
@@ -184,8 +184,8 @@ tasks:
       facts:
         - claim: "列表、详情、检索和Agent Context必须采用一致且可解释的权限语义。"
           evidence: "app/api/routes/rag.py；app/rag/service.py；app/rag/vectorstore/"
-      decisions_required:
-        - "选择租户共享知识库，或用户/资源ACL私有知识库。"
+        - claim: "ADR-0001 已批准选项A：读路径租户共享当前版本；写路径成员仅自己的文档。"
+          evidence: "docs/adr/0001-knowledge-base-permission.md"
     scope:
       allowed_paths:
         - "docs/adr/"
@@ -216,7 +216,7 @@ tasks:
         - "资源ACL允许/拒绝"
     execution:
       owner: "个人开发者"
-      blocked_by: "知识库共享/私有产品决策"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false
@@ -225,7 +225,7 @@ tasks:
 
   - id: "RAG-003"
     title: "确定正式VectorStore并形成ADR"
-    status: "blocked"
+    status: "done"
     priority: "P0"
     depends_on:
       - "RAG-001"
@@ -236,8 +236,8 @@ tasks:
           evidence: "app/core/config.py"
         - claim: "Milvus存在适配实现，但主摄取、更新和删除闭环需要真实集成证据。"
           evidence: "app/rag/vectorstore/milvus.py；app/rag/service.py；tests/test_p0_regression.py"
-      decisions_required:
-        - "本阶段正式支持Local，或将Milvus作为生产目标。"
+        - claim: "ADR-0002 已批准本阶段正式Local，Milvus为实验/Partial，评测固定Local。"
+          evidence: "docs/adr/0002-official-vectorstore.md；tests/test_vectorstore_policy.py"
     scope:
       allowed_paths:
         - "docs/adr/"
@@ -268,7 +268,7 @@ tasks:
         - "删除后向量清理"
     execution:
       owner: "个人开发者"
-      blocked_by: "正式VectorStore技术决策"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false
@@ -277,7 +277,7 @@ tasks:
 
   - id: "RAG-004"
     title: "建立RAG Evaluation Schema和数据集v0.1"
-    status: "backlog"
+    status: "ready"
     priority: "P0"
     depends_on:
       - "RAG-001"
@@ -449,7 +449,7 @@ tasks:
         - "mypy app/"
     execution:
       owner: "个人开发者"
-      blocked_by: "RAG-002、RAG-003、RAG-005"
+      blocked_by: "RAG-005"
       nightly:
         eligible: false
         production_access: false

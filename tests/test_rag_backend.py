@@ -16,8 +16,9 @@ from app.rag.service import RAGService
 
 @pytest.fixture()
 def session():
-    from app.core.database import engine
+    from app.core.database import engine, init_db
 
+    init_db()
     with Session(engine) as s:
         yield s
 

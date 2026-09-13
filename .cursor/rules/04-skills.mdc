@@ -1,0 +1,28 @@
+---
+description: Skill 的可验证工作流与升级边界
+globs:
+  - "{skills,.agents/skills,.cursor/skills}/**/*"
+  - "**/*skill*.*"
+alwaysApply: false
+---
+
+# Skills
+
+## MUST
+
+- 每个 Skill 说明 Purpose、Preconditions、Workflow、Tools、RAG/Memory、Constraints、Escalation、Examples、Tests 和版本。
+- 将流程写成可验证步骤，明确身份、权限、数据和状态前置条件。
+- 变更 Skill 时同步 Agent Test、Evaluation Case 和文档。
+
+## SHOULD
+
+- Skill 组合原子 Tool，并为缺失上下文、工具失败和人工交接提供分支。
+
+## NEVER
+
+- 在 Skill 或 Prompt 中隐藏核心业务规则、权限判断或高风险承诺。
+- 让 Skill 直连数据库或绕过 Tool Executor。
+
+## 验证证据
+
+提供正常、拒绝、失败、升级和边界场景的 Skill 测试/Evaluation 结果。

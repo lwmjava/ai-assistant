@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ai-assistant 最终目标架构与时序图</title>
+  <style>
+    :root {
+      --ink: #102a43;
+      --muted: #52606d;
+      --line: #cbd5e1;
+      --blue: #0369a1;
+      --blue-bg: #e0f2fe;
+      --green: #047857;
+      --green-bg: #d1fae5;
+      --orange: #c2410c;
+      --orange-bg: #ffedd5;
+      --purple: #6d28d9;
+      --purple-bg: #ede9fe;
+      --red: #b91c1c;
+      --red-bg: #fee2e2;
+      --surface: #ffffff;
+      --page: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font-family: "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+      line-height: 1.55;
+    }
+    main { max-width: 1600px; margin: 0 auto; padding: 32px 24px 56px; }
+    header {
+      padding: 28px 32px;
+      color: white;
+      background: linear-gradient(120deg, #075985, #1d4ed8);
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgb(15 23 42 / 16%);
+    }
+    h1 { margin: 0; font-size: clamp(1.55rem, 3vw, 2.35rem); }
+    header p { margin: 8px 0 0; color: #dbeafe; }
+    section {
+      margin-top: 24px;
+      padding: 26px;
+      background: var(--surface);
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 4px 14px rgb(15 23 42 / 5%);
+    }
+    h2 { margin: 0 0 6px; font-size: 1.35rem; }
+    .note { margin: 0 0 18px; color: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 16px 0 20px; }
+    .legend span {
+      display: inline-flex; align-items: center; gap: 7px;
+      color: var(--muted); font-size: .9rem;
+    }
+    .swatch { width: 13px; height: 13px; border: 1px solid; border-radius: 3px; }
+    .os { background: var(--green-bg); border-color: var(--green); }
+    .ee { background: var(--orange-bg); border-color: var(--orange); }
+    .target { background: var(--blue-bg); border-color: var(--blue); }
+    .governance { background: var(--red-bg); border-color: var(--red); }
+    .diagram { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+    svg { display: block; min-width: 1080px; width: 100%; height: auto; }
+    .caption { margin: 14px 0 0; font-size: .9rem; color: var(--muted); }
+    .facts {
+      margin-top: 18px; padding: 14px 16px; border-left: 4px solid var(--blue);
+      background: #f0f9ff; color: #334e68;
+    }
+    .facts strong { color: #0c4a6e; }
+
+    /* SVG styles */
+    .svg-title { font-size: 22px; font-weight: 700; fill: #102a43; }
+    .layer-title { font-size: 17px; font-weight: 700; fill: #102a43; }
+    .layer-subtitle { font-size: 12px; fill: #52606d; }
+    .block-label { font-size: 13px; font-weight: 700; fill: #102a43; text-anchor: middle; }
+    .block-sub { font-size: 10px; fill: #52606d; text-anchor: middle; }
+    .small-label { font-size: 11px; fill: #334e68; text-anchor: middle; }
+    .lane-title { font-size: 13px; font-weight: 700; fill: #102a43; text-anchor: middle; }
+    .step-label { font-size: 12px; fill: #102a43; }
+    .step-note { font-size: 10px; fill: #52606d; }
+    .guard-note { font-size: 11px; font-weight: 700; fill: #991b1b; }
+    .line { stroke: #64748b; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+    .dash { stroke-dasharray: 5 5; }
+    .lifeline { stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 5 5; }
+    .layer { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.2; rx: 10; }
+    .box-os { fill: #d1fae5; stroke: #047857; stroke-width: 1.2; rx: 7; }
+    .box-ee { fill: #ffedd5; stroke: #c2410c; stroke-width: 1.2; rx: 7; }
+    .box-target { fill: #e0f2fe; stroke: #0369a1; stroke-width: 1.2; rx: 7; }
+    .box-data { fill: #ede9fe; stroke: #6d28d9; stroke-width: 1.2; rx: 7; }
+    .box-guard { fill: #fee2e2; stroke: #b91c1c; stroke-width: 1.2; rx: 7; }
+    .activation { fill: #bfdbfe; stroke: #2563eb; stroke-width: 1; }
+    .alt { fill: #fff7ed; stroke: #fb923c; stroke-width: 1.2; stroke-dasharray: 5 4; rx: 8; }
+    @media (max-width: 700px) {
+      main { padding: 16px 10px 32px; }
+      header, section { border-radius: 10px; padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>ai-assistant：最终目标架构与关键执行时序</h1>
+      <p>Agent Harness Engineering · Brownfield 渐进改造 · TARGET（目标形态，非当前实现声明）</p>
+    </header>
+
+    <section>
+      <h2>最终目标架构图</h2>
+      <p class="note">以 Agent Harness 为控制平面，将模型决策、受控执行、数据访问和横切治理分离。箭头表示主要依赖或调用方向。</p>
+      <div class="legend">
+        <span><i class="swatch os"></i>OS 核心 / 社区接口</span>
+        <span><i class="swatch ee"></i>EE 增值扩展</span>
+        <span><i class="swatch target"></i>TARGET 渐进治理组件</span>
+        <span><i class="swatch governance"></i>安全、审计与交付治理</span>
+      </div>
+      <div class="diagram">
+        <svg viewBox="0 0 1420 1220" role="img" aria-labelledby="architecture-title architecture-desc">
+          <title id="architecture-title">ai-assistant 最终目标架构图</title>
+          <desc id="architecture-desc">渠道请求经过身份与租户层进入 Agent Harness。Harness 协调模型、工具、RAG 和记忆。代码动作经 Tool Guard 后进入代码沙箱；业务动作经 Adapter 与 Repository 访问外部系统。测评是离线横切能力，消费 Trace 与数据集，不位于请求主路径。</desc>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"></path>
+            </marker>
+          </defs>
+
+          <text x="710" y="34" class="svg-title" text-anchor="middle">ai-assistant · Agent Harness 最终目标逻辑架构</text>
+
+          <rect x="24" y="60" width="1372" height="112" class="layer"></rect>
+          <text x="46" y="92" class="layer-title">1. 体验与接入</text>
+          <text x="46" y="112" class="layer-subtitle">Channels &amp; API</text>
+          <rect x="230" y="83" width="190" height="58" class="box-os"></rect>
+          <text x="325" y="108" class="block-label">Web 应用 / SSE</text><text x="325" y="127" class="block-sub">OS 官方维护</text>
+          <rect x="445" y="83" width="190" height="58" class="box-os"></rect>
+          <text x="540" y="108" class="block-label">API / 合作伙伴</text><text x="540" y="127" class="block-sub">稳定外部契约</text>
+          <rect x="660" y="83" width="210" height="58" class="box-os"></rect>
+          <text x="765" y="108" class="block-label">社区 Channel</text><text x="765" y="127" class="block-sub">Telegram 等，无 SLA</text>
+          <rect x="895" y="83" width="235" height="58" class="box-ee"></rect>
+          <text x="1012" y="108" class="block-label">企业 Channel</text><text x="1012" y="127" class="block-sub">企业微信 / 飞书 / 钉钉</text>
+          <rect x="1155" y="83" width="205" height="58" class="box-target"></rect>
+          <text x="1257" y="108" class="block-label">Channel Adapter</text><text x="1257" y="127" class="block-sub">统一消息契约</text>
+
+          <path d="M710 172 L710 198" class="line"></path>
+          <rect x="24" y="200" width="1372" height="115" class="layer"></rect>
+          <text x="46" y="231" class="layer-title">2. 边缘、身份与租户</text>
+          <text x="46" y="251" class="layer-subtitle">Edge &amp; Identity</text>
+          <rect x="290" y="221" width="210" height="58" class="box-os"></rect>
+          <text x="395" y="246" class="block-label">API Gateway</text><text x="395" y="265" class="block-sub">限流 / 请求追踪</text>
+          <rect x="525" y="221" width="220" height="58" class="box-os"></rect>
+          <text x="635" y="246" class="block-label">JWT / RBAC</text><text x="635" y="265" class="block-sub">身份、角色、会话</text>
+          <rect x="770" y="221" width="205" height="58" class="box-os"></rect>
+          <text x="872" y="246" class="block-label">Tenant / ACL / 配额</text><text x="872" y="265" class="block-sub">资源与动作授权</text>
+          <rect x="1000" y="221" width="205" height="58" class="box-ee"></rect>
+          <text x="1102" y="246" class="block-label">SSO / SAML / LDAP</text><text x="1102" y="265" class="block-sub">企业身份集成</text>
+
+          <path d="M710 315 L710 341" class="line"></path>
+          <rect x="24" y="343" width="1372" height="220" class="layer"></rect>
+          <text x="46" y="374" class="layer-title">3. Agent Harness 控制平面</text>
+          <text x="46" y="394" class="layer-subtitle">受控决策、执行、状态与恢复</text>
+          <rect x="250" y="366" width="190" height="62" class="box-target"></rect>
+          <text x="345" y="392" class="block-label">Harness Facade</text><text x="345" y="412" class="block-sub">统一编排入口</text>
+          <rect x="465" y="366" width="190" height="62" class="box-target"></rect>
+          <text x="560" y="392" class="block-label">Context Builder</text><text x="560" y="412" class="block-sub">身份 / 预算 / 信任区</text>
+          <rect x="680" y="366" width="200" height="62" class="box-target"></rect>
+          <text x="780" y="392" class="block-label">Agent Runtime</text><text x="780" y="412" class="block-sub">Pipeline / Supervisor</text>
+          <rect x="905" y="366" width="190" height="62" class="box-target"></rect>
+          <text x="1000" y="392" class="block-label">State / Checkpoint</text><text x="1000" y="412" class="block-sub">状态、取消与恢复</text>
+          <rect x="1120" y="366" width="210" height="62" class="box-target"></rect>
+          <text x="1225" y="392" class="block-label">Budget / Completion</text><text x="1225" y="412" class="block-sub">时间、步骤、成本</text>
+          <rect x="360" y="458" width="245" height="65" class="box-guard"></rect>
+          <text x="482" y="484" class="block-label">Decision / Permission Guard</text><text x="482" y="504" class="block-sub">动作、参数、权限、风险</text>
+          <rect x="630" y="458" width="245" height="65" class="box-guard"></rect>
+          <text x="752" y="484" class="block-label">Tool Guard / Executor</text><text x="752" y="504" class="block-sub">校验后执行：副作用、超时、重试、幂等</text>
+          <rect x="900" y="458" width="245" height="65" class="box-ee"></rect>
+          <text x="1022" y="484" class="block-label">Human-in-the-Loop</text><text x="1022" y="504" class="block-sub">L2/L3 审批与接管</text>
+
+          <path d="M710 563 L710 589" class="line"></path>
+          <rect x="24" y="591" width="1372" height="160" class="layer"></rect>
+          <text x="46" y="622" class="layer-title">4. 智能与能力层</text>
+          <text x="46" y="642" class="layer-subtitle">Models · Skills · Tools · MCP</text>
+          <rect x="250" y="615" width="205" height="64" class="box-target"></rect>
+          <text x="352" y="641" class="block-label">LLM Gateway</text><text x="352" y="661" class="block-sub">主 / 任务 / Embedding 模型</text>
+          <rect x="480" y="615" width="200" height="64" class="box-os"></rect>
+          <text x="580" y="641" class="block-label">Skill / Workflow</text><text x="580" y="661" class="block-sub">声明式流程与约束</text>
+          <rect x="705" y="615" width="205" height="64" class="box-os"></rect>
+          <text x="807" y="641" class="block-label">Tool / Skill Registry</text><text x="807" y="661" class="block-sub">版本化能力发现</text>
+          <rect x="935" y="615" width="195" height="64" class="box-os"></rect>
+          <text x="1032" y="641" class="block-label">MCP Client / Server</text><text x="1032" y="661" class="block-sub">外部能力接入</text>
+          <rect x="1155" y="615" width="185" height="64" class="box-os"></rect>
+          <text x="1247" y="641" class="block-label">Code Sandbox</text><text x="1247" y="661" class="block-sub">AST / 进程隔离 / 限额 / 超时</text>
+
+          <path d="M435 751 L435 777" class="line"></path>
+          <path d="M990 751 L990 777" class="line"></path>
+          <rect x="24" y="779" width="1372" height="128" class="layer"></rect>
+          <text x="46" y="810" class="layer-title">5. 知识、记忆与数据</text>
+          <text x="46" y="830" class="layer-subtitle">Knowledge · Memory · Data Platform</text>
+          <rect x="250" y="801" width="205" height="63" class="box-os"></rect>
+          <text x="352" y="827" class="block-label">RAG Ingestion</text><text x="352" y="847" class="block-sub">解析 / OCR / 切分 / Embedding</text>
+          <rect x="480" y="801" width="230" height="63" class="box-os"></rect>
+          <text x="595" y="827" class="block-label">Permission → Hybrid → Citation</text><text x="595" y="847" class="block-sub">检索内容为不可信资料</text>
+          <rect x="735" y="801" width="195" height="63" class="box-target"></rect>
+          <text x="832" y="827" class="block-label">Memory / Reflection</text><text x="832" y="847" class="block-sub">短期、长期与蒸馏</text>
+          <rect x="955" y="801" width="180" height="63" class="box-data"></rect>
+          <text x="1045" y="827" class="block-label">SQL / Object / Redis</text><text x="1045" y="847" class="block-sub">业务与运行数据</text>
+          <rect x="1160" y="801" width="180" height="63" class="box-data"></rect>
+          <text x="1250" y="827" class="block-label">VectorStore</text><text x="1250" y="847" class="block-sub">Local；Milvus 待 ADR</text>
+
+          <path d="M752 523 L1247 523 L1247 615" class="line dash"></path>
+          <text x="1020" y="515" class="small-label">代码动作 → 沙箱</text>
+          <path d="M710 907 L710 933" class="line"></path>
+          <rect x="24" y="935" width="1372" height="250" class="layer"></rect>
+          <text x="46" y="966" class="layer-title">6. 业务集成与横切治理</text>
+          <text x="46" y="986" class="layer-subtitle">Controlled Integration · Evaluation · Delivery</text>
+          <path d="M752 523 L752 930 L340 930 L340 1005" class="line dash"></path>
+          <text x="430" y="920" class="small-label">业务动作 → Adapter</text>
+          <rect x="230" y="1005" width="185" height="58" class="box-target"></rect>
+          <text x="322" y="1030" class="block-label">Adapter / Service</text><text x="322" y="1049" class="block-sub">禁止 Agent 直连业务数据</text>
+          <rect x="435" y="1005" width="165" height="58" class="box-target"></rect>
+          <text x="517" y="1030" class="block-label">Repository</text><text x="517" y="1049" class="block-sub">受控数据访问</text>
+          <rect x="620" y="1005" width="185" height="58" class="box-data"></rect>
+          <text x="712" y="1030" class="block-label">ERP / CRM / 企业 API</text><text x="712" y="1049" class="block-sub">受控外部系统集成</text>
+          <path d="M415 1034 H435 M600 1034 H620" class="line"></path>
+          <rect x="230" y="1090" width="185" height="58" class="box-guard"></rect>
+          <text x="322" y="1115" class="block-label">Security / Audit</text><text x="322" y="1134" class="block-sub">输入、输出、脱敏</text>
+          <rect x="435" y="1090" width="165" height="58" class="box-guard"></rect>
+          <text x="517" y="1115" class="block-label">Trace / Metrics</text><text x="517" y="1134" class="block-sub">日志、告警、可观测</text>
+          <rect x="620" y="1090" width="250" height="58" class="box-guard"></rect>
+          <text x="745" y="1115" class="block-label">Evaluation 测评</text><text x="745" y="1134" class="block-sub">RAG / Agent / Skill / Safety · 离线</text>
+          <rect x="890" y="1090" width="200" height="58" class="box-guard"></rect>
+          <text x="990" y="1115" class="block-label">CI/CD / Feature Flag</text><text x="990" y="1134" class="block-sub">回归、灰度、回滚</text>
+        </svg>
+      </div>
+      <p class="caption">架构约束：模型只能提出结构化动作。代码动作必须进入 Code Sandbox，不得在宿主进程执行。业务动作必须经 Adapter / Repository。测评是离线横切能力，不嵌入第 3 层 Harness 循环。</p>
+      <div class="facts"><strong>当前事实：</strong>本图是目标职责图。当前项目已具备部分 Pipeline、RAG、Tool/Skill、Memory、Security、Audit、Trace 与代码沙箱能力，但独立 Harness、Context Builder、Tool Executor、State Manager、持久化 Trace、结构化 Citation、版本化 Evaluation 和正式 Milvus 闭环仍需按治理路线渐进收敛。</div>
+      <div class="facts">
+        <strong>架构图文本说明：</strong>
+        <ol>
+          <li>Web、API、社区 Channel 与 EE 企业 Channel 通过统一消息契约进入 Gateway。</li>
+          <li>Gateway 完成认证、RBAC、租户/资源 ACL、配额与请求追踪后，才将请求交给 Harness。</li>
+          <li>Harness（第 3 层）只负责编排：Context、Runtime、State、预算、Guard 与 HITL。它不包含沙箱运行时，也不执行测评。</li>
+          <li>Runtime 从模型、Skill/Workflow、Tool Registry 与 MCP 获取能力；RAG/Memory 在权限过滤后提供不可信上下文。</li>
+          <li>代码动作经 Tool Guard 后进入第 4 层 Code Sandbox（AST 白名单、进程隔离、资源限额、超时 Kill）。</li>
+          <li>业务动作经 Adapter/Service 与 Repository 访问 ERP/CRM/企业 API，禁止 Agent 直连数据库或遗留系统。</li>
+          <li>Evaluation 测评位于第 6 层横切治理：离线消费 Trace 与 Gold/Silver/Adversarial 数据集，覆盖 RAG、Agent、Skill 与 Safety；不阻塞单次用户请求。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section>
+      <h2>关键请求时序图：从用户请求到受控完成</h2>
+      <p class="note">展示目标运行时的主路径，以及风险动作进入人工审批的分支。RAG、网页、Tool/MCP 返回均以不可信内容处理。</p>
+      <div class="diagram">
+        <svg viewBox="0 0 1420 1180" role="img" aria-labelledby="sequence-title sequence-desc">
+          <title id="sequence-title">Agent Harness 请求生命周期时序图</title>
+          <desc id="sequence-desc">用户请求经网关进入 Harness。Runtime 提出结构化动作后，Guard 校验权限与风险。代码动作进入沙箱四层隔离；业务动作进入 Adapter。高风险动作先人工审批。请求完成后输出安全检查与流式响应。测评离线消费 Trace，不在请求主路径上。</desc>
+          <defs>
+            <marker id="arrow-seq" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"></path>
+            </marker>
+          </defs>
+          <text x="710" y="34" class="svg-title" text-anchor="middle">Agent Harness 受控执行生命周期（TARGET）</text>
+
+          <rect x="45" y="62" width="125" height="46" class="box-os"></rect><text x="107" y="91" class="lane-title">用户 / Channel</text>
+          <rect x="220" y="62" width="125" height="46" class="box-os"></rect><text x="282" y="91" class="lane-title">Gateway / 身份</text>
+          <rect x="395" y="62" width="145" height="46" class="box-target"></rect><text x="467" y="91" class="lane-title">Agent Harness</text>
+          <rect x="590" y="62" width="135" height="46" class="box-target"></rect><text x="657" y="91" class="lane-title">Runtime / 模型</text>
+          <rect x="775" y="62" width="125" height="46" class="box-os"></rect><text x="837" y="91" class="lane-title">RAG / Memory</text>
+          <rect x="950" y="62" width="125" height="46" class="box-guard"></rect><text x="1012" y="91" class="lane-title">Guard / Executor</text>
+          <rect x="1125" y="62" width="115" height="46" class="box-ee"></rect><text x="1182" y="91" class="lane-title">人工审批</text>
+          <rect x="1275" y="62" width="115" height="46" class="box-os"></rect><text x="1332" y="91" class="lane-title">沙箱 / 业务</text>
+
+          <path d="M107 108 V1120 M282 108 V1120 M467 108 V1120 M657 108 V1120 M837 108 V1120 M1012 108 V1120 M1182 108 V1120 M1332 108 V1120" class="lifeline"></path>
+
+          <path d="M107 145 H282" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="177" y="137" class="step-label">1. 发送消息 / API 请求</text>
+          <rect x="274" y="150" width="16" height="68" class="activation"></rect>
+          <path d="M282 185 H467" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="332" y="177" class="step-label">2. JWT、角色、租户、限流</text>
+          <text x="332" y="202" class="step-note">拒绝时返回脱敏错误与 request_id</text>
+
+          <rect x="459" y="222" width="16" height="135" class="activation"></rect>
+          <path d="M467 244 H837" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="572" y="236" class="step-label">3. 构建 Context：身份、任务、预算、会话、记忆</text>
+          <rect x="829" y="250" width="16" height="70" class="activation"></rect>
+          <path d="M837 280 H467" class="line dash" marker-end="url(#arrow-seq)"></path>
+          <text x="570" y="272" class="step-label">4. 返回权限过滤后的 RAG / Memory Context</text>
+          <text x="570" y="298" class="step-note">来源与信任等级随上下文传递；资料内指令不可执行</text>
+
+          <path d="M467 350 H657" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="520" y="342" class="step-label">5. 调用 Runtime（结构化 Action）</text>
+          <rect x="649" y="357" width="16" height="165" class="activation"></rect>
+          <path d="M657 392 H1012" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="762" y="384" class="step-label">6. 提交 Tool / MCP Action</text>
+          <text x="762" y="410" class="step-note">模型不直接执行副作用</text>
+
+          <rect x="1004" y="417" width="16" height="270" class="activation"></rect>
+          <path d="M1012 442 H1182" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="1054" y="434" class="step-label">7. 风险、权限、参数校验</text>
+          <rect x="1155" y="462" width="152" height="130" class="alt"></rect>
+          <text x="1168" y="486" class="guard-note">ALT：L2/L3 或策略要求审批</text>
+          <path d="M1012 512 H1182" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="1056" y="504" class="step-label">创建审批请求</text>
+          <path d="M1182 555 H1012" class="line dash" marker-end="url(#arrow-seq)"></path>
+          <text x="1050" y="547" class="step-label">批准 / 拒绝（绑定主体、参数哈希、有效期）</text>
+          <text x="1168" y="578" class="step-note">拒绝则终止动作并记录审计</text>
+
+          <rect x="1048" y="600" width="272" height="118" class="alt"></rect>
+          <text x="1060" y="622" class="guard-note">ALT：按动作类型分流执行</text>
+          <path d="M1012 648 H1332" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="1048" y="640" class="step-label">8a. 代码动作 → Code Sandbox</text>
+          <text x="1048" y="668" class="step-note">AST 白名单 / 进程隔离 / 资源限额 / 超时 Kill</text>
+          <path d="M1012 690 H1332" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="1048" y="682" class="step-label">8b. 业务动作 → Adapter / 外部系统</text>
+          <text x="1048" y="708" class="step-note">禁止 Agent 直连数据库或遗留系统</text>
+
+          <path d="M1332 740 H1012" class="line dash" marker-end="url(#arrow-seq)"></path>
+          <text x="1048" y="732" class="step-label">9. 返回受限结果 / 错误模型</text>
+          <path d="M1012 780 H657" class="line dash" marker-end="url(#arrow-seq)"></path>
+          <text x="720" y="772" class="step-label">10. Tool Result + Trace；Runtime 继续或完成</text>
+
+          <path d="M657 828 H467" class="line dash" marker-end="url(#arrow-seq)"></path>
+          <text x="480" y="820" class="step-label">11. 最终答案、Citation、状态与预算</text>
+          <path d="M467 870 H282" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="300" y="862" class="step-label">12. 输出安全检查、持久化、审计</text>
+          <path d="M282 915 H107" class="line" marker-end="url(#arrow-seq)"></path>
+          <text x="125" y="907" class="step-label">13. SSE 流式结果 / 最终状态</text>
+          <path d="M467 965 H837" class="line dash" marker-end="url(#arrow-seq)"></path>
+          <text x="500" y="957" class="step-label">14. Trace 异步进入 Evaluation（不阻塞响应）</text>
+          <text x="500" y="978" class="step-note">离线：Gold/Silver/对抗集 · RAG/Agent/Skill/Safety</text>
+
+          <rect x="250" y="1005" width="920" height="76" class="box-guard"></rect>
+          <text x="710" y="1033" class="block-label">横切证据：request_id → trace_id → step_id；沙箱执行摘要；输入/输出脱敏；审计；超时、有限重试与预算</text>
+          <text x="710" y="1058" class="block-sub">测评不在第 3 层 Harness 循环内。失败不静默降级：沙箱拒绝、权限不足、审批拒绝和预算耗尽均以可追踪结果结束。</text>
+        </svg>
+      </div>
+      <p class="caption">目标执行语义：短路路径可跳过不需要的计划或工具步骤，但不得跳过身份、权限、Guard、沙箱隔离（代码动作）、审计和输出安全检查。测评在请求完成后异步进行。</p>
+      <div class="facts">
+        <strong>时序图文本说明：</strong>
+        <ol>
+          <li>用户通过 Channel 发送消息或 API 请求；Gateway 验证 JWT、角色、租户、资源权限和限流。</li>
+          <li>Harness 构建包含身份、任务、预算、会话、Memory 和权限过滤后 RAG 内容的 Context。</li>
+          <li>Runtime 基于 Context 生成结构化 Action，并提交给 Guard；模型本身不直接执行副作用。</li>
+          <li>Guard 验证动作的权限、风险与参数。需要审批的 L2/L3 动作创建绑定主体、参数哈希和有效期的审批请求；拒绝则终止并审计。</li>
+          <li>代码动作进入 Code Sandbox（AST / 进程隔离 / 资源限额 / 超时 Kill）；业务动作经 Adapter/Repository 访问外部系统。</li>
+          <li>Runtime 完成后，Harness 执行输出安全检查、持久化与审计，并经 Channel 返回用户。</li>
+          <li>Trace 异步进入 Evaluation。测评覆盖 RAG、Agent、Skill 与 Safety，不阻塞本次响应，也不属于第 3 层 Harness 控制循环。</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

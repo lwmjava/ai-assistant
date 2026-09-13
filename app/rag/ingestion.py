@@ -10,6 +10,9 @@ import re
 # 句末切分：保留中英文标点作为句子边界。
 _SENTENCE_RE = re.compile(r"[^。！？!?\n]+[。！？!?]?")
 
+# Markdown 标题：识别 1~6 级标题行，作为结构化切分的节边界。
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+
 
 def split_text(text: str, chunk_size: int = 500, chunk_overlap: int = 64) -> list[str]:
     """将文本切分为带重叠的分块列表。
@@ -56,4 +59,47 @@ def split_text(text: str, chunk_size: int = 500, chunk_overlap: int = 64) -> lis
 
     if buf:
         chunks.append(buf)
+    return [c.strip() for c in chunks if c.strip()]
+
+
+def _split_sections(text: str) -> list[tuple[str | None, str]]:
+    """按 Markdown 标题把文本切成「(标题, 正文)」节，无标题时标题为 None。"""
+    sections: list[tuple[str | None, str]] = []
+    current_heading: str | None = None
+    current_body: list[str] = []
+    for line in text.splitlines():
+        match = _HEADING_RE.match(line.strip())
+        if match:
+            sections.append((current_heading, "\n".join(current_body)))
+            current_heading = f"{match.group(1)} {match.group(2).strip()}"
+            current_body = []
+        else:
+            current_body.append(line)
+    sections.append((current_heading, "\n".join(current_body)))
+    return sections
+
+
+def split_text_structured(
+    text: str, chunk_size: int = 500, chunk_overlap: int = 64
+) -> list[str]:
+    """按 Markdown 结构切分，保留章节标题前缀；无标题时退化为普通切分。
+
+    每个标题下的正文先用 ``split_text`` 切分，再给每个子块拼上标题前缀，
+    使检索命中块时自带章节上下文。文本不含任何标题时直接退回 ``split_text``。
+    """
+    text = (text or "").strip()
+    if not text:
+        return []
+
+    sections = _split_sections(text)
+    if not any(heading for heading, _ in sections):
+        return split_text(text, chunk_size, chunk_overlap)
+
+    chunks: list[str] = []
+    for heading, body in sections:
+        body = body.strip()
+        if not body:
+            continue
+        for piece in split_text(body, chunk_size, chunk_overlap):
+            chunks.append(f"{heading}\n\n{piece}" if heading else piece)
     return [c.strip() for c in chunks if c.strip()]

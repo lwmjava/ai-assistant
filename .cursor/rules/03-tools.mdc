@@ -1,0 +1,30 @@
+---
+description: Tool 强契约、执行与副作用控制
+globs:
+  - "{src,app,lib,packages}/**/{tool,tools,executor,registry}/**/*"
+  - "**/*tool*.*"
+alwaysApply: false
+---
+
+# Tools
+
+## MUST
+
+- 每个 Tool 定义名称、描述、输入/输出 Schema、权限、风险等级、副作用、超时、错误模型、审计与版本。
+- 结构化校验输入，返回稳定、可追踪、可解析的结果和分类错误。
+- 写操作使用请求 ID 或业务幂等键，明确重试、冲突、补偿/回滚语义。
+- Executor 在执行前校验权限、风险和参数，在执行后记录审计与 Trace。
+
+## SHOULD
+
+- Tool 保持原子、可组合、供应商无关；通过 Service/Repository 访问业务系统。
+
+## NEVER
+
+- 让 Agent 拼接 SQL、直接连接数据库或调用未注册能力。
+- 将内部堆栈、密钥或未脱敏敏感数据作为错误返回。
+- 对非幂等写操作盲目重试。
+
+## 验证证据
+
+提供契约测试、Schema 失败、权限拒绝、重复请求、超时和上游故障测试结果。

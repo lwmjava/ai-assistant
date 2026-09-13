@@ -6,8 +6,8 @@
 - ``get_session``：FastAPI 依赖，按请求提供数据库会话。
 """
 
-from collections.abc import Generator
 import os
+from collections.abc import Generator
 
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -40,11 +40,13 @@ def init_db(*, auto_migrate: bool = True) -> None:
         auto_migrate: 是否在启动时自动执行 Alembic 迁移（默认 True）。
     """
     # 导入模型以注册表结构（Side-effect import）。
-    from app.models import user  # noqa: F401
-    from app.models import conversation  # noqa: F401
-    from app.models import rag  # noqa: F401
-    from app.models import workflow  # noqa: F401
     from app.audit import models as _audit_models  # noqa: F401
+    from app.models import (
+        conversation,  # noqa: F401
+        rag,  # noqa: F401
+        user,  # noqa: F401
+        workflow,  # noqa: F401
+    )
 
     # 1. 创建表（SQLModel.metadata.create_all 幂等）
     SQLModel.metadata.create_all(engine)
@@ -54,6 +56,9 @@ def init_db(*, auto_migrate: bool = True) -> None:
         from app.core.migration import auto_migrate as _auto_migrate
 
         _auto_migrate()
+    from app.core.migration import _ensure_rag_schema_columns
+
+    _ensure_rag_schema_columns()
 
 
 def get_session() -> Generator[Session, None, None]:

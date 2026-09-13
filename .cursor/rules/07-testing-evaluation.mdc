@@ -1,0 +1,29 @@
+---
+description: 分层测试、Agent Evaluation 与真实业务回归
+globs:
+  - "{test,tests,eval,evals,evaluation,benchmarks}/**/*"
+  - "**/*{test,spec,eval}*.*"
+alwaysApply: false
+---
+
+# Testing and Evaluation
+
+## MUST
+
+- 按影响选择单元、契约、集成、Agent、RAG、安全、E2E 和回归测试。
+- Prompt、模型、Tool、Skill、RAG、状态机、Guardrail 或 Harness 变化必须新增/更新 Evaluation Case。
+- 使用脱敏或合成但具代表性的真实业务回归集，覆盖成功、拒绝、异常、恢复、HITL 和租户隔离。
+- 固定并记录数据集、Prompt、模型、Tool 和评测器版本；设置可解释质量门禁。
+
+## SHOULD
+
+- 跟踪任务成功率、工具选择/参数准确率、答案/引用正确性、安全违规率、步骤、延迟、成本和升级率。
+
+## NEVER
+
+- 删除失败用例、降低阈值或只挑选成功样本来制造通过结果。
+- 用 Mock 全绿替代必要的真实集成或业务回归。
+
+## 验证证据
+
+提交可复现命令、数据集版本、基线/候选指标、失败样本与回归差异报告。

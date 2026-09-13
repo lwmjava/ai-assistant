@@ -1,8 +1,11 @@
 # RAG 多技术栈后端接入方案
 
-- 分支：`feat/rag-backend`（自 `main` 切出）
-- 状态：**提交 1–3 已完成**（native / LangChain / LlamaIndex 三套骨架）
+> **当前状态（2026-09-13）**：本文是 2026-09-03 的历史方案，不是现行基线。`feat/rag-backend` 已合入 `main`。现行默认 `RAG_BACKEND=native`、`RAG_VECTOR_STORE=local`、`RAG_ENABLED=false`。LangChain / LlamaIndex 为可选适配。评测基线见 `tasks.yaml` 的 `RAG-004` / `RAG-005`，不得用本文宣称检索质量。
+
+- 分支：`feat/rag-backend`（自 `main` 切出，已合入）
+- 状态：**提交 1–3 已完成**（native / LangChain / LlamaIndex 三套骨架）；现行默认仍是 `native`
 - 记录时间：2026-09-03
+- 对账时间：2026-09-13
 - 已确认默认（开工）：
   - 请求级覆盖：全局配置 + ingest/search **请求体可选字段**，不用 header
   - 配置值：仅 `native` / `langchain` / `llamaindex`，**不加 `auto`**

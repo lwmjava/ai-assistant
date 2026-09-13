@@ -26,7 +26,7 @@
 - **流式与非流式双模式**：支持 SSE 流式增量输出（逐字推送 + 阶段进度广播），也支持一次性返回。
 - **原生 MCP 协议**：作为 AI 与企业系统的「万能连接器」，将 MCP 服务器工具动态注入 Agent 工具箱。
 - **多 LLM 提供商**：DeepSeek / OpenAI 兼容接口 / Ollama 本地部署 / Mock 离线占位，默认适配 DeepSeek，无 API Key 时自动降级为 Mock。
-- **灵活向量库**：本地模式（SQLite + numpy，零额外依赖）或生产模式（Milvus 分布式）。
+- **灵活向量库**：默认 Local（SQLite + numpy，零额外依赖）。Milvus 为可选适配（Partial），正式生产支持级别待 VectorStore ADR 与摄取/检索/删除闭环证据。
 - **企业级安全**：JWT 双令牌（access + refresh）、RBAC 五级角色权限矩阵、多租户数据隔离。
 
 ## 架构概览
@@ -315,6 +315,7 @@ docker compose up -d --build
 | `RAG_OCR_API_KEY` | 云 OCR API Key（优先于 LLM 配置） | — |
 | `RAG_OCR_MODEL` | 云 OCR 模型名（优先于 LLM 配置） | — |
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |
+| `EMBEDDING_BATCH_SIZE` | 单次嵌入请求的文本条数（DashScope v3/v4 上限 10） | `10` |
 | `MCP_ENABLED` | 是否启用 MCP 客户端 | `false` |
 | `MCP_SERVERS` | MCP 服务器清单（JSON 数组） | — |
 | `WORKFLOW_ENABLED` | 是否启用工作流引擎 | `false` |
@@ -427,10 +428,13 @@ mypy app/
 | 文档 | 用途 |
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | 当前代码事实、分层边界、AI 协作规则 |
+| [`tasks.yaml`](tasks.yaml) | 当前任务契约、状态和允许/禁止路径 |
+| [`docs/product/as-is-capability-matrix.md`](docs/product/as-is-capability-matrix.md) | 当前能力状态、证据和文档漂移 |
 | [`docs/product/项目产品需求方案.md`](docs/product/项目产品需求方案.md) | 产品目标、TARGET 架构/时序/能力清单 |
 | [`docs/architecture/target-agent-harness-architecture.html`](docs/architecture/target-agent-harness-architecture.html) | 最终架构图与时序图可视化 |
 | [`docs/governance/agent-harness-engineering.md`](docs/governance/agent-harness-engineering.md) | Harness 治理与渐进提取顺序 |
 | [`docs/AI辅助开发迭代指导.md`](docs/AI辅助开发迭代指导.md) | 当前推进顺序与 Evaluation 要求 |
+| [`docs/ai-prompts/README.md`](docs/ai-prompts/README.md) | 可复制的项目任务提示词 |
 | [`docs/checklists/anti-drift-checklist.md`](docs/checklists/anti-drift-checklist.md) | 防漂移审查 |
 
 当 README、PRD 与代码不一致时，以代码和测试证据为当前事实，以 PRD §3.1 为目标边界，并记录漂移，不得静默选一方。

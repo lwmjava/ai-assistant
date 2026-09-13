@@ -86,6 +86,8 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-v3"  # 千问通用向量模型
     # 必须与模型实际返回维度一致：text-embedding-v3 默认 1024（可选 1024/768/512）
     EMBEDDING_DIM: int = 1024
+    # 单次 /embeddings 请求的文本条数。DashScope text-embedding-v3/v4 上限为 10。
+    EMBEDDING_BATCH_SIZE: int = 10
 
     # ── 向量库与检索 ──
     RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus

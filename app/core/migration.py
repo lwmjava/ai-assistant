@@ -160,6 +160,7 @@ def _ensure_rag_schema_columns() -> None:
     from app.core.database import engine
 
     expected_columns = {
+        "storage_path": "ALTER TABLE rag_documents ADD COLUMN storage_path VARCHAR",
         "source_kind": "ALTER TABLE rag_documents ADD COLUMN source_kind VARCHAR NOT NULL DEFAULT 'file'",
         "source_uri": "ALTER TABLE rag_documents ADD COLUMN source_uri VARCHAR",
         "content_hash": "ALTER TABLE rag_documents ADD COLUMN content_hash VARCHAR",
@@ -253,6 +254,43 @@ def stamp(target: str = "head") -> None:
     command.stamp(cfg, target)
 
 
+_HEAD_RAG_TABLES = {
+    "rag_import_batches",
+    "rag_import_jobs",
+    "rag_import_job_traces",
+}
+
+
+def _later_rag_tables_exist() -> bool:
+    """判断 create_all 是否已经建出导入平台相关表。
+
+    开发库常见状态：``alembic_version`` 仍停在旧修订，但 ``SQLModel.metadata.create_all``
+    已把后续迁移要创建的表建好。此时再执行 ``create_table`` 会在 SQLite 上锁等待或失败。
+    """
+    from app.core.database import engine
+
+    with engine.connect() as conn:
+        tables = set(inspect(conn).get_table_names())
+    return _HEAD_RAG_TABLES.issubset(tables)
+
+
+def _stamp_if_schema_already_at_head() -> bool:
+    """若库结构已达到 head 对应对象，则只标记版本、不重跑 DDL。"""
+    current = get_current_revision()
+    head = get_head_revision()
+    if current == head:
+        return False
+    if not _later_rag_tables_exist():
+        return False
+    logger.warning(
+        "检测到 RAG 导入平台表已存在但 Alembic 修订落后，改为标记到 head: current=%s head=%s",
+        current,
+        head,
+    )
+    stamp(head)
+    return True
+
+
 def auto_migrate() -> bool:
     """应用启动时自动执行迁移。
 
@@ -264,6 +302,7 @@ def auto_migrate() -> bool:
     """
     if not settings.is_production:
         _stamp_legacy_unversioned_schema()
+    _stamp_if_schema_already_at_head()
     pending = get_pending_migrations()
     if not pending:
         _ensure_rag_schema_columns()
@@ -271,6 +310,9 @@ def auto_migrate() -> bool:
         return True
 
     logger.info("检测到 %d 个待迁移版本：%s", len(pending), pending)
+    from app.core.database import engine
+
+    engine.dispose()
     try:
         upgrade("head")
         _ensure_rag_schema_columns()

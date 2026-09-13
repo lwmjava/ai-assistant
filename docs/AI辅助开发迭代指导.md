@@ -695,15 +695,15 @@ AI 完成后必须：
 
 ## 13. 当前下一步
 
-按顺序执行：
+按 `tasks.yaml` 顺序执行：
 
-1. 对账并修订 `AGENTS.md`、产品方案和设计方案。
-2. 形成知识库权限 ADR。
-3. 形成正式 VectorStore ADR。
-4. 定义 Evaluation Case Schema。
-5. 从现有知识资料生成 Silver/Adversarial 候选集。
+1. `GOV-001`：治理文件项目化（已完成，见 `tasks.yaml`）。
+2. `RAG-001`：对账产品/设计方案，输出 As-Is 能力矩阵（进行中/待关单）。
+3. `RAG-002`：形成知识库权限 ADR。
+4. `RAG-003`：形成正式 VectorStore ADR。
+5. `RAG-004`：定义 Evaluation Case Schema，并生成 Silver/Adversarial 候选集。
 6. 独立校验并人工确认 Gold v0.1。
-7. 实现并运行 RAG baseline。
-8. 再进入权限、安全、Milvus/Local 主链和 Context 修复。
+7. `RAG-005`：实现并运行 RAG baseline。
+8. `RAG-006`：再进入权限、安全、正式 VectorStore 主链和 Context 修复。
 
-在第 7 步完成前，不进入无指标的检索调参。
+在 `RAG-005` 完成前，不进入无指标的检索调参。`GOV-001` 不决定知识库权限模式或生产 VectorStore。

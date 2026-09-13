@@ -219,6 +219,39 @@ async def test_ingest_uses_paragraph_strategy_metadata(session: Session) -> None
     assert all(c.strategy == "paragraph" for c in rows)
 
 
+async def test_ingest_rolls_back_document_when_embedding_fails(session: Session) -> None:
+    """嵌入失败时不得留下 chunk_count=0 的文档行。"""
+    from collections.abc import Sequence
+
+    from app.models.rag import Document
+    from app.rag.embeddings.base import EmbeddingProvider
+
+    class BoomEmbedding(EmbeddingProvider):
+        async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+            raise RuntimeError("embedding down")
+
+    tenant_id = "boom-tenant"
+    rag = RAGService(session, tenant_id, embedding_provider=BoomEmbedding())
+    with pytest.raises(RuntimeError, match="embedding down"):
+        await rag.ingest_text(
+            "嵌入失败时整篇文档应回滚，避免只落主记录。",
+            title="回滚",
+            source="boom",
+            user_id="boom-user",
+        )
+
+    leftover_docs = list(
+        session.exec(select(Document).where(Document.tenant_id == tenant_id)).all()
+    )
+    leftover_chunks = list(
+        session.exec(
+            select(DocumentChunk).where(DocumentChunk.tenant_id == tenant_id)
+        ).all()
+    )
+    assert leftover_docs == []
+    assert leftover_chunks == []
+
+
 async def test_ingest_parsed_document_uses_format_aware_blocks(session: Session) -> None:
     """结构化摄取在指定 format_aware 时应保留块级 metadata。"""
     from app.rag.document_parsers.base import ParsedBlock, ParsedDocument
@@ -653,6 +686,64 @@ def test_search_endpoint(client: TestClient) -> None:
 def test_search_empty_query(client: TestClient) -> None:
     resp = client.post("/api/rag/search", json={"query": "  "})
     assert resp.status_code == 400
+
+
+async def test_hybrid_search_skips_mismatched_embedding_dimensions(
+    session: Session,
+) -> None:
+    """同租户混维向量不得让检索 500，只召回与查询同维的分块。"""
+    import json
+
+    from app.models.rag import Document
+    from app.rag.vectorstore.local import LocalVectorStore
+
+    tenant_id = "mix-dim-tenant"
+    doc = Document(tenant_id=tenant_id, user_id="mix-user", title="混维", chunk_count=2)
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+
+    session.add(
+        DocumentChunk(
+            tenant_id=tenant_id,
+            document_id=doc.id,
+            chunk_index=0,
+            content="兼容维度应被召回",
+            source="ok",
+            embedding=json.dumps([1.0, 0.0, 0.0, 0.0]),
+            tokens=json.dumps(["兼容", "维度"]),
+        )
+    )
+    session.add(
+        DocumentChunk(
+            tenant_id=tenant_id,
+            document_id=doc.id,
+            chunk_index=1,
+            content="旧维度不应让检索崩溃",
+            source="old",
+            embedding=json.dumps([1.0, 0.0]),
+            tokens=json.dumps(["旧", "维度"]),
+        )
+    )
+    session.commit()
+
+    hits = await LocalVectorStore(session).hybrid_search(
+        query_embedding=[1.0, 0.0, 0.0, 0.0],
+        query_tokens=["兼容"],
+        tenant_id=tenant_id,
+        top_k=5,
+    )
+    assert hits
+    assert any("兼容维度" in hit.content for hit in hits)
+    assert all("旧维度不应" not in hit.content for hit in hits)
+
+    empty = await LocalVectorStore(session).hybrid_search(
+        query_embedding=[0.0, 1.0, 0.0],
+        query_tokens=["兼容"],
+        tenant_id=tenant_id,
+        top_k=5,
+    )
+    assert empty == []
 
 
 # ── 管线接线 ──────────────────────────────────────

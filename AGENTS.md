@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-09-12  
+> 最后更新：2026-09-13
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -31,8 +31,10 @@
 按任务追加：
 
 - 产品需求：`docs/product/项目产品需求方案.md`
-- 设计方案：`docs/product/项目设计方案.md`
-- 已批准计划/ADR：`docs/plans/`、`docs/adr/`（如存在）
+- 设计方案：`docs/product/项目设计方案.md`（历史稿，先读 As-Is 矩阵）
+- 当前能力矩阵：`docs/product/as-is-capability-matrix.md`
+- ADR：`docs/adr/`（尚无已批准决策，不得把目录存在当成已决策）
+- 已批准计划：`docs/plans/`
 - AI 提示词：`docs/ai-prompts/`
 - 开发流程：`docs/workflows/`
 - 审查门禁：`docs/checklists/`
@@ -345,17 +347,17 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 ## 14. 当前推进顺序
 
 ```text
-文档事实对账
-→ 知识库权限 ADR
-→ 正式 VectorStore ADR
-→ Evaluation Case Schema
-→ Silver/Adversarial 候选
+GOV-001 治理文件项目化
+→ RAG-001 文档事实对账
+→ RAG-002 知识库权限 ADR
+→ RAG-003 正式 VectorStore ADR
+→ RAG-004 Evaluation Case Schema 与 Silver/Adversarial
 → 独立校验和人工 Gold v0.1
-→ RAG baseline
-→ P0 权限/安全/Context/VectorStore 修复
+→ RAG-005 RAG baseline
+→ RAG-006 P0 权限/安全/Context/VectorStore 修复
 → 单变量 RAG 优化
 → Citation
 → 渐进提取 Context Builder、Tool Executor 和 Harness
 ```
 
-在完成 RAG baseline 前，不进入无指标检索调参。
+在完成 `RAG-005` 前，不进入无指标检索调参。详细任务以 `tasks.yaml` 为准。

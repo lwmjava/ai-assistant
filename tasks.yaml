@@ -3,8 +3,8 @@ schema_version: "1.0"
 project:
   name: "ai-assistant"
   mode: "brownfield"
-  repository: "<repo-root>"
-  branch_baseline: "feat/rag-optimize"
+  repository: "https://github.com/lwmjava/ai-assistant"
+  branch_baseline: "main"
   rules:
     - "AGENTS.md"
     - ".cursor/rules/"
@@ -13,6 +13,7 @@ project:
   product_docs:
     - "docs/product/项目产品需求方案.md"
     - "docs/product/项目设计方案.md"
+    - "docs/product/as-is-capability-matrix.md"
   workflows:
     - "docs/workflows/end-to-end-development.md"
     - "docs/workflows/nightly-autonomous-development.md"
@@ -51,18 +52,22 @@ risk_policy:
 tasks:
   - id: "GOV-001"
     title: "项目化 Agent Harness 治理文件"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     depends_on: []
     context:
-      problem: "通用模板已复制进项目，但文件名、引用、项目事实和命令未完全项目化。"
+      problem: "通用 Agent Harness 模板复制进仓库后，引用路径、任务状态枚举、仓库基线、文档入口和当前/目标能力区分必须与 ai-assistant 一致。"
       facts:
+        - claim: "唯一规则入口已是 AGENTS.md，原 AGENT.md 已删除。"
+          evidence: "AGENTS.md；git show d3bfe75 --stat"
         - claim: "项目同时包含FastAPI后端和React前端。"
           evidence: "pyproject.toml；frontend/package.json"
         - claim: "默认Agent编排为self，默认RAG为native+local且RAG默认关闭。"
           evidence: "app/core/config.py"
-        - claim: "项目已有Cursor Rules，但其全局规则要求读取AGENTS.md。"
-          evidence: ".cursor/rules/00-global.mdc"
+        - claim: "tasks.yaml 状态枚举不含 ready_for_planning。"
+          evidence: "tasks.yaml status_values"
+        - claim: "当前代码基线是 main，远程仓库是 lwmjava/ai-assistant。"
+          evidence: "git remote -v；project.branch_baseline"
     scope:
       allowed_paths:
         - "AGENTS.md"
@@ -115,7 +120,7 @@ tasks:
 
   - id: "RAG-001"
     title: "建立代码与产品文档事实基线"
-    status: "ready"
+    status: "in_review"
     priority: "P0"
     depends_on:
       - "GOV-001"
@@ -126,6 +131,8 @@ tasks:
           evidence: "app/core/config.py；app/services/chat_service.py；app/agents/pipeline.py"
         - claim: "当前RAG支持多格式解析和多策略Chunking。"
           evidence: "app/rag/document_parsers/；app/rag/chunking/；tests/"
+        - claim: "As-Is能力矩阵和待决策ADR清单已从代码对账写出。"
+          evidence: "docs/product/as-is-capability-matrix.md；docs/adr/README.md"
     scope:
       allowed_paths:
         - "AGENTS.md"

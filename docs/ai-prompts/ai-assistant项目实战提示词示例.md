@@ -1,6 +1,6 @@
 # ai-assistant 项目实战提示词示例
 
-> 这些示例已按当前仓库 `<repo-root>` 的代码事实填写，可直接复制到 Cursor、Codex、Trae、WorkBuddy 或 ChatGPT。`<repo-root>` 指本仓库根目录，文中路径均为相对该根目录的路径。
+> 这些示例已按当前仓库根目录（https://github.com/lwmjava/ai-assistant）的代码事实填写，可直接复制到 Cursor、Codex、Trae、WorkBuddy 或 ChatGPT。文中路径均相对仓库根目录。
 > 使用前仍需确认本地分支、未提交改动和最新代码。涉及修改的提示词均要求先输出计划、人工确认后实施。
 
 ## 1. 当前事实
@@ -21,7 +21,7 @@ AI 必须重新读取代码确认这些事实仍然成立。
 ## 2. 提示词：重新建立项目事实基线
 
 ```text
-请对当前仓库 <repo-root> 做只读事实审计。
+请对当前仓库根目录做只读事实审计。
 不要修改任何文件。
 
 开始前读取：
@@ -82,7 +82,7 @@ AI 必须重新读取代码确认这些事实仍然成立。
 ## 4. 提示词：建立 RAG Evaluation 设计文档
 
 ```text
-请为当前仓库 <repo-root> 设计第一版RAG Evaluation。
+请为当前仓库根目录设计第一版RAG Evaluation。
 本轮只编写设计，不实现评测代码。
 
 先读取：
@@ -116,7 +116,7 @@ AI 必须重新读取代码确认这些事实仍然成立。
 ## 5. 提示词：从项目现有资料生成 RAG 候选集
 
 ```text
-请在当前仓库 <repo-root> 中盘点可用于
+请在当前仓库根目录中盘点可用于
 RAG Evaluation的现有资料和fixture。
 
 只读，不修改文件。
@@ -147,8 +147,7 @@ RAG Evaluation的现有资料和fixture。
 ```text
 你是独立RAG Evaluation审核者，不是候选数据生成者。
 
-仓库：
-<repo-root>
+仓库根目录：https://github.com/lwmjava/ai-assistant
 
 请重新读取原始知识资料、权限规则、版本规则和候选数据。
 不要根据候选答案自行补全事实。
@@ -170,7 +169,7 @@ RAG Evaluation的现有资料和fixture。
 ## 7. 提示词：实现 RAG Evaluation Harness
 
 ```text
-请在当前仓库 <repo-root> 中实现已批准的
+请在当前仓库根目录中实现已批准的
 RAG Evaluation Harness。
 
 开始前必须读取：

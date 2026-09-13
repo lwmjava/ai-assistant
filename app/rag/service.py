@@ -35,9 +35,6 @@ from app.rag.vectorstore.factory import get_vector_store
 
 logger = logging.getLogger(__name__)
 
-# 单次批量嵌入的最大文本数，避免超长文档一次性压垮嵌入接口。
-_EMBED_BATCH = 32
-
 Tokenizer = Callable[[str], list[str]]
 
 
@@ -113,58 +110,63 @@ class RAGService:
         if not chunk_objs:
             raise ValueError("文本为空或无法切分为任何分块")
 
-        document = Document(
-            tenant_id=self.tenant_id,
-            user_id=user_id,
-            title=title,
-            source=source,
-            storage_path=storage_path,
-            source_kind=source_kind or "file",
-            source_uri=source_uri,
-            content_hash=content_hash,
-            version_group_id=version_group_id or uuid.uuid4().hex,
-            version_number=version_number,
-            previous_document_id=previous_document_id,
-            import_job_id=import_job_id,
-            chunk_count=0,
-        )
-        self.session.add(document)
-        self.session.commit()
-        self.session.refresh(document)
-
-        chunk_rows: list[DocumentChunk] = []
-        parent_id_map: dict[str, str] = {}
-        for chunk_index, chunk in enumerate(chunk_objs):
-            # 手动生成主键，便于父块落库后直接回填子块的 parent_id，无需逐块 flush。
-            row_id = uuid.uuid4().hex
-            parent_id = None
-            if chunk.parent_id and chunk.parent_id in parent_id_map:
-                parent_id = parent_id_map[chunk.parent_id]
-            row = DocumentChunk(
-                id=row_id,
+        # 先做嵌入再开写事务：避免网络调用期间长时间占用 SQLite 写锁，
+        # 也避免「文档已提交、分块/向量失败」留下 chunk_count=0 的孤儿记录。
+        try:
+            embeddings = await self._embed_texts([chunk.text for chunk in chunk_objs])
+            document = Document(
                 tenant_id=self.tenant_id,
-                document_id=document.id,
-                chunk_index=chunk_index,
-                content=chunk.text,
+                user_id=user_id,
+                title=title,
                 source=source,
-                tokens=json.dumps(self._tokenizer(chunk.text), ensure_ascii=False),
-                strategy=strategy_name,
-                chunk_metadata=json.dumps(chunk.metadata, ensure_ascii=False)
-                if chunk.metadata
-                else None,
-                parent_id=parent_id,
+                storage_path=storage_path,
+                source_kind=source_kind or "file",
+                source_uri=source_uri,
+                content_hash=content_hash,
+                version_group_id=version_group_id or uuid.uuid4().hex,
+                version_number=version_number,
+                previous_document_id=previous_document_id,
+                import_job_id=import_job_id,
+                chunk_count=len(chunk_objs),
             )
-            if chunk.metadata.get("kind") == "parent":
-                parent_id_map[str(chunk.metadata.get("parent_key"))] = row_id
-            chunk_rows.append(row)
-            self.session.add(row)
+            self.session.add(document)
+            self.session.flush()
 
-        await self._embed_and_store(chunk_rows)
-        document.chunk_count = len(chunk_rows)
-        self.session.add(document)
-        self.session.commit()
-        self.session.refresh(document)
-        return document
+            parent_id_map: dict[str, str] = {}
+            for chunk_index, (chunk, vector) in enumerate(
+                zip(chunk_objs, embeddings, strict=True)
+            ):
+                # 手动生成主键，便于父块落库后直接回填子块的 parent_id，无需逐块 flush。
+                row_id = uuid.uuid4().hex
+                parent_id = None
+                if chunk.parent_id and chunk.parent_id in parent_id_map:
+                    parent_id = parent_id_map[chunk.parent_id]
+                metadata = chunk.metadata or {}
+                row = DocumentChunk(
+                    id=row_id,
+                    tenant_id=self.tenant_id,
+                    document_id=document.id,
+                    chunk_index=chunk_index,
+                    content=chunk.text,
+                    source=source,
+                    embedding=json.dumps(vector, ensure_ascii=False),
+                    tokens=json.dumps(self._tokenizer(chunk.text), ensure_ascii=False),
+                    strategy=strategy_name,
+                    chunk_metadata=json.dumps(metadata, ensure_ascii=False)
+                    if metadata
+                    else None,
+                    parent_id=parent_id,
+                )
+                if metadata.get("kind") == "parent":
+                    parent_id_map[str(metadata.get("parent_key"))] = row_id
+                self.session.add(row)
+
+            self.session.commit()
+            self.session.refresh(document)
+            return document
+        except Exception:
+            self.session.rollback()
+            raise
 
     async def ingest_text(
         self,
@@ -266,13 +268,14 @@ class RAGService:
         source = title or os.path.basename(path)
         return await self.ingest_text(text, source, source, user_id)
 
-    async def _embed_and_store(self, rows: list[DocumentChunk]) -> None:
-        for i in range(0, len(rows), _EMBED_BATCH):
-            batch = rows[i : i + _EMBED_BATCH]
-            vectors = await self._embedding.embed([r.content for r in batch])
-            for row, vec in zip(batch, vectors):
-                row.embedding = json.dumps(vec, ensure_ascii=False)
-        self.session.commit()
+    async def _embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """调用嵌入接口；分批由提供商按厂商上限处理，这里不触碰数据库事务。"""
+        vectors = await self._embedding.embed(texts)
+        if len(vectors) != len(texts):
+            raise RuntimeError(
+                f"嵌入结果数量与文本数量不一致：texts={len(texts)} vectors={len(vectors)}"
+            )
+        return vectors
 
     # ── 检索 ────────────────────────────────────────
     async def search(

@@ -14,7 +14,7 @@ import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
 import { useDeleteDocument, useDocuments, useIngestDocument, useSearch, useUploadDocument } from '@/api/rag'
-import { ApiError } from '@/lib/http'
+import { ApiError, isSessionExpiredError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
@@ -59,6 +59,7 @@ function IngestModal({ open, onClose }: { open: boolean; onClose: () => void }) 
       reset()
       onClose()
     } catch (err) {
+      if (isSessionExpiredError(err)) return
       toast.error('摄取失败', err instanceof ApiError ? err.detail : undefined)
     }
   }
@@ -145,7 +146,7 @@ function SearchPanel() {
           </div>
         </div>
 
-        {search.error && (
+        {search.error && !isSessionExpiredError(search.error) && (
           <ErrorState error={search.error} onRetry={() => search.reset()} className="border-0 bg-transparent py-6" />
         )}
 
@@ -249,6 +250,7 @@ export default function KnowledgePage() {
       const doc = await upload.mutateAsync(file)
       toast.success('上传成功', `《${doc.title}》切分为 ${doc.chunk_count} 个分块`)
     } catch (err) {
+      if (isSessionExpiredError(err)) return
       toast.error('上传失败', err instanceof ApiError ? err.detail : undefined)
     } finally {
       if (fileRef.current) fileRef.current.value = ''
@@ -261,6 +263,7 @@ export default function KnowledgePage() {
       await remove.mutateAsync(pendingDelete.id)
       toast.success('文档已删除')
     } catch (err) {
+      if (isSessionExpiredError(err)) return
       toast.error('删除失败', err instanceof ApiError ? err.detail : undefined)
     } finally {
       setPendingDelete(null)

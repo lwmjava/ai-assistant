@@ -6,6 +6,7 @@ OpenAI 官方嵌入接口与 Ollama 暴露的 ``/v1/embeddings`` 接口格式一
 """
 
 import logging
+from collections.abc import Sequence
 
 import httpx
 
@@ -24,12 +25,14 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
         model: str,
         dim: int = 1024,
         timeout: float = 60.0,
+        batch_size: int = 10,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.dim = dim
         self.timeout = timeout
+        self.batch_size = max(1, batch_size)
 
     def _headers(self) -> dict:
         return {
@@ -37,19 +40,32 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
             "Content-Type": "application/json",
         }
 
-    async def embed(self, texts: list[str]) -> list[list[float]]:
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
         payload_texts = list(texts)
+        if not payload_texts:
+            return []
+        vectors: list[list[float]] = []
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.post(
-                f"{self.base_url}/embeddings",
-                headers=self._headers(),
-                json={"model": self.model, "input": payload_texts},
-            )
-            resp.raise_for_status()
-            data = resp.json()["data"]
-        # 接口可能乱序返回，按 index 排序以保证与输入对齐。
-        data_sorted = sorted(data, key=lambda d: d.get("index", 0))
-        vectors = [d["embedding"] for d in data_sorted]
+            for start in range(0, len(payload_texts), self.batch_size):
+                batch = payload_texts[start : start + self.batch_size]
+                resp = await client.post(
+                    f"{self.base_url}/embeddings",
+                    headers=self._headers(),
+                    json={"model": self.model, "input": batch},
+                )
+                if resp.is_error:
+                    logger.error(
+                        "嵌入接口失败: status=%s model=%s batch_size=%s body=%s",
+                        resp.status_code,
+                        self.model,
+                        len(batch),
+                        resp.text[:500],
+                    )
+                resp.raise_for_status()
+                data = resp.json()["data"]
+                # 接口可能乱序返回，按 batch 内 index 排序以保证与输入对齐。
+                data_sorted = sorted(data, key=lambda d: d.get("index", 0))
+                vectors.extend(item["embedding"] for item in data_sorted)
         self._validate_dimensions(vectors)
         return vectors
 

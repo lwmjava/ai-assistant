@@ -1,4 +1,6 @@
-/** HTTP 客户端：统一注入鉴权头、处理 401 自动刷新、把后端错误归一为 ApiError。 */
+/** HTTP 客户端：统一注入鉴权头、过期前主动刷新、401 兜底重试、把后端错误归一为 ApiError。 */
+
+import { shouldRefreshAccessToken } from '@/lib/access-token'
 
 /** 归一化后的 API 错误：保留状态码与后端 detail / 字段级校验信息。 */
 export class ApiError extends Error {
@@ -6,12 +8,21 @@ export class ApiError extends Error {
   readonly detail: string
   readonly payload: unknown
 
-  constructor(status: number, detail: string, payload?: unknown) {
+  /** 刷新令牌也失败，本地会话已清空，页面将跳转登录。 */
+  readonly sessionExpired: boolean
+
+  constructor(
+    status: number,
+    detail: string,
+    payload?: unknown,
+    sessionExpired = false,
+  ) {
     super(detail)
     this.name = 'ApiError'
     this.status = status
     this.detail = detail
     this.payload = payload
+    this.sessionExpired = sessionExpired
   }
 
   /** 模块未启用（后端以 503 门控工作流、MCP 等可选能力）。 */
@@ -27,6 +38,11 @@ export class ApiError extends Error {
   get isUnauthorized() {
     return this.status === 401
   }
+}
+
+/** 调用接口时会话已失效：应跳转登录，不要再弹业务失败提示。 */
+export function isSessionExpiredError(err: unknown): boolean {
+  return err instanceof ApiError && err.sessionExpired
 }
 
 const BASE = '/api'
@@ -144,6 +160,20 @@ function refreshOnce(): Promise<StoredAuth | null> {
   return refreshPromise
 }
 
+function expireSession(): never {
+  writeTokens(null)
+  onSessionExpired?.()
+  throw new ApiError(401, '登录状态已失效，请重新登录', undefined, true)
+}
+
+/** 请求前换票：过期或即将过期则先 refresh；换票失败视为调用时会话失效。 */
+async function ensureFreshAccessToken(): Promise<StoredAuth | null> {
+  const tokens = readTokens()
+  if (!tokens?.access_token) return tokens
+  if (!shouldRefreshAccessToken(tokens.access_token)) return tokens
+  return refreshOnce()
+}
+
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
   /** 上传文件时传 FormData，不做 JSON 序列化。 */
@@ -182,10 +212,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const finalHeaders = new Headers(headers)
 
   if (!anonymous) {
-    const tokens = readTokens()
-    if (tokens?.access_token) {
-      finalHeaders.set('Authorization', `Bearer ${tokens.access_token}`)
+    const tokens = await ensureFreshAccessToken()
+    if (!tokens?.access_token) {
+      expireSession()
     }
+    finalHeaders.set('Authorization', `Bearer ${tokens.access_token}`)
   }
   if (form) {
     // 交给浏览器设置 multipart boundary
@@ -204,9 +235,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (next) {
       return request<T>(path, { ...options, _retried: true })
     }
-    writeTokens(null)
-    onSessionExpired?.()
-    throw new ApiError(401, '登录状态已失效，请重新登录')
+    expireSession()
   }
 
   if (!res.ok) throw await parseError(res)

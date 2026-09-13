@@ -1,0 +1,450 @@
+schema_version: "1.0"
+
+project:
+  name: "ai-assistant"
+  mode: "brownfield"
+  repository: "<repo-root>"
+  branch_baseline: "feat/rag-optimize"
+  rules:
+    - "AGENTS.md"
+    - ".cursor/rules/"
+    - "docs/governance/agent-harness-engineering.md"
+    - "docs/AI辅助开发迭代指导.md"
+  product_docs:
+    - "docs/product/项目产品需求方案.md"
+    - "docs/product/项目设计方案.md"
+  workflows:
+    - "docs/workflows/end-to-end-development.md"
+    - "docs/workflows/nightly-autonomous-development.md"
+    - "docs/workflows/bugfix-and-incident.md"
+  checklists:
+    - "docs/checklists/anti-drift-checklist.md"
+    - "docs/checklists/morning-review-checklist.md"
+    - "docs/checklists/review-and-release-checklist.md"
+  commands:
+    backend_test: "pytest"
+    rag_test: "pytest tests/test_rag.py tests/test_rag_import_jobs.py tests/test_rag_backend.py tests/test_chunking.py -v"
+    lint: "ruff check ."
+    typecheck: "mypy app/"
+    frontend_install: "cd frontend; npm ci"
+    frontend_typecheck: "cd frontend; npm run typecheck"
+    frontend_build: "cd frontend; npm run build"
+  evidence_policy: "事实引用代码、配置、测试、Trace、数据或已批准文档；假设必须标记并给出验证动作。"
+  capacity_policy: "个人开发按理论产能的60%-70%排期，其余用于取证、联调、返工、审核和发布。"
+
+status_values:
+  - "backlog"
+  - "ready"
+  - "nightly_ready"
+  - "in_progress"
+  - "blocked"
+  - "in_review"
+  - "done"
+  - "cancelled"
+
+risk_policy:
+  L0: "授权后的只读、低敏操作"
+  L1: "低风险可逆写；需要鉴权、幂等和审计"
+  L2: "中风险或跨系统写；默认保守，必要时人工审批"
+  L3: "退款、删除、合同、财务、权限提升或不可逆敏感操作；必须人工审批"
+
+tasks:
+  - id: "GOV-001"
+    title: "项目化 Agent Harness 治理文件"
+    status: "in_review"
+    priority: "P0"
+    depends_on: []
+    context:
+      problem: "通用模板已复制进项目，但文件名、引用、项目事实和命令未完全项目化。"
+      facts:
+        - claim: "项目同时包含FastAPI后端和React前端。"
+          evidence: "pyproject.toml；frontend/package.json"
+        - claim: "默认Agent编排为self，默认RAG为native+local且RAG默认关闭。"
+          evidence: "app/core/config.py"
+        - claim: "项目已有Cursor Rules，但其全局规则要求读取AGENTS.md。"
+          evidence: ".cursor/rules/00-global.mdc"
+    scope:
+      allowed_paths:
+        - "AGENTS.md"
+        - "README.md"
+        - "tasks.yaml"
+        - "docs/AI辅助开发迭代指导.md"
+        - "docs/governance/"
+        - "docs/ai-prompts/"
+        - "docs/workflows/"
+        - "docs/checklists/"
+        - "docs/templates/evaluation-plan-template.md"
+        - "docs/RAG多后端接入方案.md"
+      forbidden_paths:
+        - "app/"
+        - "frontend/src/"
+        - "alembic/"
+        - "data/"
+        - ".env"
+      deliverables:
+        - "唯一规则入口AGENTS.md"
+        - "项目化治理规范、Prompt、Workflow和Checklist"
+        - "项目化Evaluation模板和任务清单"
+      non_goals:
+        - "不修改业务代码"
+        - "不决定知识库权限模式"
+        - "不决定生产VectorStore"
+    acceptance:
+      - "所有治理引用路径存在。"
+      - "YAML可以解析。"
+      - "Markdown无明显断链，git diff --check通过。"
+      - "当前能力和目标能力有明确区分。"
+    risk:
+      level: "L0"
+      side_effect: "documentation-only"
+      rollback: "回退本任务文档提交。"
+    evaluation:
+      cases:
+        - "文档路径和链接检查"
+        - "tasks.yaml语法检查"
+        - "防漂移清单复核"
+      commands:
+        - "git diff --check"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: true
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-001"
+    title: "建立代码与产品文档事实基线"
+    status: "ready"
+    priority: "P0"
+    depends_on:
+      - "GOV-001"
+    context:
+      problem: "产品需求、设计和历史RAG文档中存在目录、主路径、能力状态和默认配置漂移。"
+      facts:
+        - claim: "当前默认编排为自研AgentPipeline，LangGraph为可选Supervisor。"
+          evidence: "app/core/config.py；app/services/chat_service.py；app/agents/pipeline.py"
+        - claim: "当前RAG支持多格式解析和多策略Chunking。"
+          evidence: "app/rag/document_parsers/；app/rag/chunking/；tests/"
+    scope:
+      allowed_paths:
+        - "AGENTS.md"
+        - "README.md"
+        - "docs/product/"
+        - "docs/AI辅助开发迭代指导.md"
+        - "docs/governance/"
+      forbidden_paths:
+        - "app/"
+        - "frontend/src/"
+        - "data/"
+      deliverables:
+        - "As-Is能力矩阵"
+        - "产品/设计文档中的Implemented/Partial/Planned/Deferred状态"
+        - "仍需ADR决定的问题清单"
+      non_goals:
+        - "不修改实现"
+        - "不将愿景删除"
+        - "不把计划项改写成已实现"
+    acceptance:
+      - "前端、目录、Agent主路径、RAG格式和默认配置与代码一致。"
+      - "每个关键声明有代码、配置或测试证据。"
+      - "文档冲突被显式记录。"
+    risk:
+      level: "L0"
+      side_effect: "documentation-only"
+      rollback: "回退文档提交。"
+    evaluation:
+      cases:
+        - "docs/checklists/anti-drift-checklist.md"
+      commands:
+        - "git diff --check"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: true
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-002"
+    title: "确定知识库权限语义并形成ADR"
+    status: "blocked"
+    priority: "P0"
+    depends_on:
+      - "RAG-001"
+    context:
+      problem: "普通用户的文档列表可见性与租户级检索范围可能不一致。"
+      facts:
+        - claim: "列表、详情、检索和Agent Context必须采用一致且可解释的权限语义。"
+          evidence: "app/api/routes/rag.py；app/rag/service.py；app/rag/vectorstore/"
+      decisions_required:
+        - "选择租户共享知识库，或用户/资源ACL私有知识库。"
+    scope:
+      allowed_paths:
+        - "docs/adr/"
+        - "docs/product/"
+        - "docs/governance/"
+        - "tests/"
+      forbidden_paths:
+        - "生产数据"
+        - "未批准的数据迁移"
+      deliverables:
+        - "权限ADR"
+        - "列表/详情/搜索/Agent/删除/重解析权限矩阵"
+        - "跨用户和跨租户测试计划"
+      non_goals:
+        - "ADR批准前不修改权限实现"
+    acceptance:
+      - "产品负责人明确选择并记录理由。"
+      - "迁移、兼容、测试和回滚方案完整。"
+    risk:
+      level: "L2"
+      side_effect: "policy-and-potential-data-access-change"
+      approval: "需要产品/安全决策"
+      rollback: "保持现有实现，使用Feature Flag或兼容过滤。"
+    evaluation:
+      cases:
+        - "用户A上传、用户B同租户检索"
+        - "跨租户检索"
+        - "资源ACL允许/拒绝"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "知识库共享/私有产品决策"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-003"
+    title: "确定正式VectorStore并形成ADR"
+    status: "blocked"
+    priority: "P0"
+    depends_on:
+      - "RAG-001"
+    context:
+      problem: "默认使用Local，但项目同时声明Milvus能力；需明确当前正式支持级别。"
+      facts:
+        - claim: "默认RAG_VECTOR_STORE为local。"
+          evidence: "app/core/config.py"
+        - claim: "Milvus存在适配实现，但主摄取、更新和删除闭环需要真实集成证据。"
+          evidence: "app/rag/vectorstore/milvus.py；app/rag/service.py；tests/test_p0_regression.py"
+      decisions_required:
+        - "本阶段正式支持Local，或将Milvus作为生产目标。"
+    scope:
+      allowed_paths:
+        - "docs/adr/"
+        - "docs/product/"
+        - "docs/plans/"
+        - "tests/"
+      forbidden_paths:
+        - "生产Milvus"
+        - "生产数据"
+      deliverables:
+        - "VectorStore ADR"
+        - "能力支持矩阵"
+        - "摄取/检索/重解析/删除集成测试计划"
+      non_goals:
+        - "ADR批准前不切换默认VectorStore"
+    acceptance:
+      - "正式后端、实验后端和退出条件明确。"
+      - "性能、运维、迁移、兼容和回滚有证据计划。"
+    risk:
+      level: "L2"
+      side_effect: "architecture-and-index-choice"
+      approval: "需要技术决策"
+      rollback: "保留local默认和旧索引。"
+    evaluation:
+      cases:
+        - "摄取后可检索"
+        - "重解析后旧向量失效"
+        - "删除后向量清理"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "正式VectorStore技术决策"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-004"
+    title: "建立RAG Evaluation Schema和数据集v0.1"
+    status: "backlog"
+    priority: "P0"
+    depends_on:
+      - "RAG-001"
+      - "RAG-002"
+      - "RAG-003"
+    context:
+      problem: "没有版本化数据集，无法判断RAG优化是否有效。"
+      facts:
+        - claim: "现有pytest覆盖实现行为，但没有Recall/MRR/nDCG/Citation基线数据集。"
+          evidence: "tests/；docs/AI辅助开发迭代指导.md"
+    scope:
+      allowed_paths:
+        - "evals/"
+        - "tests/eval/"
+        - "docs/evaluations/"
+        - "docs/ai-prompts/"
+      forbidden_paths:
+        - "app/中的生产RAG行为"
+        - "未授权生产数据"
+      deliverables:
+        - "Case JSON Schema"
+        - "30-50条Silver/Adversarial候选"
+        - "独立校验报告"
+        - "人工Gold v0.1"
+        - "development/validation/holdout划分"
+      non_goals:
+        - "不实现Reranker"
+        - "不猜发布阈值"
+    acceptance:
+      - "可回答案例均有exact_quote和资料版本。"
+      - "Gold有人工审核记录。"
+      - "权限、安全、无答案、冲突和过期切片均有案例。"
+      - "Schema、引用和重复可以程序校验。"
+    risk:
+      level: "L1"
+      side_effect: "evaluation-data-write"
+      approval: "真实或脱敏数据进入数据集前需要数据授权"
+      rollback: "删除候选版本并保留前一数据集。"
+    evaluation:
+      cases:
+        - "数据Schema"
+        - "引用定位"
+        - "重复和split泄漏"
+        - "敏感数据扫描"
+      commands:
+        - "pytest tests/eval/ -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-005"
+    title: "实现并运行RAG baseline"
+    status: "backlog"
+    priority: "P0"
+    depends_on:
+      - "RAG-004"
+    context:
+      problem: "需要冻结配置并量化当前检索、引用、安全、延迟和成本。"
+      facts:
+        - claim: "开发默认可能使用Mock Embedding，不能用于生产质量结论。"
+          evidence: "app/core/config.py；app/rag/embeddings/"
+    scope:
+      allowed_paths:
+        - "evals/"
+        - "tests/eval/"
+        - "docs/evaluations/"
+        - "scripts/"
+      forbidden_paths:
+        - "未批准的生产RAG行为修改"
+        - "生产数据和密钥"
+      deliverables:
+        - "Recall@1/5/10、MRR、nDCG评分"
+        - "Citation和安全确定性评分"
+        - "baseline JSON和Markdown报告"
+        - "失败Case清单"
+      non_goals:
+        - "不在同一任务调优Chunking/Embedding/Rerank"
+        - "不使用Mock报告生产质量"
+    acceptance:
+      - "固定代码、数据集、Embedding、索引和参数版本。"
+      - "报告总体和关键风险切片。"
+      - "报告包含失败和未验证项。"
+      - "运行命令可重复。"
+    risk:
+      level: "L1"
+      side_effect: "test-index-and-report-write"
+      rollback: "删除候选报告和测试索引。"
+    evaluation:
+      metrics:
+        - "Recall@1/5/10"
+        - "MRR"
+        - "nDCG"
+        - "Citation Accuracy"
+        - "Safety Violation"
+        - "P50/P95 Latency"
+      commands:
+        - "pytest tests/eval/ -v"
+        - "ruff check ."
+        - "mypy app/"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-006"
+    title: "修复RAG权限、安全和主链P0问题"
+    status: "backlog"
+    priority: "P0"
+    depends_on:
+      - "RAG-002"
+      - "RAG-003"
+      - "RAG-005"
+    context:
+      problem: "权限语义、检索内容信任边界、Context组合和正式VectorStore闭环需要按决策修复。"
+      facts:
+        - claim: "RAG结果在进入模型前必须经过权限过滤并标记为不可信资料。"
+          evidence: "AGENTS.md；docs/governance/agent-harness-engineering.md"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "app/services/chat_service.py"
+        - "app/agents/pipeline.py"
+        - "app/security/"
+        - "app/models/rag.py"
+        - "app/api/routes/rag.py"
+        - "tests/"
+        - "docs/"
+      forbidden_paths:
+        - "未批准的跨模块重构"
+        - "生产数据"
+      deliverables:
+        - "权限一致性实现和测试"
+        - "RAG Prompt Injection防护和测试"
+        - "Memory/RAG Context组合回归"
+        - "正式VectorStore闭环集成测试"
+        - "Chat+RAG集成测试"
+      non_goals:
+        - "不同时实现Reranker"
+        - "不一次性重写ChatService和AgentPipeline"
+    acceptance:
+      - "跨租户和无资源权限泄露率为0。"
+      - "恶意文档指令不被执行。"
+      - "Memory和RAG信息均按预算保留。"
+      - "摄取、检索、重解析和删除在正式VectorStore闭环。"
+      - "RAG_ENABLED=true的Chat集成用例通过。"
+    risk:
+      level: "L2"
+      side_effect: "permission-and-retrieval-behavior-change"
+      approval: "必须基于RAG-002和RAG-003批准决策"
+      rollback: "Feature Flag、旧过滤路径和旧索引回退。"
+    evaluation:
+      cases:
+        - "跨租户和资源ACL"
+        - "Prompt Injection"
+        - "Memory+RAG"
+        - "VectorStore一致性"
+        - "Chat+RAG"
+      commands:
+        - "pytest tests/test_rag.py tests/test_rag_import_jobs.py tests/test_rag_backend.py tests/test_chunking.py -v"
+        - "pytest tests/test_chat.py tests/test_security_smoke.py -v"
+        - "ruff check ."
+        - "mypy app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "RAG-002、RAG-003、RAG-005"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false

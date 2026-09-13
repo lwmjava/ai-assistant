@@ -10,6 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
+lib/
 lib64/
 parts/
 sdist/
@@ -47,9 +48,6 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Vite 启动开发服务器时生成的临时配置文件（异常退出时会残留）
-*.timestamp-*.mjs
-
 # Build output
 frontend/dist/
 *.tsbuildinfo
@@ -85,6 +83,6 @@ Thumbs.db
 # Project local data / agent working memory (do not commit)
 .workbuddy/
 .serena/
+.superpowers/
 
-# Product requirement documents (internal planning, not part of the repository)
-docs/product/
+# docs/product/ 是产品需求与设计基线，纳入版本库以便协作与防漂移。

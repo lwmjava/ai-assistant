@@ -1,0 +1,28 @@
+---
+description: MCP 与外部系统集成边界
+globs:
+  - "{src,app,lib,packages}/**/{mcp,integration,integrations,client,clients}/**/*"
+  - "**/*mcp*.*"
+alwaysApply: false
+---
+
+# MCP and Integrations
+
+## MUST
+
+- MCP/集成能力通过 Tool Registry 与 Executor 暴露，沿用 Tool 的 Schema、权限、风险、超时、错误、审计和版本要求。
+- 外部输入标记来源并视为不可信；输出经过权限过滤、校验和脱敏。
+- 写操作执行幂等、审批、速率限制及失败补偿策略。
+
+## SHOULD
+
+- 通过适配器隔离协议与供应商差异，并定义熔断、退避和降级行为。
+
+## NEVER
+
+- 将 MCP Server 作为核心业务规则中心或权限绕过通道。
+- 暴露无租户/资源过滤的数据，或让 Agent 绕过 Executor 直调外部系统。
+
+## 验证证据
+
+提供契约、鉴权、限流、超时、故障降级、幂等和敏感数据过滤测试及调用 Trace。

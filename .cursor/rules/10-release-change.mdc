@@ -1,0 +1,29 @@
+---
+description: 版本、兼容性、发布与回滚管理
+globs:
+  - "{config,deploy,ops,releases,.github}/**/*"
+  - "**/{CHANGELOG*,VERSION*,*prompt*,*model*,*tool*}"
+alwaysApply: false
+---
+
+# Release and Change
+
+## MUST
+
+- 对 Prompt、模型、Tool Schema/实现、Skill、数据集、评测器和 Guardrail 使用可追踪版本或内容摘要。
+- 发布前完成兼容性、迁移、回滚、灰度/开关、质量门禁和负责人审批。
+- 行为变化同步契约、Evaluation、文档、Changelog 和必要 ADR。
+- 生产发布可关联代码、配置、模型、Prompt、Tool 与 Evaluation 结果。
+
+## SHOULD
+
+- 使用渐进式发布、影子流量或 A/B 对比，并设置自动停止条件。
+
+## NEVER
+
+- 静默替换模型/Prompt/Tool，或在无回滚路径时发布重大行为变化。
+- 将实验流量、测试数据与生产决策混淆。
+
+## 验证证据
+
+提供版本清单、兼容性/迁移测试、门禁报告、灰度指标和回滚演练结果。

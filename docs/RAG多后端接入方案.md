@@ -270,7 +270,7 @@ LCEL 编排（`Runnable` / `|` 操作符）在 `langchain-core` 里就有，**�
 
 ### 8.3 同步到 `requirements.txt`
 
-按 AGENT.md §11 文档同步规则，`pyproject.toml` 与 `requirements.txt` 必须同步，新增 extras 不能只改一处。
+按 `AGENTS.md` 文档同步规则，`pyproject.toml` 与 `requirements.txt` 必须同步，新增 extras 不能只改一处。
 
 ---
 
@@ -301,7 +301,7 @@ separators=[
 | 2 | 版本漂移（0.1/0.2/0.3 拆包变动大） | 锁 minor：`>=0.3,<0.4` |
 | 3 | 同步接口阻塞事件循环 | 一律用 `asimilarity_search` / `aembed_*`；同步方法抛 `NotImplementedError` |
 | 4 | LangSmith 遥测外发 | 显式设 `LANGCHAIN_TRACING_V2=false` |
-| 5 | 依赖只改一处 | `pyproject.toml` + `requirements.txt` 同步（AGENT.md §11） |
+| 5 | 依赖只改一处 | `pyproject.toml` + `requirements.txt` 同步（`AGENTS.md`） |
 
 补充一条本项目的：LlamaIndex 的数据单元是 `Node`（带 `node_id`/`embedding`）而非 `Document`，且 `VectorStoreIndex` 默认**自己管嵌入与存储**。要共用项目存储，得实现 `BasePydanticVectorStore` 再走 `VectorStoreIndex.from_vector_store()` —— 口子现在就按这个形态留。
 

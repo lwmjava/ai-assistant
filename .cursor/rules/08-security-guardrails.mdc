@@ -1,0 +1,30 @@
+---
+description: 权限、数据安全、Guardrail 与人工审批
+globs:
+  - "{src,app,lib,packages}/**/{auth,security,guardrail,policy,approval}/**/*"
+  - "**/*{auth,security,guard}*.*"
+alwaysApply: false
+---
+
+# Security and Guardrails
+
+## MUST
+
+- 实施 Input、Tool、Permission 和 Output Guard，并为关键写操作记录审计。
+- 权限校验覆盖用户、Agent、角色、租户、资源与动作；默认拒绝。
+- L3 及策略指定的高风险操作必须暂停并取得可验证、限时、限范围的 HITL 批准。
+- 日志、Trace、Memory、RAG 与错误响应对凭据和敏感数据最小化、脱敏和限权。
+
+## SHOULD
+
+- 对 Prompt Injection、数据外泄、越权、工具滥用和供应链风险实施威胁建模与对抗测试。
+
+## NEVER
+
+- 通过 Prompt、模型判断或 MCP 绕过权限、审批和数据边界。
+- 自动执行未确认身份/租户/资源权限的写操作。
+- 在代码、配置、日志或错误中泄露密钥和未脱敏敏感数据。
+
+## 验证证据
+
+提供拒绝/越权、Prompt Injection、HITL、防泄漏、租户隔离与审计完整性测试。

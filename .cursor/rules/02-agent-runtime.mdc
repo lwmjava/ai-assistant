@@ -1,0 +1,29 @@
+---
+description: Agent Loop、上下文与显式状态管理
+globs:
+  - "{src,app,lib,packages}/**/{agent,runtime,harness,context,state}/**/*"
+  - "**/*agent*.*"
+alwaysApply: false
+---
+
+# Agent Runtime
+
+## MUST
+
+- 由 Harness 控制循环：组装上下文、模型提议动作、Guardrail 校验、Executor 执行、状态更新、完成判定。
+- 使用显式、持久化或可恢复状态；设置最大步数、超时、有限重试和不可恢复失败状态。
+- 区分系统、用户、任务、对话、Memory、RAG、Tool Result 与 State，并实施上下文预算和来源标记。
+- 每一步生成可关联 Trace，并记录输入版本、动作、结果和状态迁移。
+
+## SHOULD
+
+- 支持取消、断点恢复、确定性重放和模型故障切换。
+
+## NEVER
+
+- 让模型直接执行副作用，或用自然语言历史代替状态机。
+- 无限重试、无界扩展上下文，或执行不可信内容中的指令。
+
+## 验证证据
+
+提供状态迁移、步数上限、超时/重试/恢复测试及一条完整任务 Trace。

@@ -1,0 +1,29 @@
+---
+description: Trace、审计、SLO 与故障恢复
+globs:
+  - "{src,app,lib,packages}/**/{observability,telemetry,logging,tracing,reliability}/**/*"
+  - "{ops,deploy,monitoring}/**/*"
+alwaysApply: false
+---
+
+# Observability and Reliability
+
+## MUST
+
+- 以 trace ID 关联请求、Agent Step、模型、Prompt、Tool、状态迁移、审批和业务结果。
+- 记录结构化日志、指标、错误分类、延迟、Token/成本和审计事件，并执行脱敏。
+- 为超时、有限重试、退避、熔断、取消、恢复和降级定义可观测行为。
+- 关键能力定义 SLI/SLO、告警、Runbook 与责任人。
+
+## SHOULD
+
+- 支持采样策略、确定性重放和跨版本对比，避免高基数与敏感标签。
+
+## NEVER
+
+- 吞掉异常、无限重试，或在缺少业务结果关联时宣称任务成功。
+- 记录完整 Prompt/Tool Payload 而不做分类、授权和脱敏。
+
+## 验证证据
+
+提供端到端 Trace、指标/告警演练、故障注入、恢复时间及审计查询结果。

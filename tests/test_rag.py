@@ -6,6 +6,7 @@
 """
 
 import io
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,17 +14,24 @@ from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import engine, init_db
 from app.core.security import Role
 from app.main import app
 from app.models.rag import DocumentChunk
 from app.models.user import User
 from app.rag.backend.native import NativeRagBackend
 from app.rag.embeddings.mock import MockEmbeddingProvider, tokenize
-from app.rag.ingestion import split_text
+from app.rag.ingestion import split_text, split_text_structured
 from app.rag.retriever import format_context
 from app.rag.service import RAGService
 from app.rag.vectorstore.base import ChunkResult
+
+
+def _patch_storage_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """将知识库源文件落盘目录重定向到临时路径。"""
+    import app.rag.document_storage as storage_mod
+
+    monkeypatch.setattr(storage_mod, "_PROJECT_ROOT", tmp_path)
 
 
 @pytest.fixture()
@@ -64,6 +72,7 @@ def member_client():
 
 @pytest.fixture()
 def session():
+    init_db()
     with Session(engine) as s:
         yield s
 
@@ -83,8 +92,43 @@ def test_split_text_empty() -> None:
     assert split_text("   \n  ") == []
 
 
-async def test_native_backend_split_matches_split_text() -> None:
-    """策略层 native.split 必须与既有 split_text 结果一致（提交 1 行为零变化）。"""
+def test_split_text_structured_preserves_headings() -> None:
+    text = (
+        "# 章节A\n"
+        + "A内容句子。" * 20
+        + "\n\n# 章节B\n"
+        + "B内容句子。" * 20
+    )
+    chunks = split_text_structured(text, chunk_size=50, chunk_overlap=10)
+    assert chunks
+    assert any(c.startswith("# 章节A") for c in chunks)
+    assert any(c.startswith("# 章节B") for c in chunks)
+
+
+def test_split_text_structured_falls_back_without_headings() -> None:
+    text = "第一句。第二句。第三句很长需要被保留。" * 10
+    assert split_text_structured(text, 50, 10) == split_text(text, 50, 10)
+
+
+def test_document_chunk_has_parent_metadata_fields() -> None:
+    from app.models.rag import DocumentChunk
+
+    chunk = DocumentChunk(
+        tenant_id="t",
+        document_id="d",
+        chunk_index=0,
+        content="内容",
+        parent_id=None,
+        strategy="paragraph",
+        chunk_metadata="{}",
+    )
+    assert chunk.strategy == "paragraph"
+    assert chunk.chunk_metadata == "{}"
+    assert chunk.parent_id is None
+
+
+async def test_native_backend_split_falls_back_without_headings() -> None:
+    """native 后端走结构化切分，但无标题文本应退化为原 split_text 结果。"""
     backend = NativeRagBackend(
         MockEmbeddingProvider(dim=8),
         vector_store=None,  # type: ignore[arg-type]  # split 不访问存储
@@ -156,6 +200,157 @@ async def test_ingest_uses_injected_tokenizer(session: Session) -> None:
     assert seen
 
 
+async def test_ingest_uses_paragraph_strategy_metadata(session: Session) -> None:
+    """ingest 按指定策略切分，并写入 strategy 元数据。"""
+    rag = RAGService(session, "chunk-tenant")
+    doc = await rag.ingest_text(
+        "第一段。\n\n第二段。",
+        title="切分测试",
+        source="test",
+        user_id="chunk-user",
+        strategy="paragraph",
+    )
+    rows = list(
+        session.exec(
+            select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
+        ).all()
+    )
+    assert rows
+    assert all(c.strategy == "paragraph" for c in rows)
+
+
+async def test_ingest_parsed_document_uses_format_aware_blocks(session: Session) -> None:
+    """结构化摄取在指定 format_aware 时应保留块级 metadata。"""
+    from app.rag.document_parsers.base import ParsedBlock, ParsedDocument
+
+    rag = RAGService(session, "format-tenant")
+    parsed = ParsedDocument(
+        text="一、总则\n这里是正文。",
+        title="结构化文档",
+        source="format.docx",
+        extension="docx",
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        metadata={"parser_name": "docx"},
+        blocks=[
+            ParsedBlock(
+                type="heading",
+                text="一、总则",
+                order=0,
+                section_path=["一、总则"],
+                metadata={"parser_name": "docx"},
+            ),
+            ParsedBlock(
+                type="paragraph",
+                text="这里是正文。",
+                order=1,
+                section_path=["一、总则"],
+                metadata={"parser_name": "docx"},
+            ),
+        ],
+    )
+    doc = await rag.ingest_parsed_document(
+        parsed,
+        user_id="format-user",
+        strategy="format_aware",
+    )
+    rows = list(
+        session.exec(
+            select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
+        ).all()
+    )
+    assert rows
+    assert all(c.strategy == "format_aware" for c in rows)
+    assert any('"block_type": "heading"' in (c.chunk_metadata or "") for c in rows)
+    assert any('"section_path": ["一、总则"]' in (c.chunk_metadata or "") for c in rows)
+
+
+async def test_ingest_parsed_document_uses_layout_aware_blocks(session: Session) -> None:
+    """版式感知摄取应按 reading_order 排序并保留页面元数据。"""
+    from app.rag.document_parsers.base import ParsedBlock, ParsedDocument
+
+    rag = RAGService(session, "layout-tenant")
+    parsed = ParsedDocument(
+        text="右栏第二段\n左栏第一段",
+        title="版式文档",
+        source="layout.pdf",
+        extension="pdf",
+        content_type="application/pdf",
+        metadata={"parser_name": "pdf"},
+        blocks=[
+            ParsedBlock(
+                type="page_text",
+                text="右栏第二段",
+                order=2,
+                page=3,
+                metadata={"parser_name": "pdf", "reading_order": 2, "layout_role": "body"},
+            ),
+            ParsedBlock(
+                type="page_text",
+                text="左栏第一段",
+                order=1,
+                page=3,
+                metadata={"parser_name": "pdf", "reading_order": 1, "layout_role": "body"},
+            ),
+        ],
+    )
+    doc = await rag.ingest_parsed_document(
+        parsed,
+        user_id="layout-user",
+        strategy="layout_aware",
+    )
+    rows = list(
+        session.exec(
+            select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
+        ).all()
+    )
+    assert [row.content for row in rows] == ["左栏第一段", "右栏第二段"]
+    assert all(row.strategy == "layout_aware" for row in rows)
+    assert any('"page": 3' in (row.chunk_metadata or "") for row in rows)
+    assert any('"reading_order": 1' in (row.chunk_metadata or "") for row in rows)
+
+
+async def test_search_expands_child_hits_to_parent(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """命中子块时，检索结果应展开并返回其父块上下文。"""
+    rag = RAGService(session, "pc-tenant")
+    doc = await rag.ingest_text(
+        "父块内容第一句。父块内容第二句。",
+        title="父子检索",
+        source="test",
+        user_id="pc-user",
+        strategy="parent_child",
+    )
+    parent = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id.is_(None),
+        )
+    ).first()
+    child = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id == parent.id,
+        )
+    ).first()
+    assert parent is not None and child is not None
+
+    async def fake_hybrid_search(*args, **kwargs):
+        return [
+            ChunkResult(
+                id=child.id,
+                content=child.content,
+                source="test",
+                document_id=doc.id,
+                score=0.9,
+            )
+        ]
+
+    monkeypatch.setattr(rag._backend._store, "hybrid_search", fake_hybrid_search)
+    results = await rag.search("父块内容")
+    assert any(r.id == parent.id for r in results)
+
+
 async def test_retriever_as_pipeline_hook(session: Session) -> None:
     rag = RAGService(session, "hook-tenant", embedding_provider=MockEmbeddingProvider(dim=256))
     await rag.ingest_text(
@@ -224,10 +419,221 @@ def test_member_cannot_delete_document(member_client: TestClient) -> None:
     assert still.status_code == 200
 
 
-def test_upload_rejects_non_text(client: TestClient) -> None:
+def test_upload_rejects_non_text(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_storage_root(monkeypatch, tmp_path)
     files = {"file": ("data.bin", io.BytesIO(b"\x00\x01\x02"), "application/octet-stream")}
     resp = client.post("/api/rag/documents/upload", files=files)
     assert resp.status_code == 400
+
+
+def test_upload_accepts_supported_text_types(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from app.rag.document_parsers.base import ParsedDocument
+
+    _patch_storage_root(monkeypatch, tmp_path)
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> ParsedDocument:
+        assert filename == "doc.json"
+        return ParsedDocument(
+            text='{"name": "alice"}',
+            title="doc",
+            source="doc.json",
+            extension="json",
+            content_type=content_type,
+            metadata={},
+        )
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("doc.json", io.BytesIO(b'{\"name\":\"alice\"}'), "application/json")},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "doc"
+
+
+def test_upload_returns_ocr_required_for_pdf(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from app.rag.document_parsers.base import DocumentOcrRequiredError
+
+    _patch_storage_root(monkeypatch, tmp_path)
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> None:
+        raise DocumentOcrRequiredError("该 PDF 需要 OCR 才能提取文本，当前系统未启用 OCR")
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf")},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "该 PDF 需要 OCR 才能提取文本，当前系统未启用 OCR"
+
+
+def test_upload_returns_500_when_ingest_fails(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from app.rag.document_parsers.base import ParsedDocument
+
+    _patch_storage_root(monkeypatch, tmp_path)
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> ParsedDocument:
+        return ParsedDocument(
+            text="解析后的文本",
+            title="doc",
+            source="doc.txt",
+            extension="txt",
+            content_type=content_type,
+            metadata={},
+        )
+
+    async def fake_ingest_parsed_document(
+        self,
+        parsed,
+        *,
+        user_id: str,
+        title: str | None = None,
+        source: str | None = None,
+        storage_path: str | None = None,
+        backend: str | None = None,
+        source_kind: str | None = None,
+        source_uri: str | None = None,
+        content_hash: str | None = None,
+        version_group_id: str | None = None,
+        version_number: int = 1,
+        previous_document_id: str | None = None,
+        import_job_id: str | None = None,
+    ):
+        raise RuntimeError("embedding service down")
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    monkeypatch.setattr(
+        "app.api.routes.rag.RAGService.ingest_parsed_document",
+        fake_ingest_parsed_document,
+    )
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("doc.txt", io.BytesIO(b"hello"), "text/plain")},
+    )
+    assert resp.status_code == 500
+    assert resp.json()["detail"] == "文档已解析，但知识库摄取失败，请稍后重试或联系管理员"
+
+
+def test_upload_stores_source_file_and_downloads_it(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, session: Session
+) -> None:
+    from app.models.rag import Document
+    from app.rag.document_parsers.base import ParsedDocument
+    from app.rag.document_storage import resolve_source_file_path
+
+    _patch_storage_root(monkeypatch, tmp_path)
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> ParsedDocument:
+        return ParsedDocument(
+            text="解析后的文本",
+            title="downloadable",
+            source=filename,
+            extension="pdf",
+            content_type=content_type,
+            metadata={"parser_name": "pdf"},
+        )
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    raw = b"%PDF-1.4 demo bytes"
+    upload = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("manual.pdf", io.BytesIO(raw), "application/pdf")},
+    )
+    assert upload.status_code == 200
+    doc_id = upload.json()["id"]
+
+    doc = session.get(Document, doc_id)
+    assert doc is not None
+    assert doc.storage_path
+    assert resolve_source_file_path(doc.storage_path).exists()
+
+    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    assert download.status_code == 200
+    assert download.content == raw
+    assert "manual.pdf" in download.headers["content-disposition"]
+
+
+def test_delete_document_removes_source_file(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, session: Session
+) -> None:
+    from app.models.rag import Document
+    from app.rag.document_parsers.base import ParsedDocument
+    from app.rag.document_storage import resolve_source_file_path
+
+    _patch_storage_root(monkeypatch, tmp_path)
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> ParsedDocument:
+        return ParsedDocument(
+            text="解析后的文本",
+            title="to-delete",
+            source=filename,
+            extension="txt",
+            content_type=content_type,
+            metadata={"parser_name": "text"},
+        )
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    upload = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("keep.txt", io.BytesIO(b"hello"), "text/plain")},
+    )
+    assert upload.status_code == 200
+    doc_id = upload.json()["id"]
+
+    doc = session.get(Document, doc_id)
+    assert doc is not None
+    assert doc.storage_path
+    source_path = resolve_source_file_path(doc.storage_path)
+    assert source_path.exists()
+
+    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    assert deleted.status_code == 200
+    assert not source_path.exists()
+
+
+def test_download_missing_source_file_returns_404(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, session: Session
+) -> None:
+    from app.models.rag import Document
+    from app.rag.document_parsers.base import ParsedDocument
+    from app.rag.document_storage import delete_source_file
+
+    _patch_storage_root(monkeypatch, tmp_path)
+
+    def fake_parse(file_bytes: bytes, filename: str, content_type: str | None) -> ParsedDocument:
+        return ParsedDocument(
+            text="解析后的文本",
+            title="missing",
+            source=filename,
+            extension="txt",
+            content_type=content_type,
+            metadata={"parser_name": "text"},
+        )
+
+    monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
+    upload = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("lost.txt", io.BytesIO(b"hello"), "text/plain")},
+    )
+    assert upload.status_code == 200
+    doc_id = upload.json()["id"]
+
+    doc = session.get(Document, doc_id)
+    assert doc is not None
+    assert doc.storage_path
+    assert delete_source_file(doc.storage_path) is True
+
+    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    assert download.status_code == 404
 
 
 def test_search_endpoint(client: TestClient) -> None:

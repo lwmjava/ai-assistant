@@ -13,6 +13,7 @@
 import json
 import logging
 import os
+import uuid
 from collections.abc import Callable
 
 from sqlmodel import Session, select
@@ -22,6 +23,9 @@ from app.models.rag import Document, DocumentChunk
 from app.models.user import User
 from app.rag.backend.base import RagBackend
 from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
+from app.rag.chunking.base import ChunkParams
+from app.rag.chunking.factory import get_chunking_strategy, resolve_strategy_name
+from app.rag.document_parsers.base import ParsedDocument
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
@@ -80,21 +84,33 @@ class RAGService:
         )
 
     # ── 摄取 ────────────────────────────────────────
-    async def ingest_text(
+    def _build_chunk_params(self, chunk_params: dict | None = None) -> ChunkParams:
+        """构造切分参数，合并全局默认值与请求级覆盖。"""
+        return ChunkParams(
+            chunk_size=settings.RAG_CHUNK_SIZE,
+            chunk_overlap=settings.RAG_CHUNK_OVERLAP,
+            **(chunk_params or {}),
+        )
+
+    async def _persist_document(
         self,
-        text: str,
+        *,
         title: str,
         source: str | None,
         user_id: str,
-        *,
-        backend: str | None = None,
+        chunk_objs: list,
+        strategy_name: str,
+        storage_path: str | None = None,
+        source_kind: str | None = None,
+        source_uri: str | None = None,
+        content_hash: str | None = None,
+        version_group_id: str | None = None,
+        version_number: int = 1,
+        previous_document_id: str | None = None,
+        import_job_id: str | None = None,
     ) -> Document:
-        """摄取一段文本：分块、嵌入、落库，返回文档记录。"""
-        rag_backend = self._resolve_backend(backend)
-        chunks = await rag_backend.split(
-            text, chunk_size=settings.RAG_CHUNK_SIZE, overlap=settings.RAG_CHUNK_OVERLAP
-        )
-        if not chunks:
+        """将切分结果持久化为文档与分块。"""
+        if not chunk_objs:
             raise ValueError("文本为空或无法切分为任何分块")
 
         document = Document(
@@ -102,6 +118,14 @@ class RAGService:
             user_id=user_id,
             title=title,
             source=source,
+            storage_path=storage_path,
+            source_kind=source_kind or "file",
+            source_uri=source_uri,
+            content_hash=content_hash,
+            version_group_id=version_group_id or uuid.uuid4().hex,
+            version_number=version_number,
+            previous_document_id=previous_document_id,
+            import_job_id=import_job_id,
             chunk_count=0,
         )
         self.session.add(document)
@@ -109,19 +133,32 @@ class RAGService:
         self.session.refresh(document)
 
         chunk_rows: list[DocumentChunk] = []
-        for index, content in enumerate(chunks):
+        parent_id_map: dict[str, str] = {}
+        for chunk_index, chunk in enumerate(chunk_objs):
+            # 手动生成主键，便于父块落库后直接回填子块的 parent_id，无需逐块 flush。
+            row_id = uuid.uuid4().hex
+            parent_id = None
+            if chunk.parent_id and chunk.parent_id in parent_id_map:
+                parent_id = parent_id_map[chunk.parent_id]
             row = DocumentChunk(
+                id=row_id,
                 tenant_id=self.tenant_id,
                 document_id=document.id,
-                chunk_index=index,
-                content=content,
+                chunk_index=chunk_index,
+                content=chunk.text,
                 source=source,
-                tokens=json.dumps(self._tokenizer(content), ensure_ascii=False),
+                tokens=json.dumps(self._tokenizer(chunk.text), ensure_ascii=False),
+                strategy=strategy_name,
+                chunk_metadata=json.dumps(chunk.metadata, ensure_ascii=False)
+                if chunk.metadata
+                else None,
+                parent_id=parent_id,
             )
+            if chunk.metadata.get("kind") == "parent":
+                parent_id_map[str(chunk.metadata.get("parent_key"))] = row_id
             chunk_rows.append(row)
             self.session.add(row)
 
-        # 批量嵌入并回写向量。
         await self._embed_and_store(chunk_rows)
         document.chunk_count = len(chunk_rows)
         self.session.add(document)
@@ -129,12 +166,102 @@ class RAGService:
         self.session.refresh(document)
         return document
 
+    async def ingest_text(
+        self,
+        text: str,
+        title: str,
+        source: str | None,
+        user_id: str,
+        *,
+        storage_path: str | None = None,
+        backend: str | None = None,
+        source_kind: str | None = None,
+        source_uri: str | None = None,
+        content_hash: str | None = None,
+        version_group_id: str | None = None,
+        version_number: int = 1,
+        previous_document_id: str | None = None,
+        import_job_id: str | None = None,
+        strategy: str | None = None,
+        chunk_params: dict | None = None,
+    ) -> Document:
+        """摄取一段文本：切分、嵌入、落库，返回文档记录。
+
+        ``strategy`` 为请求级切分策略名，``chunk_params`` 为策略专用参数，
+        均可缺省；缺省时由 ``resolve_strategy_name`` 依据配置与文本特征路由。
+        ``backend`` 参数为历史兼容保留，切分已统一走策略层，不再受其影响。
+        """
+        strategy_name = resolve_strategy_name(text, strategy)
+        chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
+        params = self._build_chunk_params(chunk_params)
+        chunk_objs = await chunking.split(text, params=params)
+        return await self._persist_document(
+            title=title,
+            source=source,
+            user_id=user_id,
+            chunk_objs=chunk_objs,
+            strategy_name=strategy_name,
+            storage_path=storage_path,
+            source_kind=source_kind,
+            source_uri=source_uri,
+            content_hash=content_hash,
+            version_group_id=version_group_id,
+            version_number=version_number,
+            previous_document_id=previous_document_id,
+            import_job_id=import_job_id,
+        )
+
+    async def ingest_parsed_document(
+        self,
+        parsed: ParsedDocument,
+        *,
+        user_id: str,
+        title: str | None = None,
+        source: str | None = None,
+        storage_path: str | None = None,
+        backend: str | None = None,
+        source_kind: str | None = None,
+        source_uri: str | None = None,
+        content_hash: str | None = None,
+        version_group_id: str | None = None,
+        version_number: int = 1,
+        previous_document_id: str | None = None,
+        import_job_id: str | None = None,
+        strategy: str | None = None,
+        chunk_params: dict | None = None,
+    ) -> Document:
+        """摄取解析结果；结构感知策略可直接消费 parser 保留的 blocks。"""
+        chosen_title = title or parsed.title
+        chosen_source = parsed.source if source is None else source
+        strategy_name = resolve_strategy_name(parsed.text, strategy)
+        chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
+        params = self._build_chunk_params(chunk_params)
+        if strategy_name in {"format_aware", "layout_aware"} and parsed.blocks:
+            chunk_objs = await chunking.split_blocks(parsed.blocks, params=params)
+        else:
+            chunk_objs = await chunking.split(parsed.text, params=params)
+        return await self._persist_document(
+            title=chosen_title,
+            source=chosen_source,
+            user_id=user_id,
+            chunk_objs=chunk_objs,
+            strategy_name=strategy_name,
+            storage_path=storage_path,
+            source_kind=source_kind,
+            source_uri=source_uri,
+            content_hash=content_hash,
+            version_group_id=version_group_id,
+            version_number=version_number,
+            previous_document_id=previous_document_id,
+            import_job_id=import_job_id,
+        )
+
     async def ingest_file(self, path: str, title: str | None, user_id: str) -> Document:
         """摄取本地文本文件（支持 .txt / .md）。"""
         ext = os.path.splitext(path)[1].lower()
         if ext not in (".txt", ".md"):
             raise ValueError("仅支持 .txt / .md 文本文件摄取")
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             text = fh.read()
         source = title or os.path.basename(path)
         return await self.ingest_text(text, source, source, user_id)
@@ -151,12 +278,39 @@ class RAGService:
     async def search(
         self, query: str, top_k: int | None = None, *, backend: str | None = None
     ) -> list[ChunkResult]:
-        """对查询做混合检索，返回融合排序后的分块。"""
+        """对查询做混合检索，命中子块时展开父块上下文并去重。"""
         top_k = top_k or settings.RAG_TOP_K
         rag_backend = self._resolve_backend(backend)
-        return await rag_backend.retrieve(
+        hits = await rag_backend.retrieve(
             query, tenant_id=self.tenant_id, top_k=top_k
         )
+        return await self._expand_parent_chunks(hits)
+
+    async def _expand_parent_chunks(
+        self, hits: list[ChunkResult]
+    ) -> list[ChunkResult]:
+        """命中子块时，追加其父块并去重，保留原排序与评分。"""
+        expanded: list[ChunkResult] = []
+        seen: set[str] = set()
+        for hit in hits:
+            if hit.id not in seen:
+                seen.add(hit.id)
+                expanded.append(hit)
+            row = self.session.get(DocumentChunk, hit.id)
+            if row is not None and row.parent_id:
+                parent_row = self.session.get(DocumentChunk, row.parent_id)
+                if parent_row is not None and parent_row.id not in seen:
+                    seen.add(parent_row.id)
+                    expanded.append(
+                        ChunkResult(
+                            id=parent_row.id,
+                            content=parent_row.content,
+                            source=parent_row.source,
+                            document_id=parent_row.document_id,
+                            score=hit.score,
+                        )
+                    )
+        return expanded
 
     def make_retriever(self, top_k: int | None = None) -> HybridRetriever:
         """生成可注入 Agent 管线的混合检索器。"""
@@ -174,7 +328,10 @@ class RAGService:
 
     def list_documents(self, user: User) -> list[Document]:
         """列出当前用户可见的文档（系统管理员可见同租户全部）。"""
-        stmt = select(Document).where(Document.tenant_id == user.tenant_id)
+        stmt = select(Document).where(
+            Document.tenant_id == user.tenant_id,
+            Document.is_current.is_(True),
+        )
         if user.role_enum.value != "system_admin":
             stmt = stmt.where(Document.user_id == user.id)
         stmt = stmt.order_by(Document.updated_at.desc())

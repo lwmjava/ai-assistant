@@ -1,0 +1,29 @@
+---
+description: RAG 检索、引用与 Memory 生命周期
+globs:
+  - "{src,app,lib,packages}/**/{rag,retrieval,memory,knowledge,embedding}/**/*"
+  - "{evals,evaluation,tests}/**/*rag*.*"
+alwaysApply: false
+---
+
+# RAG and Memory
+
+## MUST
+
+- 文档块保留来源、版本、生效时间、租户/权限和文档标识等可追溯元数据。
+- 检索前执行身份与资源过滤；重要结论绑定可验证引用。
+- 区分会话、任务和长期 Memory；长期写入需授权、最小化、可删除并记录来源与保留期。
+- 管线、Chunk、Embedding、Rerank、过滤或引用逻辑变化时更新专项 Evaluation。
+
+## SHOULD
+
+- 采用关键词/过滤与向量检索结合的混合检索及可评估重排。
+
+## NEVER
+
+- 将无权限内容送入模型，或仅凭模型生成政策/事实结论。
+- 将密钥、凭据或未经授权的敏感数据写入长期 Memory。
+
+## 验证证据
+
+报告 Recall/Ranking、答案正确性、引用准确率、幻觉率、权限隔离和删除/过期测试。

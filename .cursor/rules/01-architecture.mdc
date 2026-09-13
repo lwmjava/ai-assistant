@@ -1,0 +1,29 @@
+---
+description: Agent Harness 分层与依赖边界
+globs:
+  - "{src,app,lib,packages,services}/**/*"
+  - "docs/adr/**/*"
+alwaysApply: false
+---
+
+# Architecture
+
+## MUST
+
+- 保持 `Agent -> Skill -> Tool -> Service -> Repository -> Data Store` 依赖方向。
+- 由 Harness 管理上下文、显式状态、权限、执行、恢复、观测和评估。
+- 架构边界变化同步 ADR、迁移/回滚方案和架构测试。
+
+## SHOULD
+
+- 通过稳定接口隔离模型、供应商、存储和外部系统。
+- 让业务规则位于 Service、Tool、Guardrail 或状态机等可测试层。
+
+## NEVER
+
+- 让 Agent、Prompt、Skill 或 MCP Server 直连数据库。
+- 为单个需求创建绕过权限、Executor 或 Repository 的快捷通道。
+
+## 验证证据
+
+提供依赖/架构测试结果、关键调用链 Trace，以及对应 ADR 链接。

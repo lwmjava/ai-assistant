@@ -8,6 +8,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 
+class EmbeddingDimensionError(RuntimeError):
+    """嵌入模型返回维度与配置 ``EMBEDDING_DIM`` 不一致。"""
+
+
 class EmbeddingProvider(ABC):
     """嵌入模型接口。
 

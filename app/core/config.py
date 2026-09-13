@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus
     RAG_CHUNK_SIZE: int = 500  # 分块字符数上限
     RAG_CHUNK_OVERLAP: int = 64  # 分块重叠字符数
+    # 默认切分策略：structured | paragraph | sliding_window | token_aware |
+    # semantic | parent_child | auto（按文档特征路由）
+    RAG_CHUNK_STRATEGY: str = "structured"
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
     # RAG 切分/检索策略后端：native（自研，默认）| langchain | llamaindex
@@ -99,6 +102,18 @@ class Settings(BaseSettings):
     RAG_LANGCHAIN_SPLITTER: str = "recursive"
     # LlamaIndex NodeParser 类型：sentence | markdown
     RAG_LLAMAINDEX_SPLITTER: str = "sentence"
+    # 异步导入平台：后台扫描导入任务并处理文件 / URL / 重解析。
+    RAG_IMPORT_ENABLED: bool = True
+    RAG_IMPORT_INTERVAL_SECONDS: float = 3.0
+    RAG_IMPORT_FETCH_TIMEOUT: float = 30.0
+    RAG_IMPORT_MAX_CONCURRENCY: int = 2
+    RAG_OCR_ENABLED: bool = False
+    RAG_OCR_PROVIDER: str = "tesseract"
+    RAG_OCR_LANGUAGES: str = "chi_sim+eng"
+    RAG_OCR_TIMEOUT_SECONDS: float = 60.0
+    RAG_OCR_BASE_URL: str = ""
+    RAG_OCR_API_KEY: str = ""
+    RAG_OCR_MODEL: str = ""
 
     # ── Agent 工具调用（Function Calling）──
     AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数

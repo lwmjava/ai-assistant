@@ -16,7 +16,7 @@ import numpy as np
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.models.rag import DocumentChunk
+from app.models.rag import Document, DocumentChunk
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.local import _bm25_scores, _rrf
 
@@ -206,7 +206,12 @@ class MilvusVectorStore(VectorStore):
             return []
 
         rows = self.session.exec(
-            select(DocumentChunk).where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
+            select(DocumentChunk)
+            .join(Document, Document.id == DocumentChunk.document_id)
+            .where(
+                DocumentChunk.id.in_(candidate_ids),  # type: ignore[attr-defined]
+                Document.is_current.is_(True),
+            )
         ).all()
         rows_by_id = {r.id: r for r in rows}
         ordered = [rows_by_id[i] for i in candidate_ids if i in rows_by_id]

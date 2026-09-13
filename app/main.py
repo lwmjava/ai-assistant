@@ -53,6 +53,10 @@ async def lifespan(app: FastAPI):
 
     await start_scheduler()
 
+    from app.rag.import_scheduler import start_scheduler as start_rag_import
+
+    await start_rag_import()
+
     # 4.6 启动 Evolution 蒸馏调度器（内部校验 EVOLUTION_DISTILL_ENABLED）
     from app.evolution.scheduler import start_scheduler as start_evolution
 
@@ -65,6 +69,10 @@ async def lifespan(app: FastAPI):
     from app.workflow.scheduler import stop_scheduler
 
     await stop_scheduler()
+
+    from app.rag.import_scheduler import stop_scheduler as stop_rag_import
+
+    await stop_rag_import()
 
     from app.evolution.scheduler import stop_scheduler as stop_evolution
 

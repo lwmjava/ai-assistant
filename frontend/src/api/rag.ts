@@ -28,7 +28,7 @@ export function useIngestDocument() {
   })
 }
 
-/** 上传 .txt / .md 文件（后端仅接受这两种扩展名的 UTF-8 文本）。 */
+/** 上传知识文档，后端会按文件类型自动解析文本。 */
 export function useUploadDocument() {
   const qc = useQueryClient()
   return useMutation({

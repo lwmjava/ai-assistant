@@ -64,6 +64,31 @@ def test_conversation_lifecycle(client: TestClient) -> None:
     assert deleted.json()["deleted"] is True
 
 
+def test_chat_with_rag_enabled_completes(client: TestClient, monkeypatch) -> None:
+    """RAG_ENABLED=true 时 Chat 主链可完成（Mock Embedding + Mock LLM）。"""
+    from app.core.config import settings
+    from app.rag.embeddings.factory import set_embedding_override
+    from app.rag.embeddings.mock import MockEmbeddingProvider
+
+    monkeypatch.setattr(settings, "RAG_ENABLED", True)
+    set_embedding_override(MockEmbeddingProvider(dim=64))
+    try:
+        ingest = client.post(
+            "/api/rag/documents/ingest",
+            json={
+                "text": "北风演示标准套餐月费为 199 元。",
+                "title": "计费",
+                "source": "chat-rag",
+            },
+        )
+        assert ingest.status_code == 200
+        resp = client.post("/api/chat", json={"message": "标准套餐月费是多少"})
+        assert resp.status_code == 200
+        assert resp.json()["reply"]
+    finally:
+        set_embedding_override(None)
+
+
 def test_chat_stream_returns_sse(client: TestClient) -> None:
     with client.stream("POST", "/api/chat/stream", json={"message": "流式测试"}) as resp:
         assert resp.status_code == 200

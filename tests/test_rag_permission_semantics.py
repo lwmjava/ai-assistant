@@ -1,11 +1,6 @@
-"""表征当前知识库权限语义（As-Is）。
+"""ADR-0001 To-Be 表征：读路径租户共享当前版本。
 
-ADR-0001 已批准 To-Be：读路径租户共享当前版本。实现在 RAG-006。
-在过滤代码改掉之前，本文件继续锁定现状：
-- 列表/详情：非管理员只看到自己上传的当前版本；
-- 检索：同租户当前版本都可能命中。
-
-RAG-006 改 `list_documents` / `_can_access` 时必须同步改这些期望。
+默认 ``RAG_KB_SCOPE=tenant``。``uploader`` 回滚路径见 ``tests/test_rag_access.py``。
 """
 
 from __future__ import annotations
@@ -38,7 +33,7 @@ def _user(user_id: str, tenant_id: str, role: Role = Role.MEMBER) -> User:
     )
 
 
-async def test_same_tenant_list_is_uploader_scoped_but_search_is_tenant_scoped(
+async def test_same_tenant_list_detail_and_search_share_current_documents(
     session: Session,
 ) -> None:
     tenant = "perm-tenant-shared"
@@ -47,7 +42,7 @@ async def test_same_tenant_list_is_uploader_scoped_but_search_is_tenant_scoped(
     rag = RAGService(session, tenant)
 
     doc = await rag.ingest_text(
-        "权限表征文档：只有上传者应出现在普通用户的文档列表中。",
+        "权限表征文档：同租户成员应能在列表、详情和检索中看到当前版本。",
         title="权限表征",
         source="perm-char",
         user_id=owner.id,
@@ -56,8 +51,8 @@ async def test_same_tenant_list_is_uploader_scoped_but_search_is_tenant_scoped(
     listed_owner = {item.id for item in rag.list_documents(owner)}
     listed_peer = {item.id for item in rag.list_documents(peer)}
     assert doc.id in listed_owner
-    assert doc.id not in listed_peer
-    assert rag.get_document(doc.id, peer) is None
+    assert doc.id in listed_peer
+    assert rag.get_document(doc.id, peer) is not None
 
     hits = await rag.search("权限表征文档", top_k=5)
     assert any(hit.document_id == doc.id for hit in hits)
@@ -77,3 +72,6 @@ async def test_cross_tenant_search_does_not_return_foreign_documents(
 
     hits = await rag_b.search("跨租户隔离表征", top_k=5)
     assert all(hit.document_id != doc.id for hit in hits)
+    foreign = _user("perm-foreign", "perm-tenant-b")
+    assert rag_a.get_document(doc.id, foreign) is None
+    assert doc.id not in {item.id for item in rag_b.list_documents(foreign)}

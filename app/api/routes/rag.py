@@ -1,9 +1,8 @@
 """RAG 接口：文档摄取、管理与检索。
 
 所有接口均需认证，并按角色校验 ``knowledge_bases`` 资源权限（依赖 require_permission）。
-知识库是租户共享资产，删除权限仅授予管理员，写入与读取对成员开放。
-归属校验在 RAG 服务内完成：普通用户仅能操作自己创建的文档，
-系统管理员可见同租户全部。
+读路径默认同租户当前版本（ADR-0001，``RAG_KB_SCOPE=tenant``）。
+删除：成员仅自己的文档；租户/系统管理员可删同租户当前文档。
 """
 
 import logging
@@ -18,6 +17,7 @@ from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
 from app.models.rag import Document, ImportBatch, ImportJob
 from app.models.user import User
+from app.rag.access import can_read_import, can_write_document, restrict_list_to_uploader
 from app.rag.document_parsers import (
     DocumentOcrRequiredError,
     DocumentParseError,
@@ -204,9 +204,7 @@ def _batch_out(batch: ImportBatch, jobs: list[ImportJob]) -> ImportBatchOut:
 
 
 def _can_access_import_resource(owner_user_id: str, owner_tenant_id: str, user: User) -> bool:
-    if user.role_enum.value == "system_admin":
-        return owner_tenant_id == user.tenant_id
-    return owner_tenant_id == user.tenant_id and owner_user_id == user.id
+    return can_read_import(owner_user_id, owner_tenant_id, user)
 
 
 @router.post("/documents/ingest", response_model=DocumentOut)
@@ -411,7 +409,7 @@ def list_import_jobs(
 ) -> list[ImportJobOut]:
     """列出当前用户可见的导入任务。"""
     stmt = select(ImportJob).where(ImportJob.tenant_id == current_user.tenant_id)
-    if current_user.role_enum.value != "system_admin":
+    if restrict_list_to_uploader(current_user):
         stmt = stmt.where(ImportJob.user_id == current_user.id)
     stmt = stmt.order_by(ImportJob.updated_at.desc())
     jobs = list(session.exec(stmt).all())
@@ -581,10 +579,14 @@ async def delete_document(
 ) -> dict:
     """删除文档及其分块。"""
     rag = RAGService(session, current_user.tenant_id)
-    doc = rag.get_document(document_id, current_user)
-    if doc is None:
+    doc = session.get(Document, document_id)
+    if doc is None or doc.tenant_id != current_user.tenant_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
+        )
+    if not can_write_document(doc, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="无权删除该文档"
         )
     storage_path = doc.storage_path
     ok = await rag.delete_document(document_id, current_user)

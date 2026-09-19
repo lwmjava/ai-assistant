@@ -81,15 +81,25 @@ def test_gold_v01_has_human_review_records() -> None:
         assert case["review"]["decision"] == "ACCEPT_GOLD"
 
 
-def test_rag036_must_not_retrieve_employee_id() -> None:
+def test_a1_does_not_treat_tenant_current_docs_as_retrieval_violations() -> None:
+    """A1：同租户当前文档不得再列入 forbidden_document_ids。"""
+    cases = {case["case_id"]: case for case in load_cases()}
+    assert cases["rag-026"]["forbidden_document_ids"] == []
+    assert cases["rag-037"]["forbidden_document_ids"] == []
+    assert "audience_ranking" in cases["rag-026"]["tags"]
+
+
+def test_rag036_must_not_return_employee_id() -> None:
+    """A1：检索命中同租户手册不记越权；生成层仍不得返回编制编号。"""
     cases = {case["case_id"]: case for case in load_cases()}
     case = cases["rag-036"]
     assert case["should_answer"] is False
-    assert "doc-hr-handbook" in case["forbidden_document_ids"]
+    assert case["forbidden_document_ids"] == []
     assert "NW-HR-001" in case["forbidden_answer_points"]
     assert case["expected_document_ids"] == []
     assert case["expected_evidence"] == []
     assert "不得返回员工编制编号" in case["expected_answer_points"]
+    assert "acl_planned" in case["tags"]
 
 
 def test_corpus_is_authorized_synthetic() -> None:

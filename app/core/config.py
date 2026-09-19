@@ -98,6 +98,17 @@ class Settings(BaseSettings):
     RAG_CHUNK_STRATEGY: str = "structured"
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
+    # 检索过取倍数：先取 top_k * N，再剔除注入块后截断到 top_k。
+    RAG_RETRIEVAL_CANDIDATE_MULTIPLIER: int = 3
+    # 检索后剔除高置信度 Prompt Injection 分块。关闭则仅保留不可信围栏。
+    RAG_DROP_INJECTED_CHUNKS: bool = True
+    # 知识库读范围：tenant=同租户当前版本（ADR-0001 To-Be）；uploader=回滚到上传者私有。
+    RAG_KB_SCOPE: str = "tenant"
+    # 注入管线时记忆 / RAG 各自的字符预算，防止一侧挤掉另一侧。
+    RAG_MEMORY_CONTEXT_CHARS: int = 2000
+    RAG_CONTEXT_CHARS: int = 6000
+    # ADR-0003：按生效日期过滤。默认关闭，行为与批准前一致。
+    RAG_EFFECTIVE_DATE_FILTER: bool = False
     # RAG 切分/检索策略后端：native（自研，默认）| langchain | llamaindex
     RAG_BACKEND: str = "native"
     # LangChain TextSplitter 类型（当前仅 recursive）

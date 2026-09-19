@@ -46,13 +46,13 @@
 | 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | 迭代指导 §4.7 | 必须由同一 Evaluation 证明价值 |
 | 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs | 与检索权限语义未统一 |
 | 结构化 Citation | `Partial` | 回答目前主要是 source 文本 | 缺 document/chunk/version/page/section |
-| 版本化 Evaluation | `Planned` | `evals/`、`docs/evaluations/` 仅有目录说明 | `RAG-004`/`RAG-005` |
+| 版本化 Evaluation | `Partial` | `evals/datasets/rag-v0.1/`；`docs/evaluations/rag-v0.1-baseline-report.md` | 未测生成层；语料规模小，不得当生产质量 |
 
 ## 4. 安全、记忆、观测
 
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
-| 输入/输出安全与注入检测 | `Partial` | `app/security/`；`SECURITY_BLOCK_ON_INJECTION=false` | 默认检测不阻断；RAG 资料信任标记不足 |
+| 输入/输出安全与注入检测 | `Partial` | `app/security/`；`app/rag/retrieval_guard.py`；`format_context` 不可信围栏 | 默认仍不阻断用户输入注入；生成层拒执行未测 |
 | 对话 Memory 裁剪/压缩 | `Partial` | `app/memory/` | 与 RAG Context 合并需回归 |
 | Trace | `Partial` | `app/debug/` | 内存环形缓冲，非持久化生产 Trace |
 | 审计 | `Partial` | `app/audit/` | 企业合规报表为 TARGET/EE |
@@ -62,10 +62,11 @@
 
 | ID | 决定 | 代码是否已对齐 | 实现任务 |
 |---|---|---|---|
-| ADR-0001 | 读路径：同租户共享当前版本；写路径：成员仅自己的文档 | 否。列表/详情仍按上传者过滤 | `RAG-006` |
+| ADR-0001 | 读路径：同租户共享当前版本；写路径：成员仅自己的文档 | `Partial`：`RAG_KB_SCOPE=tenant` 已对齐列表/详情/导入读路径；资源 ACL 仍 Planned | `RAG-006` |
 | ADR-0002 | 正式 Local；Milvus 实验/Partial；评测固定 Local | 是（默认已是 local，本阶段不切换） | 升格 Milvus 须另开 ADR |
+| ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后 Local 按 as-of / 查询日期窗口过滤 | 默认现网仍只检索 `is_current`；未做真实嵌入复跑 |
 
-资源级 ACL 仍为 `Planned`。未到 `RAG-006` 前不改过滤代码。
+资源级 ACL 仍为 `Planned`。2026-09-19 A1：评测不把同租户当前文档命中记为越权。
 
 ## 6. 文档漂移（已确认）
 
@@ -76,7 +77,7 @@
 | OS 矩阵写「RAG = Milvus 单机」 | 默认 Local | 改为 Local 默认、Milvus 可选 |
 | 设计方案写 `app/graphs/`、`reranker.py`、Chroma | 真实目录 `app/agents/`、`app/rag/vectorstore/` | 设计方案标为历史稿 |
 | 设计方案写 `src/ai_assistant/` | 真实目录 `app/` | 同上 |
-| 宣称 Recall/MRR/NDCG 已有 | 尚无数据集和报告 | 标 `Planned` |
+| 宣称 Recall/MRR/NDCG 已有 | 已有 v0.1 检索基线，语料很小 | 可引用分数但必须带有效性限制 |
 
 ## 7. 本轮验证命令
 

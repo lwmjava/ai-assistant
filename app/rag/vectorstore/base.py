@@ -9,6 +9,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass
@@ -20,6 +21,7 @@ class ChunkResult:
     source: str | None
     document_id: str
     score: float
+    version_status: str = "current"
 
 
 class VectorStore(ABC):
@@ -41,6 +43,8 @@ class VectorStore(ABC):
         tenant_id: str,
         top_k: int,
         rrf_k: int = 60,
+        as_of: datetime | None = None,
+        schedule_at: datetime | None = None,
     ) -> list[ChunkResult]:
         """混合检索：融合稠密与稀疏结果，返回按融合分排序的前 top_k 个分块。
 

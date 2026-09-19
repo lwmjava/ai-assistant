@@ -168,6 +168,8 @@ def _ensure_rag_schema_columns() -> None:
         "version_number": "ALTER TABLE rag_documents ADD COLUMN version_number INTEGER NOT NULL DEFAULT 1",
         "previous_document_id": "ALTER TABLE rag_documents ADD COLUMN previous_document_id VARCHAR",
         "is_current": "ALTER TABLE rag_documents ADD COLUMN is_current BOOLEAN NOT NULL DEFAULT 1",
+        "effective_at": "ALTER TABLE rag_documents ADD COLUMN effective_at DATETIME",
+        "expires_at": "ALTER TABLE rag_documents ADD COLUMN expires_at DATETIME",
         "import_job_id": "ALTER TABLE rag_documents ADD COLUMN import_job_id VARCHAR",
     }
     with engine.begin() as conn:
@@ -195,6 +197,8 @@ def _ensure_rag_schema_columns() -> None:
             "CREATE INDEX IF NOT EXISTS ix_rag_documents_version_group_id ON rag_documents (version_group_id)",
             "CREATE INDEX IF NOT EXISTS ix_rag_documents_previous_document_id ON rag_documents (previous_document_id)",
             "CREATE INDEX IF NOT EXISTS ix_rag_documents_is_current ON rag_documents (is_current)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_effective_at ON rag_documents (effective_at)",
+            "CREATE INDEX IF NOT EXISTS ix_rag_documents_expires_at ON rag_documents (expires_at)",
             "CREATE INDEX IF NOT EXISTS ix_rag_documents_import_job_id ON rag_documents (import_job_id)",
         ]:
             conn.execute(text(index_sql))

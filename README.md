@@ -152,7 +152,7 @@ sequenceDiagram
 | 能力 | 当前状态 | 目标边界 |
 |---|---|---|
 | Agent 编排 | `Partial`：`ChatService` + `AgentPipeline` 承担部分 Harness | 独立 Harness / Context / State / 预算 / 恢复 |
-| RAG | `Partial`：多格式摄取、混合检索；默认未注入对话 | 权限一致、不可信标记、结构化 Citation、Evaluation 基线 |
+| RAG | `Partial`：多格式摄取、混合检索、检索注入块剔除与不可信围栏；默认未注入对话 | 资源 ACL Planned；生效日期 ADR-0003 Accepted 但 Flag 默认关；结构化 Citation |
 | 代码沙箱 | `Partial`：存在沙箱工具路径 | 代码动作必须经四层隔离，不得宿主执行 |
 | MCP / 工具 | `Partial`：工具与 MCP 可注入 | 完整 Tool Contract；经 Executor，不直连数据库 |
 | 测评 | `Planned`：尚无版本化 Gold/基线报告 | 离线 RAG / Agent / Skill / Safety 评测 |
@@ -302,6 +302,12 @@ docker compose up -d --build
 | `LLM_API_KEY` | 大模型 API Key（为空时开发环境自动降级 Mock） | — |
 | `LLM_DEFAULT_MODEL` | 默认模型名 | `deepseek-chat` |
 | `RAG_ENABLED` | 是否启用 RAG 检索 | `false` |
+| `RAG_DROP_INJECTED_CHUNKS` | 检索后剔除高置信度注入分块 | `true` |
+| `RAG_RETRIEVAL_CANDIDATE_MULTIPLIER` | 检索过取倍数，供剔除后补位 | `3` |
+| `RAG_KB_SCOPE` | 知识库读范围：`tenant` / `uploader` | `tenant` |
+| `RAG_MEMORY_CONTEXT_CHARS` | 注入管线的记忆字符预算 | `2000` |
+| `RAG_CONTEXT_CHARS` | 注入管线的 RAG 字符预算 | `6000` |
+| `RAG_EFFECTIVE_DATE_FILTER` | ADR-0003 生效日期/预告检索 | `false` |
 | `RAG_VECTOR_STORE` | 向量库后端：`local` / `milvus` | `local` |
 | `RAG_BACKEND` | 切分/检索策略：`native` / `langchain` / `llamaindex` | `native` |
 | `RAG_CHUNK_STRATEGY` | 文档切分策略（见下方「文档切分策略」） | `structured` |

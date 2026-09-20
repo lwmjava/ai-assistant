@@ -2,7 +2,7 @@
 
 > 状态：`RAG-004` 已建立 Schema、合成数据集和 **Gold v0.1（24 条）**；
 > `RAG-005` 已产出 **首份真实嵌入检索基线（2026-09-19）**
-> 更新日期：2026-09-19
+> 更新日期：2026-09-20
 
 ## 当前资产
 
@@ -46,4 +46,4 @@ pytest tests/eval/ -v                                # 数据集校验 + 指标 
 - 2026-09-19 A1：同租户当前文档被检索不记越权；资源 ACL（`acl_planned`）只约束生成层答案点。
 - ADR-0003 已 Accepted（选项 A）。`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后带未来日期的查询才检索 scheduled 预告。
 - 不得改写 `evals/reports/rag-v0.1-baseline-20260919.json`。
-- `RAG-006` 读路径默认 `RAG_KB_SCOPE=tenant`；生成层仍未用真实 LLM 复核拒答/拒工具。
+- `RAG-006` 读路径默认 `RAG_KB_SCOPE=tenant`。脚本化 LLM 已覆盖注入文档拒工具；真实 LLM 拒答/Citation/`forbidden_answer_points` 未测。

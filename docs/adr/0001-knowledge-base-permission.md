@@ -72,7 +72,7 @@
 | KB-05 | `is_current=false` | 不出现在列表和检索 |
 | KB-06 | 删除后 | 列表与向量均不可见 |
 
-当前 `tests/test_rag_permission_semantics.py` 仍锁定 As-Is（列表窄、检索宽），用于防止实现被悄悄改掉却没有 ADR 追踪。`RAG-006` 改代码时必须同步改这些期望。
+`tests/test_rag_permission_semantics.py` 锁定 To-Be：同租户当前文档可列表/详情/检索，跨租户不命中。测试使用隔离 SQLite，避免共享测试库历史文档干扰 top-k。`uploader` 回滚见 `tests/test_rag_access.py`。
 
 ## 8. 回滚
 

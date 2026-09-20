@@ -36,7 +36,7 @@
 
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
-| 对话默认不注入 RAG | `Implemented` | `RAG_ENABLED=false` | 开启后缺 Chat+RAG 集成验收 |
+| 对话默认不注入 RAG | `Implemented` | `RAG_ENABLED=false`；`tests/test_chat.py`；`tests/eval/test_rag006_pipeline.py` | 开启后有脚本化 LLM 集成；真实 LLM / Citation 未测 |
 | 后端默认 `native` | `Implemented` | `RAG_BACKEND=native` | LangChain/LlamaIndex 为可选适配 |
 | 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py` | Milvus 正式级别待 ADR-VS |
 | Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py` | 缺摄取/检索/重解析/删除闭环证据 |
@@ -52,8 +52,8 @@
 
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
-| 输入/输出安全与注入检测 | `Partial` | `app/security/`；`app/rag/retrieval_guard.py`；`format_context` 不可信围栏 | 默认仍不阻断用户输入注入；生成层拒执行未测 |
-| 对话 Memory 裁剪/压缩 | `Partial` | `app/memory/` | 与 RAG Context 合并需回归 |
+| 输入/输出安全与注入检测 | `Partial` | `app/security/`；`app/rag/retrieval_guard.py`；`format_context` 不可信围栏；`tests/eval/test_rag006_pipeline.py` | 默认仍不阻断用户输入注入；真实 LLM 拒答/答案点未测 |
+| 对话 Memory 裁剪/压缩 | `Partial` | `app/memory/`；`app/rag/context_merge.py`；`tests/test_context_merge.py` | 长期记忆写入与授权未齐 |
 | Trace | `Partial` | `app/debug/` | 内存环形缓冲，非持久化生产 Trace |
 | 审计 | `Partial` | `app/audit/` | 企业合规报表为 TARGET/EE |
 | HITL 统一审批闭环 | `Deferred` | 治理规范 §3 | 高风险能力引入前完成 |
@@ -62,7 +62,7 @@
 
 | ID | 决定 | 代码是否已对齐 | 实现任务 |
 |---|---|---|---|
-| ADR-0001 | 读路径：同租户共享当前版本；写路径：成员仅自己的文档 | `Partial`：`RAG_KB_SCOPE=tenant` 已对齐列表/详情/导入读路径；资源 ACL 仍 Planned | `RAG-006` |
+| ADR-0001 | 读路径：同租户共享当前版本；写路径：成员仅自己的文档 | `Partial`：`RAG_KB_SCOPE=tenant` 已对齐列表/详情/检索/导入读路径；资源 ACL 仍 Planned | 资源 ACL 另开任务 |
 | ADR-0002 | 正式 Local；Milvus 实验/Partial；评测固定 Local | 是（默认已是 local，本阶段不切换） | 升格 Milvus 须另开 ADR |
 | ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后 Local 按 as-of / 查询日期窗口过滤 | 默认现网仍只检索 `is_current`；未做真实嵌入复跑 |
 

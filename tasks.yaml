@@ -405,7 +405,7 @@ tasks:
 
   - id: "RAG-006"
     title: "修复RAG权限、安全和主链P0问题"
-    status: "in_progress"
+    status: "done"
     priority: "P0"
     depends_on:
       - "RAG-002"
@@ -426,6 +426,8 @@ tasks:
           evidence: "app/rag/access.py；tests/test_rag_access.py；tests/test_rag_permission_semantics.py"
         - claim: "管线检索不再覆盖记忆；按 RAG_MEMORY_CONTEXT_CHARS / RAG_CONTEXT_CHARS 合并。不可信上下文中的工具名若未出现在用户原文则拒绝执行。"
           evidence: "app/rag/context_merge.py；app/agents/pipeline.py；tests/eval/test_rag006_pipeline.py"
+        - claim: "已补摄取 kb-injection.md → Local 检索 → AgentPipeline/ChatService 拒工具集成测试（脚本化 LLM）。ai-assistant 环境 2026-09-20：相关套件 99 passed / 1 skipped。"
+          evidence: "tests/eval/test_rag006_pipeline.py；conda env ai-assistant pytest 退出码 0"
     scope:
       allowed_paths:
         - "app/core/config.py"
@@ -458,7 +460,7 @@ tasks:
       - "跨租户检索泄露率为0。"
       - "资源级 ACL 保持 Planned：同租户当前文档命中不记越权；生成层不得返回 forbidden_answer_points。"
       - "检索注入块被剔除或降权，注入 Agent 的 RAG 上下文带不可信围栏。"
-      - "恶意文档指令不被执行（生成/工具层，待补集成测试）。"
+      - "恶意文档指令不被执行（生成/工具层：脚本化 LLM 摄取注入文档后拒工具；未用真实 LLM）。"
       - "Memory和RAG信息均按预算保留。"
       - "摄取、检索、重解析和删除在正式VectorStore闭环。"
       - "RAG_ENABLED=true的Chat集成用例通过。"

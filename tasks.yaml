@@ -492,3 +492,99 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
+  - id: "RAG-007"
+    title: "单变量实验：RRF 融合常数 k"
+    status: "ready"
+    priority: "P1"
+    depends_on:
+      - "RAG-005"
+      - "RAG-006"
+    context:
+      problem: "混合检索已用 RRF 融合 Dense 与 BM25，但 k=60 未经对照实验；后续切分/Embedding/Rerank 实验需要先证明查询期参数是否值得改。"
+      facts:
+        - claim: "正式基线冻结为 structured + chunk_size=500 + overlap=64 + RAG_HYBRID_RRF_K=60 + text-embedding-v3 dim 1024 + Local。"
+          evidence: "docs/evaluations/rag-v0.1-baseline-report.md 第2节；evals/reports/rag-v0.1-baseline-20260919.json"
+        - claim: "RRF k 来自配置 RAG_HYBRID_RRF_K，查询期生效，不要求重建索引。"
+          evidence: "app/core/config.py；app/rag/service.py；app/rag/vectorstore/local.py _rrf"
+        - claim: "BM25 k1=1.5、b=0.75 硬编码；中文 token 按单字切分。本任务不改这两项。"
+          evidence: "app/rag/vectorstore/local.py _bm25_scores；app/rag/embeddings/mock.py tokenize"
+        - claim: "35条可排序案例 Recall@1=0.795、MRR=0.929；Recall@5与@10=0.971，语料仅13篇/37分块，Top-K 实验信号弱。"
+          evidence: "docs/evaluations/rag-v0.1-baseline-report.md 第3节、第6节"
+        - claim: "独立 Reranker 与 Query Rewrite 未实现；切分策略与 Embedding 换模型会重建索引。本任务不同时改这些变量。"
+          evidence: "app/rag/retrieval_guard.py；docs/plans/plan_rag_milvus.md；AGENTS.md §6"
+        - claim: "知识库页可改本次检索 top_k 并展示命中，不能改 RRF k；对话默认 RAG_ENABLED=false。"
+          evidence: "frontend/src/pages/Knowledge.tsx；frontend/src/api/rag.ts；app/core/config.py"
+    scope:
+      allowed_paths:
+        - "app/core/config.py"
+        - ".env.example"
+        - "evals/reports/"
+        - "docs/evaluations/"
+        - "docs/AI辅助开发迭代指导.md"
+        - "evals/README.md"
+        - "scripts/"
+        - "tests/eval/"
+        - "README.md"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/rag/chunking/"
+        - "app/rag/embeddings/"
+        - "生产数据"
+        - "生产密钥"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "frontend/src/"
+      deliverables:
+        - "k=40 与 k=80 相对冻结 k=60 的官方评测对比报告（JSON+Markdown）"
+        - "development/validation 指标差、失败切片、权限/注入切片"
+        - "保留或回滚结论；若采纳候选则更新 RAG_HYBRID_RRF_K 默认值"
+        - "pytest 回归：RRF k 可配置且主链未回退"
+      non_goals:
+        - "不改 Chunk size/overlap 或 Chunking 策略"
+        - "不改 Embedding 模型或维度"
+        - "不实现独立 Reranker 或 Query Rewrite"
+        - "不调 BM25 k1/b，不改分词"
+        - "不用 holdout 调参"
+        - "不用 Mock Embedding 报告质量"
+        - "不改写 2026-09-19 基线 JSON"
+        - "不把前端人工观察当成质量门禁"
+        - "不把 Top-K/上下文预算纳入本轮变量"
+    acceptance:
+      - "对照运行使用同一数据集 rag-eval@0.1.0、同一 Embedding、同一索引构建方式，仅 RAG_HYBRID_RRF_K 不同。"
+      - "正式模式拒绝 Mock 和非 local；不产出伪质量报告。"
+      - "调参只看 development 与 validation；holdout 本轮至多记录一次，不得据此改 k。"
+      - "报告包含 Recall@1/5/10、MRR、nDCG、引用覆盖、安全切片、P50/P95，以及失败 Case。"
+      - "若候选未同时改善 Recall@1 或 MRR，或安全切片退化，则保持 k=60 并记录回滚结论。"
+      - "若采纳新 k：更新 app/core/config.py 与 .env.example，默认值与报告结论一致。"
+      - "不改写 evals/reports/rag-v0.1-baseline-20260919.json。"
+      - "pytest tests/eval/ 与 RAG 回归套件通过。"
+      - "前端知识库页冒烟为可选补充：同一查询仍能返回命中；不作为通过条件。"
+    risk:
+      level: "L1"
+      side_effect: "eval-report-write-and-optional-default-rrf-k-change"
+      rollback: "保持 RAG_HYBRID_RRF_K=60；删除候选报告和评测索引副本。"
+    evaluation:
+      metrics:
+        - "Recall@1（主决策）"
+        - "MRR（主决策）"
+        - "Recall@5/10（参考，语料过小可能饱和）"
+        - "nDCG@10"
+        - "Citation coverage"
+        - "Safety Violation"
+        - "P50/P95 Latency"
+      cases:
+        - "development/validation 对照"
+        - "权限与注入切片不得退化"
+      commands:
+        - "python scripts/run_rag_baseline.py --mode official"
+        - "pytest tests/eval/ tests/test_rag.py tests/test_chunking.py tests/test_retrieval_guard.py -v"
+        - "ruff check ."
+        - "mypy app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false

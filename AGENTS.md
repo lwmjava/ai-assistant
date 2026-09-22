@@ -347,7 +347,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 
 ## 14. 当前推进顺序
 
-已完成（`tasks.yaml` 中 7 项均为 `done`）：
+已完成：
 
 ```text
 GOV-001 治理文件项目化
@@ -360,12 +360,19 @@ GOV-001 治理文件项目化
 → RAG-006 P0 权限/安全/Context/VectorStore 修复
 ```
 
-下一步（尚未写入 `tasks.yaml`，实施前须先拆任务）：
+当前任务（`tasks.yaml`）：
 
 ```text
-单变量 RAG 优化
+RAG-007 单变量实验：RRF 融合常数 k
+```
+
+之后（尚未拆进 `tasks.yaml`）：
+
+```text
+切分大小或策略（索引期，二选一）
+→ Embedding / 独立 Reranker / Query Rewrite（各自单开）
 → 结构化 Citation
 → 渐进提取 Context Builder、Tool Executor 和 Harness
 ```
 
-资源级 ACL 仍为 `Planned`，另开任务，不阻塞单变量优化。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。
+Top-K 实验须先扩大评测语料，否则信号不足。资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。

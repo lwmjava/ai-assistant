@@ -423,22 +423,15 @@ Agent 系统变更只有满足以下条件才能完成：
 
 ## 20. 当前执行顺序
 
-已完成（`tasks.yaml` 中 7 项均为 `done`）：
+已完成：`GOV-001`～`RAG-006`。
+
+当前任务：`RAG-007` 单变量实验（RRF `k`）。
+
+之后（尚未拆进 `tasks.yaml`）：
 
 ```text
-GOV-001 治理文件项目化
-→ RAG-001 文档事实基线
-→ RAG-002 RAG权限ADR
-→ RAG-003 VectorStore ADR
-→ RAG-004 Evaluation Schema与数据
-→ RAG-005 RAG baseline
-→ RAG-006 P0安全/权限/主链修复
-```
-
-下一步（尚未写入 `tasks.yaml`）：
-
-```text
-单变量检索实验
+切分大小或策略
+→ Embedding / Reranker / Query Rewrite（各自单开）
 → Citation
 → ContextBuilder
 → Tool Contract/Executor

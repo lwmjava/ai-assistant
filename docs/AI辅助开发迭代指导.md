@@ -339,7 +339,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 
 ## 6. 四周建议排期
 
-> 第 1～2 周对应 `GOV-001`～`RAG-006`，2026-09-22 已在验收范围内完成。当前进入第 3 周方向：单变量优化与 Citation。尚未写入 `tasks.yaml` 的条目不得直接开工。
+> 第 1～2 周对应 `GOV-001`～`RAG-006`，2026-09-22 已在验收范围内完成。当前任务 `RAG-007`（RRF `k`）已写入 `tasks.yaml`。其余单变量实验与 Citation 尚未拆分，不得直接开工。
 
 ### 第 1 周：事实和评测基线
 
@@ -690,21 +690,15 @@ AI 完成后必须：
 
 ## 13. 当前下一步
 
-`tasks.yaml` 中已拆分任务全部为 `done`：
+`GOV-001`～`RAG-006` 已完成。当前可执行任务：
 
-1. `GOV-001`：治理文件项目化（已完成）。
-2. `RAG-001`：As-Is 能力矩阵（已完成）。
-3. `RAG-002`：ADR-0001 Accepted；读路径 `RAG_KB_SCOPE=tenant` 已在 `RAG-006` 落地。
-4. `RAG-003`：ADR-0002 Accepted（正式 Local，Milvus 实验）。
-5. `RAG-004`：Case Schema、44 条候选、Gold v0.1（24 条）。
-6. 独立校验并人工确认 Gold v0.1（已完成）。
-7. `RAG-005`：检索基线已冻结（2026-09-19，真实嵌入）。不得改写该 JSON。
-8. `RAG-006`：权限、不可信围栏、Memory/RAG 合并、Local 闭环、ADR-0003 Flag（已完成）。
+1. `RAG-007`：单变量实验 RRF `k`（对照 60，候选 40/80；查询期，不重建索引）。见 `tasks.yaml`。
 
-下一步须先写入 `tasks.yaml` 再实施：
+之后须再拆任务再实施：
 
-1. 单变量 RAG 优化（不得同时改 Chunking/Embedding/Rerank；不得用 holdout 调参；不用 Mock 报质量）。
-2. 结构化 Citation。
-3. 渐进提取 Context Builder、Tool Executor 和 Harness。
+1. 切分大小或 Chunking 策略（索引期，二选一；不同时改）。
+2. Embedding / 独立 Reranker / Query Rewrite（各自单开）。
+3. 结构化 Citation。
+4. 渐进提取 Context Builder、Tool Executor 和 Harness。
 
-资源级 ACL 仍为 `Planned`，另开任务。`GOV-001` 不决定知识库权限模式或生产 VectorStore（这两项已由 ADR-0001/0002 决定）。
+Top-K 实验须先扩大评测语料。资源级 ACL 仍为 `Planned`。不得用 Mock 或 holdout 宣称质量提升。不得改写 2026-09-19 基线 JSON。

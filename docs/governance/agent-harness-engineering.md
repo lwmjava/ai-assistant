@@ -76,7 +76,7 @@ FastAPI /api/chat
 | Identity/Policy | `app/core/security.py`、API dependencies | Partial |
 | Harness Facade | `app/services/chat_service.py` | Partial，职责过重 |
 | Runtime | `app/agents/pipeline.py`、`app/agents/supervisor.py` | Partial |
-| Context | ChatService + Pipeline | Partial，需验证 Memory/RAG 合并 |
+| Context | ChatService + Pipeline + `context_merge` | Partial，Memory/RAG 已按预算合并；尚未独立 ContextBuilder |
 | State | `AgentState`、Pipeline 阶段 | Partial，未正式持久化 |
 | Skill | `app/agents/skills/` | Partial |
 | Tool Registry | `app/agents/tools/base.py` | Partial |
@@ -86,7 +86,7 @@ FastAPI /api/chat
 | Guardrails | `app/security/` + RBAC | Partial，尚未完整分层 |
 | Audit | `app/audit/` | Partial |
 | Trace | `app/debug/` | Partial，主要为内存 |
-| Evaluation | 尚无统一 Harness | Planned |
+| Evaluation | rag-v0.1 检索评测已有 | Partial；统一 Agent Harness Evaluation 仍 Planned |
 
 ## 5. 目标逻辑架构
 
@@ -423,6 +423,8 @@ Agent 系统变更只有满足以下条件才能完成：
 
 ## 20. 当前执行顺序
 
+已完成（`tasks.yaml` 中 7 项均为 `done`）：
+
 ```text
 GOV-001 治理文件项目化
 → RAG-001 文档事实基线
@@ -431,7 +433,12 @@ GOV-001 治理文件项目化
 → RAG-004 Evaluation Schema与数据
 → RAG-005 RAG baseline
 → RAG-006 P0安全/权限/主链修复
-→ 单变量检索实验
+```
+
+下一步（尚未写入 `tasks.yaml`）：
+
+```text
+单变量检索实验
 → Citation
 → ContextBuilder
 → Tool Contract/Executor
@@ -439,4 +446,4 @@ GOV-001 治理文件项目化
 → StateManager/Harness
 ```
 
-详细任务以根目录 `tasks.yaml` 为准。`GOV-001` 不决定知识库权限或正式 VectorStore。
+详细任务以根目录 `tasks.yaml` 为准。知识库权限与正式 VectorStore 已由 ADR-0001/0002 决定。

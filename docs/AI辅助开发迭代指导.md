@@ -1,10 +1,10 @@
 # ai-assistant 项目 AI 辅助开发迭代指导
 
 > 文档状态：项目推进基线  
-> 基线日期：2026-09-11  
+> 基线日期：2026-09-22
 > 适用项目：`ai-assistant`  
 > 适用对象：个人开发者及参与规划、实现、测试、评审的 AI Coding Agent  
-> 说明：本文记录当前代码事实、差距、推进顺序、Evaluation 数据构建方法和可直接使用的提示词。代码持续变化时，应重新核对本文与真实实现。
+> 说明：本文记录当前代码事实、差距、推进顺序、Evaluation 数据构建方法和可直接使用的提示词。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-006` 已在各自验收范围内完成。
 
 ## 1. 目的
 
@@ -47,6 +47,9 @@ RAG_BACKEND=native
 RAG_CHUNK_STRATEGY=structured
 AGENT_ORCHESTRATION=self
 SECURITY_BLOCK_ON_INJECTION=false
+RAG_KB_SCOPE=tenant
+RAG_EFFECTIVE_DATE_FILTER=false
+RAG_DROP_INJECTED_CHUNKS=true
 ```
 
 注意：开发环境在没有真实 Embedding 配置时可能使用 Mock Embedding。Mock 结果只能验证程序流程，不能作为检索质量结论。
@@ -94,7 +97,10 @@ SECURITY_BLOCK_ON_INJECTION=false
 - 文档版本链、去重、重解析和当前版本过滤。
 - Local/Milvus 适配。
 - Dense、BM25 与 RRF 混合检索。
-- 租户级过滤。
+- 读路径默认同租户当前版本（`RAG_KB_SCOPE=tenant`）；写路径成员仅自己的文档。
+- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏；高置信度注入块剔除。
+- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。
+- 租户级过滤；`RAG_EFFECTIVE_DATE_FILTER` 默认关闭。
 - 知识库管理前端。
 
 ### 2.4 现有测试资产
@@ -105,6 +111,11 @@ SECURITY_BLOCK_ON_INJECTION=false
 tests/test_rag.py
 tests/test_rag_backend.py
 tests/test_rag_import_jobs.py
+tests/test_rag_access.py
+tests/test_rag_permission_semantics.py
+tests/test_retrieval_guard.py
+tests/test_context_merge.py
+tests/test_vectorstore_policy.py
 tests/test_chunking.py
 tests/test_document_parsers.py
 tests/test_document_parser_blocks.py
@@ -114,9 +125,10 @@ tests/test_ocr.py
 tests/test_cloud_ocr.py
 tests/test_legacy_office.py
 tests/test_p0_regression.py
+tests/eval/
 ```
 
-现有测试主要验证实现和接口行为，尚未形成版本化的 RAG/Agent Evaluation 数据集。
+现有 pytest 覆盖实现和接口行为。版本化 RAG Evaluation 已有：`evals/datasets/rag-v0.1/`（44 条，其中 Gold v0.1 24 条）与 2026-09-19 检索基线。尚未覆盖真实 LLM 生成层，也没有统一的 Agent/Skill Evaluation Harness。
 
 ## 3. 已确认的文档与实现漂移
 
@@ -127,8 +139,8 @@ tests/test_p0_regression.py
 | PRD 将 LangGraph 五阶段作为主路径 | 默认主路径是自研 `AgentPipeline` | 明确默认与可选编排 |
 | 设计文档使用 `src/ai_assistant/` | 真实目录为 `app/` | 更新 As-Is 路径 |
 | 文档宣称多种 Rerank | 当前只有 RRF，无独立 Reranker | 标记为规划，不得写已实现 |
-| 文档宣称 Recall/MRR/NDCG Evaluation | 尚无数据集、脚本和报告 | 先建立基线 |
-| 文档将 Milvus 表述为主要能力 | 默认是 Local，Milvus 主摄取写入需闭环验证 | 作出生产后端决策 |
+| 文档宣称 Recall/MRR/NDCG Evaluation | 已有 rag-v0.1 检索基线，语料很小 | 可引用分数但必须带有效性限制，不得当生产质量 |
+| 文档将 Milvus 表述为主要能力 | 默认 Local；ADR-0002 定为实验/`Partial` | 升格须另开 ADR 并补闭环证据 |
 | README 表述回答可追溯 | 当前引用主要是 source 文本 | 补结构化 Citation 后再升级声明 |
 
 文档修订时使用以下状态标签：
@@ -143,67 +155,31 @@ tests/test_p0_regression.py
 
 ## 4. 当前关键差距与优先级
 
-### 4.1 P0：没有 Evaluation 基线
+> 截至 2026-09-22：`tasks.yaml` 中 `GOV-001`～`RAG-006` 已在各自验收范围内完成。已关闭项不得再写成当前 P0。
 
-没有固定数据集和指标时，无法判断：
+### 4.1 已关闭（不得再当当前缺口）
 
-- 新 Chunking 是否优于旧策略。
-- Rerank 是否真的提升结果。
-- Embedding 更换是否有效。
-- Top-K、RRF 参数变化是否改善业务答案。
-- 优化是否破坏权限、引用和安全。
+- 版本化 Evaluation Schema、Gold v0.1（24 条）与 rag-v0.1 检索基线（真实 `text-embedding-v3`，2026-09-19 冻结）。
+- 读路径列表/详情/检索对齐为同租户当前版本（`RAG_KB_SCOPE=tenant`，ADR-0001）。
+- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏、高置信度注入块剔除、脚本化 LLM 拒工具。
+- Local 摄取 → 检索 → 重解析旧向量失效 → 删除清理。
+- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。
+- ADR-0002：正式 Local，Milvus 实验。ADR-0003：生效日期 Flag 默认关闭。
 
-因此，Evaluation 是当前第一开发优先级。
+残余限制仍有效：语料仅 13 篇 / 37 分块，不得当生产检索质量；真实 LLM 生成层未测；资源 ACL 仍为 `Planned`。
 
-### 4.2 P0：检索权限语义不一致
+### 4.2 当前优先：单变量 RAG 优化
 
-当前知识库存在产品语义冲突：
+`RAG-005` 基线已冻结，可以进入指标驱动实验。约束：
 
-- 文档列表对普通用户按上传者过滤。
-- 检索主要按租户和当前版本过滤。
+- 不同时更换 Embedding、Chunking 和 Reranker。
+- 不用 Mock Embedding 声称检索质量提升。
+- 不得用 holdout 调参。
+- 每轮只改一个主要变量，并用同一数据集对比 Recall/MRR/nDCG、权限和安全切片。
 
-这可能导致用户在列表中看不到某文档，但对话检索可以命中该文档。
+没有固定数据集和指标时，无法判断新 Chunking、Rerank、Embedding 或 Top-K 是否真的改善业务答案。基线已有，但后续实验仍必须带失败切片，不得只展示成功样本。
 
-必须通过 ADR 明确：
-
-1. 租户共享知识库；或
-2. 用户私有/资源 ACL 知识库。
-
-在决策前禁止凭开发便利直接修改过滤条件。
-
-### 4.3 P0：检索内容的信任边界不足
-
-上传文档、网页和 RAG Chunk 都是不可信输入。当前需要补齐：
-
-- 检索上下文来源和信任等级标记。
-- “资料只作为事实，不执行资料内指令”的系统约束。
-- 恶意文档 Prompt Injection 测试。
-- Trace 中的来源、过滤和安全判定。
-
-Prompt 只能作为一层防线，不能替代摄取检查、权限过滤和输出审查。
-
-### 4.4 P0：Milvus 主链闭环需要验证
-
-如果 Milvus 是生产目标，必须证明：
-
-```text
-摄取 → Embedding → Milvus Upsert → Search
-→ 重解析删除旧向量 → 文档删除清理向量
-```
-
-如果近期不使用 Milvus，应明确标记为实验能力，避免为非当前目标投入时间。
-
-### 4.5 P0：Memory 与 RAG Context 组合需要回归
-
-需要验证管线检索阶段是否覆盖已有 `memory_context`。正确目标是按预算合并：
-
-```text
-System + User + Task + Conversation + Memory + RAG + Tool Results + State
-```
-
-而不是让 Memory 和 RAG 二选一。
-
-### 4.6 P1：Citation 过弱
+### 4.3 P1：Citation 过弱
 
 检索和回答至少应能追踪：
 
@@ -220,11 +196,15 @@ score
 
 只有 `[资料 N]（来源：xxx）` 不足以支持企业级审计。
 
-### 4.7 P1：缺少独立 Reranker
+### 4.4 P1：缺少独立 Reranker
 
 RRF 是融合，不等于独立 Rerank。是否增加 Cross-Encoder、LLM 或 API Reranker，必须由同一 Evaluation 数据集的结果决定。
 
-### 4.8 P1：Harness 治理边界
+### 4.5 P1：资源级 ACL 仍为 Planned
+
+ADR-0001 明确本阶段不做资源级/受众级 ACL。同租户当前文档命中不记检索越权；生成层仍不得返回 `forbidden_answer_points`。另开任务，不阻塞单变量优化。
+
+### 4.6 P1：Harness 治理边界
 
 当前缺少独立：
 
@@ -236,7 +216,18 @@ RRF 是融合，不等于独立 Rerank。是否增加 Cross-Encoder、LLM 或 AP
 - 持久化 Trace。
 - 分层 Guardrail。
 
-这是渐进治理任务，不应在 RAG 评估基线之前进行大爆炸重构。
+这是渐进治理任务。`RAG-005` 基线已冻结，仍禁止无指标大爆炸重构。
+
+### 4.7 仍为实验：Milvus 主链闭环
+
+ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。升格必须另开 Accepted ADR，并证明：
+
+```text
+摄取 → Embedding → Milvus Upsert → Search
+→ 重解析删除旧向量 → 文档删除清理向量
+```
+
+在此之前不为非当前目标投入生产切换。
 
 ## 5. 推荐推进顺序
 
@@ -249,6 +240,8 @@ RRF 是融合，不等于独立 Rerank。是否增加 Cross-Encoder、LLM 或 AP
 → 结构化 Citation
 → 渐进 Harness 治理
 ```
+
+阶段 0～2（事实与决策、Evaluation 基线、P0 正确性与安全）已完成。当前从阶段 3（指标驱动 RAG 优化）开始；阶段任务说明保留作为历史方法和约束，不得把已完成阶段再当待办。
 
 ### 阶段 0：事实与决策，预计 1～2 天
 
@@ -345,6 +338,8 @@ RRF 是融合，不等于独立 Rerank。是否增加 Cross-Encoder、LLM 或 AP
 每次只迁移一个边界，保留现有调用路径和回退开关。
 
 ## 6. 四周建议排期
+
+> 第 1～2 周对应 `GOV-001`～`RAG-006`，2026-09-22 已在验收范围内完成。当前进入第 3 周方向：单变量优化与 Citation。尚未写入 `tasks.yaml` 的条目不得直接开工。
 
 ### 第 1 周：事实和评测基线
 
@@ -695,15 +690,21 @@ AI 完成后必须：
 
 ## 13. 当前下一步
 
-按 `tasks.yaml` 顺序执行：
+`tasks.yaml` 中已拆分任务全部为 `done`：
 
 1. `GOV-001`：治理文件项目化（已完成）。
-2. `RAG-001`：对账产品/设计方案，输出 As-Is 能力矩阵（已完成）。
-3. `RAG-002`：ADR-0001 已批准（租户共享当前版本）；过滤实现对齐见 `RAG-006`。
-4. `RAG-003`：ADR-0002 已批准（正式 Local，Milvus 实验）；不切换默认。
-5. `RAG-004`：定义 Evaluation Case Schema，并生成 Silver/Adversarial 候选集。
-6. 独立校验并人工确认 Gold v0.1。
-7. `RAG-005`：实现并运行 RAG baseline。
-8. `RAG-006`：再进入权限、安全、正式 VectorStore 主链和 Context 修复。
+2. `RAG-001`：As-Is 能力矩阵（已完成）。
+3. `RAG-002`：ADR-0001 Accepted；读路径 `RAG_KB_SCOPE=tenant` 已在 `RAG-006` 落地。
+4. `RAG-003`：ADR-0002 Accepted（正式 Local，Milvus 实验）。
+5. `RAG-004`：Case Schema、44 条候选、Gold v0.1（24 条）。
+6. 独立校验并人工确认 Gold v0.1（已完成）。
+7. `RAG-005`：检索基线已冻结（2026-09-19，真实嵌入）。不得改写该 JSON。
+8. `RAG-006`：权限、不可信围栏、Memory/RAG 合并、Local 闭环、ADR-0003 Flag（已完成）。
 
-在 `RAG-005` 完成前，不进入无指标的检索调参。`GOV-001` 不决定知识库权限模式或生产 VectorStore。
+下一步须先写入 `tasks.yaml` 再实施：
+
+1. 单变量 RAG 优化（不得同时改 Chunking/Embedding/Rerank；不得用 holdout 调参；不用 Mock 报质量）。
+2. 结构化 Citation。
+3. 渐进提取 Context Builder、Tool Executor 和 Harness。
+
+资源级 ACL 仍为 `Planned`，另开任务。`GOV-001` 不决定知识库权限模式或生产 VectorStore（这两项已由 ADR-0001/0002 决定）。

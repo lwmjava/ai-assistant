@@ -1,7 +1,7 @@
 # ai-assistant As-Is 能力矩阵
 
-> 对账日期：2026-09-13  
-> 代码基线：`main`（工作分支 `docs/gov-001-close-and-rag-001`）  
+> 对账日期：2026-09-22
+> 代码基线：`main`（`GOV-001`～`RAG-006` 已在验收范围内落地）
 > 状态术语：`Implemented` / `Partial` / `Planned` / `Deferred` / `Deprecated`  
 > 当前事实入口：`AGENTS.md`  
 > TARGET 愿景：`docs/product/项目产品需求方案.md` §3.1  
@@ -15,7 +15,7 @@
 |---|---|---|---|
 | FastAPI 后端 | `Implemented` | `pyproject.toml`；`app/main.py` | — |
 | React + TypeScript + Vite 控制台 | `Implemented` | `frontend/package.json`；2026-09-13 `npm run typecheck` / `npm run build` 通过 | — |
-| JWT + RBAC + 多租户 | `Partial` | `app/core/security.py`；API dependencies | 资源级 ACL 未定，见待决策 ADR-KB |
+| JWT + RBAC + 多租户 | `Partial` | `app/core/security.py`；API dependencies；`app/rag/access.py` | 租户读路径已对齐（ADR-0001）；资源级 ACL 仍 `Planned` |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
 
@@ -26,7 +26,7 @@
 | 自研五阶段 `AgentPipeline`（默认） | `Implemented` | `AGENT_ORCHESTRATION=self`；`app/agents/pipeline.py`；`app/services/chat_service.py` | 不是 LangGraph 五阶段主路径 |
 | LangGraph Supervisor | `Partial` | `app/agents/supervisor.py` | 可选编排，不是默认主路径 |
 | ChatService 组装 Memory/RAG/Tools/Skills/安全 | `Partial` | `app/services/chat_service.py` | 同时承担部分 Harness 职责，未独立提取 |
-| 独立 Agent Harness / Context Builder / State Manager | `Planned` | `docs/governance/agent-harness-engineering.md` | 禁止在 RAG baseline 前大爆炸重构 |
+| 独立 Agent Harness / Context Builder / State Manager | `Planned` | `docs/governance/agent-harness-engineering.md` | RAG-005 基线已冻结；仍禁止无指标大爆炸重构 |
 | Tool Registry（名称/描述/Schema/函数） | `Partial` | `app/agents/tools/` | 权限、风险、超时、审计、版本未齐 |
 | 独立 Tool Executor | `Planned` | 治理规范 §3 | — |
 | YAML Skill 加载 | `Partial` | `app/agents/skills/` | Preconditions/Escalation/Evaluation 未齐 |
@@ -38,13 +38,13 @@
 |---|---|---|---|
 | 对话默认不注入 RAG | `Implemented` | `RAG_ENABLED=false`；`tests/test_chat.py`；`tests/eval/test_rag006_pipeline.py` | 开启后有脚本化 LLM 集成；真实 LLM / Citation 未测 |
 | 后端默认 `native` | `Implemented` | `RAG_BACKEND=native` | LangChain/LlamaIndex 为可选适配 |
-| 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py` | Milvus 正式级别待 ADR-VS |
-| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py` | 缺摄取/检索/重解析/删除闭环证据 |
+| 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 本阶段正式 Local；升格 Milvus 须另开 ADR |
+| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002 | 实验后端；缺摄取/检索/重解析/删除闭环证据 |
 | 多格式解析（文本/PDF/Office/OCR） | `Partial` | `app/rag/document_parsers/`；`app/rag/ocr/`；相关 tests | 支持级别以测试为准，禁止写成全格式生产完备 |
-| 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 无评测基线前不新增策略 |
+| 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 基线已冻结；无指标不新增策略 |
 | Dense + BM25 + RRF | `Implemented` | `app/rag/vectorstore/`；`app/rag/retriever.py` | RRF 是融合，不是独立 Reranker |
-| 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | 迭代指导 §4.7 | 必须由同一 Evaluation 证明价值 |
-| 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs | 与检索权限语义未统一 |
+| 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | 迭代指导 §4.4 | 必须由同一 Evaluation 证明价值 |
+| 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs；`tests/eval/test_rag006_pipeline.py` | 当前版本读路径已与检索对齐；生效日期 Flag 默认关；资源 ACL `Planned` |
 | 结构化 Citation | `Partial` | 回答目前主要是 source 文本 | 缺 document/chunk/version/page/section |
 | 版本化 Evaluation | `Partial` | `evals/datasets/rag-v0.1/`；`docs/evaluations/rag-v0.1-baseline-report.md` | 未测生成层；语料规模小，不得当生产质量 |
 
@@ -83,9 +83,10 @@
 
 | 命令 | 结果 | 说明 |
 |---|---|---|
-| `pytest -q --tb=no` | 240 passed，2 skipped，1 failed | 失败项：`tests/test_workflow.py::test_scheduler_runnable_and_start_stop`；日志为未安装 `croniter`（optional extra `workflow`） |
-| `cd frontend && npm run typecheck` | 通过 | 2026-09-13 |
-| `cd frontend && npm run build` | 通过 | 2026-09-13 |
+| `conda run -n ai-assistant pytest`（RAG-004/005/006 相关 10 个文件） | 2026-09-22：56 passed | 权限、注入围栏、生效日期、数据集、基线 harness |
+| `conda run -n ai-assistant pytest tests/test_rag.py tests/test_rag_import_jobs.py tests/test_rag_backend.py tests/test_chunking.py tests/test_chat.py tests/test_security_smoke.py tests/eval/` | 2026-09-22：113 passed，1 skipped | 文档对账当次扫描 |
+| `pytest -q --tb=no`（全量） | 2026-09-13：240 passed，2 skipped，1 failed | 失败项：`tests/test_workflow.py::test_scheduler_runnable_and_start_stop`（缺 `croniter`）；本轮文档修复未重跑全量 |
+| `cd frontend && npm run typecheck` / `npm run build` | 通过 | 2026-09-13；本轮未重跑 |
 | `git diff --check` | 以当次工作区为准 | 文档任务 |
 
 该 workflow 失败是环境缺少可选依赖，不是本次文档改动引入。不在本任务安装依赖或降低门禁。

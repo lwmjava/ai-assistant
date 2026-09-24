@@ -49,11 +49,11 @@ flowchart LR
     Chat --> Pipe[AgentPipeline<br/>或 Supervisor]
     Pipe --> SecOut[输出安全]
     Chat --> DB[(SQLModel)]
-    RAG --> VS[(VectorStore<br/>默认 Local)]
+    RAG --> VS[(VectorStore<br/>当前默认 Local)]
     Tools --> MCP[MCP 工具注入]
 ```
 
-默认配置事实：`AGENT_ORCHESTRATION=self`，`RAG_BACKEND=native`，`RAG_VECTOR_STORE=local`，`RAG_ENABLED=false`，`SECURITY_BLOCK_ON_INJECTION=false`。Trace 以内存环形缓冲为主。无真实 Embedding 时 Mock 只能证明链路，不能证明检索质量。
+默认配置事实：`AGENT_ORCHESTRATION=self`，`RAG_BACKEND=native`，`RAG_VECTOR_STORE=local`，`RAG_ENABLED=false`，`SECURITY_BLOCK_ON_INJECTION=false`。正式向量库目标为 Milvus（ADR-0002，开发 Lite / 生产 2.4+）；第 5 节门槛通过前不改默认。Trace 以内存环形缓冲为主。无真实 Embedding 时 Mock 只能证明链路，不能证明检索质量。
 
 ### 最终目标架构（TARGET）
 
@@ -62,6 +62,8 @@ flowchart LR
 - 第 3 层 **Agent Harness** 只负责编排：Context、Runtime、State、预算、Guard、HITL。
 - **Code Sandbox** 在第 4 层，由 Tool Guard 调用；代码动作不得在宿主进程执行。
 - **Evaluation 测评** 是离线横切能力，消费 Trace 与版本化数据集，不阻塞在线请求。
+
+下图是目标形态，不是当前施工顺序。日历推进顺序见 [`docs/plans/plan_delivery_2027-03-25.md`](docs/plans/plan_delivery_2027-03-25.md)：阶段 A（知识库治理）→ B（最小安装点）→ C（MVP）→ D（完整交付）。
 
 ```mermaid
 flowchart TB
@@ -92,7 +94,7 @@ flowchart TB
     end
     subgraph K["5. 知识与记忆"]
         ING[摄取 / OCR / 切分]
-        RET[权限过滤 → Hybrid → Citation]
+        RET[权限过滤 → Hybrid → Citation<br/>正式向量目标 Milvus]
         MEM[Memory / Reflection]
     end
     subgraph B["6. 集成与治理"]

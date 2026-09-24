@@ -30,6 +30,8 @@ def is_kb_admin(user: User) -> bool:
 
 
 def can_read_document(doc: Document, user: User) -> bool:
+    if doc.deleted_at is not None:
+        return False
     if not same_tenant(doc.tenant_id, user):
         return False
     if not doc.is_current:
@@ -53,7 +55,9 @@ def can_control_document(doc: Document, user: User) -> bool:
 
 
 def can_write_document(doc: Document, user: User) -> bool:
-    """删除 / 重解析。与控制面读权限相同。"""
+    """删除 / 重解析。已软删的文档不能再删或重解析。"""
+    if doc.deleted_at is not None:
+        return False
     return can_control_document(doc, user)
 
 

@@ -23,6 +23,15 @@ async def _loop() -> None:
     while True:
         try:
             await run_import_jobs_once()
+            from datetime import UTC, datetime
+
+            from sqlmodel import Session
+
+            from app.core.database import engine
+            from app.rag.retention import purge_expired_documents
+
+            with Session(engine) as session:
+                await purge_expired_documents(session, now=datetime.now(UTC))
         except Exception:  # noqa: BLE001
             logger.exception("RAG 导入调度器 tick 异常")
         try:

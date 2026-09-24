@@ -65,6 +65,7 @@ class Document(SQLModel, TimestampMixin, table=True):
     version_number: int = Field(default=1)
     previous_document_id: str | None = Field(default=None, index=True)
     is_current: bool = Field(default=True, index=True)
+    deleted_at: datetime | None = Field(default=None, index=True)
     effective_at: datetime | None = Field(default=None, index=True)
     expires_at: datetime | None = Field(default=None, index=True)
     import_job_id: str | None = Field(default=None, index=True)

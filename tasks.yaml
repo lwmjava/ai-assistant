@@ -858,7 +858,7 @@ tasks:
 
   - id: "RAG-012"
     title: "软删除与保留期（交付 A2 / 评审阶段 3）"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: "2026-10-15"
     depends_on:
@@ -877,6 +877,7 @@ tasks:
         - "app/models/rag.py"
         - "app/rag/"
         - "app/api/routes/rag.py"
+        - "app/core/migration.py"
         - "alembic/"
         - "tests/test_rag_access.py"
         - "tests/test_rag_permission_semantics.py"
@@ -919,7 +920,7 @@ tasks:
         - "ruff check app/rag/ app/models/rag.py app/api/routes/rag.py"
     execution:
       owner: "个人开发者"
-      blocked_by: "RAG-011"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false

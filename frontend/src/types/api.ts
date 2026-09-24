@@ -113,6 +113,7 @@ export interface DocumentOut {
   title: string
   source: string | null
   is_current: boolean
+  deleted_at: string | null
   chunk_count: number
   created_at: string
   updated_at: string

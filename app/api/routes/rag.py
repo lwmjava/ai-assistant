@@ -26,7 +26,6 @@ from app.rag.document_parsers import (
     parse_uploaded_document,
 )
 from app.rag.document_storage import (
-    delete_source_file,
     resolve_source_file_path,
     save_source_file,
 )
@@ -105,6 +104,7 @@ class DocumentOut(BaseModel):
     title: str
     source: str | None
     is_current: bool
+    deleted_at: str | None
     chunk_count: int
     created_at: str
     updated_at: str
@@ -165,6 +165,7 @@ def _doc_out(doc: Document) -> DocumentOut:
         title=doc.title,
         source=doc.source,
         is_current=doc.is_current,
+        deleted_at=doc.deleted_at.isoformat() if doc.deleted_at else None,
         chunk_count=doc.chunk_count,
         created_at=doc.created_at.isoformat(),
         updated_at=doc.updated_at.isoformat(),
@@ -500,12 +501,16 @@ def download_import_job_source(
 
 @router.get("/documents", response_model=list[DocumentOut])
 def list_documents(
+    include_deleted: bool = False,
     current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> list[DocumentOut]:
-    """列出当前用户可见的文档。"""
+    """列出当前用户可见的文档。成员即使传入 include_deleted 也看不到已软删行。"""
     rag = RAGService(session, current_user.tenant_id)
-    return [_doc_out(d) for d in rag.list_documents(current_user)]
+    return [
+        _doc_out(d)
+        for d in rag.list_documents(current_user, include_deleted=include_deleted)
+    ]
 
 
 @router.get("/documents/{document_id}", response_model=DocumentDetail)
@@ -570,7 +575,7 @@ def download_document(
     """下载已保存的源文件。"""
     rag = RAGService(session, current_user.tenant_id)
     doc = rag.get_document(document_id, current_user)
-    if doc is None:
+    if doc is None or doc.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
         )
@@ -604,26 +609,18 @@ async def delete_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
         )
-    storage_path = doc.storage_path
     owner_tenant_id = doc.tenant_id
-    cross_tenant = (
-        current_user.role_enum == Role.SYSTEM_ADMIN and owner_tenant_id != current_user.tenant_id
-    )
     rag = RAGService(session, owner_tenant_id)
     ok = await rag.delete_document(document_id, current_user)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
         )
-    if storage_path:
-        delete_source_file(storage_path)
-    details = None
-    if cross_tenant:
-        details = {
-            "tenant_id": owner_tenant_id,
-            "document_id": document_id,
-            "action": "delete",
-        }
+    details = {
+        "tenant_id": owner_tenant_id,
+        "document_id": document_id,
+        "action": "delete",
+    }
     await audit_event(
         request,
         AuditAction.KNOWLEDGE_BASE_DELETE,

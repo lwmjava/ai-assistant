@@ -7,13 +7,14 @@ import type { DocumentOut, SearchResultOut } from '@/types/api'
 
 export const documentKeys = {
   all: ['documents'] as const,
-  list: () => [...documentKeys.all, 'list'] as const,
+  list: (includeDeleted = false) => [...documentKeys.all, 'list', includeDeleted] as const,
 }
 
-export function useDocuments() {
+export function useDocuments(includeDeleted = false) {
+  const query = includeDeleted ? '?include_deleted=true' : ''
   return useQuery({
-    queryKey: documentKeys.list(),
-    queryFn: () => api.get<DocumentOut[]>('/rag/documents'),
+    queryKey: documentKeys.list(includeDeleted),
+    queryFn: () => api.get<DocumentOut[]>(`/rag/documents${query}`),
     staleTime: 15_000,
   })
 }

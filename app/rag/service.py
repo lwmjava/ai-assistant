@@ -15,7 +15,7 @@ import logging
 import os
 import uuid
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlmodel import Session, select
 
@@ -26,6 +26,7 @@ from app.rag.access import (
     can_control_document,
     can_read_document,
     can_write_document,
+    is_kb_admin,
     restrict_list_to_uploader,
 )
 from app.rag.backend.base import RagBackend
@@ -372,8 +373,8 @@ class RAGService:
         """读权限。保留此名以兼容旧调用，语义见 ``can_read_document``。"""
         return can_read_document(doc, user)
 
-    def list_documents(self, user: User) -> list[Document]:
-        """控制面列表。成员只看自己的当前版；管理员可看历史版。"""
+    def list_documents(self, user: User, *, include_deleted: bool = False) -> list[Document]:
+        """控制面列表。成员只看自己的未删当前版；管理员可看历史版。"""
         from app.core.security import Role
 
         if user.role_enum == Role.SYSTEM_ADMIN:
@@ -388,13 +389,17 @@ class RAGService:
             )
             if restrict_list_to_uploader(user):
                 stmt = stmt.where(Document.user_id == user.id)
+        if not (include_deleted and is_kb_admin(user)):
+            stmt = stmt.where(Document.deleted_at.is_(None))
         stmt = stmt.order_by(Document.updated_at.desc())
         return list(self.session.exec(stmt).all())
 
     def get_document(self, document_id: str, user: User) -> Document | None:
-        """按 ID 获取文档。控制面无权限时返回 None。"""
+        """按 ID 获取文档。控制面无权限时返回 None。成员看不到已软删文档。"""
         doc = self.session.get(Document, document_id)
         if doc is None or not can_control_document(doc, user):
+            return None
+        if doc.deleted_at is not None and not is_kb_admin(user):
             return None
         return doc
 
@@ -453,20 +458,11 @@ class RAGService:
         return document
 
     async def delete_document(self, document_id: str, user: User) -> bool:
-        """删除文档（清理向量索引，再级联删除分块与主库记录）。
-
-        必须先清理向量再删主库记录：分块随 Document 级联删除后，
-        向量库里已无从得知该文档关联哪些分块，残留向量会持续被检索命中。
-        向量清理失败只记日志不阻断，避免数据库记录无法删除而成为孤儿数据。
-        """
+        """软删除：记下删除时间，保留分块、向量和源文件。"""
         doc = self.session.get(Document, document_id)
         if doc is None or not can_write_document(doc, user):
             return False
-        try:
-            removed = await self._vector_store.delete_by_document(document_id, self.tenant_id)
-            logger.info("文档向量已清理: document=%s, removed=%s", document_id, removed)
-        except Exception:  # noqa: BLE001 — 向量清理失败不应阻断主库删除
-            logger.exception("清理文档向量失败: document=%s", document_id)
-        self.session.delete(doc)
+        doc.deleted_at = datetime.now(UTC)
+        self.session.add(doc)
         self.session.commit()
         return True

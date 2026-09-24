@@ -199,9 +199,13 @@ function DocumentRow({
       <div className="min-w-0">
         <p className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium text-text">{doc.title}</span>
-          <Badge tone={doc.is_current ? 'success' : 'warning'}>
-            {doc.is_current ? '当前版' : '历史版'}
-          </Badge>
+          {doc.deleted_at ? (
+            <Badge tone="danger">已删除</Badge>
+          ) : (
+            <Badge tone={doc.is_current ? 'success' : 'warning'}>
+              {doc.is_current ? '当前版' : '历史版'}
+            </Badge>
+          )}
         </p>
         <p className="mt-0.5 truncate text-xs text-text-faint">
           {doc.source ? `来源：${doc.source} · ` : ''}
@@ -231,12 +235,14 @@ export default function KnowledgePage() {
   const role = useAuthStore((s) => s.user?.role)
   const canWrite = can(role, 'knowledge_bases', 'write')
   const canDelete = can(role, 'knowledge_bases', 'delete')
+  const canSeeDeleted = role === 'system_admin' || role === 'tenant_admin'
 
   const [ingestOpen, setIngestOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<DocumentOut | null>(null)
+  const [showDeleted, setShowDeleted] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const documents = useDocuments()
+  const documents = useDocuments(canSeeDeleted && showDeleted)
   const upload = useUploadDocument()
   const remove = useDeleteDocument()
 
@@ -314,7 +320,18 @@ export default function KnowledgePage() {
       <section className="panel overflow-hidden">
         <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <h2 className="font-display text-sm font-semibold text-text">文档</h2>
-          <span className="text-xs text-text-faint">共 {docs.length} 篇</span>
+          <div className="flex items-center gap-3">
+            {canSeeDeleted && (
+              <button
+                type="button"
+                onClick={() => setShowDeleted((value) => !value)}
+                className="text-xs text-text-muted hover:text-text"
+              >
+                {showDeleted ? '隐藏已删除' : '显示已删除'}
+              </button>
+            )}
+            <span className="text-xs text-text-faint">共 {docs.length} 篇</span>
+          </div>
         </header>
 
         {documents.isLoading ? (

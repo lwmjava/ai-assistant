@@ -774,3 +774,221 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
+  - id: "RAG-011"
+    title: "控制面权限、审计与单一当前版（交付 A1 / 评审阶段 2）"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-10-07"
+    depends_on:
+      - "RAG-010"
+    context:
+      problem: "检索面与控制面共用 is_current 语义：跨租户一律拒绝，管理员只能写当前版，成员可对历史版写入；重解析会翻 is_current；无同一 version_group_id 仅一个当前版的约束；系统管理员跨租户清理无审计。"
+      facts:
+        - claim: "can_write_document 要求同租户；管理员仅当前版；成员只校验上传者。"
+          evidence: "app/rag/access.py"
+        - claim: "重解析出新内容时会 previous.is_current=False 并写入新当前版。"
+          evidence: "app/rag/import_jobs.py"
+        - claim: "评审方案 §2.3 / §3 阶段 2 与交付排期 A1 已确认产品决定。"
+          evidence: "docs/plans/plan_rag_005_006_review_fixes.md；docs/plans/plan_delivery_2027-03-25.md"
+    scope:
+      allowed_paths:
+        - "docs/adr/0001-knowledge-base-permission.md"
+        - "docs/plans/plan_rag_011_control_plane.md"
+        - "app/rag/access.py"
+        - "app/rag/import_jobs.py"
+        - "app/rag/service.py"
+        - "app/models/rag.py"
+        - "app/api/routes/rag.py"
+        - "tests/test_rag_access.py"
+        - "tests/test_rag_permission_semantics.py"
+        - "tests/test_rag.py"
+        - "frontend/src/pages/Knowledge.tsx"
+        - "frontend/src/types/api.ts"
+        - "frontend/src/api/rag.ts"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "app/rag/vectorstore/milvus.py"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "ADR-0001 修订：检索面与控制面分开；成员/租户管理员/系统管理员矩阵对齐评审 §2.3"
+        - "成员只能读/删/重解析自己的当前版；租户管理员管本租户含历史版；系统管理员可跨租户控制面操作并 audit_event"
+        - "重解析不改 is_current、不顶掉当前版；写入路径同一 version_group_id 最多一个 is_current=true"
+        - "知识库列表区分当前版与历史版（管理员可见历史）"
+      non_goals:
+        - "不放宽对话检索过滤"
+        - "不做软删除（归 RAG-012）"
+        - "不做发布历史版接口与完整状态机（归 RAG-013）"
+        - "不改用户/审计系统本身及其他业务资源权限"
+        - "不改写 rag-v0.1 基线"
+    acceptance:
+      - "权限测试覆盖成员/租户管理员/系统管理员的允许与拒绝。"
+      - "系统管理员跨租户删除或重解析产生审计（操作者、租户、文档、动作、时间，无正文）。"
+      - "重解析历史版后，原当前版仍是唯一当前版。"
+      - "对话检索不命中历史版与他租户。"
+      - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py -v 通过；相关 ruff/mypy 通过。"
+    risk:
+      level: "L2"
+      side_effect: "kb-control-plane-permission-and-reparse-semantics"
+      rollback: "回退 access/import/service/路由与 ADR-0001；检索默认行为保持租户当前版。"
+    evaluation:
+      cases:
+        - "成员不能操作他人或历史版"
+        - "租户管理员可管本租户历史版且跨租户失败"
+        - "系统管理员跨租户删除/重解析有审计"
+        - "重解析不误发布"
+      commands:
+        - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py -v"
+        - "ruff check app/rag/access.py app/rag/import_jobs.py app/api/routes/rag.py"
+        - "mypy app/rag/access.py app/rag/import_jobs.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-012"
+    title: "软删除与保留期（交付 A2 / 评审阶段 3）"
+    status: "backlog"
+    priority: "P0"
+    target_date: "2026-10-15"
+    depends_on:
+      - "RAG-011"
+    context:
+      problem: "阶段 2 之后管理员删除仍是立刻物理删除，不利于审计与恢复。需要软删除、列表默认隐藏、保留期届满后再物理清理并再次审计。"
+      facts:
+        - claim: "交付排期 A2 与评审方案阶段 3 要求软删除与保留期；保留期天数定为 90 天。"
+          evidence: "docs/plans/plan_delivery_2027-03-25.md；docs/plans/plan_rag_005_006_review_fixes.md §3"
+        - claim: "RAG-011 的角色矩阵与重解析语义必须先验收。"
+          evidence: "tasks.yaml RAG-011"
+    scope:
+      allowed_paths:
+        - "docs/adr/0001-knowledge-base-permission.md"
+        - "docs/plans/plan_rag_012_soft_delete.md"
+        - "app/models/rag.py"
+        - "app/rag/"
+        - "app/api/routes/rag.py"
+        - "alembic/"
+        - "tests/test_rag_access.py"
+        - "tests/test_rag_permission_semantics.py"
+        - "tests/test_rag.py"
+        - "frontend/src/pages/Knowledge.tsx"
+        - "frontend/src/types/api.ts"
+        - "frontend/src/api/rag.ts"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "ADR 写明保留期 90 天"
+        - "文档删除标记与删除时间；列表默认不展示已软删；管理员可查看"
+        - "成员与对话检索均不可见已软删文档"
+        - "保留期届满后的物理清理路径并再次审计"
+        - "前端默认隐藏已删；管理员可切换查看"
+      non_goals:
+        - "不改 RAG-011 角色矩阵"
+        - "不做完整版本状态机（归 RAG-013）"
+        - "不缩短为立刻物理删除"
+        - "不改写 rag-v0.1 基线"
+    acceptance:
+      - "软删后成员列表与检索均不可见；管理员可查看。"
+      - "未到 90 天不物理删除；届满清理有审计。"
+      - "相关 pytest 与 ruff/mypy 通过。"
+    risk:
+      level: "L2"
+      side_effect: "kb-soft-delete-and-retention"
+      rollback: "回退删除标记与清理任务；必要时保留已软删行不物理恢复。"
+    evaluation:
+      cases:
+        - "软删对成员与检索不可见"
+        - "保留期内不物理删"
+        - "届满清理可追溯"
+      commands:
+        - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py tests/test_rag.py -v"
+        - "ruff check app/rag/ app/models/rag.py app/api/routes/rag.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "RAG-011"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-013"
+    title: "版本状态机、跨租户二次确认与发布历史版（交付 A3 / 评审阶段 4）"
+    status: "backlog"
+    priority: "P0"
+    target_date: "2026-10-23"
+    depends_on:
+      - "RAG-012"
+    context:
+      problem: "企业知识库需要草稿/待生效/已发布/已替换/已归档；显式发布历史版；系统管理员跨租户敏感操作需二次确认。阶段 2 只做了审计，未做状态机与发布接口。"
+      facts:
+        - claim: "交付排期 A3 与评审方案阶段 4 已列状态机、二次确认、发布历史版。"
+          evidence: "docs/plans/plan_delivery_2027-03-25.md；docs/plans/plan_rag_005_006_review_fixes.md §3"
+        - claim: "生效日期全量载入性能不在本任务。"
+          evidence: "docs/adr/0002-official-vectorstore.md §6"
+    scope:
+      allowed_paths:
+        - "docs/adr/0001-knowledge-base-permission.md"
+        - "docs/adr/0003-effective-date-versioning.md"
+        - "docs/plans/plan_rag_013_version_states.md"
+        - "app/models/rag.py"
+        - "app/rag/"
+        - "app/api/routes/rag.py"
+        - "app/audit/"
+        - "alembic/"
+        - "tests/"
+        - "frontend/src/pages/Knowledge.tsx"
+        - "frontend/src/types/api.ts"
+        - "frontend/src/api/rag.ts"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "状态：草稿、待生效、已发布、已替换、已归档"
+        - "显式发布历史版为当前版（同组取消旧当前 + 目标标当前，同一事务）"
+        - "系统管理员跨租户删除/重解析/发布的二次确认（确认记录可查，非完整工单）"
+        - "前端状态筛选与发布操作"
+      non_goals:
+        - "不做生效日期全量载入性能优化（另立项）"
+        - "不做完整工单/审批流产品"
+        - "不改写 rag-v0.1 基线"
+        - "不把默认向量库切到 Milvus（ADR-0002 门槛另计）"
+    acceptance:
+      - "状态机与发布事务测试通过；发布后同组仅一个当前版。"
+      - "跨租户敏感操作无二次确认则拒绝；有确认则落记录。"
+      - "前端可按状态筛选并执行发布。"
+      - "相关 pytest 与 ruff/mypy 通过。"
+    risk:
+      level: "L2"
+      side_effect: "kb-version-state-machine-and-publish"
+      rollback: "回退状态字段与发布接口；检索仍只命中已发布当前版。"
+    evaluation:
+      cases:
+        - "发布历史版事务与唯一当前版"
+        - "二次确认缺失与成功"
+        - "状态筛选"
+      commands:
+        - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py tests/test_rag.py -v"
+        - "ruff check app/rag/ app/models/rag.py app/api/routes/rag.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "RAG-012"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false

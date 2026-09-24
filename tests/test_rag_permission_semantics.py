@@ -1,4 +1,4 @@
-"""ADR-0001 To-Be 表征：读路径租户共享当前版本。
+"""检索面同租户当前版；控制面成员看不到他人文档。
 
 默认 ``RAG_KB_SCOPE=tenant``。``uploader`` 回滚路径见 ``tests/test_rag_access.py``。
 使用隔离 SQLite，避免共享测试库中的历史文档挤掉 top-k。
@@ -59,8 +59,8 @@ async def test_same_tenant_list_detail_and_search_share_current_documents(
         listed_owner = {item.id for item in rag.list_documents(owner)}
         listed_peer = {item.id for item in rag.list_documents(peer)}
         assert doc.id in listed_owner
-        assert doc.id in listed_peer
-        assert rag.get_document(doc.id, peer) is not None
+        assert doc.id not in listed_peer
+        assert rag.get_document(doc.id, peer) is None
 
         hits = await rag.search(marker, top_k=5)
         assert any(hit.document_id == doc.id for hit in hits)

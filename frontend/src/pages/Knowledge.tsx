@@ -197,7 +197,12 @@ function DocumentRow({
   return (
     <li className="group/item grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-2/50 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_2.5rem]">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-text">{doc.title}</p>
+        <p className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-text">{doc.title}</span>
+          <Badge tone={doc.is_current ? 'success' : 'warning'}>
+            {doc.is_current ? '当前版' : '历史版'}
+          </Badge>
+        </p>
         <p className="mt-0.5 truncate text-xs text-text-faint">
           {doc.source ? `来源：${doc.source} · ` : ''}
           {formatDateTime(doc.created_at)}

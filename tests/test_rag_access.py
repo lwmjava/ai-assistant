@@ -1,4 +1,4 @@
-"""ADR-0001 知识库读写权限与导入可见性。"""
+"""知识库读写权限与导入可见性。"""
 
 from __future__ import annotations
 
@@ -39,8 +39,10 @@ async def test_kb01_peer_lists_same_tenant_current_document(session: Session, mo
     peer = _user("kb-peer", tenant)
     rag = RAGService(session, tenant)
     doc = await rag.ingest_text("KB-01 同租户共享正文。", "KB-01", "kb01", owner.id)
-    assert doc.id in {item.id for item in rag.list_documents(peer)}
-    assert rag.get_document(doc.id, peer) is not None
+    assert doc.id in {item.id for item in rag.list_documents(owner)}
+    assert doc.id not in {item.id for item in rag.list_documents(peer)}
+    assert rag.get_document(doc.id, peer) is None
+    assert can_read_document(doc, peer) is True
 
 
 async def test_kb03_member_cannot_delete_peer_admin_can(session: Session, monkeypatch):
@@ -66,16 +68,23 @@ async def test_stale_version_not_in_list_or_detail(session: Session, monkeypatch
     doc.is_current = False
     session.add(doc)
     session.commit()
+    admin = _user("kb-stale-admin", tenant, Role.TENANT_ADMIN)
     assert doc.id not in {item.id for item in rag.list_documents(owner)}
     assert rag.get_document(doc.id, owner) is None
+    assert can_write_document(doc, owner) is False
+    assert doc.id in {item.id for item in rag.list_documents(admin)}
+    assert rag.get_document(doc.id, admin) is not None
+    assert can_write_document(doc, admin) is True
     assert can_read_document(doc, owner) is False
 
 
 def test_cross_tenant_read_and_write_denied():
     doc = Document(tenant_id="t-a", user_id="u-a", title="x", is_current=True)
     other = _user("u-b", "t-b")
+    admin = _user("sys", "t-platform", Role.SYSTEM_ADMIN)
     assert can_read_document(doc, other) is False
     assert can_write_document(doc, other) is False
+    assert can_write_document(doc, admin) is True
     assert can_read_import("u-a", "t-a", other) is False
 
 

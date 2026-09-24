@@ -658,7 +658,8 @@ tasks:
 
   - id: "RAG-009"
     title: "单次评测结束时恢复 RAG_HYBRID_RRF_K"
-    status: "backlog"
+    status: "done"
+    completed_at: "2026-09-24"
     priority: "P2"
     depends_on:
       - "RAG-008"
@@ -667,10 +668,10 @@ tasks:
       facts:
         - claim: "apply_rrf_k 只改当前进程的 settings.RAG_HYBRID_RRF_K，不写配置文件。"
           evidence: "scripts/run_rag_baseline.py apply_rrf_k"
-        - claim: "run_sweep 在 finally 中恢复 previous_k；单次路径的 finally 只 index.close()。"
-          evidence: "scripts/run_rag_baseline.py"
-        - claim: "test_apply_rrf_k_can_be_restored 只证明调用方自己能改回。"
-          evidence: "tests/eval/test_rrf_k_experiment.py"
+        - claim: "单次路径在 finally 中写回进入前的 RAG_HYBRID_RRF_K；run_sweep 的恢复逻辑未改。"
+          evidence: "scripts/run_rag_baseline.py main_async；tests/eval/test_rrf_k_experiment.py"
+        - claim: "脚本头待完善已删除“单次覆盖后不自动改回”一条。"
+          evidence: "scripts/run_rag_baseline.py 模块文档"
     scope:
       allowed_paths:
         - "scripts/run_rag_baseline.py"
@@ -706,7 +707,7 @@ tasks:
         - "ruff check scripts/run_rag_baseline.py tests/eval/test_rrf_k_experiment.py"
     execution:
       owner: "个人开发者"
-      blocked_by: "RAG-008"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false
@@ -715,19 +716,20 @@ tasks:
 
   - id: "RAG-010"
     title: "补记生效日期全量载入、工具名边界和 critique 预算"
-    status: "backlog"
+    status: "done"
+    completed_at: "2026-09-24"
     priority: "P2"
     depends_on:
       - "RAG-009"
     context:
       problem: "生效日期开关打开后 Local 全量载入、工具名拒绝的真实匹配范围、QualityGate critique 不受 RAG 字符预算约束，这三处只应写进文档，不改检索和管线行为。"
       facts:
-        - claim: "RAG_EFFECTIVE_DATE_FILTER 默认 false；为 true 时 SQL 不再按 is_current 收窄。"
-          evidence: "app/core/config.py；app/rag/vectorstore/local.py"
-        - claim: "reject_untrusted_tool_call 用围栏标记当开关，对整段 context 做子串匹配。"
+        - claim: "ADR-0002 已写明 Flag 默认关闭、打开后 Local 全量载入，以及检索面与控制面不能共用 is_current。本任务不改 local.py。"
+          evidence: "docs/adr/0002-official-vectorstore.md §6"
+        - claim: "迭代指导已写明拒工具对整段 context 做子串匹配，以及 critique 不在 RAG 字符预算内。"
+          evidence: "docs/AI辅助开发迭代指导.md §2.3、§4.1"
+        - claim: "reject_untrusted_tool_call 仅函数说明与实现对齐，拒绝条件未改。"
           evidence: "app/rag/context_merge.py"
-        - claim: "_trim 只在 merge_memory_and_rag 生效；critique 在 pipeline 中直接拼进 state.context。"
-          evidence: "app/rag/context_merge.py；app/agents/pipeline.py"
     scope:
       allowed_paths:
         - "docs/adr/0002-official-vectorstore.md"
@@ -766,7 +768,7 @@ tasks:
         - "mypy app/rag/context_merge.py"
     execution:
       owner: "个人开发者"
-      blocked_by: "RAG-009"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false

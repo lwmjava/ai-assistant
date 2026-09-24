@@ -98,8 +98,8 @@ RAG_DROP_INJECTED_CHUNKS=true
 - Local/Milvus 适配。
 - Dense、BM25 与 RRF 混合检索。
 - 读路径默认同租户当前版本（`RAG_KB_SCOPE=tenant`）；写路径成员仅自己的文档。
-- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏；高置信度注入块剔除。
-- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。
+- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏；高置信度注入块剔除。拒工具不是通用白名单，也不是只在围栏内部查找：`[UNTRUSTED_SOURCE]` 只是开关，随后对整段 `context`（含记忆和之后追加的 critique）做子串匹配；整段里没有的工具名不会被拒绝。
+- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。`_trim` 只作用于这次合并。QualityGate 的 critique 在截断之后拼进 `state.context`，不再按 `RAG_CONTEXT_CHARS` 截断；长度随自纠错轮数增长，上限是 `AGENT_MAX_REVISIONS`。
 - 租户级过滤；`RAG_EFFECTIVE_DATE_FILTER` 默认关闭。
 - 知识库管理前端。
 
@@ -161,9 +161,9 @@ tests/eval/
 
 - 版本化 Evaluation Schema、Gold v0.1（24 条）与 rag-v0.1 检索基线（真实 `text-embedding-v3`，2026-09-19 冻结）。
 - 读路径列表/详情/检索对齐为同租户当前版本（`RAG_KB_SCOPE=tenant`，ADR-0001）。
-- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏、高置信度注入块剔除、脚本化 LLM 拒工具。
+- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏、高置信度注入块剔除、脚本化 LLM 拒工具。拒工具边界见 §2.3：围栏标记是开关，匹配范围是整段 context，不是通用白名单。RAG-010 只补记该边界，不改拒绝条件。
 - Local 摄取 → 检索 → 重解析旧向量失效 → 删除清理。
-- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。
+- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。critique 追加发生在预算截断之后，不在 `RAG_CONTEXT_CHARS` 内；RAG-010 只补记，不改管线拼接。
 - ADR-0002：正式 Local，Milvus 实验。ADR-0003：生效日期 Flag 默认关闭。
 
 残余限制仍有效：语料仅 13 篇 / 37 分块，不得当生产检索质量；真实 LLM 生成层未测；资源 ACL 仍为 `Planned`。

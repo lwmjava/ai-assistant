@@ -589,3 +589,185 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
+  - id: "RAG-008"
+    title: "BM25 全 0 时稀疏路不进 RRF，并记诊断"
+    status: "ready"
+    priority: "P1"
+    depends_on:
+      - "RAG-007"
+    context:
+      problem: "BM25 全 0 时 Local 混合检索把载入顺序当成稀疏排名送进 RRF，扰动稠密排序。全 0 需要可按原因统计的诊断，不能记成错误，也不能进入 Agent 反思语料。"
+      facts:
+        - claim: "全 0 时 sparse_order 为 range(len(valid))，再交给 _rrf。"
+          evidence: "app/rag/vectorstore/local.py hybrid_search"
+        - claim: "全 0 的原因包括查询无词项、候选词项皆空、词面不重合；不全是分词器切分太粗。"
+          evidence: "docs/plans/plan_rag_005_006_review_fixes.md 第2.1节"
+        - claim: "Milvus 有同类分支，本任务不改。Milvus 仍是实验后端。"
+          evidence: "app/rag/vectorstore/milvus.py；docs/adr/0002-official-vectorstore.md"
+    scope:
+      allowed_paths:
+        - "app/rag/vectorstore/local.py"
+        - "tests/test_rag.py"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/rag/vectorstore/milvus.py"
+        - "app/rag/embeddings/"
+        - "app/evolution/"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "BM25 全 0 时 sparse_order 为空，融合顺序等于稠密顺序"
+        - "logger.info 事件 bm25_all_zero，含 tenant_id、candidate_count、query_token_count、empty_doc_count、reason"
+        - "原因码仅 empty_query_tokens、empty_doc_tokens、no_overlap 三者之一"
+      non_goals:
+        - "不改分词器"
+        - "不把全 0 记为 error 或 warning"
+        - "日志不写查询原文、分块正文、词项列表、文档标识"
+        - "不进入 Reflect / Distill"
+        - "不重跑 rag-v0.1，不改默认 RAG_HYBRID_RRF_K"
+        - "不改 Milvus"
+        - "不宣称检索质量提升"
+    acceptance:
+      - "有 BM25 正分时排序与改前一致。"
+      - "全 0 时融合顺序等于稠密顺序。"
+      - "三条原因码均有测试，且日志字段不含正文。"
+      - "pytest tests/test_rag.py -v 通过；ruff 与 mypy 覆盖改动文件。"
+    risk:
+      level: "L1"
+      side_effect: "local-hybrid-ranking-when-bm25-all-zero"
+      rollback: "恢复全 0 时使用载入顺序作为稀疏排名。"
+    evaluation:
+      cases:
+        - "BM25 全 0 的排序"
+        - "三条原因码与日志字段"
+      commands:
+        - "pytest tests/test_rag.py -v"
+        - "ruff check app/rag/vectorstore/local.py tests/test_rag.py"
+        - "mypy app/rag/vectorstore/local.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-009"
+    title: "单次评测结束时恢复 RAG_HYBRID_RRF_K"
+    status: "backlog"
+    priority: "P2"
+    depends_on:
+      - "RAG-008"
+    context:
+      problem: "run_rag_baseline.py 的单次路径会改进程内融合常数，结束时只关索引，不恢复进入前的值。扫描路径已有 finally 恢复。"
+      facts:
+        - claim: "apply_rrf_k 只改当前进程的 settings.RAG_HYBRID_RRF_K，不写配置文件。"
+          evidence: "scripts/run_rag_baseline.py apply_rrf_k"
+        - claim: "run_sweep 在 finally 中恢复 previous_k；单次路径的 finally 只 index.close()。"
+          evidence: "scripts/run_rag_baseline.py"
+        - claim: "test_apply_rrf_k_can_be_restored 只证明调用方自己能改回。"
+          evidence: "tests/eval/test_rrf_k_experiment.py"
+    scope:
+      allowed_paths:
+        - "scripts/run_rag_baseline.py"
+        - "tests/eval/test_rrf_k_experiment.py"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/core/config.py"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "单次路径在 finally 中写回进入前的 RAG_HYBRID_RRF_K"
+        - "脚本头待完善中删除“单次覆盖后不自动改回”这一条"
+        - "测试断言单次路径返回后常数与进入前一致"
+      non_goals:
+        - "不改 run_sweep 的恢复逻辑"
+        - "不改默认 k"
+        - "不跑官方评测"
+        - "不重跑 rag-v0.1"
+    acceptance:
+      - "单次运行结束后进程内 RAG_HYBRID_RRF_K 等于进入前的值。"
+      - "扫描路径仍在结束时恢复进入函数前的常数。"
+      - "pytest tests/eval/test_rrf_k_experiment.py -v 通过。"
+    risk:
+      level: "L0"
+      side_effect: "eval-script-in-process-config-restore"
+      rollback: "去掉单次路径的恢复，进程退出后配置改动仍消失。"
+    evaluation:
+      cases:
+        - "单次路径恢复融合常数"
+      commands:
+        - "pytest tests/eval/test_rrf_k_experiment.py -v"
+        - "ruff check scripts/run_rag_baseline.py tests/eval/test_rrf_k_experiment.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "RAG-008"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-010"
+    title: "补记生效日期全量载入、工具名边界和 critique 预算"
+    status: "backlog"
+    priority: "P2"
+    depends_on:
+      - "RAG-009"
+    context:
+      problem: "生效日期开关打开后 Local 全量载入、工具名拒绝的真实匹配范围、QualityGate critique 不受 RAG 字符预算约束，这三处只应写进文档，不改检索和管线行为。"
+      facts:
+        - claim: "RAG_EFFECTIVE_DATE_FILTER 默认 false；为 true 时 SQL 不再按 is_current 收窄。"
+          evidence: "app/core/config.py；app/rag/vectorstore/local.py"
+        - claim: "reject_untrusted_tool_call 用围栏标记当开关，对整段 context 做子串匹配。"
+          evidence: "app/rag/context_merge.py"
+        - claim: "_trim 只在 merge_memory_and_rag 生效；critique 在 pipeline 中直接拼进 state.context。"
+          evidence: "app/rag/context_merge.py；app/agents/pipeline.py"
+    scope:
+      allowed_paths:
+        - "docs/adr/0002-official-vectorstore.md"
+        - "docs/AI辅助开发迭代指导.md"
+        - "app/rag/context_merge.py"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/rag/vectorstore/local.py"
+        - "app/agents/pipeline.py"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "ADR-0002 写明 Flag 打开后的全量载入、默认关闭，以及检索面与控制面不能共用 is_current"
+        - "迭代指导写明工具名拒绝边界和 critique 不在 RAG 字符预算内"
+        - "context_merge.py 中 reject_untrusted_tool_call 的函数说明与实现一致"
+      non_goals:
+        - "不改 local.py 查询"
+        - "不实现版本状态机"
+        - "不改拒绝条件和 pipeline 拼接"
+        - "不改 Milvus"
+    acceptance:
+      - "文档描述与当前代码一致，并写明本任务不改检索和管线行为。"
+      - "context_merge.py 仅函数说明变化，拒绝条件不变。"
+      - "现有 tests/test_context_merge.py 通过。"
+    risk:
+      level: "L0"
+      side_effect: "documentation-and-docstring"
+      rollback: "回退文档和函数说明。"
+    evaluation:
+      cases:
+        - "文档与源码对照"
+        - "拒工具行为不变化"
+      commands:
+        - "pytest tests/test_context_merge.py -v"
+        - "ruff check app/rag/context_merge.py"
+        - "mypy app/rag/context_merge.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "RAG-009"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false

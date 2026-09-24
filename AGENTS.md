@@ -358,18 +358,29 @@ GOV-001 治理文件项目化
 → 独立校验和人工 Gold v0.1
 → RAG-005 RAG baseline
 → RAG-006 P0 权限/安全/Context/VectorStore 修复
+→ RAG-007 单变量实验：RRF 融合常数 k
 ```
 
 当前任务（`tasks.yaml`）：
 
 ```text
-RAG-007 单变量实验：RRF 融合常数 k
+RAG-008 BM25 全 0 时稀疏路不进 RRF，并记诊断
+```
+
+同阶段已拆、尚未开始：
+
+```text
+RAG-009 单次评测结束时恢复 RAG_HYBRID_RRF_K
+→ RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
 之后（尚未拆进 `tasks.yaml`）：
 
 ```text
-切分大小或策略（索引期，二选一）
+评审修复阶段 2：控制面权限、审计与单一当前版
+→ 阶段 3：软删除与保留期
+→ 阶段 4：版本状态机、跨租户审批、发布历史版（只排期）
+→ 切分大小或策略（索引期，二选一）
 → Embedding / 独立 Reranker / Query Rewrite（各自单开）
 → 结构化 Citation
 → 渐进提取 Context Builder、Tool Executor 和 Harness

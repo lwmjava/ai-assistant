@@ -495,7 +495,8 @@ tasks:
 
   - id: "RAG-007"
     title: "单变量实验：RRF 融合常数 k"
-    status: "ready"
+    status: "done"
+    completed_at: "2026-09-24"
     priority: "P1"
     depends_on:
       - "RAG-005"

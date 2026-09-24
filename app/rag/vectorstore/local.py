@@ -94,6 +94,21 @@ def _rrf(rankings: list[list[int]], k: int = 60) -> list[tuple[int, float]]:
     return sorted(fused.items(), key=lambda x: x[1], reverse=True)
 
 
+def _bm25_all_zero_reason(
+    query_tokens: list[str], doc_tokens: list[list[str]]
+) -> tuple[str, int]:
+    """判定 BM25 全 0 的单一原因码，并统计词项为空的候选数。
+
+    判定顺序：empty_query_tokens → empty_doc_tokens → no_overlap。
+    """
+    empty_doc_count = sum(1 for toks in doc_tokens if not toks)
+    if not query_tokens:
+        return "empty_query_tokens", empty_doc_count
+    if empty_doc_count == len(doc_tokens) and len(doc_tokens) > 0:
+        return "empty_doc_tokens", empty_doc_count
+    return "no_overlap", empty_doc_count
+
+
 class LocalVectorStore(VectorStore):
     """基于应用主库的本地向量库实现。"""
 
@@ -189,11 +204,21 @@ class LocalVectorStore(VectorStore):
 
         # ── 稀疏检索：BM25 ──
         bm25 = _bm25_scores(query_tokens, tokens)
-        # BM25 可能为全 0（查询词项均未见），此时稀疏排序退化为原序。
+        # 全 0 时稀疏路不进 RRF，避免载入顺序扰动稠密排序。
         if any(s > 0 for s in bm25):
             sparse_order = list(np.argsort(-np.array(bm25)).tolist())
         else:
-            sparse_order = list(range(len(valid)))
+            sparse_order = []
+            reason, empty_doc_count = _bm25_all_zero_reason(query_tokens, tokens)
+            logger.info(
+                "bm25_all_zero tenant_id=%s candidate_count=%s "
+                "query_token_count=%s empty_doc_count=%s reason=%s",
+                tenant_id,
+                len(valid),
+                len(query_tokens),
+                empty_doc_count,
+                reason,
+            )
 
         # ── RRF 融合 ──
         fused = _rrf([dense_order, sparse_order], k=rrf_k)

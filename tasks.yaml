@@ -592,17 +592,18 @@ tasks:
 
   - id: "RAG-008"
     title: "BM25 全 0 时稀疏路不进 RRF，并记诊断"
-    status: "ready"
+    status: "done"
+    completed_at: "2026-09-24"
     priority: "P1"
     depends_on:
       - "RAG-007"
     context:
       problem: "BM25 全 0 时 Local 混合检索把载入顺序当成稀疏排名送进 RRF，扰动稠密排序。全 0 需要可按原因统计的诊断，不能记成错误，也不能进入 Agent 反思语料。"
       facts:
-        - claim: "全 0 时 sparse_order 为 range(len(valid))，再交给 _rrf。"
+        - claim: "全 0 时 sparse_order 为空，_rrf 只保留稠密路；有正分时仍 argsort。"
           evidence: "app/rag/vectorstore/local.py hybrid_search"
-        - claim: "全 0 的原因包括查询无词项、候选词项皆空、词面不重合；不全是分词器切分太粗。"
-          evidence: "docs/plans/plan_rag_005_006_review_fixes.md 第2.1节"
+        - claim: "全 0 打 logger.info 事件 bm25_all_zero；原因码 empty_query_tokens / empty_doc_tokens / no_overlap。"
+          evidence: "app/rag/vectorstore/local.py _bm25_all_zero_reason；tests/test_rag.py"
         - claim: "Milvus 有同类分支，本任务不改。Milvus 仍是实验后端。"
           evidence: "app/rag/vectorstore/milvus.py；docs/adr/0002-official-vectorstore.md"
     scope:

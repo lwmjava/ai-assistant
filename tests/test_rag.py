@@ -749,6 +749,207 @@ async def test_hybrid_search_skips_mismatched_embedding_dimensions(
     assert empty == []
 
 
+def _seed_hybrid_chunks(
+    session: Session,
+    *,
+    tenant_id: str,
+    title: str,
+    chunks: list[tuple[str, list[float], list[str]]],
+) -> str:
+    """写入同租户当前文档分块，返回 document_id。
+
+    chunks 为 (content, embedding, tokens)，按给定顺序插入。
+    """
+    import json
+
+    from app.models.rag import Document
+
+    doc = Document(
+        tenant_id=tenant_id,
+        user_id=f"{tenant_id}-user",
+        title=title,
+        chunk_count=len(chunks),
+    )
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+    for index, (content, embedding, tokens) in enumerate(chunks):
+        session.add(
+            DocumentChunk(
+                tenant_id=tenant_id,
+                document_id=doc.id,
+                chunk_index=index,
+                content=content,
+                source=f"src-{index}",
+                embedding=json.dumps(embedding),
+                tokens=json.dumps(tokens),
+            )
+        )
+    session.commit()
+    return doc.id
+
+
+async def test_hybrid_search_bm25_all_zero_preserves_dense_order(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """BM25 全 0 时融合顺序等于稠密顺序，并记 no_overlap 诊断。"""
+    import logging
+
+    from app.rag.vectorstore.local import LocalVectorStore
+
+    tenant_id = "bm25-zero-tenant"
+    # 插入顺序与余弦降序相反：最差 → 中等 → 最佳。
+    _seed_hybrid_chunks(
+        session,
+        tenant_id=tenant_id,
+        title="全0排序",
+        chunks=[
+            ("SENTINEL_BODY_WORST", [0.0, 1.0, 0.0, 0.0], ["甲", "乙"]),
+            ("SENTINEL_BODY_MID", [0.7, 0.7, 0.0, 0.0], ["丙", "丁"]),
+            ("SENTINEL_BODY_BEST", [1.0, 0.0, 0.0, 0.0], ["戊", "己"]),
+        ],
+    )
+
+    with caplog.at_level(logging.INFO, logger="app.rag.vectorstore.local"):
+        hits = await LocalVectorStore(session).hybrid_search(
+            query_embedding=[1.0, 0.0, 0.0, 0.0],
+            query_tokens=["无重合词"],
+            tenant_id=tenant_id,
+            top_k=3,
+        )
+
+    assert [h.content for h in hits] == [
+        "SENTINEL_BODY_BEST",
+        "SENTINEL_BODY_MID",
+        "SENTINEL_BODY_WORST",
+    ]
+    zero_logs = [r for r in caplog.records if "bm25_all_zero" in r.getMessage()]
+    assert len(zero_logs) == 1
+    msg = zero_logs[0].getMessage()
+    assert "reason=no_overlap" in msg
+    assert f"tenant_id={tenant_id}" in msg
+    assert "candidate_count=3" in msg
+    assert "query_token_count=1" in msg
+    assert "empty_doc_count=0" in msg
+    assert "SENTINEL_BODY" not in msg
+    assert "无重合词" not in msg
+
+
+async def test_hybrid_search_bm25_positive_keeps_rrf_and_skips_diag(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """有 BM25 正分时仍走两路 RRF，且不打 bm25_all_zero。"""
+    import logging
+
+    from app.rag.vectorstore.local import LocalVectorStore, _rrf
+
+    tenant_id = "bm25-pos-tenant"
+    # 插入：最差稠密且无词重合 → 中等稠密且词重合 → 最佳稠密无词重合。
+    # 稀疏路会抬高「中等」块，融合结果与纯稠密不同。
+    _seed_hybrid_chunks(
+        session,
+        tenant_id=tenant_id,
+        title="正分排序",
+        chunks=[
+            ("POS_WORST", [0.0, 1.0, 0.0, 0.0], ["无关"]),
+            ("POS_MID_SPARSE_HIT", [0.7, 0.7, 0.0, 0.0], ["命中词"]),
+            ("POS_BEST", [1.0, 0.0, 0.0, 0.0], ["其他"]),
+        ],
+    )
+
+    with caplog.at_level(logging.INFO, logger="app.rag.vectorstore.local"):
+        hits = await LocalVectorStore(session).hybrid_search(
+            query_embedding=[1.0, 0.0, 0.0, 0.0],
+            query_tokens=["命中词"],
+            tenant_id=tenant_id,
+            top_k=3,
+            rrf_k=60,
+        )
+
+    # 稠密序：BEST(2), MID(1), WORST(0)；稀疏序：MID(1) 最高。
+    expected_idx = [idx for idx, _ in _rrf([[2, 1, 0], [1, 0, 2]], k=60)]
+    expected_labels = [
+        ["POS_WORST", "POS_MID_SPARSE_HIT", "POS_BEST"][i] for i in expected_idx
+    ]
+    assert [h.content for h in hits] == expected_labels
+    assert expected_labels != ["POS_BEST", "POS_MID_SPARSE_HIT", "POS_WORST"]
+    assert not any("bm25_all_zero" in r.getMessage() for r in caplog.records)
+
+
+async def test_hybrid_search_bm25_all_zero_reason_empty_query_tokens(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """查询无词项时 reason=empty_query_tokens。"""
+    import logging
+
+    from app.rag.vectorstore.local import LocalVectorStore
+
+    tenant_id = "bm25-empty-q"
+    doc_id = _seed_hybrid_chunks(
+        session,
+        tenant_id=tenant_id,
+        title="空查询",
+        chunks=[
+            ("EMPTY_Q_BODY", [1.0, 0.0, 0.0, 0.0], ["有", "词"]),
+        ],
+    )
+
+    with caplog.at_level(logging.INFO, logger="app.rag.vectorstore.local"):
+        hits = await LocalVectorStore(session).hybrid_search(
+            query_embedding=[1.0, 0.0, 0.0, 0.0],
+            query_tokens=[],
+            tenant_id=tenant_id,
+            top_k=1,
+        )
+
+    assert [h.content for h in hits] == ["EMPTY_Q_BODY"]
+    zero_logs = [r for r in caplog.records if "bm25_all_zero" in r.getMessage()]
+    assert len(zero_logs) == 1
+    msg = zero_logs[0].getMessage()
+    assert "reason=empty_query_tokens" in msg
+    assert "query_token_count=0" in msg
+    assert "EMPTY_Q_BODY" not in msg
+    assert doc_id not in msg
+
+
+async def test_hybrid_search_bm25_all_zero_reason_empty_doc_tokens(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """候选词项皆空时 reason=empty_doc_tokens。"""
+    import logging
+
+    from app.rag.vectorstore.local import LocalVectorStore
+
+    tenant_id = "bm25-empty-doc"
+    _seed_hybrid_chunks(
+        session,
+        tenant_id=tenant_id,
+        title="空文档词",
+        chunks=[
+            ("EMPTY_DOC_WORST", [0.0, 1.0, 0.0, 0.0], []),
+            ("EMPTY_DOC_BEST", [1.0, 0.0, 0.0, 0.0], []),
+        ],
+    )
+
+    with caplog.at_level(logging.INFO, logger="app.rag.vectorstore.local"):
+        hits = await LocalVectorStore(session).hybrid_search(
+            query_embedding=[1.0, 0.0, 0.0, 0.0],
+            query_tokens=["查询词"],
+            tenant_id=tenant_id,
+            top_k=2,
+        )
+
+    assert [h.content for h in hits] == ["EMPTY_DOC_BEST", "EMPTY_DOC_WORST"]
+    zero_logs = [r for r in caplog.records if "bm25_all_zero" in r.getMessage()]
+    assert len(zero_logs) == 1
+    msg = zero_logs[0].getMessage()
+    assert "reason=empty_doc_tokens" in msg
+    assert "empty_doc_count=2" in msg
+    assert "query_token_count=1" in msg
+    assert "EMPTY_DOC" not in msg
+    assert "查询词" not in msg
+
+
 # ── 管线接线 ──────────────────────────────────────
 def test_build_retriever_respects_flag(session: Session) -> None:
     from app.services.chat_service import ChatService

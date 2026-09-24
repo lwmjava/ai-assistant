@@ -13,12 +13,20 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
-import { useDeleteDocument, useDocuments, useIngestDocument, useSearch, useUploadDocument } from '@/api/rag'
+import { createConfirmation, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useSearch, useUploadDocument } from '@/api/rag'
 import { ApiError, isSessionExpiredError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
 import type { DocumentOut, SearchResultOut } from '@/types/api'
+
+const VERSION_LABELS: Record<string, string> = {
+  draft: '草稿',
+  scheduled: '待生效',
+  published: '已发布',
+  replaced: '已替换',
+  archived: '已归档',
+}
 
 const ingestSchema = z.object({
   title: z.string().min(1, '请输入标题').max(200, '标题过长'),
@@ -188,11 +196,15 @@ function SearchResultRow({ result, index }: { result: SearchResultOut; index: nu
 function DocumentRow({
   doc,
   canDelete,
+  canPublish,
   onDelete,
+  onPublish,
 }: {
   doc: DocumentOut
   canDelete: boolean
+  canPublish: boolean
   onDelete: (doc: DocumentOut) => void
+  onPublish: (doc: DocumentOut) => void
 }) {
   return (
     <li className="group/item grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-2/50 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_2.5rem]">
@@ -202,8 +214,8 @@ function DocumentRow({
           {doc.deleted_at ? (
             <Badge tone="danger">已删除</Badge>
           ) : (
-            <Badge tone={doc.is_current ? 'success' : 'warning'}>
-              {doc.is_current ? '当前版' : '历史版'}
+            <Badge tone={doc.version_state === 'published' ? 'success' : 'warning'}>
+              {VERSION_LABELS[doc.version_state] ?? doc.version_state}
             </Badge>
           )}
         </p>
@@ -216,7 +228,16 @@ function DocumentRow({
         <Badge tone="neutral">{doc.chunk_count} 分块</Badge>
       </div>
       <p className="hidden text-xs text-text-faint sm:block">{timeAgo(doc.updated_at)}</p>
-      <div className={cn('flex justify-end', !canDelete && 'invisible')}>
+      <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && 'invisible')}>
+        {canPublish && !doc.deleted_at && ['draft', 'scheduled', 'replaced'].includes(doc.version_state) && (
+          <button
+            type="button"
+            onClick={() => onPublish(doc)}
+            className="rounded-md px-2 text-xs text-primary hover:bg-primary/10"
+          >
+            发布
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onDelete(doc)}
@@ -233,6 +254,7 @@ function DocumentRow({
 export default function KnowledgePage() {
   const toast = useToast()
   const role = useAuthStore((s) => s.user?.role)
+  const userTenantId = useAuthStore((s) => s.user?.tenant_id)
   const canWrite = can(role, 'knowledge_bases', 'write')
   const canDelete = can(role, 'knowledge_bases', 'delete')
   const canSeeDeleted = role === 'system_admin' || role === 'tenant_admin'
@@ -240,11 +262,13 @@ export default function KnowledgePage() {
   const [ingestOpen, setIngestOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<DocumentOut | null>(null)
   const [showDeleted, setShowDeleted] = useState(false)
+  const [versionState, setVersionState] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const documents = useDocuments(canSeeDeleted && showDeleted)
+  const documents = useDocuments(canSeeDeleted && showDeleted, canSeeDeleted ? versionState : '')
   const upload = useUploadDocument()
   const remove = useDeleteDocument()
+  const publish = usePublishDocument()
 
   const docs = useMemo(
     () => [...(documents.data ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)),
@@ -271,13 +295,35 @@ export default function KnowledgePage() {
   async function confirmDelete() {
     if (!pendingDelete) return
     try {
-      await remove.mutateAsync(pendingDelete.id)
+      await remove.mutateAsync({
+        id: pendingDelete.id,
+        confirmationId:
+          userTenantId && pendingDelete.tenant_id !== userTenantId
+            ? await createConfirmation(pendingDelete.id, 'delete')
+            : undefined,
+      })
       toast.success('文档已删除')
     } catch (err) {
       if (isSessionExpiredError(err)) return
       toast.error('删除失败', err instanceof ApiError ? err.detail : undefined)
     } finally {
       setPendingDelete(null)
+    }
+  }
+
+  async function handlePublish(doc: DocumentOut) {
+    try {
+      await publish.mutateAsync({
+        id: doc.id,
+        confirmationId:
+          userTenantId && doc.tenant_id !== userTenantId
+            ? await createConfirmation(doc.id, 'publish')
+            : undefined,
+      })
+      toast.success('已发布为当前版')
+    } catch (err) {
+      if (isSessionExpiredError(err)) return
+      toast.error('发布失败', err instanceof ApiError ? err.detail : undefined)
     }
   }
 
@@ -322,6 +368,21 @@ export default function KnowledgePage() {
           <h2 className="font-display text-sm font-semibold text-text">文档</h2>
           <div className="flex items-center gap-3">
             {canSeeDeleted && (
+              <select
+                value={versionState}
+                onChange={(event) => setVersionState(event.target.value)}
+                className="rounded-md border border-border bg-transparent px-2 py-1 text-xs text-text-muted"
+                aria-label="按状态筛选"
+              >
+                <option value="">全部状态</option>
+                <option value="draft">草稿</option>
+                <option value="scheduled">待生效</option>
+                <option value="published">已发布</option>
+                <option value="replaced">已替换</option>
+                <option value="archived">已归档</option>
+              </select>
+            )}
+            {canSeeDeleted && (
               <button
                 type="button"
                 onClick={() => setShowDeleted((value) => !value)}
@@ -358,7 +419,9 @@ export default function KnowledgePage() {
                 key={doc.id}
                 doc={doc}
                 canDelete={canDelete}
+                canPublish={canSeeDeleted}
                 onDelete={setPendingDelete}
+                onPublish={(item) => void handlePublish(item)}
               />
             ))}
           </ul>

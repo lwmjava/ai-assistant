@@ -47,6 +47,16 @@ class ImportSourceType(StrEnum):
     REPARSE = "reparse"
 
 
+class DocumentVersionState(StrEnum):
+    """文档在版本组中的控制面状态。"""
+
+    DRAFT = "draft"
+    SCHEDULED = "scheduled"
+    PUBLISHED = "published"
+    REPLACED = "replaced"
+    ARCHIVED = "archived"
+
+
 class Document(SQLModel, TimestampMixin, table=True):
     """文档：一次摄取产生的知识单元，归属租户与用户。"""
 
@@ -65,6 +75,7 @@ class Document(SQLModel, TimestampMixin, table=True):
     version_number: int = Field(default=1)
     previous_document_id: str | None = Field(default=None, index=True)
     is_current: bool = Field(default=True, index=True)
+    version_state: str = Field(default=DocumentVersionState.PUBLISHED.value, index=True)
     deleted_at: datetime | None = Field(default=None, index=True)
     effective_at: datetime | None = Field(default=None, index=True)
     expires_at: datetime | None = Field(default=None, index=True)
@@ -164,3 +175,16 @@ class ImportJobTrace(SQLModel, TimestampMixin, table=True):
     exit_code: int | None = Field(default=None)
     stdout: str | None = Field(default=None)
     stderr: str | None = Field(default=None)
+
+
+class OperationConfirmation(SQLModel, TimestampMixin, table=True):
+    """跨租户敏感操作的一次性确认记录。"""
+
+    __tablename__ = "rag_operation_confirmations"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    actor_user_id: str = Field(index=True)
+    tenant_id: str = Field(index=True)
+    document_id: str = Field(index=True)
+    action: str = Field(index=True)
+    consumed_at: datetime | None = Field(default=None, index=True)

@@ -929,7 +929,7 @@ tasks:
 
   - id: "RAG-013"
     title: "版本状态机、跨租户二次确认与发布历史版（交付 A3 / 评审阶段 4）"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: "2026-10-23"
     depends_on:
@@ -949,6 +949,7 @@ tasks:
         - "app/models/rag.py"
         - "app/rag/"
         - "app/api/routes/rag.py"
+        - "app/core/migration.py"
         - "app/audit/"
         - "alembic/"
         - "tests/"
@@ -990,7 +991,7 @@ tasks:
         - "ruff check app/rag/ app/models/rag.py app/api/routes/rag.py"
     execution:
       owner: "个人开发者"
-      blocked_by: "RAG-012"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false

@@ -4,7 +4,7 @@
 > 基线日期：2026-09-25  
 > 适用项目：`ai-assistant`  
 > 适用对象：个人开发者及参与规划、实现、测试、评审的 AI Coding Agent  
-> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013` 与 `INST-001`～`INST-003` 已完成。
+> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001` 已完成。下一项是 `TEN-002`（`TEN-003` 为 `ready`，尚未实现）。
 
 ## 1. 目的
 
@@ -243,7 +243,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 → 渐进 Harness 治理
 ```
 
-文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001`～`INST-003` 已完成。
+文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001`～`INST-003` 与 `TEN-001` 已完成。下一项是 `TEN-002`。
 
 ### 阶段 0：事实与决策，预计 1～2 天
 
@@ -692,18 +692,17 @@ AI 完成后必须：
 
 ## 13. 当前下一步
 
-`GOV-001`～`RAG-010` 已完成。当前可执行任务：
+`GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001` 已完成。当前可执行任务：
 
-1. `RAG-011`：控制面权限、审计与单一当前版（交付 A1）。见 `tasks.yaml` 与 `docs/plans/plan_rag_011_control_plane.md`。
+1. `TEN-002`：在指定租户下创建成员，登录后只在该租户（交付 B2）。见 `tasks.yaml` 与 `docs/plans/plan_b2_tenants.md`。
 
 同阶段已拆、未开工（不得抢跑）：
 
 ```text
-RAG-012 软删除与保留期（A2，保留期 90 天）
-→ RAG-013 版本状态机、跨租户二次确认与发布历史版（A3）
+TEN-003 控制台租户页与用户页
 ```
 
-其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）。
+其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）。B3 及以后尚未拆进 `tasks.yaml`。
 
 正式向量库目标为 Milvus（ADR-0002）；默认配置在第 5 节门槛通过前仍是 Local。闭环放在 B1 与 C6。切分 / Embedding / 独立 Reranker / Query Rewrite 不排成连续数月深耕。
 

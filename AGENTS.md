@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-09-22
+> 最后更新：2026-09-25
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -252,6 +252,12 @@ Skill 必须包含 Purpose、Preconditions、Workflow、Tools、RAG、Constraint
 
 每次只推进 `tasks.yaml` 中一个边界清晰的任务。禁止顺手扩大范围。
 
+把一批任务拆进 `tasks.yaml` 之后，必须在 `docs/plans/` 落一份拆分计划。计划写清每条任务的问题、交付、非目标和验收，并链回 `tasks.yaml`。不得只把拆分留在对话里。
+
+实现其中一条任务之前，必须先把该任务的实现计划落盘：目标、现状、方案、非目标、验收。拆分计划里该任务一节已经写全这些内容时，沿用该节，不必再写第二份计划。计划未落盘不得改业务代码。
+
+实现完成后，必须在 `docs/plans/` 另写实现说明。说明写功能实际完成了什么：谁可以做什么、成功和失败时的行为、代码位置、验证命令与结果，以及明确没做的事。不得把计划里尚未实现的项写成已完成。
+
 Git 提交说明只写实现了什么功能，或修复了什么问题。不要写入需求编号、任务编号、ADR 编号，也不要写依据哪份文档。具体格式见 `CONTRIBUTING.md` 与 `tasks.yaml` 的 `commit_message_policy`。
 
 夜间无人值守必须遵守 `docs/workflows/nightly-autonomous-development.md`，只能处理通过 `nightly_ready` 准入的 L0 或已批准 L1 任务；不得自动合并或部署。
@@ -298,6 +304,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 - Checklist：`docs/checklists/`
 - 模板：`docs/templates/`
 - 任务契约：`tasks.yaml`
+- 拆分计划与实现说明：`docs/plans/`
 
 以下变更必须同步：
 
@@ -309,6 +316,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 | RAG/Embedding/Chunk/VectorStore/Citation | ADR、Evaluation、索引兼容和回滚 |
 | Harness/状态/HITL/MCP 边界 | ADR、流程、测试和运行手册 |
 | 前端 API/交互 | 前后端契约、类型检查和构建 |
+| 任务拆分或单任务实现 | `docs/plans/` 中的拆分计划与实现说明 |
 
 交付证据必须包含：
 
@@ -344,6 +352,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 - Prompt/模型/Tool/Skill/RAG/索引版本可追踪。
 - 权限、租户、Guardrail、HITL 和失败路径已验证。
 - 文档、ADR、Evaluation 和 `tasks.yaml` 同步。
+- 拆分计划已落盘；该任务的实现说明已落盘，并写明功能完成了什么。
 - 发布/回滚方式明确。
 - 未验证项和风险已明确记录，未伪装为完成。
 
@@ -366,7 +375,7 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013` 与 `INST-001`～`INST-003` 已完成。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001` 已完成。下一项是 `TEN-002`（`TEN-002`～`TEN-003` 状态 `ready`，尚未实现）。
 
 A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 

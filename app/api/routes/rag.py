@@ -304,6 +304,8 @@ async def upload_document(
             user_id=current_user.id,
             storage_path=storage_path,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception:  # noqa: BLE001 - 上传文件已解析成功，后续失败视为系统问题
         logger.exception("上传文档解析成功，但知识库摄取失败: filename=%s", filename)
         raise HTTPException(

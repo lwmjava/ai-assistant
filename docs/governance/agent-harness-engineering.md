@@ -424,12 +424,13 @@ Agent 系统变更只有满足以下条件才能完成：
 ## 20. 当前执行顺序
 
 ```text
-文档事实基线
-→ RAG权限ADR
-→ VectorStore ADR
-→ Evaluation Schema与数据
-→ RAG baseline
-→ P0安全/权限/主链修复
+GOV-001 治理文件项目化
+→ RAG-001 文档事实基线
+→ RAG-002 RAG权限ADR
+→ RAG-003 VectorStore ADR
+→ RAG-004 Evaluation Schema与数据
+→ RAG-005 RAG baseline
+→ RAG-006 P0安全/权限/主链修复
 → 单变量检索实验
 → Citation
 → ContextBuilder
@@ -438,4 +439,4 @@ Agent 系统变更只有满足以下条件才能完成：
 → StateManager/Harness
 ```
 
-详细任务以根目录 `tasks.yaml` 为准。
+详细任务以根目录 `tasks.yaml` 为准。`GOV-001` 不决定知识库权限或正式 VectorStore。

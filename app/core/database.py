@@ -50,6 +50,9 @@ def init_db(*, auto_migrate: bool = True) -> None:
 
     # 1. 创建表（SQLModel.metadata.create_all 幂等）
     SQLModel.metadata.create_all(engine)
+    # SQLite + QueuePool 会把连接留在池里。Alembic 再开一条连接做 DDL 时，
+    # 可能一直等不到写锁，表现为启动卡在某条 upgrade。先释放池中连接。
+    engine.dispose()
 
     # 2. 执行 Alembic 自动迁移
     if auto_migrate:

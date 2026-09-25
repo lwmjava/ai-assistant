@@ -41,12 +41,12 @@
 
 ## 3. 通用前缀
 
-`<repo-root>` 表示本仓库根目录；提示词中的文件路径均相对该根目录，不要写入本机盘符绝对路径。
+`仓库根目录` 表示本 Git 仓库根目录（https://github.com/lwmjava/ai-assistant）。提示词中的文件路径均相对该根目录，不要写入本机盘符绝对路径，也不要再使用 `<repo-root>` 占位符。
 
 任何项目提示词前可附加：
 
 ```text
-仓库：<repo-root>
+仓库根目录：https://github.com/lwmjava/ai-assistant
 
 开始前必须读取：
 1. AGENTS.md；

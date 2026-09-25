@@ -44,4 +44,5 @@ def get_embedding_provider() -> EmbeddingProvider:
         model=settings.EMBEDDING_MODEL,
         dim=settings.EMBEDDING_DIM,
         timeout=settings.LLM_TIMEOUT,
+        batch_size=settings.EMBEDDING_BATCH_SIZE,
     )

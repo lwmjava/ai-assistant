@@ -51,7 +51,7 @@
 ## 2. 提示词：资料盘点
 
 ```text
-请在当前仓库 <repo-root> 中盘点可用于
+请在当前仓库根目录中盘点可用于
 RAG Evaluation的数据源。只读，不修改。
 
 先读取AGENTS.md、RAG权限和数据治理规则、app/rag/、

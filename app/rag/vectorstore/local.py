@@ -136,9 +136,11 @@ class LocalVectorStore(VectorStore):
         if not rows:
             return []
 
+        expected_dim = len(query_embedding)
         embeddings: list[list[float]] = []
         tokens: list[list[str]] = []
         valid: list[DocumentChunk] = []
+        skipped_dim = 0
         for row in rows:
             if not row.embedding:
                 continue
@@ -147,10 +149,20 @@ class LocalVectorStore(VectorStore):
                 toks = json.loads(row.tokens) if row.tokens else []
             except json.JSONDecodeError:
                 continue
+            if not isinstance(emb, list) or len(emb) != expected_dim:
+                skipped_dim += 1
+                continue
             embeddings.append(emb)
             tokens.append(toks)
             valid.append(row)
 
+        if skipped_dim:
+            logger.warning(
+                "跳过与查询向量维度不一致的分块: skipped=%s expected_dim=%s tenant=%s",
+                skipped_dim,
+                expected_dim,
+                tenant_id,
+            )
         if not valid:
             return []
 

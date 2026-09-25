@@ -4,7 +4,7 @@
 > 基线日期：2026-09-25  
 > 适用项目：`ai-assistant`  
 > 适用对象：个人开发者及参与规划、实现、测试、评审的 AI Coding Agent  
-> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-010` 已完成；当前可执行 `RAG-011`（A1，`ready`）；`RAG-012` / `RAG-013` 为 `backlog`。
+> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013` 与 `INST-001` 已完成；`INST-002` / `INST-003` 为 `backlog`。
 
 ## 1. 目的
 
@@ -243,7 +243,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 → 渐进 Harness 治理
 ```
 
-文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。当前实施 `RAG-011`；`RAG-012` / `RAG-013` 待 011 验收后依次升为 ready。
+文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001` 已完成；`INST-002` / `INST-003` 仍为 backlog，待依次升为 ready。
 
 ### 阶段 0：事实与决策，预计 1～2 天
 

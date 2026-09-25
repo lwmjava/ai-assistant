@@ -423,9 +423,9 @@ Agent 系统变更只有满足以下条件才能完成：
 
 ## 20. 当前执行顺序
 
-已完成：`GOV-001`～`RAG-010`。
+已完成：`GOV-001`～`RAG-013`。
 
-当前可执行：`RAG-011`（交付 A1，`ready`）。已拆未开工：`RAG-012` / `RAG-013`（`backlog`）。日历顺序见 `docs/plans/plan_delivery_2027-03-25.md`：
+`INST-001`（交付 B1 健康检查）已完成。已拆未开工：`INST-002` / `INST-003`（`backlog`）。日历顺序见 `docs/plans/plan_delivery_2027-03-25.md`：
 
 ```text
 阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）

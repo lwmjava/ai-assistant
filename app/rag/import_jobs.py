@@ -301,8 +301,10 @@ def create_url_import_job(
 
 def create_reparse_job(session: Session, user: User, document_id: str) -> ImportJob:
     """为现有文档创建重解析任务。"""
+    from app.rag.access import can_write_document
+
     doc = session.get(Document, document_id)
-    if doc is None or doc.tenant_id != user.tenant_id:
+    if doc is None or not can_write_document(doc, user):
         raise ValueError("文档不存在或无权访问")
     job = ImportJob(
         tenant_id=user.tenant_id,
@@ -323,9 +325,13 @@ def create_reparse_job(session: Session, user: User, document_id: str) -> Import
 
 
 def retry_import_job(session: Session, user: User, job_id: str) -> ImportJob:
-    """将失败任务重置为待执行。"""
+    """将失败任务重置为待执行。成员仅能重试自己的任务。"""
+    from app.rag.access import is_kb_admin, same_tenant
+
     job = session.get(ImportJob, job_id)
-    if job is None or job.tenant_id != user.tenant_id:
+    if job is None or not same_tenant(job.tenant_id, user):
+        raise ValueError("任务不存在或无权访问")
+    if not is_kb_admin(user) and job.user_id != user.id:
         raise ValueError("任务不存在或无权访问")
     if job.status != ImportJobStatus.FAILED.value:
         raise ValueError("仅失败任务支持重试")

@@ -7,6 +7,7 @@ Document 表示一次摄取得到的文档（一篇文本 / 一个上传文件�
 """
 
 import uuid
+from datetime import datetime
 from enum import StrEnum
 
 from sqlmodel import Field, Relationship, SQLModel
@@ -64,6 +65,8 @@ class Document(SQLModel, TimestampMixin, table=True):
     version_number: int = Field(default=1)
     previous_document_id: str | None = Field(default=None, index=True)
     is_current: bool = Field(default=True, index=True)
+    effective_at: datetime | None = Field(default=None, index=True)
+    expires_at: datetime | None = Field(default=None, index=True)
     import_job_id: str | None = Field(default=None, index=True)
     chunk_count: int = Field(default=0)
 

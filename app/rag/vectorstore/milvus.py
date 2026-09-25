@@ -11,6 +11,7 @@
 
 import json
 import logging
+from datetime import datetime
 
 import numpy as np
 from sqlmodel import Session, select
@@ -18,7 +19,7 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
 from app.rag.vectorstore.base import ChunkResult, VectorStore
-from app.rag.vectorstore.local import _bm25_scores, _rrf
+from app.rag.vectorstore.local import _bm25_scores, _rrf, visible_chunks_with_status
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +185,8 @@ class MilvusVectorStore(VectorStore):
         tenant_id: str,
         top_k: int,
         rrf_k: int = 60,
+        as_of: datetime | None = None,
+        schedule_at: datetime | None = None,
     ) -> list[ChunkResult]:
         collection = self._connect()
         expr = f'tenant_id == "{tenant_id}"'
@@ -205,14 +208,17 @@ class MilvusVectorStore(VectorStore):
         if not candidate_ids:
             return []
 
-        rows = self.session.exec(
+        stmt = (
             select(DocumentChunk)
             .join(Document, Document.id == DocumentChunk.document_id)
-            .where(
-                DocumentChunk.id.in_(candidate_ids),  # type: ignore[attr-defined]
-                Document.is_current.is_(True),
-            )
-        ).all()
+            .where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
+        )
+        if not settings.RAG_EFFECTIVE_DATE_FILTER:
+            stmt = stmt.where(Document.is_current.is_(True))
+        rows = self.session.exec(stmt).all()
+        rows, version_by_chunk = visible_chunks_with_status(
+            self.session, rows, as_of, schedule_at
+        )
         rows_by_id = {r.id: r for r in rows}
         ordered = [rows_by_id[i] for i in candidate_ids if i in rows_by_id]
 
@@ -235,6 +241,7 @@ class MilvusVectorStore(VectorStore):
                     source=row.source,
                     document_id=row.document_id,
                     score=float(score),
+                    version_status=version_by_chunk.get(row.id, "current"),
                 )
             )
         return results

@@ -42,7 +42,7 @@
 | RAG Hybrid | Adopt | Dense + BM25 + RRF | 建立基线后单变量优化 |
 | 独立 Rerank | Defer | 未实现 | 由基线实验证明价值后进入 |
 | 结构化 Citation | Adapt | 仅弱来源文本 | 补 chunk/version/page/section |
-| RAG 权限 | Adapt | 检索按租户；列表仍按上传者。ADR-0001 已批准租户共享当前版本 | `RAG-006` 对齐列表/详情/导入任务 |
+| RAG 权限 | Adapt | 读路径默认同租户当前版本（`RAG_KB_SCOPE=tenant`）；资源 ACL 仍 Planned | 资源 ACL 另开任务 |
 | Persistent Trace | Defer/Adapt | 内存环形缓冲 | 先定义契约，再持久化关键 Trace |
 | HITL | Defer/Adapt | 尚无统一审批闭环 | 高风险能力引入前完成 |
 | Repository 层 | Defer/Adapt | Service 可直接使用 SQLModel Session | 新业务避免扩大，渐进提取 |
@@ -76,7 +76,7 @@ FastAPI /api/chat
 | Identity/Policy | `app/core/security.py`、API dependencies | Partial |
 | Harness Facade | `app/services/chat_service.py` | Partial，职责过重 |
 | Runtime | `app/agents/pipeline.py`、`app/agents/supervisor.py` | Partial |
-| Context | ChatService + Pipeline | Partial，需验证 Memory/RAG 合并 |
+| Context | ChatService + Pipeline + `context_merge` | Partial，Memory/RAG 已按预算合并；尚未独立 ContextBuilder |
 | State | `AgentState`、Pipeline 阶段 | Partial，未正式持久化 |
 | Skill | `app/agents/skills/` | Partial |
 | Tool Registry | `app/agents/tools/base.py` | Partial |
@@ -86,7 +86,7 @@ FastAPI /api/chat
 | Guardrails | `app/security/` + RBAC | Partial，尚未完整分层 |
 | Audit | `app/audit/` | Partial |
 | Trace | `app/debug/` | Partial，主要为内存 |
-| Evaluation | 尚无统一 Harness | Planned |
+| Evaluation | rag-v0.1 检索评测已有 | Partial；统一 Agent Harness Evaluation 仍 Planned |
 
 ## 5. 目标逻辑架构
 
@@ -423,15 +423,15 @@ Agent 系统变更只有满足以下条件才能完成：
 
 ## 20. 当前执行顺序
 
+已完成：`GOV-001`～`RAG-006`。
+
+当前任务：`RAG-007` 单变量实验（RRF `k`）。
+
+之后（尚未拆进 `tasks.yaml`）：
+
 ```text
-GOV-001 治理文件项目化
-→ RAG-001 文档事实基线
-→ RAG-002 RAG权限ADR
-→ RAG-003 VectorStore ADR
-→ RAG-004 Evaluation Schema与数据
-→ RAG-005 RAG baseline
-→ RAG-006 P0安全/权限/主链修复
-→ 单变量检索实验
+切分大小或策略
+→ Embedding / Reranker / Query Rewrite（各自单开）
 → Citation
 → ContextBuilder
 → Tool Contract/Executor
@@ -439,4 +439,4 @@ GOV-001 治理文件项目化
 → StateManager/Harness
 ```
 
-详细任务以根目录 `tasks.yaml` 为准。`GOV-001` 不决定知识库权限或正式 VectorStore。
+详细任务以根目录 `tasks.yaml` 为准。知识库权限与正式 VectorStore 已由 ADR-0001/0002 决定。

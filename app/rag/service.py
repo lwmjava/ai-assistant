@@ -6,8 +6,8 @@
 - 文档生命周期：列表 / 详情 / 删除（级联删除分块与向量索引）；
 - 生成管线可用的检索钩子（``make_retriever``）。
 
-所有读取与写入均按 ``tenant_id`` 隔离；系统管理员可见同租户全部文档，
-普通用户仅能操作自己创建的文档。
+读路径遵循 ADR-0001：默认同租户当前版本可读（``RAG_KB_SCOPE=tenant``）。
+写路径：成员仅自己的文档；租户/系统管理员可删除或重解析同租户当前文档。
 """
 
 import json
@@ -15,12 +15,14 @@ import logging
 import os
 import uuid
 from collections.abc import Callable
+from datetime import datetime
 
 from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
 from app.models.user import User
+from app.rag.access import can_read_document, can_write_document, restrict_list_to_uploader
 from app.rag.backend.base import RagBackend
 from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
 from app.rag.chunking.base import ChunkParams
@@ -105,6 +107,9 @@ class RAGService:
         version_number: int = 1,
         previous_document_id: str | None = None,
         import_job_id: str | None = None,
+        is_current: bool = True,
+        effective_at: datetime | None = None,
+        expires_at: datetime | None = None,
     ) -> Document:
         """将切分结果持久化为文档与分块。"""
         if not chunk_objs:
@@ -127,6 +132,9 @@ class RAGService:
                 version_number=version_number,
                 previous_document_id=previous_document_id,
                 import_job_id=import_job_id,
+                is_current=is_current,
+                effective_at=effective_at,
+                expires_at=expires_at,
                 chunk_count=len(chunk_objs),
             )
             self.session.add(document)
@@ -184,6 +192,9 @@ class RAGService:
         version_number: int = 1,
         previous_document_id: str | None = None,
         import_job_id: str | None = None,
+        is_current: bool = True,
+        effective_at: datetime | None = None,
+        expires_at: datetime | None = None,
         strategy: str | None = None,
         chunk_params: dict | None = None,
     ) -> Document:
@@ -211,6 +222,9 @@ class RAGService:
             version_number=version_number,
             previous_document_id=previous_document_id,
             import_job_id=import_job_id,
+            is_current=is_current,
+            effective_at=effective_at,
+            expires_at=expires_at,
         )
 
     async def ingest_parsed_document(
@@ -229,6 +243,9 @@ class RAGService:
         version_number: int = 1,
         previous_document_id: str | None = None,
         import_job_id: str | None = None,
+        is_current: bool = True,
+        effective_at: datetime | None = None,
+        expires_at: datetime | None = None,
         strategy: str | None = None,
         chunk_params: dict | None = None,
     ) -> Document:
@@ -256,6 +273,9 @@ class RAGService:
             version_number=version_number,
             previous_document_id=previous_document_id,
             import_job_id=import_job_id,
+            is_current=is_current,
+            effective_at=effective_at,
+            expires_at=expires_at,
         )
 
     async def ingest_file(self, path: str, title: str | None, user_id: str) -> Document:
@@ -311,6 +331,7 @@ class RAGService:
                             source=parent_row.source,
                             document_id=parent_row.document_id,
                             score=hit.score,
+                            version_status=hit.version_status,
                         )
                     )
         return expanded
@@ -325,25 +346,24 @@ class RAGService:
 
     # ── 文档管理 ────────────────────────────────────
     def _can_access(self, doc: Document, user: User) -> bool:
-        if user.role_enum.value == "system_admin":
-            return doc.tenant_id == user.tenant_id
-        return doc.user_id == user.id and doc.tenant_id == user.tenant_id
+        """读权限。保留此名以兼容旧调用，语义见 ``can_read_document``。"""
+        return can_read_document(doc, user)
 
     def list_documents(self, user: User) -> list[Document]:
-        """列出当前用户可见的文档（系统管理员可见同租户全部）。"""
+        """列出当前用户可见的当前版本文档。"""
         stmt = select(Document).where(
             Document.tenant_id == user.tenant_id,
             Document.is_current.is_(True),
         )
-        if user.role_enum.value != "system_admin":
+        if restrict_list_to_uploader(user):
             stmt = stmt.where(Document.user_id == user.id)
         stmt = stmt.order_by(Document.updated_at.desc())
         return list(self.session.exec(stmt).all())
 
     def get_document(self, document_id: str, user: User) -> Document | None:
-        """按 ID 获取文档，无权限时返回 None。"""
+        """按 ID 获取文档，无读权限时返回 None。"""
         doc = self.session.get(Document, document_id)
-        if doc is None or not self._can_access(doc, user):
+        if doc is None or not can_read_document(doc, user):
             return None
         return doc
 
@@ -354,8 +374,8 @@ class RAGService:
         向量库里已无从得知该文档关联哪些分块，残留向量会持续被检索命中。
         向量清理失败只记日志不阻断，避免数据库记录无法删除而成为孤儿数据。
         """
-        doc = self.get_document(document_id, user)
-        if doc is None:
+        doc = self.session.get(Document, document_id)
+        if doc is None or not can_write_document(doc, user):
             return False
         try:
             removed = await self._vector_store.delete_by_document(document_id, self.tenant_id)

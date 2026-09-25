@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lwmjava/ai-assistant/evals/schemas/rag_case.schema.json",
+  "title": "ai-assistant RAG Evaluation Case",
+  "description": "RAG-004 Case 契约。可回答案例必须带可在资料快照中逐字定位的 exact_quote。AI 生成默认不是 Gold。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "dataset_version",
+    "split",
+    "tier",
+    "category",
+    "query",
+    "identity",
+    "expected_document_ids",
+    "forbidden_document_ids",
+    "expected_evidence",
+    "expected_answer_points",
+    "forbidden_answer_points",
+    "should_answer",
+    "should_clarify",
+    "should_escalate",
+    "synthetic",
+    "provenance",
+    "review",
+    "tags"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^rag-[0-9]{3}$"
+    },
+    "dataset_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "split": {
+      "type": "string",
+      "enum": ["development", "validation", "holdout"]
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["silver", "adversarial"]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "multi_hop",
+        "no_answer",
+        "conflict",
+        "stale_version",
+        "effective_date",
+        "cross_tenant",
+        "private_resource",
+        "prompt_injection",
+        "ambiguous",
+        "citation_mismatch"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 500
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "user_id", "roles", "resource_scopes"],
+      "properties": {
+        "tenant_id": { "type": "string", "minLength": 1 },
+        "user_id": { "type": "string", "minLength": 1 },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "resource_scopes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "expected_document_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "forbidden_document_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "expected_evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "expected_answer_points": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "forbidden_answer_points": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "should_answer": { "type": "boolean" },
+    "should_clarify": { "type": "boolean" },
+    "should_escalate": { "type": "boolean" },
+    "synthetic": { "type": "boolean", "const": true },
+    "notes": { "type": "string" },
+    "attack_goal": { "type": "string" },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_snapshot",
+        "generator",
+        "prompt_version",
+        "generated_at",
+        "review_status"
+      ],
+      "properties": {
+        "source_snapshot": { "type": "string", "minLength": 1 },
+        "generator": { "type": "string", "minLength": 1 },
+        "prompt_version": { "type": "string", "minLength": 1 },
+        "generated_at": { "type": "string", "minLength": 10 },
+        "review_status": {
+          "type": "string",
+          "enum": [
+            "unreviewed",
+            "silver_validated",
+            "human_review",
+            "gold",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer", "reviewed_at", "decision", "notes"],
+      "properties": {
+        "reviewer": { "type": ["string", "null"] },
+        "reviewed_at": { "type": ["string", "null"] },
+        "decision": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "ACCEPT_GOLD",
+            "REVISE_AND_ACCEPT",
+            "KEEP_SILVER",
+            "REJECT",
+            "POLICY_DECISION_REQUIRED"
+          ]
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "chunk_id",
+        "title",
+        "source",
+        "version",
+        "effective_at",
+        "page",
+        "section",
+        "exact_quote"
+      ],
+      "properties": {
+        "document_id": { "type": "string", "minLength": 1 },
+        "chunk_id": { "type": ["string", "null"] },
+        "title": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "effective_at": { "type": ["string", "null"] },
+        "page": { "type": ["integer", "null"], "minimum": 1 },
+        "section": { "type": ["string", "null"] },
+        "exact_quote": { "type": "string", "minLength": 8 }
+      }
+    }
+  }
+}

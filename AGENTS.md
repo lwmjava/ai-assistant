@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-09-13
+> 最后更新：2026-09-22
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -33,7 +33,7 @@
 - 产品需求：`docs/product/项目产品需求方案.md`
 - 设计方案：`docs/product/项目设计方案.md`（历史稿，先读 As-Is 矩阵）
 - 当前能力矩阵：`docs/product/as-is-capability-matrix.md`
-- ADR：`docs/adr/`（尚无已批准决策，不得把目录存在当成已决策）
+- ADR：`docs/adr/`（已批准：ADR-0001 权限、ADR-0002 VectorStore、ADR-0003 生效日期；不得把目录存在或 Proposed 草稿当成已决策）
 - 已批准计划：`docs/plans/`
 - AI 提示词：`docs/ai-prompts/`
 - 开发流程：`docs/workflows/`
@@ -176,24 +176,25 @@ Brownfield 约束：
 
 ## 6. RAG 当前治理重点
 
-当前已实现多格式解析、多策略 Chunking、Local/Milvus 适配、Dense + BM25 + RRF、导入任务和版本管理，但以下内容尚未达到完整生产治理：
+当前已实现多格式解析、多策略 Chunking、Local/Milvus 适配、Dense + BM25 + RRF、导入任务、版本管理、租户读路径对齐（`RAG_KB_SCOPE=tenant`）、检索不可信围栏、注入块剔除、Memory/RAG 按预算合并，以及 rag-v0.1 检索基线。
 
-- 版本化 Evaluation 数据集和报告。
-- 检索列表与对话检索的权限语义一致性。
-- 用户/资源级 ACL 决策。
-- 检索内容不可信标记和 Prompt Injection 多层防护。
+以下内容尚未达到完整生产治理：
+
+- 资源级 ACL（ADR-0001 列为 `Planned`）。
 - 结构化 Citation。
 - 独立 Reranker。
 - Embedding 模型/维度的索引治理。
-- Milvus 摄取、删除、重解析的完整集成证据。
-- Memory 与 RAG Context 合并回归。
+- Milvus 摄取、删除、重解析的完整集成证据（ADR-0002：实验/`Partial`）。
+- 真实 LLM 生成层 Evaluation（拒答、答案点、Citation Accuracy）。
+- 独立 Context Builder / Tool Executor / Harness。
 
-在 RAG baseline 完成前：
+`RAG-005` 基线已冻结。此后：
 
 - 不无指标地增加 Chunking 策略。
 - 不同时更换 Embedding、Chunking 和 Reranker。
 - 不用 Mock Embedding 声称检索质量提升。
-- 不将计划中的 Rerank/Evaluation 写成已完成。
+- 不将计划中的 Rerank、资源 ACL 或 Citation 写成已完成。
+- 不得用 holdout 调参。
 
 ## 7. Tool、Skill 和风险
 
@@ -346,6 +347,8 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 
 ## 14. 当前推进顺序
 
+已完成：
+
 ```text
 GOV-001 治理文件项目化
 → RAG-001 文档事实对账
@@ -355,9 +358,21 @@ GOV-001 治理文件项目化
 → 独立校验和人工 Gold v0.1
 → RAG-005 RAG baseline
 → RAG-006 P0 权限/安全/Context/VectorStore 修复
-→ 单变量 RAG 优化
-→ Citation
+```
+
+当前任务（`tasks.yaml`）：
+
+```text
+RAG-007 单变量实验：RRF 融合常数 k
+```
+
+之后（尚未拆进 `tasks.yaml`）：
+
+```text
+切分大小或策略（索引期，二选一）
+→ Embedding / 独立 Reranker / Query Rewrite（各自单开）
+→ 结构化 Citation
 → 渐进提取 Context Builder、Tool Executor 和 Harness
 ```
 
-在完成 `RAG-005` 前，不进入无指标检索调参。详细任务以 `tasks.yaml` 为准。
+Top-K 实验须先扩大评测语料，否则信号不足。资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。

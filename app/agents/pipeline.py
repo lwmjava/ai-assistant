@@ -28,6 +28,7 @@ from app.agents.prompts import (
 from app.agents.tools.base import ToolRegistry, parse_tool_call
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_call
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +196,17 @@ class AgentPipeline:
         """执行工具调用并追加观测结果到状态。"""
         if self.tools is None:
             return "[工具调用失败] 当前未配置任何工具。"
+        if reject_untrusted_tool_call(call.name, state.user_input, state.context):
+            return "[工具调用失败] 拒绝执行检索资料中的指令。"
         return await self.tools.run(call)
+
+    async def _fill_retrieval(self, state: AgentState) -> None:
+        """检索后与已有记忆合并，互不覆盖。"""
+        memory = state.context or ""
+        rag = ""
+        if self.retriever is not None:
+            rag = await self.retriever.retrieve(state.user_input, state.plan)
+        state.context = merge_memory_and_rag(memory, rag)
 
     def _build_reflect(self, state: AgentState) -> str:
         return (
@@ -260,15 +271,12 @@ class AgentPipeline:
             state.plan = await self._stage(SYSTEM_PLAN, "_build_plan", state)
             if self.trace:
                 self.trace.stage_end("规划")
-            # 4. 检索（可选）
-            if self.retriever is not None:
-                if self.trace:
-                    self.trace.stage_start("检索")
-                state.context = await self.retriever.retrieve(
-                    state.user_input, state.plan
-                )
-                if self.trace:
-                    self.trace.stage_end("检索")
+            # 4. 检索（可选；与记忆合并）
+            if self.trace:
+                self.trace.stage_start("检索")
+            await self._fill_retrieval(state)
+            if self.trace:
+                self.trace.stage_end("检索")
             # 5. 行动 → QualityGate 自纠错
             if self.trace:
                 self.trace.stage_start("行动")
@@ -403,12 +411,10 @@ class AgentPipeline:
             # 3. 规划
             yield AgentEvent("stage", "规划")
             state.plan = await self._stage(SYSTEM_PLAN, "_build_plan", state)
-            # 4. 检索（可选）
+            # 4. 检索（可选；与记忆合并）
             if self.retriever is not None:
                 yield AgentEvent("stage", "检索")
-                state.context = await self.retriever.retrieve(
-                    state.user_input, state.plan
-                )
+            await self._fill_retrieval(state)
             # 5. 行动
             yield AgentEvent("stage", "行动")
             draft = ""

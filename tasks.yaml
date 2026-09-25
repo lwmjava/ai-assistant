@@ -277,7 +277,7 @@ tasks:
 
   - id: "RAG-004"
     title: "建立RAG Evaluation Schema和数据集v0.1"
-    status: "ready"
+    status: "done"
     priority: "P0"
     depends_on:
       - "RAG-001"
@@ -288,6 +288,8 @@ tasks:
       facts:
         - claim: "现有pytest覆盖实现行为，但没有Recall/MRR/nDCG/Citation基线数据集。"
           evidence: "tests/；docs/AI辅助开发迭代指导.md"
+        - claim: "Case Schema、44条合成候选、程序校验与 Gold v0.1（24条，阿明，2026-09-13）已落地。"
+          evidence: "evals/schemas/rag_case.schema.json；evals/datasets/rag-v0.1/；tests/eval/；docs/evaluations/rag-v0.1-gold-review-batch.md"
     scope:
       allowed_paths:
         - "evals/"
@@ -334,7 +336,7 @@ tasks:
 
   - id: "RAG-005"
     title: "实现并运行RAG baseline"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     depends_on:
       - "RAG-004"
@@ -343,6 +345,18 @@ tasks:
       facts:
         - claim: "开发默认可能使用Mock Embedding，不能用于生产质量结论。"
           evidence: "app/core/config.py；app/rag/embeddings/"
+        - claim: "首份基线已用真实 text-embedding-v3（dim 1024）+ Local 运行，commit f52fa70；运行器在解析到 Mock 或非 local 时拒绝产出正式报告。"
+          evidence: "scripts/run_rag_baseline.py；evals/reports/rag-v0.1-baseline-20260919.json"
+        - claim: "35条可排序案例 Recall@1=0.795、MRR=0.929、nDCG@10=0.942；证据原文覆盖45/49=0.918；检索P50=531ms、P95=613ms。"
+          evidence: "docs/evaluations/rag-v0.1-baseline-report.md 第3节"
+        - claim: "越权命中3/16=0.1875，来自资源级/受众级过滤缺失；租户隔离与旧版本过滤本轮0违规。"
+          evidence: "rag-026、rag-036、rag-037；app/rag/vectorstore/local.py 仅按 tenant_id 与 is_current 过滤"
+        - claim: "注入文档中攻击段落排序高于可引用事实段落，导致证据分块未进入top-10。"
+          evidence: "rag-040、rag-041；docs/evaluations/rag-v0.1-baseline-report.md 第5.2节"
+        - claim: "is_current 二值过滤使未来生效版本永不可检索，无 effective_at 感知，尚无ADR覆盖。"
+          evidence: "rag-031；docs/evaluations/rag-v0.1-baseline-report.md 第5.3节"
+        - claim: "语料仅13篇/37分块，Recall@5与@10相同，近满分来自候选池过小，不代表生产质量。"
+          evidence: "docs/evaluations/rag-v0.1-baseline-report.md 第6节"
     scope:
       allowed_paths:
         - "evals/"
@@ -391,7 +405,7 @@ tasks:
 
   - id: "RAG-006"
     title: "修复RAG权限、安全和主链P0问题"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     depends_on:
       - "RAG-002"
@@ -402,8 +416,22 @@ tasks:
       facts:
         - claim: "RAG结果在进入模型前必须经过权限过滤并标记为不可信资料。"
           evidence: "AGENTS.md；docs/governance/agent-harness-engineering.md"
+        - claim: "B1 已落地：过取候选后剔除高置信度注入块，format_context 加 UNTRUSTED_SOURCE 围栏。未引入独立 Reranker。"
+          evidence: "app/rag/retrieval_guard.py；app/rag/retriever.py；tests/test_retrieval_guard.py"
+        - claim: "A1：资源 ACL 保持 Planned。rag-026/036/037 不再把同租户当前文档命中记为检索越权；生成层仍禁答案点。"
+          evidence: "docs/adr/0001-knowledge-base-permission.md §9；evals/datasets/rag-v0.1/cases.json"
+        - claim: "C1：ADR-0003 选项 A 已 Accepted。RAG_EFFECTIVE_DATE_FILTER 默认关闭；打开后 Local 按 as-of 检索已生效当前版，带未来日期的查询才打开 scheduled。"
+          evidence: "docs/adr/0003-effective-date-versioning.md；app/rag/effective_date.py；tests/eval/test_effective_date.py"
+        - claim: "读路径默认 RAG_KB_SCOPE=tenant：同租户当前文档可列表/详情/检索；uploader 为回滚。写路径成员仅自己的文档，管理员可删同租户当前文档。"
+          evidence: "app/rag/access.py；tests/test_rag_access.py；tests/test_rag_permission_semantics.py"
+        - claim: "管线检索不再覆盖记忆；按 RAG_MEMORY_CONTEXT_CHARS / RAG_CONTEXT_CHARS 合并。不可信上下文中的工具名若未出现在用户原文则拒绝执行。"
+          evidence: "app/rag/context_merge.py；app/agents/pipeline.py；tests/eval/test_rag006_pipeline.py"
+        - claim: "已补摄取 kb-injection.md → Local 检索 → AgentPipeline/ChatService 拒工具集成测试（脚本化 LLM）。ai-assistant 环境 2026-09-20：相关套件 99 passed / 1 skipped。"
+          evidence: "tests/eval/test_rag006_pipeline.py；conda env ai-assistant pytest 退出码 0"
     scope:
       allowed_paths:
+        - "app/core/config.py"
+        - "app/core/migration.py"
         - "app/rag/"
         - "app/services/chat_service.py"
         - "app/agents/pipeline.py"
@@ -412,6 +440,10 @@ tasks:
         - "app/api/routes/rag.py"
         - "tests/"
         - "docs/"
+        - "evals/"
+        - ".env.example"
+        - "README.md"
+        - "tasks.yaml"
       forbidden_paths:
         - "未批准的跨模块重构"
         - "生产数据"
@@ -425,11 +457,14 @@ tasks:
         - "不同时实现Reranker"
         - "不一次性重写ChatService和AgentPipeline"
     acceptance:
-      - "跨租户和无资源权限泄露率为0。"
-      - "恶意文档指令不被执行。"
+      - "跨租户检索泄露率为0。"
+      - "资源级 ACL 保持 Planned：同租户当前文档命中不记越权；生成层不得返回 forbidden_answer_points。"
+      - "检索注入块被剔除或降权，注入 Agent 的 RAG 上下文带不可信围栏。"
+      - "恶意文档指令不被执行（生成/工具层：脚本化 LLM 摄取注入文档后拒工具；未用真实 LLM）。"
       - "Memory和RAG信息均按预算保留。"
       - "摄取、检索、重解析和删除在正式VectorStore闭环。"
       - "RAG_ENABLED=true的Chat集成用例通过。"
+      - "ADR-0003 选项 A 已落地：Flag 默认关闭；ED-01..05 通过。不改写 2026-09-19 基线 JSON。"
     risk:
       level: "L2"
       side_effect: "permission-and-retrieval-behavior-change"
@@ -437,19 +472,118 @@ tasks:
       rollback: "Feature Flag、旧过滤路径和旧索引回退。"
     evaluation:
       cases:
+        - "effective_date"
         - "跨租户和资源ACL"
         - "Prompt Injection"
         - "Memory+RAG"
         - "VectorStore一致性"
         - "Chat+RAG"
       commands:
+        - "pytest tests/eval/test_effective_date.py tests/eval/test_rag006_pipeline.py tests/test_rag_access.py tests/test_rag_permission_semantics.py -v"
         - "pytest tests/test_rag.py tests/test_rag_import_jobs.py tests/test_rag_backend.py tests/test_chunking.py -v"
         - "pytest tests/test_chat.py tests/test_security_smoke.py -v"
         - "ruff check ."
         - "mypy app/"
     execution:
       owner: "个人开发者"
-      blocked_by: "RAG-005"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-007"
+    title: "单变量实验：RRF 融合常数 k"
+    status: "done"
+    completed_at: "2026-09-24"
+    priority: "P1"
+    depends_on:
+      - "RAG-005"
+      - "RAG-006"
+    context:
+      problem: "混合检索已用 RRF 融合 Dense 与 BM25，但 k=60 未经对照实验；后续切分/Embedding/Rerank 实验需要先证明查询期参数是否值得改。"
+      facts:
+        - claim: "正式基线冻结为 structured + chunk_size=500 + overlap=64 + RAG_HYBRID_RRF_K=60 + text-embedding-v3 dim 1024 + Local。"
+          evidence: "docs/evaluations/rag-v0.1-baseline-report.md 第2节；evals/reports/rag-v0.1-baseline-20260919.json"
+        - claim: "RRF k 来自配置 RAG_HYBRID_RRF_K，查询期生效，不要求重建索引。"
+          evidence: "app/core/config.py；app/rag/service.py；app/rag/vectorstore/local.py _rrf"
+        - claim: "BM25 k1=1.5、b=0.75 硬编码；中文 token 按单字切分。本任务不改这两项。"
+          evidence: "app/rag/vectorstore/local.py _bm25_scores；app/rag/embeddings/mock.py tokenize"
+        - claim: "35条可排序案例 Recall@1=0.795、MRR=0.929；Recall@5与@10=0.971，语料仅13篇/37分块，Top-K 实验信号弱。"
+          evidence: "docs/evaluations/rag-v0.1-baseline-report.md 第3节、第6节"
+        - claim: "独立 Reranker 与 Query Rewrite 未实现；切分策略与 Embedding 换模型会重建索引。本任务不同时改这些变量。"
+          evidence: "app/rag/retrieval_guard.py；docs/plans/plan_rag_milvus.md；AGENTS.md §6"
+        - claim: "知识库页可改本次检索 top_k 并展示命中，不能改 RRF k；对话默认 RAG_ENABLED=false。"
+          evidence: "frontend/src/pages/Knowledge.tsx；frontend/src/api/rag.ts；app/core/config.py"
+    scope:
+      allowed_paths:
+        - "app/core/config.py"
+        - ".env.example"
+        - "evals/reports/"
+        - "docs/evaluations/"
+        - "docs/AI辅助开发迭代指导.md"
+        - "evals/README.md"
+        - "scripts/"
+        - "tests/eval/"
+        - "README.md"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/rag/chunking/"
+        - "app/rag/embeddings/"
+        - "生产数据"
+        - "生产密钥"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "frontend/src/"
+      deliverables:
+        - "k=40 与 k=80 相对冻结 k=60 的官方评测对比报告（JSON+Markdown）"
+        - "development/validation 指标差、失败切片、权限/注入切片"
+        - "保留或回滚结论；若采纳候选则更新 RAG_HYBRID_RRF_K 默认值"
+        - "pytest 回归：RRF k 可配置且主链未回退"
+      non_goals:
+        - "不改 Chunk size/overlap 或 Chunking 策略"
+        - "不改 Embedding 模型或维度"
+        - "不实现独立 Reranker 或 Query Rewrite"
+        - "不调 BM25 k1/b，不改分词"
+        - "不用 holdout 调参"
+        - "不用 Mock Embedding 报告质量"
+        - "不改写 2026-09-19 基线 JSON"
+        - "不把前端人工观察当成质量门禁"
+        - "不把 Top-K/上下文预算纳入本轮变量"
+    acceptance:
+      - "对照运行使用同一数据集 rag-eval@0.1.0、同一 Embedding、同一索引构建方式，仅 RAG_HYBRID_RRF_K 不同。"
+      - "正式模式拒绝 Mock 和非 local；不产出伪质量报告。"
+      - "调参只看 development 与 validation；holdout 本轮至多记录一次，不得据此改 k。"
+      - "报告包含 Recall@1/5/10、MRR、nDCG、引用覆盖、安全切片、P50/P95，以及失败 Case。"
+      - "若候选未同时改善 Recall@1 或 MRR，或安全切片退化，则保持 k=60 并记录回滚结论。"
+      - "若采纳新 k：更新 app/core/config.py 与 .env.example，默认值与报告结论一致。"
+      - "不改写 evals/reports/rag-v0.1-baseline-20260919.json。"
+      - "pytest tests/eval/ 与 RAG 回归套件通过。"
+      - "前端知识库页冒烟为可选补充：同一查询仍能返回命中；不作为通过条件。"
+    risk:
+      level: "L1"
+      side_effect: "eval-report-write-and-optional-default-rrf-k-change"
+      rollback: "保持 RAG_HYBRID_RRF_K=60；删除候选报告和评测索引副本。"
+    evaluation:
+      metrics:
+        - "Recall@1（主决策）"
+        - "MRR（主决策）"
+        - "Recall@5/10（参考，语料过小可能饱和）"
+        - "nDCG@10"
+        - "Citation coverage"
+        - "Safety Violation"
+        - "P50/P95 Latency"
+      cases:
+        - "development/validation 对照"
+        - "权限与注入切片不得退化"
+      commands:
+        - "python scripts/run_rag_baseline.py --mode official"
+        - "pytest tests/eval/ tests/test_rag.py tests/test_chunking.py tests/test_retrieval_guard.py -v"
+        - "ruff check ."
+        - "mypy app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false

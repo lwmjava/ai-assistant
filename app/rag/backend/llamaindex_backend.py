@@ -13,8 +13,11 @@ from collections.abc import Callable
 from typing import Any
 
 from app.rag.backend.base import RagBackend
+from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
-from app.rag.vectorstore.base import ChunkResult, VectorStore as ProjectVectorStore
+from app.rag.retrieval_guard import candidate_k, drop_injected_chunks
+from app.rag.vectorstore.base import ChunkResult
+from app.rag.vectorstore.base import VectorStore as ProjectVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -130,12 +133,15 @@ class _ProjectPydanticVectorStore:
     async def hybrid_search(self, query: str, top_k: int) -> list[ChunkResult]:
         """骨架检索：复用项目混合检索（与 native / LangChain 共用向量库）。"""
         vec = (await self._embedding.embed([query]))[0]
+        as_of, schedule_at = retrieval_window(query)
         return await self._store.hybrid_search(
             query_embedding=vec,
             query_tokens=self._tokenizer(query),
             tenant_id=self._tenant_id,
             top_k=top_k,
             rrf_k=self._rrf_k,
+            as_of=as_of,
+            schedule_at=schedule_at,
         )
 
 
@@ -199,4 +205,5 @@ class LlamaIndexRagBackend(RagBackend):
             tenant_id,
             self._rrf_k,
         )
-        return await adapter.hybrid_search(query, top_k)
+        hits = await adapter.hybrid_search(query, candidate_k(top_k))
+        return drop_injected_chunks(hits, keep=top_k)

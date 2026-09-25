@@ -1,0 +1,305 @@
+{
+  "experiment": "rrf-k-sweep",
+  "run_at": "2026-09-24T04:30:38.734483+00:00",
+  "git_commit": "eaf675ba52c700d5f49d164634d9fb924c3fa241",
+  "dataset_id": "rag-eval",
+  "dataset_version": "0.1.0",
+  "mode": "official",
+  "indexed_documents": 13,
+  "indexed_chunks": 37,
+  "control_k": 60,
+  "sweep": [
+    60,
+    40,
+    80
+  ],
+  "decision_splits": [
+    "development",
+    "validation"
+  ],
+  "holdout_used_for_decision": false,
+  "adopted_k": 60,
+  "decision": "keep",
+  "reason": "没有候选同时提升 Recall@1 与 MRR 且不增加越权案例，保持对照 k",
+  "runs": [
+    {
+      "rrf_k": 60,
+      "report": "evals/reports/rag-v0.1-rrf-k60-20260924.json",
+      "tuning": {
+        "cases": 35,
+        "scorable_cases": 28,
+        "not_scorable_cases": 7,
+        "recall": {
+          "@1": 0.8154761904761905,
+          "@5": 0.9523809523809524,
+          "@10": 0.9523809523809524
+        },
+        "mrr": 0.9464285714285714,
+        "ndcg@10": 0.9427246568057172,
+        "citation": {
+          "cases_with_evidence": 28,
+          "evidence_total": 41,
+          "evidence_hit": 38,
+          "quote_coverage": 0.926829268292683
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 10,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 278.29129999918223,
+          "p95": 394.5053999996162,
+          "max": 406.2792000004265
+        }
+      },
+      "holdout": {
+        "cases": 9,
+        "scorable_cases": 7,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.7857142857142857,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9297350098442152,
+        "citation": {
+          "cases_with_evidence": 7,
+          "evidence_total": 8,
+          "evidence_hit": 7,
+          "quote_coverage": 0.875
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 281.42520000074,
+          "p95": 308.22249999982887,
+          "max": 308.22249999982887
+        }
+      },
+      "overall": {
+        "cases": 44,
+        "scorable_cases": 35,
+        "not_scorable_cases": 9,
+        "recall": {
+          "@1": 0.8095238095238095,
+          "@5": 0.9619047619047618,
+          "@10": 0.9619047619047618
+        },
+        "mrr": 0.9428571428571428,
+        "ndcg@10": 0.9401267274134169,
+        "citation": {
+          "cases_with_evidence": 35,
+          "evidence_total": 49,
+          "evidence_hit": 45,
+          "quote_coverage": 0.9183673469387755
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 13,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 278.29129999918223,
+          "p95": 376.14209999992454,
+          "max": 406.2792000004265
+        }
+      },
+      "failing_cases": 3,
+      "eligibility": "对照"
+    },
+    {
+      "rrf_k": 40,
+      "report": "evals/reports/rag-v0.1-rrf-k40-20260924.json",
+      "tuning": {
+        "cases": 35,
+        "scorable_cases": 28,
+        "not_scorable_cases": 7,
+        "recall": {
+          "@1": 0.8154761904761905,
+          "@5": 0.9523809523809524,
+          "@10": 0.9523809523809524
+        },
+        "mrr": 0.9464285714285714,
+        "ndcg@10": 0.9427246568057172,
+        "citation": {
+          "cases_with_evidence": 28,
+          "evidence_total": 41,
+          "evidence_hit": 38,
+          "quote_coverage": 0.926829268292683
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 10,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 283.8308999998844,
+          "p95": 360.68019999947865,
+          "max": 363.9588999994885
+        }
+      },
+      "holdout": {
+        "cases": 9,
+        "scorable_cases": 7,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.7857142857142857,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9297350098442152,
+        "citation": {
+          "cases_with_evidence": 7,
+          "evidence_total": 8,
+          "evidence_hit": 7,
+          "quote_coverage": 0.875
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 252.5552000006428,
+          "p95": 370.5430999998498,
+          "max": 370.5430999998498
+        }
+      },
+      "overall": {
+        "cases": 44,
+        "scorable_cases": 35,
+        "not_scorable_cases": 9,
+        "recall": {
+          "@1": 0.8095238095238095,
+          "@5": 0.9619047619047618,
+          "@10": 0.9619047619047618
+        },
+        "mrr": 0.9428571428571428,
+        "ndcg@10": 0.9401267274134169,
+        "citation": {
+          "cases_with_evidence": 35,
+          "evidence_total": 49,
+          "evidence_hit": 45,
+          "quote_coverage": 0.9183673469387755
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 13,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 276.78259999993315,
+          "p95": 360.68019999947865,
+          "max": 370.5430999998498
+        }
+      },
+      "failing_cases": 3,
+      "eligibility": "not_both_primary_improved"
+    },
+    {
+      "rrf_k": 80,
+      "report": "evals/reports/rag-v0.1-rrf-k80-20260924.json",
+      "tuning": {
+        "cases": 35,
+        "scorable_cases": 28,
+        "not_scorable_cases": 7,
+        "recall": {
+          "@1": 0.8154761904761905,
+          "@5": 0.9523809523809524,
+          "@10": 0.9523809523809524
+        },
+        "mrr": 0.9464285714285714,
+        "ndcg@10": 0.9427246568057172,
+        "citation": {
+          "cases_with_evidence": 28,
+          "evidence_total": 41,
+          "evidence_hit": 38,
+          "quote_coverage": 0.926829268292683
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 10,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 294.44040000089444,
+          "p95": 341.63209999860555,
+          "max": 351.16310000012163
+        }
+      },
+      "holdout": {
+        "cases": 9,
+        "scorable_cases": 7,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.7857142857142857,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9297350098442152,
+        "citation": {
+          "cases_with_evidence": 7,
+          "evidence_total": 8,
+          "evidence_hit": 7,
+          "quote_coverage": 0.875
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 286.8471999991016,
+          "p95": 331.14780000141764,
+          "max": 331.14780000141764
+        }
+      },
+      "overall": {
+        "cases": 44,
+        "scorable_cases": 35,
+        "not_scorable_cases": 9,
+        "recall": {
+          "@1": 0.8095238095238095,
+          "@5": 0.9619047619047618,
+          "@10": 0.9619047619047618
+        },
+        "mrr": 0.9428571428571428,
+        "ndcg@10": 0.9401267274134169,
+        "citation": {
+          "cases_with_evidence": 35,
+          "evidence_total": 49,
+          "evidence_hit": 45,
+          "quote_coverage": 0.9183673469387755
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 13,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 287.60229999898,
+          "p95": 336.9942999997875,
+          "max": 351.16310000012163
+        }
+      },
+      "failing_cases": 3,
+      "eligibility": "not_both_primary_improved"
+    }
+  ]
+}

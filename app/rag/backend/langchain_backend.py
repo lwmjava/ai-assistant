@@ -16,8 +16,11 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 
 from app.rag.backend.base import RagBackend
+from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
-from app.rag.vectorstore.base import ChunkResult, VectorStore as ProjectVectorStore
+from app.rag.retrieval_guard import candidate_k, drop_injected_chunks
+from app.rag.vectorstore.base import ChunkResult
+from app.rag.vectorstore.base import VectorStore as ProjectVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -115,12 +118,15 @@ class _ProjectVectorStoreAdapter(VectorStore):
         **kwargs: object,
     ) -> list[tuple[Document, float]]:
         vec = (await self._embedding.embed([query]))[0]
+        as_of, schedule_at = retrieval_window(query)
         hits = await self._store.hybrid_search(
             query_embedding=vec,
             query_tokens=self._tokenizer(query),
             tenant_id=self._tenant_id,
             top_k=k,
             rrf_k=self._rrf_k,
+            as_of=as_of,
+            schedule_at=schedule_at,
         )
         return [
             (
@@ -130,6 +136,7 @@ class _ProjectVectorStoreAdapter(VectorStore):
                         "chunk_id": h.id,
                         "document_id": h.document_id,
                         "source": h.source,
+                        "version_status": h.version_status,
                     },
                 ),
                 h.score,
@@ -197,7 +204,7 @@ class LangChainRagBackend(RagBackend):
             tenant_id,
             self._rrf_k,
         )
-        pairs = await adapter.asimilarity_search_with_score(query, k=top_k)
+        pairs = await adapter.asimilarity_search_with_score(query, k=candidate_k(top_k))
         results: list[ChunkResult] = []
         for doc, score in pairs:
             meta = doc.metadata or {}
@@ -208,6 +215,7 @@ class LangChainRagBackend(RagBackend):
                     source=meta.get("source"),
                     document_id=str(meta.get("document_id") or ""),
                     score=float(score),
+                    version_status=str(meta.get("version_status") or "current"),
                 )
             )
-        return results
+        return drop_injected_chunks(results, keep=top_k)

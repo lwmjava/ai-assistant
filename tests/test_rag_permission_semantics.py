@@ -1,29 +1,21 @@
-"""表征当前知识库权限语义（As-Is）。
+"""ADR-0001 To-Be 表征：读路径租户共享当前版本。
 
-ADR-0001 已批准 To-Be：读路径租户共享当前版本。实现在 RAG-006。
-在过滤代码改掉之前，本文件继续锁定现状：
-- 列表/详情：非管理员只看到自己上传的当前版本；
-- 检索：同租户当前版本都可能命中。
-
-RAG-006 改 `list_documents` / `_can_access` 时必须同步改这些期望。
+默认 ``RAG_KB_SCOPE=tenant``。``uploader`` 回滚路径见 ``tests/test_rag_access.py``。
+使用隔离 SQLite，避免共享测试库中的历史文档挤掉 top-k。
 """
 
 from __future__ import annotations
 
-import pytest
-from sqlmodel import Session
+from pathlib import Path
+from uuid import uuid4
 
-from app.core.database import engine, init_db
+from sqlmodel import Session, SQLModel, create_engine
+
 from app.core.security import Role
+from app.models.rag import Document, DocumentChunk  # noqa: F401 — 注册 RAG 表
 from app.models.user import User
+from app.rag.embeddings.mock import MockEmbeddingProvider
 from app.rag.service import RAGService
-
-
-@pytest.fixture()
-def session() -> Session:
-    init_db()
-    with Session(engine) as s:
-        yield s
 
 
 def _user(user_id: str, tenant_id: str, role: Role = Role.MEMBER) -> User:
@@ -38,42 +30,62 @@ def _user(user_id: str, tenant_id: str, role: Role = Role.MEMBER) -> User:
     )
 
 
-async def test_same_tenant_list_is_uploader_scoped_but_search_is_tenant_scoped(
-    session: Session,
+def _isolated_session(tmp_path: Path) -> Session:
+    db = create_engine(
+        f"sqlite:///{(tmp_path / 'perm.db').as_posix()}",
+        connect_args={"check_same_thread": False},
+    )
+    SQLModel.metadata.create_all(db)
+    return Session(db)
+
+
+async def test_same_tenant_list_detail_and_search_share_current_documents(
+    tmp_path: Path,
 ) -> None:
-    tenant = "perm-tenant-shared"
+    tenant = f"perm-tenant-shared-{uuid4().hex[:8]}"
+    marker = f"PERM-SHARE-{uuid4().hex[:12]}"
     owner = _user("perm-user-a", tenant)
     peer = _user("perm-user-b", tenant)
-    rag = RAGService(session, tenant)
+    session = _isolated_session(tmp_path)
+    try:
+        rag = RAGService(session, tenant, embedding_provider=MockEmbeddingProvider(dim=64))
+        doc = await rag.ingest_text(
+            f"权限表征文档 {marker}：同租户成员应能在列表、详情和检索中看到当前版本。",
+            title="权限表征",
+            source="perm-char",
+            user_id=owner.id,
+        )
 
-    doc = await rag.ingest_text(
-        "权限表征文档：只有上传者应出现在普通用户的文档列表中。",
-        title="权限表征",
-        source="perm-char",
-        user_id=owner.id,
-    )
+        listed_owner = {item.id for item in rag.list_documents(owner)}
+        listed_peer = {item.id for item in rag.list_documents(peer)}
+        assert doc.id in listed_owner
+        assert doc.id in listed_peer
+        assert rag.get_document(doc.id, peer) is not None
 
-    listed_owner = {item.id for item in rag.list_documents(owner)}
-    listed_peer = {item.id for item in rag.list_documents(peer)}
-    assert doc.id in listed_owner
-    assert doc.id not in listed_peer
-    assert rag.get_document(doc.id, peer) is None
-
-    hits = await rag.search("权限表征文档", top_k=5)
-    assert any(hit.document_id == doc.id for hit in hits)
+        hits = await rag.search(marker, top_k=5)
+        assert any(hit.document_id == doc.id for hit in hits)
+    finally:
+        session.close()
 
 
-async def test_cross_tenant_search_does_not_return_foreign_documents(
-    session: Session,
-) -> None:
-    rag_a = RAGService(session, "perm-tenant-a")
-    rag_b = RAGService(session, "perm-tenant-b")
-    doc = await rag_a.ingest_text(
-        "跨租户隔离表征：这段文字只属于 tenant-a。",
-        title="跨租户表征",
-        source="perm-cross",
-        user_id="perm-cross-owner",
-    )
+async def test_cross_tenant_search_does_not_return_foreign_documents(tmp_path: Path) -> None:
+    marker = f"PERM-CROSS-{uuid4().hex[:12]}"
+    session = _isolated_session(tmp_path)
+    embedding = MockEmbeddingProvider(dim=64)
+    try:
+        rag_a = RAGService(session, "perm-tenant-a", embedding_provider=embedding)
+        rag_b = RAGService(session, "perm-tenant-b", embedding_provider=embedding)
+        doc = await rag_a.ingest_text(
+            f"跨租户隔离表征 {marker}：这段文字只属于 tenant-a。",
+            title="跨租户表征",
+            source="perm-cross",
+            user_id="perm-cross-owner",
+        )
 
-    hits = await rag_b.search("跨租户隔离表征", top_k=5)
-    assert all(hit.document_id != doc.id for hit in hits)
+        hits = await rag_b.search(marker, top_k=5)
+        assert all(hit.document_id != doc.id for hit in hits)
+        foreign = _user("perm-foreign", "perm-tenant-b")
+        assert rag_a.get_document(doc.id, foreign) is None
+        assert doc.id not in {item.id for item in rag_b.list_documents(foreign)}
+    finally:
+        session.close()

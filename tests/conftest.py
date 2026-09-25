@@ -5,8 +5,17 @@
 """
 
 import os
+from pathlib import Path
 
 import pytest
+
+# Windows 上 pytest 默认在 %TEMP%/pytest-of-*/pytest-current 建目录联接；
+# 进程退出清理时常见 WinError 5，堆栈出现在「7 passed」之后，易被当成失败。
+# 把临时根目录放到已 gitignore 的 data/，并尽量走 --basetemp（不再建 pytest-current）。
+_PYTEST_TMP = Path(__file__).resolve().parents[1] / "data" / "pytest-tmp"
+_PYTEST_TMP.mkdir(parents=True, exist_ok=True)
+for _env_key in ("TMP", "TEMP", "TMPDIR"):
+    os.environ[_env_key] = str(_PYTEST_TMP)
 
 os.environ.setdefault("ENV", "development")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./data/test_ai_assistant.db")
@@ -17,9 +26,17 @@ os.environ.setdefault("INITIAL_ADMIN_PASSWORD", "")
 
 # 在测试导入应用前已设置好环境变量；此处显式建表，
 # 因为 TestClient 非上下文管理器使用时不会触发 lifespan 中的 init_db。
-from app.core.database import init_db
+from app.core.database import init_db  # noqa: E402
 
 init_db()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_configure(config: pytest.Config) -> None:
+    """未指定 --basetemp 时固定到 data/pytest-tmp/run，避免 AppData 下 pytest-current 联接。"""
+    if getattr(config.option, "basetemp", None):
+        return
+    config.option.basetemp = _PYTEST_TMP / "run"
 
 
 @pytest.fixture(autouse=True)

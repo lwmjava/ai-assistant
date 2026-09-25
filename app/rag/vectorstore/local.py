@@ -12,11 +12,14 @@
 import json
 import logging
 import math
+from datetime import UTC, datetime
 
 import numpy as np
 from sqlmodel import Session, select
 
+from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
+from app.rag.effective_date import document_version_status, ensure_utc
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
 logger = logging.getLogger(__name__)
@@ -123,16 +126,22 @@ class LocalVectorStore(VectorStore):
         tenant_id: str,
         top_k: int,
         rrf_k: int = 60,
+        as_of: datetime | None = None,
+        schedule_at: datetime | None = None,
     ) -> list[ChunkResult]:
         stmt = (
             select(DocumentChunk)
             .join(Document, Document.id == DocumentChunk.document_id)
-            .where(
-                DocumentChunk.tenant_id == tenant_id,
-                Document.is_current.is_(True),
-            )
+            .where(DocumentChunk.tenant_id == tenant_id)
         )
+        if not settings.RAG_EFFECTIVE_DATE_FILTER:
+            stmt = stmt.where(Document.is_current.is_(True))
         rows = self.session.exec(stmt).all()
+        if not rows:
+            return []
+        rows, version_by_chunk = visible_chunks_with_status(
+            self.session, rows, as_of, schedule_at
+        )
         if not rows:
             return []
 
@@ -198,6 +207,39 @@ class LocalVectorStore(VectorStore):
                     source=row.source,
                     document_id=row.document_id,
                     score=float(score),
+                    version_status=version_by_chunk.get(row.id, "current"),
                 )
             )
         return results
+
+
+def visible_chunks_with_status(
+    session: Session,
+    rows: list[DocumentChunk],
+    as_of: datetime | None,
+    schedule_at: datetime | None,
+) -> tuple[list[DocumentChunk], dict[str, str]]:
+    if not settings.RAG_EFFECTIVE_DATE_FILTER:
+        return rows, {row.id: "current" for row in rows}
+    moment = ensure_utc(as_of) if as_of is not None else datetime.now(UTC)
+    visible: list[DocumentChunk] = []
+    version_by_chunk: dict[str, str] = {}
+    doc_cache: dict[str, Document | None] = {}
+    for row in rows:
+        if row.document_id not in doc_cache:
+            doc_cache[row.document_id] = session.get(Document, row.document_id)
+        doc = doc_cache[row.document_id]
+        if doc is None:
+            continue
+        status = document_version_status(
+            is_current=doc.is_current,
+            effective_at=doc.effective_at,
+            expires_at=doc.expires_at,
+            as_of=moment,
+            schedule_at=schedule_at,
+        )
+        if status is None:
+            continue
+        visible.append(row)
+        version_by_chunk[row.id] = status
+    return visible, version_by_chunk

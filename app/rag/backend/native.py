@@ -3,7 +3,9 @@
 from collections.abc import Callable
 
 from app.rag.backend.base import RagBackend
+from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.retrieval_guard import candidate_k, drop_injected_chunks
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
 Tokenizer = Callable[[str], list[str]]
@@ -40,6 +42,14 @@ class NativeRagBackend(RagBackend):
     ) -> list[ChunkResult]:
         embedding = (await self._embedding.embed([query]))[0]
         tokens = self._tokenizer(query)
-        return await self._store.hybrid_search(
-            embedding, tokens, tenant_id, top_k, self._rrf_k
+        as_of, schedule_at = retrieval_window(query)
+        hits = await self._store.hybrid_search(
+            embedding,
+            tokens,
+            tenant_id,
+            candidate_k(top_k),
+            self._rrf_k,
+            as_of=as_of,
+            schedule_at=schedule_at,
         )
+        return drop_injected_chunks(hits, keep=top_k)

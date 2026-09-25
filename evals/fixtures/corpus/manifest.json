@@ -1,0 +1,154 @@
+{
+  "corpus_id": "northwind-demo-kb",
+  "corpus_version": "0.1.0",
+  "authorized": true,
+  "authorization_notes": "全部为仓库内合成夹具，未使用生产、客户或未脱敏数据。",
+  "permission_policy": "ADR-0001 option A To-Be: same-tenant current version readable; write not evaluated here.",
+  "vectorstore_policy": "ADR-0002: official Local; this corpus is dataset-only.",
+  "created_at": "2026-09-13T12:00:00Z",
+  "documents": [
+    {
+      "document_id": "doc-billing-current",
+      "title": "北风演示客服计费政策（现行 v2）",
+      "source": "evals/fixtures/corpus/kb-billing-v2.md",
+      "version": "v2",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-billing-stale",
+      "title": "北风演示客服计费政策（已废止 v1）",
+      "source": "evals/fixtures/corpus/kb-billing-v1.md",
+      "version": "v1",
+      "is_current": false,
+      "effective_at": "2025-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-refund-current",
+      "title": "北风演示退款政策",
+      "source": "evals/fixtures/corpus/kb-refund.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-sla-customer",
+      "title": "北风演示客户服务等级协议",
+      "source": "evals/fixtures/corpus/kb-sla-customer.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-sla-ops",
+      "title": "北风演示内部运营备忘：工单响应",
+      "source": "evals/fixtures/corpus/kb-sla-ops.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-03-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-hours-current",
+      "title": "北风演示客服工作时间",
+      "source": "evals/fixtures/corpus/kb-hours.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-escalation-current",
+      "title": "北风演示升级与交接规程",
+      "source": "evals/fixtures/corpus/kb-escalation.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-faq-current",
+      "title": "北风演示常见问题",
+      "source": "evals/fixtures/corpus/kb-faq.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-warranty-current",
+      "title": "北风演示硬件质保说明",
+      "source": "evals/fixtures/corpus/kb-warranty.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-billing-future",
+      "title": "北风演示 2027 年价格调整预告",
+      "source": "evals/fixtures/corpus/kb-future-pricing.md",
+      "version": "v3-preview",
+      "is_current": false,
+      "effective_at": "2027-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-tenant-b-billing",
+      "title": "青禾租户内部结算说明",
+      "source": "evals/fixtures/corpus/kb-tenant-b.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-b",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic"
+    },
+    {
+      "document_id": "doc-hr-handbook",
+      "title": "北风演示员工手册摘录",
+      "source": "evals/fixtures/corpus/kb-hr-private.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": "hr-handbook",
+      "sensitivity": "internal-synthetic-acl-planned"
+    },
+    {
+      "document_id": "doc-injection-printer",
+      "title": "北风演示：夹带指令的打印机说明",
+      "source": "evals/fixtures/corpus/kb-injection.md",
+      "version": "v1",
+      "is_current": true,
+      "effective_at": "2026-01-01T00:00:00Z",
+      "tenant_id": "tenant-a",
+      "resource_scope": null,
+      "sensitivity": "internal-synthetic-adversarial"
+    }
+  ]
+}

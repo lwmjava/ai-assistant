@@ -1,4 +1,13 @@
 # ai-assistant — 生产可用多阶段镜像
+FROM node:22.23.2-bookworm-slim AS frontend
+
+WORKDIR /src
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/index.html frontend/vite.config.ts frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.node.json frontend/postcss.config.js frontend/tailwind.config.js ./
+COPY frontend/src ./src
+RUN npm run build
+
 FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
@@ -21,8 +30,9 @@ RUN apt-get update \
 COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制应用源码。
+# 复制应用源码，再用前端构建阶段的产物覆盖，避免把 Node 留在最终镜像里。
 COPY . .
+COPY --from=frontend /src/dist ./frontend/dist
 
 # 数据目录（SQLite 默认存放处；使用 Postgres 时可忽略）。
 RUN mkdir -p /app/data && chown -R appuser:appuser /app

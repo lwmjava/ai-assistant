@@ -295,6 +295,8 @@ docker compose up -d --build
 
 编排包含 PostgreSQL 和开发用 Milvus（单容器）。默认 `RAG_VECTOR_STORE` 仍是 `local`。只有显式改为 `milvus` 时，应用才连接 `http://milvus:19530`。这不表示向量库闭环门槛已经通过。
 
+启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/health` 仍是健康检查。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
+
 ### 关键配置项
 
 | 环境变量 | 说明 | 默认值 |

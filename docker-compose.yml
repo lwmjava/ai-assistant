@@ -51,6 +51,7 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:?必须配置一个模型密钥}
       RAG_VECTOR_STORE: ${RAG_VECTOR_STORE:-local}
       MILVUS_URI: http://milvus:19530
+      SERVE_FRONTEND: "true"
       AUTH_ENABLED: ${AUTH_ENABLED:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}

@@ -196,7 +196,7 @@ def _ensure_rag_schema_columns() -> None:
             conn.execute(
                 text(
                     "UPDATE rag_documents SET version_state = 'replaced' "
-                    "WHERE is_current = 0 AND ("
+                    "WHERE NOT is_current AND ("
                     "version_state IS NULL OR version_state = '' OR version_state = 'published'"
                     ")"
                 )

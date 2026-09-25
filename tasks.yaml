@@ -1127,7 +1127,7 @@ tasks:
 
   - id: "INST-003"
     title: "镜像或启动步骤带上已构建的控制台（交付 B1）"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: "2026-10-30"
     depends_on:
@@ -1177,7 +1177,7 @@ tasks:
         - "cd frontend; npm run build"
     execution:
       owner: "个人开发者"
-      blocked_by: "INST-002"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false

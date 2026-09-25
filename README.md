@@ -245,6 +245,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 审计 | `GET` | `/api/admin/audit-logs` | 审计日志查询（系统管理员） |
 | 租户 | `GET` | `/api/admin/tenants` | 列出未停用租户（仅系统管理员） |
 | 租户 | `POST` | `/api/admin/tenants` | 创建租户；未停用名称唯一，重名 409（仅系统管理员） |
+| 租户 | `POST` | `/api/admin/tenants/{id}/users` | 在指定未停用租户下创建成员；角色固定为 member（仅系统管理员） |
 
 > 启动后访问 `http://127.0.0.1:8000/docs` 查看交互式 Swagger API 文档。
 

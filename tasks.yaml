@@ -1256,7 +1256,7 @@ tasks:
 
   - id: "TEN-002"
     title: "在指定租户下创建成员，登录后只在该租户（交付 B2）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-07"
     depends_on:
@@ -1264,8 +1264,8 @@ tasks:
     context:
       problem: "系统管理员不能在新建租户下创建成员。无法证明该成员登录后只看到本租户数据。"
       facts:
-        - claim: "create_user 能在指定 tenant_id 下写入用户，密码经哈希保存。没有对应的管理接口。"
-          evidence: "app/services/auth_service.py"
+        - claim: "系统管理员可通过 /api/admin/tenants/{tenant_id}/users 在未停用租户下创建 member。"
+          evidence: "app/api/routes/admin_tenants.py；docs/plans/plan_ten_002_create_member.md"
         - claim: "登录签发的 access token 带有用户的 tenant_id。对话与知识库按该字段过滤。"
           evidence: "app/api/routes/auth.py；app/core/security.py；app/services/chat_service.py"
         - claim: "B2 的创建者是系统管理员。租户管理员管理成员、邀请码和切换租户不在本任务。"

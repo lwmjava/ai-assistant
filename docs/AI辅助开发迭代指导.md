@@ -697,10 +697,10 @@ AI 完成后必须：
 
 按 `tasks.yaml` 顺序执行：
 
-1. `GOV-001`：治理文件项目化（已完成，见 `tasks.yaml`）。
-2. `RAG-001`：对账产品/设计方案，输出 As-Is 能力矩阵（进行中/待关单）。
-3. `RAG-002`：形成知识库权限 ADR。
-4. `RAG-003`：形成正式 VectorStore ADR。
+1. `GOV-001`：治理文件项目化（已完成）。
+2. `RAG-001`：对账产品/设计方案，输出 As-Is 能力矩阵（已完成）。
+3. `RAG-002`：ADR-0001 已批准（租户共享当前版本）；过滤实现对齐见 `RAG-006`。
+4. `RAG-003`：ADR-0002 已批准（正式 Local，Milvus 实验）；不切换默认。
 5. `RAG-004`：定义 Evaluation Case Schema，并生成 Silver/Adversarial 候选集。
 6. 独立校验并人工确认 Gold v0.1。
 7. `RAG-005`：实现并运行 RAG baseline。

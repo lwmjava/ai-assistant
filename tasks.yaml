@@ -1325,7 +1325,7 @@ tasks:
 
   - id: "TEN-003"
     title: "控制台租户页与用户页（交付 B2）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-07"
     depends_on:
@@ -1333,8 +1333,8 @@ tasks:
     context:
       problem: "控制台没有租户页和用户页。系统管理员不能在界面上完成建租户和建成员。"
       facts:
-        - claim: "控制台路由只有登录、对话、知识库、工具、工作流和审计。"
-          evidence: "frontend/src/App.tsx"
+        - claim: "系统管理员可在 /tenants 创建租户，在 /users 选择租户并创建成员。成员访问这两条路由会回到对话页。"
+          evidence: "frontend/src/pages/Tenants.tsx；frontend/src/pages/Users.tsx；frontend/src/App.tsx"
         - claim: "B2 要求系统管理员在页面上创建租户并在选定租户下创建成员。成员看不到这两页。"
           evidence: "docs/plans/plan_b2_tenants.md；docs/plans/plan_delivery_2027-03-25.md"
         - claim: "加载、空、错误、无权限、成功、失败六态全集属于 C3。"

@@ -32,6 +32,7 @@ project:
     frontend_build: "cd frontend; npm run build"
   evidence_policy: "事实引用代码、配置、测试、Trace、数据或已批准文档；假设必须标记并给出验证动作。"
   source_comment_policy: "每次改代码都必须遵守：源代码、测试、前端和迁移脚本里的注释与文档字符串只描述当前行为。不得写入任务编号、ADR 编号、需求或设计文档名称、修订日期，以及依据哪份文档实现的说明。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
+  commit_message_policy: "每次 git 提交都必须遵守：提交说明只写实现了什么功能，或修复了什么问题。不得写入需求编号、任务编号、ADR 编号，也不得写依据哪份需求、设计或计划文档。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   capacity_policy: "个人开发按理论产能的60%-70%排期，其余用于取证、联调、返工、审核和发布。"
 
 status_values:
@@ -1063,7 +1064,7 @@ tasks:
 
   - id: "INST-002"
     title: "Compose 带上 Milvus Lite，并在配置 JWT 与模型密钥后启动（交付 B1）"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: "2026-10-30"
     depends_on:
@@ -1117,7 +1118,7 @@ tasks:
         - "docker compose config"
     execution:
       owner: "个人开发者"
-      blocked_by: "INST-001"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false

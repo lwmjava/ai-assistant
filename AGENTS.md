@@ -252,6 +252,8 @@ Skill 必须包含 Purpose、Preconditions、Workflow、Tools、RAG、Constraint
 
 每次只推进 `tasks.yaml` 中一个边界清晰的任务。禁止顺手扩大范围。
 
+Git 提交说明只写实现了什么功能，或修复了什么问题。不要写入需求编号、任务编号、ADR 编号，也不要写依据哪份文档。具体格式见 `CONTRIBUTING.md` 与 `tasks.yaml` 的 `commit_message_policy`。
+
 夜间无人值守必须遵守 `docs/workflows/nightly-autonomous-development.md`，只能处理通过 `nightly_ready` 准入的 L0 或已批准 L1 任务；不得自动合并或部署。
 
 ## 10. 测试与 Evaluation
@@ -364,7 +366,7 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013` 与 `INST-001` 已完成。同包未开工：`INST-002`、`INST-003`（`backlog`）。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001` 与 `INST-002` 已完成。同包未开工：`INST-003`（`backlog`）。
 
 A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 

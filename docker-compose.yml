@@ -1,9 +1,10 @@
-# ai-assistant — 本地一键编排（应用 + PostgreSQL）
-# 启动：docker compose up -d
+# ai-assistant — 本地编排（应用 + PostgreSQL + 开发用 Milvus）
+# 启动前在 .env 中配置 JWT_SECRET_KEY 与 LLM_API_KEY，然后执行 docker compose up -d --build
 # 停止：docker compose down
 #
 # 默认使用 Postgres；如需快速本地试用 SQLite，可注释掉 app 的 DATABASE_URL 覆盖，
 # 并将 volumes 中挂载 ./data 以持久化 SQLite 文件。
+# 开发用 Milvus 是单容器，供显式 RAG_VECTOR_STORE=milvus 时连接。默认向量库仍是 local。
 
 services:
   db:
@@ -20,12 +21,36 @@ services:
       timeout: 5s
       retries: 5
 
+  milvus:
+    image: milvusdb/milvus:v2.5.11
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_USE_EMBED: "true"
+      ETCD_DATA_DIR: /var/lib/milvus/etcd
+      ETCD_CONFIG_PATH: /milvus/configs/embedEtcd.yaml
+      COMMON_STORAGETYPE: local
+    volumes:
+      - milvusdata:/var/lib/milvus
+      - ./deploy/milvus/embedEtcd.yaml:/milvus/configs/embedEtcd.yaml:ro
+      - ./deploy/milvus/user.yaml:/milvus/configs/user.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+
   app:
     build: .
     environment:
       ENV: ${ENV:-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:-aiassistant}:${POSTGRES_PASSWORD:-aiassistant}@db:5432/${POSTGRES_DB:-aiassistant}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production-use-a-random-secret}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?必须配置随机 JWT_SECRET_KEY，不能使用仓库内占位口令}
+      LLM_API_KEY: ${LLM_API_KEY:?必须配置一个模型密钥}
+      RAG_VECTOR_STORE: ${RAG_VECTOR_STORE:-local}
+      MILVUS_URI: http://milvus:19530
       AUTH_ENABLED: ${AUTH_ENABLED:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
@@ -35,7 +60,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      milvus:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   pgdata:
+  milvusdata:

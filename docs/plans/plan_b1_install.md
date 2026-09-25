@@ -1,6 +1,6 @@
 # B1：可安装
 
-> 状态：已拆入 `tasks.yaml`（INST-001 `done`；INST-002 / INST-003 `backlog`）
+> 状态：已拆入 `tasks.yaml`（INST-001、INST-002 `done`；INST-003 `backlog`）
 > 来源：交付排期 B1
 > 日期：2026-09-25
 > 截止：2026-10-30
@@ -12,7 +12,7 @@
 | 编号 | 内容 | 状态 |
 |---|---|---|
 | INST-001 | `/health` 报告数据库与当前向量库连通性；任一失败则整体不是 ok | done |
-| INST-002 | Compose 带上 Milvus Lite；启动路径要求 JWT 与一个模型密钥，不再使用仓库内默认口令 | backlog，依赖 INST-001 |
+| INST-002 | Compose 带上 Milvus Lite；启动路径要求 JWT 与一个模型密钥，不再使用仓库内默认口令 | done，方案见 `plan_inst_002_compose.md` |
 | INST-003 | 镜像或编排带上已构建的控制台，同一进程或编排可以打开 | backlog，依赖 INST-002 |
 
 ## 非目标

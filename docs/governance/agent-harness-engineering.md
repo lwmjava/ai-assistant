@@ -425,7 +425,7 @@ Agent 系统变更只有满足以下条件才能完成：
 
 已完成：`GOV-001`～`RAG-013`。
 
-`INST-001`（交付 B1 健康检查）已完成。已拆未开工：`INST-002` / `INST-003`（`backlog`）。日历顺序见 `docs/plans/plan_delivery_2027-03-25.md`：
+`INST-001`（交付 B1 健康检查）与 `INST-002`（开发用 Milvus 编排）已完成。已拆未开工：`INST-003`（`backlog`）。日历顺序见 `docs/plans/plan_delivery_2027-03-25.md`：
 
 ```text
 阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）

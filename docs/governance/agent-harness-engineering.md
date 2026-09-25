@@ -423,20 +423,15 @@ Agent 系统变更只有满足以下条件才能完成：
 
 ## 20. 当前执行顺序
 
-已完成：`GOV-001`～`RAG-006`。
+已完成：`GOV-001`～`RAG-010`。
 
-当前任务：`RAG-007` 单变量实验（RRF `k`）。
-
-之后（尚未拆进 `tasks.yaml`）：
+当前可执行：`RAG-011`（交付 A1，`ready`）。已拆未开工：`RAG-012` / `RAG-013`（`backlog`）。日历顺序见 `docs/plans/plan_delivery_2027-03-25.md`：
 
 ```text
-切分大小或策略
-→ Embedding / Reranker / Query Rewrite（各自单开）
-→ Citation
-→ ContextBuilder
-→ Tool Contract/Executor
-→ Persistent Trace
-→ StateManager/Harness
+阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）
+→ 阶段 B 最小安装点
+→ 阶段 C MVP（2026-12-25 达到约定范围的 80%）
+→ 阶段 D 完整交付（2027-03-25 达到约定范围的 100%）
 ```
 
-详细任务以根目录 `tasks.yaml` 为准。知识库权限与正式 VectorStore 已由 ADR-0001/0002 决定。
+不把切分、Embedding、独立 Reranker、Query Rewrite 排成跨月当前任务。正式向量库目标为 Milvus（ADR-0002）；默认 `RAG_VECTOR_STORE` 在第 5 节门槛通过前仍是 Local。详细任务以根目录 `tasks.yaml` 为准。知识库权限与正式 VectorStore 已由 ADR-0001/0002 决定。

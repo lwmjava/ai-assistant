@@ -1,11 +1,9 @@
-"""知识库权限判定（ADR-0001）。
+"""知识库权限判定。
 
-读路径由 ``RAG_KB_SCOPE`` 控制：
-- ``tenant``（本阶段 To-Be 默认）：同租户 ``is_current=true`` 可读；
-- ``uploader``：回滚到上传者私有列表/详情（系统管理员仍可见同租户当前文档）。
-
-写路径（删除 / 重解析）不看该开关：成员仅自己的文档；租户/系统管理员可写同租户当前文档。
-跨租户一律拒绝。资源级 ACL 仍为 Planned，本模块不实现。
+检索面（``can_read_document``）由 ``RAG_KB_SCOPE`` 控制，默认只放行同租户当前版。
+控制面（列表 / 详情 / 删除 / 重解析）走 ``can_control_document``：
+成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
+对话检索不使用控制面判定。资源级 ACL 仍为 Planned。
 """
 
 from __future__ import annotations
@@ -43,13 +41,20 @@ def can_read_document(doc: Document, user: User) -> bool:
     return doc.user_id == user.id
 
 
-def can_write_document(doc: Document, user: User) -> bool:
-    """删除 / 重解析。"""
+def can_control_document(doc: Document, user: User) -> bool:
+    """列表、详情、删除、重解析。"""
+    if user.role_enum == Role.SYSTEM_ADMIN:
+        return True
     if not same_tenant(doc.tenant_id, user):
         return False
-    if is_kb_admin(user):
-        return bool(doc.is_current)
-    return doc.user_id == user.id
+    if user.role_enum == Role.TENANT_ADMIN:
+        return True
+    return doc.user_id == user.id and bool(doc.is_current)
+
+
+def can_write_document(doc: Document, user: User) -> bool:
+    """删除 / 重解析。与控制面读权限相同。"""
+    return can_control_document(doc, user)
 
 
 def can_read_import(owner_user_id: str, owner_tenant_id: str, user: User) -> bool:

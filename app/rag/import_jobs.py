@@ -307,7 +307,7 @@ def create_reparse_job(session: Session, user: User, document_id: str) -> Import
     if doc is None or not can_write_document(doc, user):
         raise ValueError("文档不存在或无权访问")
     job = ImportJob(
-        tenant_id=user.tenant_id,
+        tenant_id=doc.tenant_id,
         user_id=user.id,
         status=ImportJobStatus.PENDING.value,
         source_type=ImportSourceType.REPARSE.value,
@@ -445,6 +445,20 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         job.parser_name = str(parsed.metadata.get("parser_name") or "")
         if existing is not None:
             job.document_id = existing.id
+            job.status = ImportJobStatus.SUCCESS.value
+            session.add(job)
+            session.commit()
+            return
+
+        if job.reparse_document_id:
+            target = session.get(Document, job.reparse_document_id)
+            if target is None:
+                raise ValueError("重解析目标文档不存在")
+            rag = RAGService(session, target.tenant_id)
+            doc = await rag.reindex_document_in_place(
+                target, parsed, content_hash=content_hash
+            )
+            job.document_id = doc.id
             job.status = ImportJobStatus.SUCCESS.value
             session.add(job)
             session.commit()

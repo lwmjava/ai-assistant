@@ -6,8 +6,8 @@
 - 文档生命周期：列表 / 详情 / 删除（级联删除分块与向量索引）；
 - 生成管线可用的检索钩子（``make_retriever``）。
 
-读路径遵循 ADR-0001：默认同租户当前版本可读（``RAG_KB_SCOPE=tenant``）。
-写路径：成员仅自己的文档；租户/系统管理员可删除或重解析同租户当前文档。
+检索面默认同租户当前版本可读。
+控制面：成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
 """
 
 import json
@@ -22,7 +22,12 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
 from app.models.user import User
-from app.rag.access import can_read_document, can_write_document, restrict_list_to_uploader
+from app.rag.access import (
+    can_control_document,
+    can_read_document,
+    can_write_document,
+    restrict_list_to_uploader,
+)
 from app.rag.backend.base import RagBackend
 from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
 from app.rag.chunking.base import ChunkParams
@@ -34,6 +39,20 @@ from app.rag.embeddings.mock import tokenize
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.factory import get_vector_store
+
+
+def demote_other_current_versions(session: Session, version_group_id: str, *, keep_id: str) -> None:
+    """同一版本组只保留 keep_id 为当前版。调用方负责提交。"""
+    rows = session.exec(
+        select(Document).where(
+            Document.version_group_id == version_group_id,
+            Document.is_current.is_(True),
+            Document.id != keep_id,
+        )
+    ).all()
+    for row in rows:
+        row.is_current = False
+        session.add(row)
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +188,10 @@ class RAGService:
                     parent_id_map[str(metadata.get("parent_key"))] = row_id
                 self.session.add(row)
 
+            if document.is_current:
+                demote_other_current_versions(
+                    self.session, document.version_group_id, keep_id=document.id
+                )
             self.session.commit()
             self.session.refresh(document)
             return document
@@ -350,22 +373,84 @@ class RAGService:
         return can_read_document(doc, user)
 
     def list_documents(self, user: User) -> list[Document]:
-        """列出当前用户可见的当前版本文档。"""
-        stmt = select(Document).where(
-            Document.tenant_id == user.tenant_id,
-            Document.is_current.is_(True),
-        )
-        if restrict_list_to_uploader(user):
-            stmt = stmt.where(Document.user_id == user.id)
+        """控制面列表。成员只看自己的当前版；管理员可看历史版。"""
+        from app.core.security import Role
+
+        if user.role_enum == Role.SYSTEM_ADMIN:
+            stmt = select(Document)
+        elif user.role_enum == Role.TENANT_ADMIN:
+            stmt = select(Document).where(Document.tenant_id == user.tenant_id)
+        else:
+            stmt = select(Document).where(
+                Document.tenant_id == user.tenant_id,
+                Document.user_id == user.id,
+                Document.is_current.is_(True),
+            )
+            if restrict_list_to_uploader(user):
+                stmt = stmt.where(Document.user_id == user.id)
         stmt = stmt.order_by(Document.updated_at.desc())
         return list(self.session.exec(stmt).all())
 
     def get_document(self, document_id: str, user: User) -> Document | None:
-        """按 ID 获取文档，无读权限时返回 None。"""
+        """按 ID 获取文档。控制面无权限时返回 None。"""
         doc = self.session.get(Document, document_id)
-        if doc is None or not can_read_document(doc, user):
+        if doc is None or not can_control_document(doc, user):
             return None
         return doc
+
+    async def reindex_document_in_place(
+        self,
+        document: Document,
+        parsed: ParsedDocument,
+        *,
+        content_hash: str,
+    ) -> Document:
+        """就地替换分块与向量，不改变 is_current 与版本组。"""
+        strategy_name = resolve_strategy_name(parsed.text, None)
+        chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
+        chunk_objs = await chunking.split(parsed.text, params=self._build_chunk_params(None))
+        if not chunk_objs:
+            raise ValueError("文本为空或无法切分为任何分块")
+        embeddings = await self._embed_texts([chunk.text for chunk in chunk_objs])
+        try:
+            await self._vector_store.delete_by_document(document.id, document.tenant_id)
+        except Exception:  # noqa: BLE001 — 旧向量清理失败不阻断就地重建
+            logger.exception("重解析前清理向量失败: document=%s", document.id)
+        old_chunks = self.session.exec(
+            select(DocumentChunk).where(DocumentChunk.document_id == document.id)
+        ).all()
+        for chunk in old_chunks:
+            self.session.delete(chunk)
+        self.session.flush()
+        parent_id_map: dict[str, str] = {}
+        for chunk_index, (piece, vector) in enumerate(zip(chunk_objs, embeddings, strict=True)):
+            row_id = uuid.uuid4().hex
+            parent_id = None
+            if piece.parent_id and piece.parent_id in parent_id_map:
+                parent_id = parent_id_map[piece.parent_id]
+            metadata: dict = piece.metadata or {}
+            row = DocumentChunk(
+                id=row_id,
+                tenant_id=document.tenant_id,
+                document_id=document.id,
+                chunk_index=chunk_index,
+                content=piece.text,
+                source=document.source,
+                embedding=json.dumps(vector, ensure_ascii=False),
+                tokens=json.dumps(self._tokenizer(piece.text), ensure_ascii=False),
+                strategy=strategy_name,
+                chunk_metadata=json.dumps(metadata, ensure_ascii=False) if metadata else None,
+                parent_id=parent_id,
+            )
+            if metadata.get("kind") == "parent":
+                parent_id_map[str(metadata.get("parent_key"))] = row_id
+            self.session.add(row)
+        document.content_hash = content_hash
+        document.chunk_count = len(chunk_objs)
+        self.session.add(document)
+        self.session.commit()
+        self.session.refresh(document)
+        return document
 
     async def delete_document(self, document_id: str, user: User) -> bool:
         """删除文档（清理向量索引，再级联删除分块与主库记录）。

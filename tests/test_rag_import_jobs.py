@@ -4,7 +4,7 @@
 - 批量文件导入任务创建与处理
 - URL 导入与快照保存
 - 失败任务重试
-- 重解析生成版本链，并确保检索仅命中当前版本
+- 重解析就地更新分块，不新开当前版
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.security import Role
 from app.main import app
-from app.models.rag import Document, ImportBatch, ImportJob, ImportJobStatus
+from app.models.rag import Document, DocumentChunk, ImportBatch, ImportJob, ImportJobStatus
 from app.models.user import User
 from app.rag.import_jobs import run_import_jobs_once
 
@@ -108,7 +108,7 @@ def test_batch_upload_jobs_create_documents(
     assert len(docs) >= 2
 
 
-def test_url_import_and_reparse_create_version_chain(
+def test_url_import_and_reparse_updates_in_place(
     client: tuple[TestClient, User],
     session: Session,
     monkeypatch: pytest.MonkeyPatch,
@@ -164,17 +164,20 @@ def test_url_import_and_reparse_create_version_chain(
     assert second_job is not None
     second_doc = session.get(Document, second_job.document_id)
     assert second_doc is not None
-    assert second_doc.version_group_id == first_doc.version_group_id
-    assert second_doc.version_number == 2
+    assert second_doc.id == first_doc.id
+    assert second_doc.version_number == 1
     assert second_doc.is_current is True
-
-    session.refresh(first_doc)
-    assert first_doc.is_current is False
+    chunks = session.exec(
+        select(DocumentChunk).where(DocumentChunk.document_id == first_doc.id)
+    ).all()
+    assert chunks
+    assert any("beta" in chunk.content for chunk in chunks)
+    assert all("alpha" not in chunk.content for chunk in chunks)
 
     listing = client.get("/api/rag/documents")
-    ids = [item["id"] for item in listing.json()]
-    assert second_doc.id in ids
-    assert first_doc.id not in ids
+    matched = [item for item in listing.json() if item["id"] == first_doc.id]
+    assert len(matched) == 1
+    assert matched[0]["is_current"] is True
 
 
 def test_retry_failed_url_job(
@@ -844,3 +847,69 @@ async def test_search_ignores_superseded_versions(
     rag = RAGService(session, user.tenant_id)
     results = await rag.search("legacytoken", top_k=5)
     assert all("legacytoken" not in row.content for row in results)
+    assert second.document_id == first.document_id
+
+
+async def test_reparse_historical_keeps_the_existing_current_version(
+    session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """重解析历史版只替换该行分块，不把原当前版降级。"""
+    _patch_storage_root(monkeypatch, tmp_path)
+    from app.rag.document_storage import save_source_file
+    from app.rag.import_jobs import create_reparse_job
+    from app.rag.service import RAGService
+
+    tenant = f"hist-{uuid.uuid4().hex}"
+    user = User(
+        id=f"hist-user-{uuid.uuid4().hex}",
+        tenant_id=tenant,
+        username="hist-admin",
+        hashed_password="",
+        role=Role.TENANT_ADMIN.value,
+        token_version=0,
+        is_active=True,
+    )
+    rag = RAGService(session, tenant)
+    current = await rag.ingest_text(
+        "当前版 CURRENT-KEEP 不应被顶替。", "当前", "current.txt", user.id
+    )
+    historical = await rag.ingest_text(
+        "历史版 HIST-OLD 将被就地替换。",
+        "历史",
+        "history.txt",
+        user.id,
+        version_group_id=current.version_group_id,
+        version_number=1,
+        is_current=False,
+    )
+    historical.storage_path = save_source_file(
+        tenant, "历史版 HIST-NEW 就地更新。".encode(), "history.txt"
+    )
+    historical.source = "history.txt"
+    session.add(historical)
+    session.commit()
+
+    job = create_reparse_job(session, user, historical.id)
+    await run_import_jobs_once(limit=10)
+    session.expire_all()
+    done = session.get(ImportJob, job.id)
+    assert done is not None
+    assert done.status == ImportJobStatus.SUCCESS.value
+    assert done.document_id == historical.id
+
+    session.refresh(current)
+    session.refresh(historical)
+    assert current.is_current is True
+    assert historical.is_current is False
+    currents = session.exec(
+        select(Document).where(
+            Document.version_group_id == current.version_group_id,
+            Document.is_current.is_(True),
+        )
+    ).all()
+    assert [row.id for row in currents] == [current.id]
+    chunks = session.exec(
+        select(DocumentChunk).where(DocumentChunk.document_id == historical.id)
+    ).all()
+    assert any("HIST-NEW" in chunk.content for chunk in chunks)
+    assert all("HIST-OLD" not in chunk.content for chunk in chunks)

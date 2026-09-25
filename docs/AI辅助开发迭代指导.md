@@ -1,10 +1,10 @@
 # ai-assistant 项目 AI 辅助开发迭代指导
 
 > 文档状态：项目推进基线  
-> 基线日期：2026-09-22
+> 基线日期：2026-09-25  
 > 适用项目：`ai-assistant`  
 > 适用对象：个人开发者及参与规划、实现、测试、评审的 AI Coding Agent  
-> 说明：本文记录当前代码事实、差距、推进顺序、Evaluation 数据构建方法和可直接使用的提示词。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-006` 已在各自验收范围内完成。
+> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-010` 已完成；当前可执行 `RAG-011`（A1，`ready`）；`RAG-012` / `RAG-013` 为 `backlog`。
 
 ## 1. 目的
 
@@ -98,8 +98,8 @@ RAG_DROP_INJECTED_CHUNKS=true
 - Local/Milvus 适配。
 - Dense、BM25 与 RRF 混合检索。
 - 读路径默认同租户当前版本（`RAG_KB_SCOPE=tenant`）；写路径成员仅自己的文档。
-- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏；高置信度注入块剔除。
-- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。
+- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏；高置信度注入块剔除。拒工具不是通用白名单，也不是只在围栏内部查找：`[UNTRUSTED_SOURCE]` 只是开关，随后对整段 `context`（含记忆和之后追加的 critique）做子串匹配；整段里没有的工具名不会被拒绝。
+- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。`_trim` 只作用于这次合并。QualityGate 的 critique 在截断之后拼进 `state.context`，不再按 `RAG_CONTEXT_CHARS` 截断；长度随自纠错轮数增长，上限是 `AGENT_MAX_REVISIONS`。
 - 租户级过滤；`RAG_EFFECTIVE_DATE_FILTER` 默认关闭。
 - 知识库管理前端。
 
@@ -155,27 +155,29 @@ tests/eval/
 
 ## 4. 当前关键差距与优先级
 
-> 截至 2026-09-22：`tasks.yaml` 中 `GOV-001`～`RAG-006` 已在各自验收范围内完成。已关闭项不得再写成当前 P0。
+> 截至 2026-09-25：`tasks.yaml` 中 `GOV-001`～`RAG-010` 已在各自验收范围内完成。已关闭项不得再写成当前 P0。日历顺序见 `docs/plans/plan_delivery_2027-03-25.md`。
 
 ### 4.1 已关闭（不得再当当前缺口）
 
 - 版本化 Evaluation Schema、Gold v0.1（24 条）与 rag-v0.1 检索基线（真实 `text-embedding-v3`，2026-09-19 冻结）。
 - 读路径列表/详情/检索对齐为同租户当前版本（`RAG_KB_SCOPE=tenant`，ADR-0001）。
-- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏、高置信度注入块剔除、脚本化 LLM 拒工具。
+- 检索上下文 `[UNTRUSTED_SOURCE]` 围栏、高置信度注入块剔除、脚本化 LLM 拒工具。拒工具边界见 §2.3：围栏标记是开关，匹配范围是整段 context，不是通用白名单。RAG-010 只补记该边界，不改拒绝条件。
 - Local 摄取 → 检索 → 重解析旧向量失效 → 删除清理。
-- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。
-- ADR-0002：正式 Local，Milvus 实验。ADR-0003：生效日期 Flag 默认关闭。
+- Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。critique 追加发生在预算截断之后，不在 `RAG_CONTEXT_CHARS` 内；RAG-010 只补记，不改管线拼接。
+- RAG-007～RAG-010：RRF `k` 实验、BM25 全 0 不进融合、单次评测恢复融合常数、生效日期全量载入与拒工具/critique 边界文档。
+- ADR-0002（2026-09-25 修订）：正式目标为 Milvus（开发 Lite / 生产 2.4+）；默认 `RAG_VECTOR_STORE` 在第 5 节门槛通过前仍是 Local；rag-v0.1 基线继续用 Local。ADR-0003：生效日期 Flag 默认关闭。
 
-残余限制仍有效：语料仅 13 篇 / 37 分块，不得当生产检索质量；真实 LLM 生成层未测；资源 ACL 仍为 `Planned`。
+残余限制仍有效：语料仅 13 篇 / 37 分块，不得当生产检索质量；真实 LLM 生成层未测；资源 ACL 仍为 `Planned`；Milvus 闭环未证明，不得宣称生产已使用。
 
-### 4.2 当前优先：单变量 RAG 优化
+### 4.2 检索实验约束（非当前优先任务）
 
-`RAG-005` 基线已冻结，可以进入指标驱动实验。约束：
+当前优先是交付排期的阶段 A（评审修复阶段 2、3、4），不是继续深耕单变量检索实验。`RAG-005` 基线已冻结，若日后做检索实验，仍须遵守：
 
 - 不同时更换 Embedding、Chunking 和 Reranker。
 - 不用 Mock Embedding 声称检索质量提升。
 - 不得用 holdout 调参。
 - 每轮只改一个主要变量，并用同一数据集对比 Recall/MRR/nDCG、权限和安全切片。
+- 不把切分、Embedding、独立 Reranker、Query Rewrite 排成跨月当前任务；交付排期将其中至多一轮收在阶段 D4。
 
 没有固定数据集和指标时，无法判断新 Chunking、Rerank、Embedding 或 Top-K 是否真的改善业务答案。基线已有，但后续实验仍必须带失败切片，不得只展示成功样本。
 
@@ -241,7 +243,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 → 渐进 Harness 治理
 ```
 
-阶段 0～2（事实与决策、Evaluation 基线、P0 正确性与安全）已完成。当前从阶段 3（指标驱动 RAG 优化）开始；阶段任务说明保留作为历史方法和约束，不得把已完成阶段再当待办。
+文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。当前实施 `RAG-011`；`RAG-012` / `RAG-013` 待 011 验收后依次升为 ready。
 
 ### 阶段 0：事实与决策，预计 1～2 天
 
@@ -339,7 +341,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 
 ## 6. 四周建议排期
 
-> 第 1～2 周对应 `GOV-001`～`RAG-006`，2026-09-22 已在验收范围内完成。当前任务 `RAG-007`（RRF `k`）已写入 `tasks.yaml`。其余单变量实验与 Citation 尚未拆分，不得直接开工。
+> 历史记录。第 1～2 周对应 `GOV-001`～`RAG-006`，其后 RAG-007～RAG-010 已完成。当前日历顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准，不再把 RAG-007 或后续单变量检索实验写成当前任务。
 
 ### 第 1 周：事实和评测基线
 
@@ -690,15 +692,19 @@ AI 完成后必须：
 
 ## 13. 当前下一步
 
-`GOV-001`～`RAG-006` 已完成。当前可执行任务：
+`GOV-001`～`RAG-010` 已完成。当前可执行任务：
 
-1. `RAG-007`：单变量实验 RRF `k`（对照 60，候选 40/80；查询期，不重建索引）。见 `tasks.yaml`。
+1. `RAG-011`：控制面权限、审计与单一当前版（交付 A1）。见 `tasks.yaml` 与 `docs/plans/plan_rag_011_control_plane.md`。
 
-之后须再拆任务再实施：
+同阶段已拆、未开工（不得抢跑）：
 
-1. 切分大小或 Chunking 策略（索引期，二选一；不同时改）。
-2. Embedding / 独立 Reranker / Query Rewrite（各自单开）。
-3. 结构化 Citation。
-4. 渐进提取 Context Builder、Tool Executor 和 Harness。
+```text
+RAG-012 软删除与保留期（A2，保留期 90 天）
+→ RAG-013 版本状态机、跨租户二次确认与发布历史版（A3）
+```
 
-Top-K 实验须先扩大评测语料。资源级 ACL 仍为 `Planned`。不得用 Mock 或 holdout 宣称质量提升。不得改写 2026-09-19 基线 JSON。
+其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）。
+
+正式向量库目标为 Milvus（ADR-0002）；默认配置在第 5 节门槛通过前仍是 Local。闭环放在 B1 与 C6。切分 / Embedding / 独立 Reranker / Query Rewrite 不排成连续数月深耕。
+
+资源级 ACL 仍为 `Planned`。不得用 Mock 或 holdout 宣称质量提升。不得改写 2026-09-19 基线 JSON。详细任务以 `tasks.yaml` 为准。

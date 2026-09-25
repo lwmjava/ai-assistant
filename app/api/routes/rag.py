@@ -1,8 +1,7 @@
 """RAG 接口：文档摄取、管理与检索。
 
 所有接口均需认证，并按角色校验 ``knowledge_bases`` 资源权限（依赖 require_permission）。
-读路径默认同租户当前版本（ADR-0001，``RAG_KB_SCOPE=tenant``）。
-删除：成员仅自己的文档；租户/系统管理员可删同租户当前文档。
+检索面默认同租户当前版本。控制面：成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
 """
 
 import logging
@@ -15,6 +14,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
+from app.core.security import Role
 from app.models.rag import Document, ImportBatch, ImportJob
 from app.models.user import User
 from app.rag.access import can_read_import, can_write_document, restrict_list_to_uploader
@@ -104,6 +104,7 @@ class DocumentOut(BaseModel):
     user_id: str
     title: str
     source: str | None
+    is_current: bool
     chunk_count: int
     created_at: str
     updated_at: str
@@ -163,6 +164,7 @@ def _doc_out(doc: Document) -> DocumentOut:
         user_id=doc.user_id,
         title=doc.title,
         source=doc.source,
+        is_current=doc.is_current,
         chunk_count=doc.chunk_count,
         created_at=doc.created_at.isoformat(),
         updated_at=doc.updated_at.isoformat(),
@@ -527,16 +529,35 @@ def get_document(
     response_model=ImportJobOut,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def reparse_document(
+async def reparse_document(
     document_id: str,
+    request: Request,
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
 ) -> ImportJobOut:
-    """为既有文档创建重解析任务。"""
+    """为既有文档创建重解析任务。跨租户仅系统管理员，并在受理时审计。"""
+    doc = session.get(Document, document_id)
     try:
         job = create_reparse_job(session, current_user, document_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if (
+        doc is not None
+        and current_user.role_enum == Role.SYSTEM_ADMIN
+        and doc.tenant_id != current_user.tenant_id
+    ):
+        await audit_event(
+            request,
+            AuditAction.KNOWLEDGE_BASE_REINDEX,
+            user=current_user,
+            resource_type="document",
+            resource_id=document_id,
+            details={
+                "tenant_id": doc.tenant_id,
+                "document_id": document_id,
+                "action": "reparse",
+            },
+        )
     return _job_out(job)
 
 
@@ -578,17 +599,17 @@ async def delete_document(
     session: Session = Depends(get_db),
 ) -> dict:
     """删除文档及其分块。"""
-    rag = RAGService(session, current_user.tenant_id)
     doc = session.get(Document, document_id)
-    if doc is None or doc.tenant_id != current_user.tenant_id:
+    if doc is None or not can_write_document(doc, current_user):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
         )
-    if not can_write_document(doc, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="无权删除该文档"
-        )
     storage_path = doc.storage_path
+    owner_tenant_id = doc.tenant_id
+    cross_tenant = (
+        current_user.role_enum == Role.SYSTEM_ADMIN and owner_tenant_id != current_user.tenant_id
+    )
+    rag = RAGService(session, owner_tenant_id)
     ok = await rag.delete_document(document_id, current_user)
     if not ok:
         raise HTTPException(
@@ -596,12 +617,20 @@ async def delete_document(
         )
     if storage_path:
         delete_source_file(storage_path)
+    details = None
+    if cross_tenant:
+        details = {
+            "tenant_id": owner_tenant_id,
+            "document_id": document_id,
+            "action": "delete",
+        }
     await audit_event(
         request,
         AuditAction.KNOWLEDGE_BASE_DELETE,
         user=current_user,
         resource_type="document",
         resource_id=document_id,
+        details=details,
     )
     return {"deleted": True}
 

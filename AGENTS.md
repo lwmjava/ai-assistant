@@ -66,8 +66,8 @@
 - 默认 Agent 编排：`AGENT_ORCHESTRATION=self`
 - 可选编排：`langgraph`
 - 默认 RAG：`RAG_BACKEND=native`
-- 默认向量库：`RAG_VECTOR_STORE=local`
-- 可选向量库：Milvus
+- 默认向量库：`RAG_VECTOR_STORE=local`（闭环门槛通过前）
+- 正式向量库目标：Milvus（开发 Lite / 生产 2.4+，ADR-0002）；当前实现仍为 `Partial`
 - 默认 RAG 对话注入：`RAG_ENABLED=false`
 - 默认 Prompt Injection 行为：检测但不阻断，`SECURITY_BLOCK_ON_INJECTION=false`
 - Trace：当前以内存环形缓冲为主
@@ -184,7 +184,7 @@ Brownfield 约束：
 - 结构化 Citation。
 - 独立 Reranker。
 - Embedding 模型/维度的索引治理。
-- Milvus 摄取、删除、重解析的完整集成证据（ADR-0002：实验/`Partial`）。
+- Milvus 摄取、删除、重解析的完整集成证据（ADR-0002：正式目标，实现仍为 `Partial`）。
 - 真实 LLM 生成层 Evaluation（拒答、答案点、Citation Accuracy）。
 - 独立 Context Builder / Tool Executor / Harness。
 
@@ -358,21 +358,26 @@ GOV-001 治理文件项目化
 → 独立校验和人工 Gold v0.1
 → RAG-005 RAG baseline
 → RAG-006 P0 权限/安全/Context/VectorStore 修复
+→ RAG-007 单变量实验：RRF 融合常数 k
+→ RAG-008 BM25 全 0 时稀疏路不进 RRF
+→ RAG-009 单次评测结束时恢复 RAG_HYBRID_RRF_K
+→ RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-当前任务（`tasks.yaml`）：
+`tasks.yaml` 中 `GOV-001`～`RAG-011` 已完成。下一任务：`RAG-012`（交付 A2 / 评审阶段 3，`backlog`，依赖已满足）。同阶段已拆、未开工：
 
 ```text
-RAG-007 单变量实验：RRF 融合常数 k
+RAG-012 软删除与保留期（A2，backlog，依赖 RAG-011）
+→ RAG-013 版本状态机、跨租户二次确认与发布历史版（A3，backlog，依赖 RAG-012）
 ```
 
-之后（尚未拆进 `tasks.yaml`）：
+A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 
 ```text
-切分大小或策略（索引期，二选一）
-→ Embedding / 独立 Reranker / Query Rewrite（各自单开）
-→ 结构化 Citation
-→ 渐进提取 Context Builder、Tool Executor 和 Harness
+阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）
+→ 阶段 B 最小安装点
+→ 阶段 C MVP（2026-12-25 达到约定范围的 80%）
+→ 阶段 D 完整交付（2027-03-25 达到约定范围的 100%）
 ```
 
-Top-K 实验须先扩大评测语料，否则信号不足。资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。
+资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）；默认配置在闭环门槛通过前仍是 Local。

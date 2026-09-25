@@ -31,6 +31,7 @@ project:
     frontend_typecheck: "cd frontend; npm run typecheck"
     frontend_build: "cd frontend; npm run build"
   evidence_policy: "事实引用代码、配置、测试、Trace、数据或已批准文档；假设必须标记并给出验证动作。"
+  source_comment_policy: "每次改代码都必须遵守：源代码、测试、前端和迁移脚本里的注释与文档字符串只描述当前行为。不得写入任务编号、ADR 编号、需求或设计文档名称、修订日期，以及依据哪份文档实现的说明。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   capacity_policy: "个人开发按理论产能的60%-70%排期，其余用于取证、联调、返工、审核和发布。"
 
 status_values:
@@ -584,6 +585,411 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-008"
+    title: "BM25 全 0 时稀疏路不进 RRF，并记诊断"
+    status: "done"
+    completed_at: "2026-09-24"
+    priority: "P1"
+    depends_on:
+      - "RAG-007"
+    context:
+      problem: "BM25 全 0 时 Local 混合检索把载入顺序当成稀疏排名送进 RRF，扰动稠密排序。全 0 需要可按原因统计的诊断，不能记成错误，也不能进入 Agent 反思语料。"
+      facts:
+        - claim: "全 0 时 sparse_order 为空，_rrf 只保留稠密路；有正分时仍 argsort。"
+          evidence: "app/rag/vectorstore/local.py hybrid_search"
+        - claim: "全 0 打 logger.info 事件 bm25_all_zero；原因码 empty_query_tokens / empty_doc_tokens / no_overlap。"
+          evidence: "app/rag/vectorstore/local.py _bm25_all_zero_reason；tests/test_rag.py"
+        - claim: "Milvus 有同类分支，本任务不改。Milvus 仍是实验后端。"
+          evidence: "app/rag/vectorstore/milvus.py；docs/adr/0002-official-vectorstore.md"
+    scope:
+      allowed_paths:
+        - "app/rag/vectorstore/local.py"
+        - "tests/test_rag.py"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/rag/vectorstore/milvus.py"
+        - "app/rag/embeddings/"
+        - "app/evolution/"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "BM25 全 0 时 sparse_order 为空，融合顺序等于稠密顺序"
+        - "logger.info 事件 bm25_all_zero，含 tenant_id、candidate_count、query_token_count、empty_doc_count、reason"
+        - "原因码仅 empty_query_tokens、empty_doc_tokens、no_overlap 三者之一"
+      non_goals:
+        - "不改分词器"
+        - "不把全 0 记为 error 或 warning"
+        - "日志不写查询原文、分块正文、词项列表、文档标识"
+        - "不进入 Reflect / Distill"
+        - "不重跑 rag-v0.1，不改默认 RAG_HYBRID_RRF_K"
+        - "不改 Milvus"
+        - "不宣称检索质量提升"
+    acceptance:
+      - "有 BM25 正分时排序与改前一致。"
+      - "全 0 时融合顺序等于稠密顺序。"
+      - "三条原因码均有测试，且日志字段不含正文。"
+      - "pytest tests/test_rag.py -v 通过；ruff 与 mypy 覆盖改动文件。"
+    risk:
+      level: "L1"
+      side_effect: "local-hybrid-ranking-when-bm25-all-zero"
+      rollback: "恢复全 0 时使用载入顺序作为稀疏排名。"
+    evaluation:
+      cases:
+        - "BM25 全 0 的排序"
+        - "三条原因码与日志字段"
+      commands:
+        - "pytest tests/test_rag.py -v"
+        - "ruff check app/rag/vectorstore/local.py tests/test_rag.py"
+        - "mypy app/rag/vectorstore/local.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-009"
+    title: "单次评测结束时恢复 RAG_HYBRID_RRF_K"
+    status: "done"
+    completed_at: "2026-09-24"
+    priority: "P2"
+    depends_on:
+      - "RAG-008"
+    context:
+      problem: "run_rag_baseline.py 的单次路径会改进程内融合常数，结束时只关索引，不恢复进入前的值。扫描路径已有 finally 恢复。"
+      facts:
+        - claim: "apply_rrf_k 只改当前进程的 settings.RAG_HYBRID_RRF_K，不写配置文件。"
+          evidence: "scripts/run_rag_baseline.py apply_rrf_k"
+        - claim: "单次路径在 finally 中写回进入前的 RAG_HYBRID_RRF_K；run_sweep 的恢复逻辑未改。"
+          evidence: "scripts/run_rag_baseline.py main_async；tests/eval/test_rrf_k_experiment.py"
+        - claim: "脚本头待完善已删除“单次覆盖后不自动改回”一条。"
+          evidence: "scripts/run_rag_baseline.py 模块文档"
+    scope:
+      allowed_paths:
+        - "scripts/run_rag_baseline.py"
+        - "tests/eval/test_rrf_k_experiment.py"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/core/config.py"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "单次路径在 finally 中写回进入前的 RAG_HYBRID_RRF_K"
+        - "脚本头待完善中删除“单次覆盖后不自动改回”这一条"
+        - "测试断言单次路径返回后常数与进入前一致"
+      non_goals:
+        - "不改 run_sweep 的恢复逻辑"
+        - "不改默认 k"
+        - "不跑官方评测"
+        - "不重跑 rag-v0.1"
+    acceptance:
+      - "单次运行结束后进程内 RAG_HYBRID_RRF_K 等于进入前的值。"
+      - "扫描路径仍在结束时恢复进入函数前的常数。"
+      - "pytest tests/eval/test_rrf_k_experiment.py -v 通过。"
+    risk:
+      level: "L0"
+      side_effect: "eval-script-in-process-config-restore"
+      rollback: "去掉单次路径的恢复，进程退出后配置改动仍消失。"
+    evaluation:
+      cases:
+        - "单次路径恢复融合常数"
+      commands:
+        - "pytest tests/eval/test_rrf_k_experiment.py -v"
+        - "ruff check scripts/run_rag_baseline.py tests/eval/test_rrf_k_experiment.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-010"
+    title: "补记生效日期全量载入、工具名边界和 critique 预算"
+    status: "done"
+    completed_at: "2026-09-24"
+    priority: "P2"
+    depends_on:
+      - "RAG-009"
+    context:
+      problem: "生效日期开关打开后 Local 全量载入、工具名拒绝的真实匹配范围、QualityGate critique 不受 RAG 字符预算约束，这三处只应写进文档，不改检索和管线行为。"
+      facts:
+        - claim: "ADR-0002 已写明 Flag 默认关闭、打开后 Local 全量载入，以及检索面与控制面不能共用 is_current。本任务不改 local.py。"
+          evidence: "docs/adr/0002-official-vectorstore.md §6"
+        - claim: "迭代指导已写明拒工具对整段 context 做子串匹配，以及 critique 不在 RAG 字符预算内。"
+          evidence: "docs/AI辅助开发迭代指导.md §2.3、§4.1"
+        - claim: "reject_untrusted_tool_call 仅函数说明与实现对齐，拒绝条件未改。"
+          evidence: "app/rag/context_merge.py"
+    scope:
+      allowed_paths:
+        - "docs/adr/0002-official-vectorstore.md"
+        - "docs/AI辅助开发迭代指导.md"
+        - "app/rag/context_merge.py"
+        - "tasks.yaml"
+      forbidden_paths:
+        - "app/rag/vectorstore/local.py"
+        - "app/agents/pipeline.py"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "ADR-0002 写明 Flag 打开后的全量载入、默认关闭，以及检索面与控制面不能共用 is_current"
+        - "迭代指导写明工具名拒绝边界和 critique 不在 RAG 字符预算内"
+        - "context_merge.py 中 reject_untrusted_tool_call 的函数说明与实现一致"
+      non_goals:
+        - "不改 local.py 查询"
+        - "不实现版本状态机"
+        - "不改拒绝条件和 pipeline 拼接"
+        - "不改 Milvus"
+    acceptance:
+      - "文档描述与当前代码一致，并写明本任务不改检索和管线行为。"
+      - "context_merge.py 仅函数说明变化，拒绝条件不变。"
+      - "现有 tests/test_context_merge.py 通过。"
+    risk:
+      level: "L0"
+      side_effect: "documentation-and-docstring"
+      rollback: "回退文档和函数说明。"
+    evaluation:
+      cases:
+        - "文档与源码对照"
+        - "拒工具行为不变化"
+      commands:
+        - "pytest tests/test_context_merge.py -v"
+        - "ruff check app/rag/context_merge.py"
+        - "mypy app/rag/context_merge.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-011"
+    title: "控制面权限、审计与单一当前版（交付 A1 / 评审阶段 2）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-10-07"
+    depends_on:
+      - "RAG-010"
+    context:
+      problem: "检索面与控制面共用 is_current 语义：跨租户一律拒绝，管理员只能写当前版，成员可对历史版写入；重解析会翻 is_current；无同一 version_group_id 仅一个当前版的约束；系统管理员跨租户清理无审计。"
+      facts:
+        - claim: "can_write_document 要求同租户；管理员仅当前版；成员只校验上传者。"
+          evidence: "app/rag/access.py"
+        - claim: "重解析出新内容时会 previous.is_current=False 并写入新当前版。"
+          evidence: "app/rag/import_jobs.py"
+        - claim: "评审方案 §2.3 / §3 阶段 2 与交付排期 A1 已确认产品决定。"
+          evidence: "docs/plans/plan_rag_005_006_review_fixes.md；docs/plans/plan_delivery_2027-03-25.md"
+    scope:
+      allowed_paths:
+        - "docs/adr/0001-knowledge-base-permission.md"
+        - "docs/plans/plan_rag_011_control_plane.md"
+        - "app/rag/access.py"
+        - "app/rag/import_jobs.py"
+        - "app/rag/service.py"
+        - "app/models/rag.py"
+        - "app/api/routes/rag.py"
+        - "tests/test_rag_access.py"
+        - "tests/test_rag_permission_semantics.py"
+        - "tests/test_rag.py"
+        - "tests/test_rag_import_jobs.py"
+        - "alembic/"
+        - "frontend/src/pages/Knowledge.tsx"
+        - "frontend/src/types/api.ts"
+        - "frontend/src/api/rag.ts"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "app/rag/vectorstore/milvus.py"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "ADR-0001 修订：检索面与控制面分开；成员/租户管理员/系统管理员矩阵对齐评审 §2.3"
+        - "成员只能读/删/重解析自己的当前版；租户管理员管本租户含历史版；系统管理员可跨租户控制面操作并 audit_event"
+        - "重解析不改 is_current、不顶掉当前版；写入路径同一 version_group_id 最多一个 is_current=true"
+        - "知识库列表区分当前版与历史版（管理员可见历史）"
+      non_goals:
+        - "不放宽对话检索过滤"
+        - "不做软删除（归 RAG-012）"
+        - "不做发布历史版接口与完整状态机（归 RAG-013）"
+        - "不改用户/审计系统本身及其他业务资源权限"
+        - "不改写 rag-v0.1 基线"
+    acceptance:
+      - "权限测试覆盖成员/租户管理员/系统管理员的允许与拒绝。"
+      - "系统管理员跨租户删除或重解析产生审计（操作者、租户、文档、动作、时间，无正文）。"
+      - "重解析历史版后，原当前版仍是唯一当前版。"
+      - "对话检索不命中历史版与他租户。"
+      - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py -v 通过；相关 ruff/mypy 通过。"
+    risk:
+      level: "L2"
+      side_effect: "kb-control-plane-permission-and-reparse-semantics"
+      rollback: "回退 access/import/service/路由与 ADR-0001；检索默认行为保持租户当前版。"
+    evaluation:
+      cases:
+        - "成员不能操作他人或历史版"
+        - "租户管理员可管本租户历史版且跨租户失败"
+        - "系统管理员跨租户删除/重解析有审计"
+        - "重解析不误发布"
+      commands:
+        - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py -v"
+        - "ruff check app/rag/access.py app/rag/import_jobs.py app/api/routes/rag.py"
+        - "mypy app/rag/access.py app/rag/import_jobs.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-012"
+    title: "软删除与保留期（交付 A2 / 评审阶段 3）"
+    status: "backlog"
+    priority: "P0"
+    target_date: "2026-10-15"
+    depends_on:
+      - "RAG-011"
+    context:
+      problem: "阶段 2 之后管理员删除仍是立刻物理删除，不利于审计与恢复。需要软删除、列表默认隐藏、保留期届满后再物理清理并再次审计。"
+      facts:
+        - claim: "交付排期 A2 与评审方案阶段 3 要求软删除与保留期；保留期天数定为 90 天。"
+          evidence: "docs/plans/plan_delivery_2027-03-25.md；docs/plans/plan_rag_005_006_review_fixes.md §3"
+        - claim: "RAG-011 的角色矩阵与重解析语义必须先验收。"
+          evidence: "tasks.yaml RAG-011"
+    scope:
+      allowed_paths:
+        - "docs/adr/0001-knowledge-base-permission.md"
+        - "docs/plans/plan_rag_012_soft_delete.md"
+        - "app/models/rag.py"
+        - "app/rag/"
+        - "app/api/routes/rag.py"
+        - "alembic/"
+        - "tests/test_rag_access.py"
+        - "tests/test_rag_permission_semantics.py"
+        - "tests/test_rag.py"
+        - "frontend/src/pages/Knowledge.tsx"
+        - "frontend/src/types/api.ts"
+        - "frontend/src/api/rag.ts"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "ADR 写明保留期 90 天"
+        - "文档删除标记与删除时间；列表默认不展示已软删；管理员可查看"
+        - "成员与对话检索均不可见已软删文档"
+        - "保留期届满后的物理清理路径并再次审计"
+        - "前端默认隐藏已删；管理员可切换查看"
+      non_goals:
+        - "不改 RAG-011 角色矩阵"
+        - "不做完整版本状态机（归 RAG-013）"
+        - "不缩短为立刻物理删除"
+        - "不改写 rag-v0.1 基线"
+    acceptance:
+      - "软删后成员列表与检索均不可见；管理员可查看。"
+      - "未到 90 天不物理删除；届满清理有审计。"
+      - "相关 pytest 与 ruff/mypy 通过。"
+    risk:
+      level: "L2"
+      side_effect: "kb-soft-delete-and-retention"
+      rollback: "回退删除标记与清理任务；必要时保留已软删行不物理恢复。"
+    evaluation:
+      cases:
+        - "软删对成员与检索不可见"
+        - "保留期内不物理删"
+        - "届满清理可追溯"
+      commands:
+        - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py tests/test_rag.py -v"
+        - "ruff check app/rag/ app/models/rag.py app/api/routes/rag.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "RAG-011"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-013"
+    title: "版本状态机、跨租户二次确认与发布历史版（交付 A3 / 评审阶段 4）"
+    status: "backlog"
+    priority: "P0"
+    target_date: "2026-10-23"
+    depends_on:
+      - "RAG-012"
+    context:
+      problem: "企业知识库需要草稿/待生效/已发布/已替换/已归档；显式发布历史版；系统管理员跨租户敏感操作需二次确认。阶段 2 只做了审计，未做状态机与发布接口。"
+      facts:
+        - claim: "交付排期 A3 与评审方案阶段 4 已列状态机、二次确认、发布历史版。"
+          evidence: "docs/plans/plan_delivery_2027-03-25.md；docs/plans/plan_rag_005_006_review_fixes.md §3"
+        - claim: "生效日期全量载入性能不在本任务。"
+          evidence: "docs/adr/0002-official-vectorstore.md §6"
+    scope:
+      allowed_paths:
+        - "docs/adr/0001-knowledge-base-permission.md"
+        - "docs/adr/0003-effective-date-versioning.md"
+        - "docs/plans/plan_rag_013_version_states.md"
+        - "app/models/rag.py"
+        - "app/rag/"
+        - "app/api/routes/rag.py"
+        - "app/audit/"
+        - "alembic/"
+        - "tests/"
+        - "frontend/src/pages/Knowledge.tsx"
+        - "frontend/src/types/api.ts"
+        - "frontend/src/api/rag.ts"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+      deliverables:
+        - "状态：草稿、待生效、已发布、已替换、已归档"
+        - "显式发布历史版为当前版（同组取消旧当前 + 目标标当前，同一事务）"
+        - "系统管理员跨租户删除/重解析/发布的二次确认（确认记录可查，非完整工单）"
+        - "前端状态筛选与发布操作"
+      non_goals:
+        - "不做生效日期全量载入性能优化（另立项）"
+        - "不做完整工单/审批流产品"
+        - "不改写 rag-v0.1 基线"
+        - "不把默认向量库切到 Milvus（ADR-0002 门槛另计）"
+    acceptance:
+      - "状态机与发布事务测试通过；发布后同组仅一个当前版。"
+      - "跨租户敏感操作无二次确认则拒绝；有确认则落记录。"
+      - "前端可按状态筛选并执行发布。"
+      - "相关 pytest 与 ruff/mypy 通过。"
+    risk:
+      level: "L2"
+      side_effect: "kb-version-state-machine-and-publish"
+      rollback: "回退状态字段与发布接口；检索仍只命中已发布当前版。"
+    evaluation:
+      cases:
+        - "发布历史版事务与唯一当前版"
+        - "二次确认缺失与成功"
+        - "状态筛选"
+      commands:
+        - "pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py tests/test_rag.py -v"
+        - "ruff check app/rag/ app/models/rag.py app/api/routes/rag.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "RAG-012"
       nightly:
         eligible: false
         production_access: false

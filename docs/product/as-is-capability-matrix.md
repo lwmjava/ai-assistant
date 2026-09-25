@@ -38,8 +38,8 @@
 |---|---|---|---|
 | 对话默认不注入 RAG | `Implemented` | `RAG_ENABLED=false`；`tests/test_chat.py`；`tests/eval/test_rag006_pipeline.py` | 开启后有脚本化 LLM 集成；真实 LLM / Citation 未测 |
 | 后端默认 `native` | `Implemented` | `RAG_BACKEND=native` | LangChain/LlamaIndex 为可选适配 |
-| 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 本阶段正式 Local；升格 Milvus 须另开 ADR |
-| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002 | 实验后端；缺摄取/检索/重解析/删除闭环证据 |
+| 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 代码默认仍是 Local；正式目标已改为 Milvus，实现未完成 |
+| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002 | 正式目标；缺摄取/检索/重解析/删除闭环证据；决定已改在 ADR-0002，实现未完成 |
 | 多格式解析（文本/PDF/Office/OCR） | `Partial` | `app/rag/document_parsers/`；`app/rag/ocr/`；相关 tests | 支持级别以测试为准，禁止写成全格式生产完备 |
 | 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 基线已冻结；无指标不新增策略 |
 | Dense + BM25 + RRF | `Implemented` | `app/rag/vectorstore/`；`app/rag/retriever.py` | RRF 是融合，不是独立 Reranker |
@@ -63,7 +63,7 @@
 | ID | 决定 | 代码是否已对齐 | 实现任务 |
 |---|---|---|---|
 | ADR-0001 | 读路径：同租户共享当前版本；写路径：成员仅自己的文档 | `Partial`：`RAG_KB_SCOPE=tenant` 已对齐列表/详情/检索/导入读路径；资源 ACL 仍 Planned | 资源 ACL 另开任务 |
-| ADR-0002 | 正式 Local；Milvus 实验/Partial；评测固定 Local | 是（默认已是 local，本阶段不切换） | 升格 Milvus 须另开 ADR |
+| ADR-0002 | 正式目标 Milvus（开发 Lite / 生产 2.4+）；Local 为评测与回退；默认在门槛通过前仍为 local | `Partial`：默认仍是 local；Milvus 闭环未证明 | 决定已改在 ADR-0002；实现未完成，门槛见 ADR §5 |
 | ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后 Local 按 as-of / 查询日期窗口过滤 | 默认现网仍只检索 `is_current`；未做真实嵌入复跑 |
 
 资源级 ACL 仍为 `Planned`。2026-09-19 A1：评测不把同租户当前文档命中记为越权。
@@ -74,7 +74,7 @@
 |---|---|---|
 | 竞品表写「LangGraph 五阶段」 | 默认 `AgentPipeline` | PRD 竞品表改为当前/目标分列 |
 | 竞品表写「混合检索 + 4 重排」 | 仅 RRF，无独立 Reranker | 标 `Planned` |
-| OS 矩阵写「RAG = Milvus 单机」 | 默认 Local | 改为 Local 默认、Milvus 可选 |
+| OS 矩阵写「RAG = Milvus 单机」 | 默认 Local；正式目标已改为 Milvus（ADR-0002） | As-Is 保持默认 Local；实现闭环前不得写生产已用 Milvus |
 | 设计方案写 `app/graphs/`、`reranker.py`、Chroma | 真实目录 `app/agents/`、`app/rag/vectorstore/` | 设计方案标为历史稿 |
 | 设计方案写 `src/ai_assistant/` | 真实目录 `app/` | 同上 |
 | 宣称 Recall/MRR/NDCG 已有 | 已有 v0.1 检索基线，语料很小 | 可引用分数但必须带有效性限制 |

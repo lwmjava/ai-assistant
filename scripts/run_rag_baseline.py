@@ -11,9 +11,9 @@
 - 报告记录数据集、嵌入、切分、融合常数和检索深度。
 - 正式扫描要求切分策略、块大小、重叠、向量库、后端和生效日期开关与冻结基线一致。
 - 采纳规则：Recall@1 与 MRR 都严格提高，且越权案例数不增加。
+- 单次覆盖融合常数后，进程在返回前写回进入前的值。
 
 待完善
-- 单次覆盖融合常数后，进程在退出前不会自动改回原值。
 - 冒烟扫描会写 JSON，但不写质量结论 Markdown。
 - 尚未把生成层答案正确性纳入本脚本。
 """
@@ -451,7 +451,7 @@ async def main_async(args: argparse.Namespace) -> int:
 
     作用：解析嵌入后分发。扫描与单次运行互斥，有 rrf_sweep 时走扫描。
     入参：args 为 argparse 结果。
-    出参：进程退出码。
+    出参：进程退出码。单次路径结束时写回进入前的融合常数。
     """
     provider = resolve_embedding(args.mode)
     if args.rrf_sweep:
@@ -459,39 +459,43 @@ async def main_async(args: argparse.Namespace) -> int:
             raise SystemExit("不支持的 mode")
         return await run_sweep(args, provider)
 
-    apply_rrf_k(args.rrf_k)
-    config = build_run_config(args.mode, provider, args.retrieval_depth)
-
-    print(f"[1/4] 重建评测索引 -> {args.db}")
-    index = await build_eval_index(Path(args.db), provider)
-    config["indexed_documents"] = len(index.db_doc_id_to_logical)
-    config["indexed_chunks"] = index.chunk_total
-    print(f"      文档 {config['indexed_documents']} 篇，分块 {config['indexed_chunks']} 个")
-
+    previous_k = settings.RAG_HYBRID_RRF_K
     try:
-        print(f"[2/4] 运行案例（检索深度 {args.retrieval_depth} 个分块）")
-        outcomes = await run_all_cases(
-            index, provider, retrieval_depth=args.retrieval_depth
-        )
+        apply_rrf_k(args.rrf_k)
+        config = build_run_config(args.mode, provider, args.retrieval_depth)
+
+        print(f"[1/4] 重建评测索引 -> {args.db}")
+        index = await build_eval_index(Path(args.db), provider)
+        config["indexed_documents"] = len(index.db_doc_id_to_logical)
+        config["indexed_chunks"] = index.chunk_total
+        print(f"      文档 {config['indexed_documents']} 篇，分块 {config['indexed_chunks']} 个")
+
+        try:
+            print(f"[2/4] 运行案例（检索深度 {args.retrieval_depth} 个分块）")
+            outcomes = await run_all_cases(
+                index, provider, retrieval_depth=args.retrieval_depth
+            )
+        finally:
+            index.close()
+
+        print("[3/4] 聚合指标")
+        report = make_report(config, outcomes)
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d")
+        suffix = "" if args.mode == "official" else f"-{args.mode}"
+        if args.rrf_k is not None:
+            default_name = f"rag-v0.1-rrf-k{args.rrf_k}-{stamp}{suffix}.json"
+        else:
+            default_name = f"rag-v0.1-baseline-{stamp}{suffix}.json"
+        out_path = write_json(Path(args.out) if args.out else REPORT_DIR / default_name, report)
+
+        overall = report["overall"]
+        print(f"[4/4] 已写出 {out_path}")
+        print_overall(overall)
+        print(f"      失败案例 {len(report['failing_cases'])} 条")
+        return 0
     finally:
-        index.close()
-
-    print("[3/4] 聚合指标")
-    report = make_report(config, outcomes)
-
-    stamp = datetime.now(UTC).strftime("%Y%m%d")
-    suffix = "" if args.mode == "official" else f"-{args.mode}"
-    if args.rrf_k is not None:
-        default_name = f"rag-v0.1-rrf-k{args.rrf_k}-{stamp}{suffix}.json"
-    else:
-        default_name = f"rag-v0.1-baseline-{stamp}{suffix}.json"
-    out_path = write_json(Path(args.out) if args.out else REPORT_DIR / default_name, report)
-
-    overall = report["overall"]
-    print(f"[4/4] 已写出 {out_path}")
-    print_overall(overall)
-    print(f"      失败案例 {len(report['failing_cases'])} 条")
-    return 0
+        settings.RAG_HYBRID_RRF_K = previous_k
 
 
 def _fmt(value: float | None, digits: int = 4) -> str:
@@ -519,7 +523,7 @@ def main() -> int:
         "--rrf-k",
         type=int,
         default=None,
-        help="本次进程的 RRF k；不写回配置。省略则用 RAG_HYBRID_RRF_K",
+        help="本次进程的 RRF k；不写回配置文件，结束时改回进入前的值；省略则用 RAG_HYBRID_RRF_K",
     )
     parser.add_argument(
         "--rrf-sweep",

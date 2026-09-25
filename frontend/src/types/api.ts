@@ -112,6 +112,7 @@ export interface DocumentOut {
   user_id: string
   title: string
   source: string | null
+  is_current: boolean
   chunk_count: number
   created_at: string
   updated_at: string

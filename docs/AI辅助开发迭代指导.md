@@ -4,7 +4,7 @@
 > 基线日期：2026-09-25  
 > 适用项目：`ai-assistant`  
 > 适用对象：个人开发者及参与规划、实现、测试、评审的 AI Coding Agent  
-> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现。下一项是 `QA-002`。
+> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001` 与 `QA-002` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现。下一项是 `QA-003`。
 
 ## 1. 目的
 
@@ -243,7 +243,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 → 渐进 Harness 治理
 ```
 
-文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现。下一项是 `QA-002`。
+文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001` 与 `QA-002` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现。下一项是 `QA-003`。
 
 ### 阶段 0：事实与决策，预计 1～2 天
 
@@ -694,7 +694,7 @@ AI 完成后必须：
 
 `GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。B2 的三条任务都已完成。
 
-其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）。B3 至 D4 已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`。`QA-001` 已完成，其余未实现。下一项是 `QA-002`。
+其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）。B3 至 D4 已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`。`QA-001` 与 `QA-002` 已完成，其余未实现。下一项是 `QA-003`。
 
 正式向量库目标为 Milvus（ADR-0002）；默认配置在第 5 节门槛通过前仍是 Local。闭环放在 B1 与 C6。切分 / Embedding / 独立 Reranker / Query Rewrite 不排成连续数月深耕。
 

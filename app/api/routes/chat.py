@@ -10,18 +10,18 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
-from sse_starlette.sse import EventSourceResponse
 from sqlmodel import Session
+from sse_starlette.sse import EventSourceResponse
 
+from app.agents.tools.base import ToolRegistry
+from app.agents.tools.builtin import default_tools
 from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
 from app.core.config import settings
-from app.security.types import SecurityRejectedError
 from app.models.conversation import Conversation
 from app.models.user import User
+from app.security.types import SecurityRejectedError
 from app.services.chat_service import ChatService
-from app.agents.tools.base import ToolRegistry
-from app.agents.tools.builtin import default_tools
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,21 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
 
 
+class SourceOut(BaseModel):
+    """一条检索来源。没有页码或段落时对应字段为空。"""
+
+    filename: str
+    page: int | None = None
+    section: str | None = None
+
+
 class ChatResponse(BaseModel):
     """非流式对话响应。"""
 
     conversation_id: str
     reply: str
     model: str | None = None
+    sources: list[SourceOut] = []
 
 
 class ConversationOut(BaseModel):
@@ -64,12 +73,38 @@ class MessageOut(BaseModel):
     content: str
     model: str | None
     created_at: str
+    sources: list[SourceOut] = []
 
 
 class ConversationDetail(ConversationOut):
     """会话详情（含消息列表）。"""
 
     messages: list[MessageOut]
+
+
+def _parse_sources(raw: str | None) -> list[SourceOut]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    sources: list[SourceOut] = []
+    for item in parsed:
+        if not isinstance(item, dict) or not item.get("filename"):
+            continue
+        sources.append(SourceOut.model_validate(item))
+    return sources
+
+
+def _latest_assistant_sources(conv: Conversation) -> list[SourceOut]:
+    assistants = [message for message in conv.messages if message.role == "assistant"]
+    if not assistants:
+        return []
+    latest = max(assistants, key=lambda message: message.created_at)
+    return _parse_sources(latest.sources)
 
 
 def _conv_out(conv: Conversation) -> ConversationOut:
@@ -91,6 +126,7 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
             content=m.content,
             model=m.model,
             created_at=m.created_at.isoformat(),
+            sources=_parse_sources(m.sources),
         )
         for m in sorted(conv.messages, key=lambda x: x.created_at)
     ]
@@ -118,7 +154,10 @@ async def chat(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     return ChatResponse(
-        conversation_id=conv.id, reply=reply, model=getattr(_service.llm, "model", None)
+        conversation_id=conv.id,
+        reply=reply,
+        model=getattr(_service.llm, "model", None),
+        sources=_latest_assistant_sources(conv),
     )
 
 
@@ -137,10 +176,13 @@ async def chat_stream(
             async for event in _service.chat_stream(
                 session, current_user, req.message, req.conversation_id
             ):
+                data = event.data
+                if event.type == "sources":
+                    data = json.loads(event.data) if event.data else []
                 yield {
                     "event": event.type,
                     "data": json.dumps(
-                        {"type": event.type, "data": event.data}, ensure_ascii=False
+                        {"type": event.type, "data": data}, ensure_ascii=False
                     ),
                 }
         except ValueError as exc:

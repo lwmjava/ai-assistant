@@ -1449,7 +1449,7 @@ tasks:
 
   - id: "QA-002"
     title: "回复携带来源字段（交付 B3）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-13"
     depends_on:
@@ -1462,8 +1462,15 @@ tasks:
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_qa_002_reply_sources.md"
         - "app/schemas/"
+        - "app/api/routes/chat.py"
         - "app/services/chat_service.py"
+        - "app/rag/retriever.py"
+        - "app/rag/service.py"
+        - "app/models/conversation.py"
+        - "app/core/migration.py"
+        - "alembic/versions/"
         - "tests/"
         - "tasks.yaml"
         - "AGENTS.md"

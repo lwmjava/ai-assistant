@@ -43,5 +43,7 @@ class Message(SQLModel, TimestampMixin, table=True):
     content: str
     # 生成该消息的模型标识（助手消息记录，便于追溯）。
     model: str | None = Field(default=None)
+    # 助手消息引用的检索来源，JSON 数组。没有来源时为空。
+    sources: str | None = Field(default=None)
 
     conversation: Conversation | None = Relationship(back_populates="messages")

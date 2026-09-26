@@ -1041,3 +1041,91 @@ async def test_retriever_context_is_tenant_current_only(tmp_path: Path, monkeypa
         assert "QA001FOREIGN" not in context
     finally:
         session.close()
+
+
+def test_sources_keep_filename_and_existing_location(tmp_path: Path) -> None:
+    from sqlmodel import SQLModel, create_engine
+
+    from app.models.rag import Document, DocumentChunk
+    from app.rag.service import sources_from_hits
+    from app.rag.vectorstore.base import ChunkResult
+
+    engine = create_engine(
+        f"sqlite:///{(tmp_path / 'sources.db').as_posix()}",
+        connect_args={"check_same_thread": False},
+    )
+    SQLModel.metadata.create_all(engine)
+    session = Session(engine)
+    try:
+        located = Document(
+            tenant_id="tenant-src",
+            user_id="member",
+            title="手册",
+            source="handbook.pdf",
+        )
+        plain = Document(
+            tenant_id="tenant-src",
+            user_id="member",
+            title="备忘",
+            source="notes.txt",
+        )
+        titled = Document(
+            tenant_id="tenant-src",
+            user_id="member",
+            title="仅标题",
+            source=None,
+        )
+        session.add(located)
+        session.add(plain)
+        session.add(titled)
+        session.commit()
+        located_chunk = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=located.id,
+            content="第三页",
+            source="handbook.pdf",
+            chunk_metadata='{"page": 3, "section_path": ["费用", "月费"]}',
+        )
+        duplicate = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=located.id,
+            content="第三页重复",
+            source="handbook.pdf",
+            chunk_metadata='{"page": 3, "section_path": ["费用", "月费"]}',
+        )
+        plain_chunk = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=plain.id,
+            content="没有页码",
+            source="notes.txt",
+            chunk_metadata='{"page": 0, "reading_order": 2}',
+        )
+        titled_chunk = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=titled.id,
+            content="用标题当文件名",
+            source=None,
+        )
+        session.add(located_chunk)
+        session.add(duplicate)
+        session.add(plain_chunk)
+        session.add(titled_chunk)
+        session.commit()
+
+        sources = sources_from_hits(
+            session,
+            [
+                ChunkResult(located_chunk.id, "第三页", "handbook.pdf", located.id, 1.0),
+                ChunkResult(duplicate.id, "第三页重复", "handbook.pdf", located.id, 0.9),
+                ChunkResult(plain_chunk.id, "没有页码", "notes.txt", plain.id, 0.5),
+                ChunkResult(titled_chunk.id, "用标题当文件名", None, titled.id, 0.4),
+                ChunkResult("missing", "无名", None, "missing-doc", 0.1),
+            ],
+        )
+        assert sources == [
+            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费"},
+            {"filename": "notes.txt", "page": None, "section": None},
+            {"filename": "仅标题", "page": None, "section": None},
+        ]
+    finally:
+        session.close()

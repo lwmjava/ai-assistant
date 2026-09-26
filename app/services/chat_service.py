@@ -8,6 +8,7 @@
 """
 
 import asyncio
+import json
 import logging
 from collections.abc import AsyncIterator
 
@@ -24,7 +25,7 @@ from app.memory.base import ConversationMemory
 from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
 from app.models.user import User
-from app.rag.service import RAGService
+from app.rag.service import RAGService, sources_from_hits
 
 logger = logging.getLogger(__name__)
 
@@ -221,9 +222,13 @@ class ChatService:
         # 9. 安全治理：输出过滤
         self._apply_output_security(result.answer, sec_ctx)
         # 10. 持久化用户消息和助手回复
+        sources = self._reply_sources(session, retriever)
         self._persist_user(session, conv, message)
-        self._persist_assistant(session, conv, result.answer, self._model_name())
+        self._persist_assistant(
+            session, conv, result.answer, self._model_name(), sources
+        )
         session.refresh(conv)
+        session.expire(conv, ["messages"])
         # 9. 异步反思（不阻塞对话响应）
         self._maybe_reflect(conv, result)
         return conv, result.answer
@@ -248,13 +253,18 @@ class ChatService:
         # 技能匹配与激活
         skill_ctx = self._match_skills(message)
 
+        retriever = self._build_retriever(session, user)
         pipeline = self._build_pipeline(
-            self._build_retriever(session, user), await self._build_tools(), skill_ctx
+            retriever, await self._build_tools(), skill_ctx
         )
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         collected: list[str] = []
+        sources: list[dict] = []
         async for event in pipeline.run_stream(state):
+            if event.type == "done":
+                sources = self._reply_sources(session, retriever)
+                yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
             if event.type == "token":
                 collected.append(event.data)
             yield event
@@ -263,7 +273,7 @@ class ChatService:
         # 安全治理：输出过滤
         self._apply_output_security(answer, sec_ctx)
         self._persist_user(session, conv, message)
-        self._persist_assistant(session, conv, answer, self._model_name())
+        self._persist_assistant(session, conv, answer, self._model_name(), sources)
         session.refresh(conv)
         # 异步反思（不阻塞流式响应）
         self._maybe_reflect(conv, state)
@@ -291,14 +301,30 @@ class ChatService:
         session.commit()
 
     def _persist_assistant(
-        self, session: Session, conv: Conversation, content: str, model: str | None
+        self,
+        session: Session,
+        conv: Conversation,
+        content: str,
+        model: str | None,
+        sources: list[dict] | None = None,
     ) -> None:
+        payload = json.dumps(sources, ensure_ascii=False) if sources else None
         session.add(
             Message(
-                conversation_id=conv.id, role="assistant", content=content, model=model
+                conversation_id=conv.id,
+                role="assistant",
+                content=content,
+                model=model,
+                sources=payload,
             )
         )
         session.commit()
+
+    @staticmethod
+    def _reply_sources(session: Session, retriever) -> list[dict]:
+        if retriever is None:
+            return []
+        return sources_from_hits(session, getattr(retriever, "last_hits", []))
 
     def _model_name(self) -> str | None:
         return getattr(self.llm, "model", None)

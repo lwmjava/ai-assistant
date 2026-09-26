@@ -89,6 +89,80 @@ def test_chat_with_rag_enabled_completes(client: TestClient, monkeypatch) -> Non
         set_embedding_override(None)
 
 
+def test_chat_reply_includes_source_filename(client: TestClient, monkeypatch) -> None:
+    from app.core.config import settings
+    from app.rag.embeddings.factory import set_embedding_override
+    from app.rag.embeddings.mock import MockEmbeddingProvider
+
+    monkeypatch.setattr(settings, "RAG_ENABLED", True)
+    set_embedding_override(MockEmbeddingProvider(dim=64))
+    try:
+        ingest = client.post(
+            "/api/rag/documents/ingest",
+            json={
+                "text": "来源演示文件写明标准套餐月费为 199 元。",
+                "title": "计费说明",
+                "source": "billing.txt",
+            },
+        )
+        assert ingest.status_code == 200
+        resp = client.post(
+            "/api/chat", json={"message": "来源演示文件写明标准套餐月费为多少"}
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        matched = [item for item in body["sources"] if item["filename"] == "billing.txt"]
+        assert matched
+        assert matched[0]["page"] is None
+        assert matched[0]["section"] is None
+
+        detail = client.get(f"/api/chat/conversations/{body['conversation_id']}")
+        assert detail.status_code == 200
+        assistant = [item for item in detail.json()["messages"] if item["role"] == "assistant"]
+        assert any(item["filename"] == "billing.txt" for item in assistant[-1]["sources"])
+        user_messages = [item for item in detail.json()["messages"] if item["role"] == "user"]
+        assert user_messages[-1]["sources"] == []
+    finally:
+        set_embedding_override(None)
+
+
+def test_chat_sources_empty_when_retrieval_disabled(client: TestClient, monkeypatch) -> None:
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "RAG_ENABLED", False)
+    resp = client.post("/api/chat", json={"message": "没有检索时不要带来源"})
+    assert resp.status_code == 200
+    assert resp.json()["sources"] == []
+
+
+def test_chat_stream_includes_sources_event(client: TestClient, monkeypatch) -> None:
+    from app.core.config import settings
+    from app.rag.embeddings.factory import set_embedding_override
+    from app.rag.embeddings.mock import MockEmbeddingProvider
+
+    monkeypatch.setattr(settings, "RAG_ENABLED", True)
+    set_embedding_override(MockEmbeddingProvider(dim=64))
+    try:
+        ingest = client.post(
+            "/api/rag/documents/ingest",
+            json={
+                "text": "流式来源文件写明夜间套餐月费为 59 元。",
+                "title": "夜间套餐",
+                "source": "night.txt",
+            },
+        )
+        assert ingest.status_code == 200
+        with client.stream(
+            "POST", "/api/chat/stream", json={"message": "流式来源文件里的夜间套餐月费是多少"}
+        ) as resp:
+            assert resp.status_code == 200
+            body = "".join(resp.iter_text())
+        assert '"type": "sources"' in body
+        assert "night.txt" in body
+    finally:
+        set_embedding_override(None)
+
+
 def test_chat_stream_returns_sse(client: TestClient) -> None:
     with client.stream("POST", "/api/chat/stream", json={"message": "流式测试"}) as resp:
         assert resp.status_code == 200

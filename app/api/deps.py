@@ -10,8 +10,8 @@ from sqlmodel import Session
 from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.database import get_session
-from app.core.security import Role, TokenRevokedError, check_permission, decode_token
-from app.models.user import User
+from app.core.security import Role, check_permission, decode_token
+from app.models.user import Tenant, User
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,14 @@ def get_current_user(
             detail="用户不存在或已禁用",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # 系统管理员仍可进入管理接口并切走；其余角色在租户停用后不能继续访问。
+    if user.role_enum is not Role.SYSTEM_ADMIN:
+        tenant = session.get(Tenant, user.tenant_id)
+        if tenant is None or not tenant.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="租户已停用",
+            )
     return user
 
 

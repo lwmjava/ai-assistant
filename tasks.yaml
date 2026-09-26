@@ -2030,7 +2030,7 @@ tasks:
 
   - id: "ADM-001"
     title: "用户列表、改角色与停用（交付 C3）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-09"
     depends_on:
@@ -2038,8 +2038,8 @@ tasks:
     context:
       problem: "系统管理员不能查看用户、修改角色或停用用户。"
       facts:
-        - claim: "用户页只能创建成员。停用应递增 token_version。"
-          evidence: "frontend/src/pages/Users.tsx"
+        - claim: "系统管理员可分页列出用户、修改他人角色并停用。停用后访问与旧刷新失败，不能停用自己。"
+          evidence: "app/api/routes/admin_users.py"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
@@ -2090,7 +2090,7 @@ tasks:
 
   - id: "ADM-002"
     title: "租户编辑与停用（交付 C3）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-09"
     depends_on:
@@ -2098,7 +2098,7 @@ tasks:
     context:
       problem: "系统管理员不能修改或停用租户。"
       facts:
-        - claim: "只能创建和列出未停用租户。未停用名称唯一。"
+        - claim: "系统管理员可改未停用租户名称并停用租户。停用后非系统管理员不能继续访问该租户。"
           evidence: "app/api/routes/admin_tenants.py"
     scope:
       allowed_paths:
@@ -2148,7 +2148,7 @@ tasks:
 
   - id: "ADM-003"
     title: "系统状态（交付 C3）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-09"
     depends_on:
@@ -2156,8 +2156,8 @@ tasks:
     context:
       problem: "管理页看不到数据库和向量库是否连通。"
       facts:
-        - claim: "健康检查已包含数据库与向量库连通性。没有系统状态页。"
-          evidence: "app/api/routes/"
+        - claim: "系统管理员可在系统状态页看到数据库、向量库、版本和启动时间。"
+          evidence: "app/api/routes/admin_system.py"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
@@ -2202,7 +2202,7 @@ tasks:
 
   - id: "ADM-004"
     title: "用户、租户、审计、系统状态四页六态（交付 C3）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-09"
     depends_on:
@@ -2211,8 +2211,8 @@ tasks:
     context:
       problem: "四页缺少加载、空、错误、无权限、成功、失败。"
       facts:
-        - claim: "租户页和用户页只有创建结果。审计页已有列表。"
-          evidence: "frontend/src/pages/Tenants.tsx"
+        - claim: "用户、租户、审计、系统状态四页能区分加载、空、错误、无权限、成功和失败。"
+          evidence: "frontend/src/pages/Users.tsx"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"

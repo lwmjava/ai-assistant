@@ -31,6 +31,29 @@ export interface UserInfo {
   is_active: boolean
 }
 
+export interface UserAdminOut extends UserInfo {
+  tenant_name: string
+}
+
+export interface UserPage {
+  items: UserAdminOut[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface SystemStatus {
+  status: string
+  app: string
+  version: string
+  env: string
+  started_at: string
+  checks: {
+    database: { status: string }
+    vector_store: { status: string; backend: string }
+  }
+}
+
 export interface LoginRequest {
   username: string
   password: string

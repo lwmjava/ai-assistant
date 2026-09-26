@@ -3,13 +3,14 @@
 仅 system_admin 可访问。列出的是未停用租户。
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlmodel import Session
 
 from app.api.deps import audit_event, get_current_user, get_db
 from app.audit.models import AuditAction
 from app.core.security import Role
 from app.models.user import User
+from app.schemas.admin import TenantUpdate
 from app.schemas.auth import UserInfo
 from app.schemas.tenant import MemberCreate, TenantCreate, TenantOut
 from app.services.tenant_admin import (
@@ -20,7 +21,9 @@ from app.services.tenant_admin import (
     UsernameTakenError,
     create_member,
     create_tenant,
-    list_active_tenants,
+    deactivate_tenant,
+    list_tenants,
+    rename_tenant,
 )
 
 router = APIRouter(prefix="/admin/tenants", tags=["admin-tenants"])
@@ -37,12 +40,16 @@ def _require_system_admin(user: User = Depends(get_current_user)) -> User:
 
 
 @router.get("", response_model=list[TenantOut])
-def list_tenants(
+def list_tenants_route(
+    include_inactive: bool = Query(default=False),
     session: Session = Depends(get_db),
     _: User = Depends(_require_system_admin),
 ) -> list[TenantOut]:
-    """列出未停用租户。"""
-    return [TenantOut.model_validate(row) for row in list_active_tenants(session)]
+    """列出未停用租户。include_inactive 为真时连已停用一起返回。"""
+    return [
+        TenantOut.model_validate(row)
+        for row in list_tenants(session, include_inactive=include_inactive)
+    ]
 
 
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
@@ -113,3 +120,56 @@ async def create_member_route(
         },
     )
     return UserInfo.model_validate(member)
+
+
+@router.patch("/{tenant_id}", response_model=TenantOut)
+async def rename_tenant_route(
+    tenant_id: str,
+    body: TenantUpdate,
+    request: Request,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(_require_system_admin),
+) -> TenantOut:
+    """修改未停用租户的名称。"""
+    try:
+        tenant = rename_tenant(session, tenant_id, body.name)
+    except TenantNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    except TenantInactiveError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户已停用")
+    except TenantNameTakenError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户名称已存在")
+    await audit_event(
+        request,
+        AuditAction.TENANT_UPDATE,
+        user=current_user,
+        resource_type="tenant",
+        resource_id=tenant.id,
+        details={"name": tenant.name},
+    )
+    return TenantOut.model_validate(tenant)
+
+
+@router.post("/{tenant_id}/deactivate", response_model=TenantOut)
+async def deactivate_tenant_route(
+    tenant_id: str,
+    request: Request,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(_require_system_admin),
+) -> TenantOut:
+    """停用租户。当前正在该租户中的用户之后不能继续访问。"""
+    try:
+        tenant = deactivate_tenant(session, tenant_id)
+    except TenantNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    except TenantInactiveError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户已停用")
+    await audit_event(
+        request,
+        AuditAction.TENANT_DEACTIVATE,
+        user=current_user,
+        resource_type="tenant",
+        resource_id=tenant.id,
+        details={"name": tenant.name},
+    )
+    return TenantOut.model_validate(tenant)

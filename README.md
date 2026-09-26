@@ -232,6 +232,12 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 邀请 | `POST` | `/api/invitations` | 系统管理员或租户管理员生成邀请码 |
 | 邀请 | `GET` | `/api/invitations` | 列出该租户的邀请码 |
 | 邀请 | `POST` | `/api/invitations/accept` | 已登录用户凭码加入租户，不切换当前会话 |
+| 用户 | `GET` | `/api/admin/users` | 系统管理员分页列出用户，含编号和租户名称 |
+| 用户 | `PATCH` | `/api/admin/users/{id}` | 修改角色；不能修改自己 |
+| 用户 | `POST` | `/api/admin/users/{id}/disable` | 停用用户，令牌随后失效；不能停用自己 |
+| 租户 | `PATCH` | `/api/admin/tenants/{id}` | 修改未停用租户的名称 |
+| 租户 | `POST` | `/api/admin/tenants/{id}/deactivate` | 停用租户；当前在该租户中的成员不能继续访问 |
+| 系统 | `GET` | `/api/admin/system/status` | 系统管理员查看数据库、向量库、版本和启动时间 |
 | 对话 | `POST` | `/api/chat` | 非流式对话 |
 | 对话 | `POST` | `/api/chat/stream` | SSE 流式对话 |
 | 对话 | `GET` | `/api/chat/conversations` | 会话列表 |
@@ -252,7 +258,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 工作流 | `POST` | `/api/workflows/{id}/run` | 手动触发 |
 | 工作流 | `POST` | `/api/workflows/{id}/toggle` | 启停开关 |
 | 审计 | `GET` | `/api/admin/audit-logs` | 审计日志查询（系统管理员） |
-| 租户 | `GET` | `/api/admin/tenants` | 列出未停用租户（仅系统管理员） |
+| 租户 | `GET` | `/api/admin/tenants` | 列出未停用租户；`include_inactive=true` 时含已停用（仅系统管理员） |
 | 租户 | `POST` | `/api/admin/tenants` | 创建租户；未停用名称唯一，重名 409（仅系统管理员） |
 | 租户 | `POST` | `/api/admin/tenants/{id}/users` | 在指定未停用租户下创建成员；角色固定为 member（仅系统管理员） |
 

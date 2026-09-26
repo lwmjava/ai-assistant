@@ -16,10 +16,13 @@ export const tenantKeys = {
   list: () => [...tenantKeys.all, 'list'] as const,
 }
 
-export function useTenants() {
+export function useTenants(includeInactive = false) {
   return useQuery({
-    queryKey: tenantKeys.list(),
-    queryFn: () => api.get<TenantOut[]>('/admin/tenants'),
+    queryKey: [...tenantKeys.list(), includeInactive],
+    queryFn: () =>
+      api.get<TenantOut[]>(
+        includeInactive ? '/admin/tenants?include_inactive=true' : '/admin/tenants',
+      ),
   })
 }
 
@@ -27,6 +30,28 @@ export function useCreateTenant() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (name: string) => api.post<TenantOut>('/admin/tenants', { name }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: tenantKeys.all })
+    },
+  })
+}
+
+export function useRenameTenant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { tenantId: string; name: string }) =>
+      api.patch<TenantOut>(`/admin/tenants/${body.tenantId}`, { name: body.name }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: tenantKeys.all })
+    },
+  })
+}
+
+export function useDeactivateTenant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (tenantId: string) =>
+      api.post<TenantOut>(`/admin/tenants/${tenantId}/deactivate`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: tenantKeys.all })
     },

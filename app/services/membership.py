@@ -13,6 +13,10 @@ class NotMemberError(Exception):
     """当前用户不是目标租户的成员。"""
 
 
+class InactiveTenantError(Exception):
+    """目标租户已停用。尚未改当前租户和令牌版本。"""
+
+
 def membership_role_for_user(user: User) -> str:
     """系统角色不写入成员表。其余角色按用户当前角色补一条。"""
     if user.role in _TENANT_ROLES:
@@ -65,9 +69,12 @@ def list_memberships(session: Session, user: User) -> list[tuple[Membership, Ten
 
 
 def switch_tenant(session: Session, user: User, tenant_id: str) -> User:
-    """是成员才改当前租户并递增 token_version。不是成员时不写任何字段。"""
+    """是成员且租户未停用时才改当前租户并递增 token_version。"""
     if get_membership(session, user.id, tenant_id) is None:
         raise NotMemberError(tenant_id)
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None or not tenant.is_active:
+        raise InactiveTenantError(tenant_id)
     user.tenant_id = tenant_id
     user.token_version += 1
     session.add(user)

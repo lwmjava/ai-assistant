@@ -17,7 +17,7 @@ from app.core.security import (
     decode_token,
     verify_refresh_token,
 )
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.schemas.auth import (
     LoginRequest,
     RefreshRequest,
@@ -40,7 +40,12 @@ from app.services.auth_service import (
     setup_system_admin,
     system_admin_exists,
 )
-from app.services.membership import NotMemberError, list_memberships, switch_tenant
+from app.services.membership import (
+    InactiveTenantError,
+    NotMemberError,
+    list_memberships,
+    switch_tenant,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -125,6 +130,16 @@ async def refresh(
             details={"success": False, "reason": "user_inactive"},
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
+
+    tenant = session.get(Tenant, user.tenant_id)
+    if user.role_enum is not Role.SYSTEM_ADMIN and (tenant is None or not tenant.is_active):
+        await audit_event(
+            request,
+            AuditAction.USER_TOKEN_REFRESH,
+            user=user,
+            details={"success": False, "reason": "tenant_inactive"},
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="租户已停用")
 
     # 用最新 token_version 复核撤销状态。
     try:
@@ -255,6 +270,8 @@ def switch_tenant_route(
         user = switch_tenant(session, current_user, body.tenant_id)
     except NotMemberError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="不是该租户的成员")
+    except InactiveTenantError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户已停用")
     return _issue_token(user)
 
 

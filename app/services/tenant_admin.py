@@ -74,7 +74,53 @@ def create_member(
 
 def list_active_tenants(session: Session) -> list[Tenant]:
     """返回未停用租户，按名称排序。"""
-    rows = session.exec(
-        select(Tenant).where(Tenant.is_active.is_(True)).order_by(Tenant.name)
-    ).all()
-    return list(rows)
+    return list_tenants(session, include_inactive=False)
+
+
+def list_tenants(session: Session, *, include_inactive: bool) -> list[Tenant]:
+    """按名称列出租户。默认不含已停用。"""
+    stmt = select(Tenant)
+    if not include_inactive:
+        stmt = stmt.where(Tenant.is_active.is_(True))
+    return list(session.exec(stmt.order_by(Tenant.name)).all())
+
+
+def rename_tenant(session: Session, tenant_id: str, name: str) -> Tenant:
+    """修改未停用租户的名称。与其他未停用租户重名时拒绝。"""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        raise TenantNotFoundError(tenant_id)
+    if not tenant.is_active:
+        raise TenantInactiveError(tenant_id)
+    taken = session.exec(
+        select(Tenant).where(
+            Tenant.name == name,
+            Tenant.is_active.is_(True),
+            Tenant.id != tenant.id,
+        )
+    ).first()
+    if taken is not None:
+        raise TenantNameTakenError(name)
+    tenant.name = name
+    session.add(tenant)
+    session.commit()
+    session.refresh(tenant)
+    return tenant
+
+
+def deactivate_tenant(session: Session, tenant_id: str) -> Tenant:
+    """停用租户，并废除当前正在该租户中的用户的刷新令牌。"""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        raise TenantNotFoundError(tenant_id)
+    if not tenant.is_active:
+        raise TenantInactiveError(tenant_id)
+    tenant.is_active = False
+    session.add(tenant)
+    users = session.exec(select(User).where(User.tenant_id == tenant.id)).all()
+    for user in users:
+        user.token_version += 1
+        session.add(user)
+    session.commit()
+    session.refresh(tenant)
+    return tenant

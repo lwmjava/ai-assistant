@@ -2,6 +2,7 @@
 
 import { NavLink } from 'react-router-dom'
 import {
+  Activity,
   BookOpen,
   Building2,
   CalendarClock,
@@ -38,6 +39,7 @@ const ITEMS: NavItem[] = [
   { to: '/tenants', label: '租户', icon: Building2, visible: (role) => canManageTenants(role) },
   { to: '/users', label: '用户', icon: UserPlus, visible: (role) => canManageTenants(role) },
   { to: '/audit', label: '审计日志', icon: ShieldCheck, visible: (role) => canViewAudit(role) },
+  { to: '/status', label: '系统状态', icon: Activity, visible: (role) => canManageTenants(role) },
 ]
 
 export interface SidebarProps {

@@ -6,6 +6,7 @@
  * - `stage`：管线阶段推进（理解 / 意图分流 / 规划 / 检索 / 行动 / 质量门自纠错 / 反思 / 响应）
  * - `token`：增量文本
  * - `tool`：工具调用提示
+ * - `sources`：检索来源列表，不拼进回复正文
  * - `done`：携带 `state.answer`
  * - `error`：安全拦截或管线异常
  *
@@ -19,7 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { streamPost } from '@/lib/sse'
-import type { StreamEventType } from '@/types/api'
+import type { SourceRef, StreamEventType } from '@/types/api'
 import { getAccessToken } from '@/store/auth'
 
 export interface StreamSnapshot {
@@ -30,6 +31,7 @@ export interface StreamSnapshot {
   /** 流式累积的助手文本。 */
   text: string
   tools: string[]
+  sources: SourceRef[]
   error: string | null
 }
 
@@ -39,6 +41,7 @@ const EMPTY: StreamSnapshot = {
   currentStage: null,
   text: '',
   tools: [],
+  sources: [],
   error: null,
 }
 
@@ -47,6 +50,18 @@ export interface SendOptions {
   conversationId: string | null
   /** 后端流式响应不回传 conversation_id，成功后需由调用方刷新列表来定位新会话。 */
   onFinished?: (text: string) => void
+}
+
+function asSources(data: unknown): SourceRef[] {
+  if (!Array.isArray(data)) return []
+  return data.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const row = item as { filename?: unknown; page?: unknown; section?: unknown }
+    if (typeof row.filename !== 'string' || !row.filename.trim()) return []
+    const page = typeof row.page === 'number' && row.page >= 1 ? row.page : null
+    const section = typeof row.section === 'string' && row.section.trim() ? row.section : null
+    return [{ filename: row.filename, page, section }]
+  })
 }
 
 export function useChatStream() {
@@ -85,15 +100,22 @@ export function useChatStream() {
           signal: controller.signal,
           onMessage: (msg) => {
             const type = msg.event as StreamEventType
-            let payload: { type?: string; data?: string } = {}
+            let payload: { type?: string; data?: unknown } = {}
             try {
-              payload = JSON.parse(msg.data) as { type?: string; data?: string }
+              payload = JSON.parse(msg.data) as { type?: string; data?: unknown }
             } catch {
               payload = { data: msg.data }
             }
-            const value = payload.data ?? ''
 
             if (!mountedRef.current) return
+
+            if (type === 'sources') {
+              const sources = asSources(payload.data)
+              setSnapshot((prev) => ({ ...prev, sources }))
+              return
+            }
+
+            const value = typeof payload.data === 'string' ? payload.data : ''
 
             switch (type) {
               case 'stage':

@@ -1513,7 +1513,7 @@ tasks:
 
   - id: "QA-003"
     title: "对话页展示来源（交付 B3）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-13"
     depends_on:
@@ -1521,11 +1521,12 @@ tasks:
     context:
       problem: "对话页不展示回复用了哪份文件。"
       facts:
-        - claim: "前端对话组件没有渲染来源字段。"
-          evidence: "frontend/src/pages/Chat.tsx"
+        - claim: "助手回复有来源时，对话页在正文下展示文件名；已有页码或段落时一并展示。来源为空时不渲染来源区。"
+          evidence: "frontend/src/components/chat/MessageList.tsx"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_qa_003_show_sources.md"
         - "frontend/src/"
         - "tasks.yaml"
         - "AGENTS.md"

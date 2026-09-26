@@ -36,7 +36,7 @@
 
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
-| 对话默认注入本租户当前版 | `Partial` | `RAG_ENABLED` 代码默认 `true`；`ChatService._build_retriever`；`tests/test_rag.py` | 无真实 Embedding 时开发环境用 Mock，只能证明链路。回复可带来源文件名及已有页码或段落。对话页尚未展示。真实 LLM / Citation 未测 |
+| 对话默认注入本租户当前版 | `Partial` | `RAG_ENABLED` 代码默认 `true`；`ChatService._build_retriever`；`tests/test_rag.py`；`frontend/src/components/chat/MessageList.tsx` | 无真实 Embedding 时开发环境用 Mock，只能证明链路。回复可带来源文件名及已有页码或段落。对话页在助手正文下展示这些字段，来源为空时不显示来源区。本机 `.env` 仍可将检索关掉。真实 LLM / Citation 未测 |
 | 后端默认 `native` | `Implemented` | `RAG_BACKEND=native` | LangChain/LlamaIndex 为可选适配 |
 | 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 代码默认仍是 Local；正式目标已改为 Milvus，实现未完成 |
 | Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002 | 正式目标；缺摄取/检索/重解析/删除闭环证据；决定已改在 ADR-0002，实现未完成 |

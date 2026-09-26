@@ -8,12 +8,13 @@ import { Bot, UserRound } from 'lucide-react'
 import { StageTracker } from './StageTracker'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/cn'
-import type { MessageOut } from '@/types/api'
+import type { MessageOut, SourceRef } from '@/types/api'
 
 export interface MessageListProps {
   messages: MessageOut[]
   /** 流式中的助手文本（未落库，作为临时气泡渲染）。 */
   streamingText: string
+  streamingSources?: SourceRef[]
   stageStages: string[]
   currentStage: string | null
   tools: string[]
@@ -100,9 +101,30 @@ function Bubble({
   )
 }
 
+function sourceLabel(source: SourceRef): string {
+  const parts = [source.filename]
+  if (source.page != null && source.page >= 1) parts.push(`第 ${source.page} 页`)
+  if (source.section) parts.push(source.section)
+  return parts.join(' · ')
+}
+
+function SourceNotes({ sources }: { sources?: SourceRef[] }) {
+  if (!sources?.length) return null
+  return (
+    <ul className="mt-2 space-y-1 text-xs text-text-faint">
+      {sources.map((source, index) => (
+        <li key={`${source.filename}-${source.page ?? ''}-${source.section ?? ''}-${index}`}>
+          {sourceLabel(source)}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function MessageList({
   messages,
   streamingText,
+  streamingSources = [],
   stageStages,
   currentStage,
   tools,
@@ -123,9 +145,12 @@ export function MessageList({
       {messages.map((m) => (
         <Bubble key={m.id} role={m.role} meta={m.model ?? formatDateTime(m.created_at)}>
           {m.role === 'assistant' ? (
-            <div className="markdown">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-            </div>
+            <>
+              <div className="markdown">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+              </div>
+              <SourceNotes sources={m.sources} />
+            </>
           ) : (
             <div className="markdown">{m.content}</div>
           )}
@@ -147,9 +172,12 @@ export function MessageList({
               {streamError ? (
                 <p className="text-sm text-danger">{streamError}</p>
               ) : streamingText ? (
-                <div className="markdown">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
-                </div>
+                <>
+                  <div className="markdown">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
+                  </div>
+                  <SourceNotes sources={streamingSources} />
+                </>
               ) : (
                 <p className="text-sm text-text-faint">正在思考…</p>
               )}

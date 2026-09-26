@@ -180,6 +180,7 @@ export default function ChatPage() {
       content: text,
       model: null,
       created_at: new Date().toISOString(),
+      sources: [],
     }
     setPending([optimistic])
 
@@ -344,6 +345,7 @@ export default function ChatPage() {
             <MessageList
               messages={messages}
               streamingText={snapshot.text}
+              streamingSources={snapshot.sources}
               stageStages={snapshot.stages}
               currentStage={snapshot.currentStage}
               tools={snapshot.tools}

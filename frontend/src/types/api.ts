@@ -46,12 +46,19 @@ export interface ConversationOut {
   updated_at: string
 }
 
+export interface SourceRef {
+  filename: string
+  page: number | null
+  section: string | null
+}
+
 export interface MessageOut {
   id: string
   role: string
   content: string
   model: string | null
   created_at: string
+  sources?: SourceRef[]
 }
 
 export interface ConversationDetail extends ConversationOut {
@@ -67,6 +74,7 @@ export interface ChatResponse {
   conversation_id: string
   reply: string
   model: string | null
+  sources?: SourceRef[]
 }
 
 /**
@@ -76,8 +84,8 @@ export interface ChatResponse {
  */
 export type SendMode = 'stream' | 'once'
 
-/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、done=完成、error=失败。 */
-export type StreamEventType = 'stage' | 'token' | 'tool' | 'done' | 'error'
+/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、sources=检索来源、done=完成、error=失败。 */
+export type StreamEventType = 'stage' | 'token' | 'tool' | 'sources' | 'done' | 'error'
 
 export interface StreamEvent {
   type: StreamEventType

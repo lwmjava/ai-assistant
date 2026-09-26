@@ -850,6 +850,57 @@ async def test_search_ignores_superseded_versions(
     assert second.document_id == first.document_id
 
 
+async def test_reparse_does_not_restore_deleted_document(
+    session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """删除前已排队的重建，执行时失败，不清除删除标记，也不改当前版。"""
+    from datetime import UTC, datetime
+
+    _patch_storage_root(monkeypatch, tmp_path)
+    from app.rag.document_storage import save_source_file
+    from app.rag.import_jobs import create_reparse_job
+    from app.rag.service import RAGService
+
+    tenant = f"qa004-{uuid.uuid4().hex}"
+    user = User(
+        id=f"qa004-user-{uuid.uuid4().hex}",
+        tenant_id=tenant,
+        username="qa004-admin",
+        hashed_password="",
+        role=Role.TENANT_ADMIN.value,
+        token_version=0,
+        is_active=True,
+    )
+    rag = RAGService(session, tenant)
+    doc = await rag.ingest_text(
+        "QA004KEEP 删除前的正文。", "待删", "qa004.txt", user.id
+    )
+    doc.storage_path = save_source_file(
+        tenant, "QA004NEW 不应写回已删文档。".encode(), "qa004.txt"
+    )
+    was_current = doc.is_current
+    session.add(doc)
+    session.commit()
+    job = create_reparse_job(session, user, doc.id)
+    doc.deleted_at = datetime.now(UTC)
+    session.add(doc)
+    session.commit()
+
+    await run_import_jobs_once(limit=10)
+    session.expire_all()
+    done = session.get(ImportJob, job.id)
+    row = session.get(Document, doc.id)
+    assert done is not None and row is not None
+    assert done.status == ImportJobStatus.FAILED.value
+    assert row.deleted_at is not None
+    assert row.is_current is was_current
+    chunks = session.exec(
+        select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
+    ).all()
+    assert all("QA004NEW" not in chunk.content for chunk in chunks)
+    assert any("QA004KEEP" in chunk.content for chunk in chunks)
+
+
 async def test_reparse_historical_keeps_the_existing_current_version(
     session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

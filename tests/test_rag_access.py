@@ -94,6 +94,7 @@ def test_cross_tenant_read_and_write_denied():
     assert can_write_document(doc, other) is False
     assert can_write_document(doc, admin) is True
     assert can_read_import("u-a", "t-a", other) is False
+    assert can_read_import("u-a", "t-a", admin) is True
 
 
 async def test_purge_waits_for_retention_then_removes_and_audits(session: Session, monkeypatch):

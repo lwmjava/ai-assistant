@@ -36,6 +36,10 @@ export interface LoginRequest {
   password: string
 }
 
+export interface SetupStatus {
+  needs_setup: boolean
+}
+
 // ── 对话 ─────────────────────────────────────────────
 export interface ConversationOut {
   id: string
@@ -126,6 +130,13 @@ export interface DocumentOut {
   chunk_count: number
   created_at: string
   updated_at: string
+}
+
+export interface ImportJobOut {
+  id: string
+  status: string
+  document_id: string | null
+  error: string | null
 }
 
 export interface SearchResultOut {

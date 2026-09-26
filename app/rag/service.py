@@ -518,6 +518,8 @@ class RAGService:
         content_hash: str,
     ) -> Document:
         """就地替换分块与向量，不改变 is_current 与版本组。"""
+        if document.deleted_at is not None:
+            raise ValueError("已删除的文档不能重建")
         strategy_name = resolve_strategy_name(parsed.text, None)
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
         chunk_objs = await chunking.split(parsed.text, params=self._build_chunk_params(None))

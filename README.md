@@ -223,6 +223,10 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 认证 | `POST` | `/api/auth/login` | 用户名密码登录，返回双令牌 |
 | 认证 | `POST` | `/api/auth/refresh` | 刷新令牌（refresh 轮转） |
 | 认证 | `GET` | `/api/auth/me` | 当前用户信息 |
+| 认证 | `POST` | `/api/auth/register` | 公开注册为 `default` 租户的 member，并返回双令牌 |
+| 认证 | `GET` | `/api/auth/setup-status` | 是否还没有系统管理员 |
+| 认证 | `POST` | `/api/auth/setup` | 没有系统管理员时创建首个管理员；已有时 404 |
+| 认证 | `POST` | `/api/auth/users/{id}/revoke-tokens` | 系统管理员撤销该用户的刷新令牌 |
 | 对话 | `POST` | `/api/chat` | 非流式对话 |
 | 对话 | `POST` | `/api/chat/stream` | SSE 流式对话 |
 | 对话 | `GET` | `/api/chat/conversations` | 会话列表 |
@@ -251,41 +255,61 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 
 ## 快速开始
 
-### 本地开发
+第一次使用按下面五步走。开发模式的控制台在 `http://localhost:5173`。若已构建前端并把 `SERVE_FRONTEND=true` 写入 `.env`，同一套页面在 `http://127.0.0.1:8000`。
+
+### 1. 填写环境
 
 ```bash
-# 1. 克隆并进入仓库
 git clone https://github.com/lwmjava/ai-assistant.git
 cd ai-assistant
-
-# 2. 创建虚拟环境并安装依赖
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-# 3. 配置环境变量
-cp .env.example .env             # 按需修改 JWT_SECRET_KEY、LLM_API_KEY 等
-
-# 4. 启动服务
-uvicorn app.main:app --reload
-# 打开 http://127.0.0.1:8000/docs 查看交互式 API 文档
+cp .env.example .env
 ```
 
-### Web 控制台（可选）
+至少改 `JWT_SECRET_KEY`。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。两项都空着时，不自动建管理员，改由下一步的 `/setup` 创建。
 
-`frontend/` 下是配套 Web 控制台，覆盖对话、知识库、工具与 MCP、工作流、审计日志六个模块。
+失败时看：`.env` 没被读到，多半是进程还停在改文件之前，重新启动后端。生产环境若 `JWT_SECRET_KEY` 仍是占位值，进程会拒绝启动，终端里有安全校验失败的报错。
+
+### 2. 启动
 
 ```bash
-# 方式一：开发模式（前后端分离，前端热更新，/api 自动代理到 8000）
-cd frontend && npm install && npm run dev     # http://localhost:5173
-
-# 方式二：单进程托管（构建产物由 FastAPI 直接提供，无需 Nginx 或 Node 进程）
-cd frontend && npm install && npm run build
-cd .. && echo "SERVE_FRONTEND=true" >> .env
-uvicorn app.main:app                          # http://127.0.0.1:8000
+uvicorn app.main:app --reload
 ```
 
-两种方式的差别与托管细节见 [frontend/README.md](frontend/README.md)。
+另开一个终端启动控制台：
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+单进程托管时，先在 `frontend/` 执行 `npm run build`，再在 `.env` 设置 `SERVE_FRONTEND=true`，只启动上面的 `uvicorn`。差别见 [frontend/README.md](frontend/README.md)。
+
+失败时看：`http://127.0.0.1:8000/api/health` 应返回 `status` 为 `ok`。打不开 `5173` 时，确认命令是在 `frontend/` 里执行的。接口 404 或跨域失败时，确认前端开发服务把 `/api` 代理到 `8000`。
+
+### 3. 建立管理员
+
+二选一。
+
+- 第 1 步已经填了 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`：不要打开 `/setup`。用这两个值到 `/login` 登录。启动日志里会有已创建初始 `system_admin` 的提示。
+- 两项都没填，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后进入 `/chat`，这个向导随即关闭。
+
+失败时看：`/setup` 一打开就回到 `/login`，说明已经有系统管理员，用已有账号登录。向导提交后提示「初始化向导已关闭」，同样改为登录。页面一直停在「正在检查是否需要初始化」，说明后端没起来，先看第 2 步的健康检查。
+
+### 4. 注册或登录
+
+打开 `/login`。已有账号直接登录。新成员打开 `/register`，注册成功后进入 `/chat`，身份是 `default` 租户的 member。
+
+失败时看：页面红字「用户名或密码错误」是登录凭据不对。注册红字「用户名已存在」时换一个用户名。密码少于 8 位会停在表单上，不会发出请求。
+
+### 5. 发送第一条消息
+
+在 `/chat` 的输入框写一句话并发送。能看到助手回复，就说明这条旅程走完了。
+
+失败时看：发送按钮不可用时，先确认输入框里有文字。请求失败时看对话页上的错误提示，并再次打开 `http://127.0.0.1:8000/api/health`。没有模型密钥时，开发环境可能用模拟模型回答，这只说明对话链路通了。
 
 ### Docker 一键部署
 
@@ -298,7 +322,7 @@ docker compose up -d --build
 
 编排包含 PostgreSQL 和开发用 Milvus（单容器）。默认 `RAG_VECTOR_STORE` 仍是 `local`。只有显式改为 `milvus` 时，应用才连接 `http://milvus:19530`。这不表示向量库闭环门槛已经通过。
 
-启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/health` 仍是健康检查。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
+启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/health` 仍是健康检查。第一次建管理员、注册和发消息，按上面「快速开始」的第 3 到第 5 步，页面分别是 `/setup`、`/login`、`/register` 和 `/chat`。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
 
 ### 关键配置项
 

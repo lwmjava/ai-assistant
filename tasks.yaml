@@ -1566,7 +1566,7 @@ tasks:
 
   - id: "QA-004"
     title: "知识库上传、状态、重建、删除与软删除一致（交付 B3）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-13"
     depends_on:
@@ -1574,13 +1574,16 @@ tasks:
     context:
       problem: "知识库页的上传、状态、重建、删除尚未按软删除核对完整。"
       facts:
-        - claim: "删除写入 deleted_at。成员列表默认看不到已删文档。"
+        - claim: "删除写入 deleted_at。成员列表默认看不到已删文档。管理员可看到已删除标记。重建不恢复已删文档。"
           evidence: "app/rag/service.py"
-        - claim: "控制台知识库页已有上传和删除确认。"
+        - claim: "知识库页展示版本状态和分块数，可确认软删除，并可对未删除文档重建。"
           evidence: "frontend/src/pages/Knowledge.tsx"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_qa_004_soft_delete_console.md"
+        - "docs/AI辅助开发迭代指导.md"
+        - "docs/product/as-is-capability-matrix.md"
         - "app/rag/"
         - "frontend/src/"
         - "tests/"
@@ -1626,7 +1629,7 @@ tasks:
 
   - id: "AUTH-001"
     title: "注册并加入默认租户（交付 C1）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-21"
     depends_on:
@@ -1634,7 +1637,7 @@ tasks:
     context:
       problem: "新用户不能自己注册并进入默认租户。"
       facts:
-        - claim: "认证路由只有登录和刷新。"
+        - claim: "公开注册成为 default 租户的 member，并返回不含密码的双令牌。"
           evidence: "app/api/routes/auth.py"
         - claim: "默认租户和环境变量管理员已经存在。"
           evidence: "app/services/auth_service.py"
@@ -1688,7 +1691,7 @@ tasks:
 
   - id: "AUTH-002"
     title: "管理员撤销用户令牌（交付 C1）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-21"
     depends_on:
@@ -1698,7 +1701,7 @@ tasks:
       facts:
         - claim: "刷新会核对 token_version。"
           evidence: "app/core/security.py"
-        - claim: "没有递增 token_version 的管理接口。"
+        - claim: "系统管理员可递增 token_version，旧刷新令牌随之失效。"
           evidence: "app/api/routes/auth.py"
     scope:
       allowed_paths:
@@ -1747,7 +1750,7 @@ tasks:
 
   - id: "AUTH-003"
     title: "注册页与首次设置向导（交付 C1）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-21"
     depends_on:
@@ -1755,8 +1758,8 @@ tasks:
     context:
       problem: "没有管理员时，控制台不能引导完成第一次建号。"
       facts:
-        - claim: "只有登录页。管理员靠环境变量创建。"
-          evidence: "frontend/src/pages/Login.tsx"
+        - claim: "控制台有 /login、/register、/setup。没有系统管理员时进入向导。"
+          evidence: "frontend/src/App.tsx"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
@@ -1803,7 +1806,7 @@ tasks:
 
   - id: "AUTH-004"
     title: "首次运行旅程与 README 逐步一致（交付 C1）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-21"
     depends_on:
@@ -1811,7 +1814,7 @@ tasks:
     context:
       problem: "README 的快速开始和第一次使用的页面步骤不一致。"
       facts:
-        - claim: "产品旅程写了 CLI init，交付排期把 CLI 放在 D3。"
+        - claim: "README 快速开始按填写环境、启动、建管理员、注册或登录、发送第一条消息书写。"
           evidence: "README.md"
         - claim: "C1 的路径是环境变量或 /setup，加上注册和登录。"
           evidence: "docs/plans/plan_delivery_2027-03-25.md"

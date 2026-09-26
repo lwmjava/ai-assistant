@@ -1,31 +1,30 @@
-/** 登录页。 */
+/** 首次初始化：库中没有系统管理员时创建首个管理员。 */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
-import { ArrowRight, Lock, UserRound } from 'lucide-react'
+import { ArrowRight, Lock } from 'lucide-react'
 
 import { AuthScreen } from '@/components/auth/AuthScreen'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Field'
-import { ApiError } from '@/lib/http'
+import { api, ApiError } from '@/lib/http'
 import { useAuthStore } from '@/store/auth'
+import type { Token } from '@/types/api'
 
 const schema = z.object({
-  username: z.string().min(1, '请输入用户名'),
-  password: z.string().min(1, '请输入密码'),
+  username: z.string().trim().min(1, '请输入用户名').max(64, '用户名过长'),
+  password: z.string().min(8, '密码至少 8 位').max(128, '密码过长'),
+  email: z.string().trim().max(254, '邮箱过长').optional(),
 })
 
 type FormValues = z.infer<typeof schema>
 
-export default function LoginPage() {
+export default function SetupPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const login = useAuthStore((s) => s.login)
-  const isAuthed = useAuthStore((s) => Boolean(s.access_token))
-
+  const establish = useAuthStore((s) => s.establish)
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -34,39 +33,31 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { username: '', password: '' },
+    defaultValues: { username: '', password: '', email: '' },
   })
-
-  useEffect(() => {
-    if (isAuthed) {
-      const from = (location.state as { from?: string } | null)?.from ?? '/chat'
-      void navigate(from, { replace: true })
-    }
-  }, [isAuthed, location.state, navigate])
 
   async function onSubmit(values: FormValues) {
     setFormError(null)
+    const email = values.email?.trim()
     try {
-      await login(values)
-      const from = (location.state as { from?: string } | null)?.from ?? '/chat'
-      void navigate(from, { replace: true })
+      const token = await api.post<Token>(
+        '/auth/setup',
+        { username: values.username, password: values.password, email: email || null },
+        { anonymous: true },
+      )
+      await establish(token)
+      void navigate('/chat', { replace: true })
     } catch (err) {
       setFormError(
-        err instanceof ApiError ? err.detail : '登录失败，请检查网络或后端服务是否启动',
+        err instanceof ApiError ? err.detail : '创建管理员失败，请确认后端已启动',
       )
     }
   }
 
   return (
     <AuthScreen
-      title="登录控制台"
-      subtitle="使用平台账号继续"
-      footnote={
-        <p className="flex items-center gap-2 text-xs text-text-faint">
-          <UserRound className="size-3.5" aria-hidden />
-          登录与刷新令牌均会写入审计日志
-        </p>
-      }
+      title="初始化管理员"
+      subtitle="库里还没有系统管理员。创建后这个向导就会关闭。"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <Input
@@ -79,11 +70,19 @@ export default function LoginPage() {
           {...register('username')}
         />
         <Input
+          label="邮箱"
+          type="email"
+          autoComplete="email"
+          placeholder="选填"
+          error={errors.email?.message}
+          {...register('email')}
+        />
+        <Input
           label="密码"
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           required
-          placeholder="••••••••"
+          placeholder="至少 8 位"
           error={errors.password?.message}
           {...register('password')}
         />
@@ -106,15 +105,9 @@ export default function LoginPage() {
           loading={isSubmitting}
           icon={isSubmitting ? undefined : <ArrowRight className="size-4" aria-hidden />}
         >
-          {isSubmitting ? '登录中…' : '登录'}
+          {isSubmitting ? '创建中…' : '创建并进入对话'}
         </Button>
       </form>
-      <p className="text-sm text-text-muted">
-        还没有账号？{' '}
-        <Link to="/register" className="font-medium text-primary hover:underline">
-          注册并加入默认租户
-        </Link>
-      </p>
     </AuthScreen>
   )
 }

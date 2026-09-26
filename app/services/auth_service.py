@@ -24,6 +24,29 @@ def authenticate(session: Session, username: str, password: str) -> User | None:
     return user
 
 
+class UsernameTakenError(Exception):
+    """用户名已被占用。"""
+
+
+class EmailTakenError(Exception):
+    """邮箱已被占用。"""
+
+
+class DefaultTenantInactiveError(Exception):
+    """名为 default 的租户已停用。"""
+
+
+class SetupClosedError(Exception):
+    """已经存在系统管理员，初始化向导不再接受创建。"""
+
+
+class UserNotFoundError(Exception):
+    """撤销目标用户不存在。"""
+
+
+DEFAULT_TENANT_NAME = "default"
+
+
 def create_user(
     session: Session,
     *,
@@ -41,6 +64,91 @@ def create_user(
         hashed_password=hash_password(password),
         role=role.value,
     )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def _reject_taken_identity(session: Session, username: str, email: str | None) -> None:
+    """用户名全局唯一；填写了邮箱时邮箱也全局唯一。"""
+    taken_name = session.exec(select(User).where(User.username == username)).first()
+    if taken_name is not None:
+        raise UsernameTakenError(username)
+    if email:
+        taken_email = session.exec(select(User).where(User.email == email)).first()
+        if taken_email is not None:
+            raise EmailTakenError(email)
+
+
+def get_or_create_default_tenant(session: Session) -> Tenant:
+    """返回仍启用的 default 租户。没有就创建。已停用则拒绝，不另建同名租户。"""
+    tenant = session.exec(select(Tenant).where(Tenant.name == DEFAULT_TENANT_NAME)).first()
+    if tenant is None:
+        tenant = Tenant(name=DEFAULT_TENANT_NAME)
+        session.add(tenant)
+        session.commit()
+        session.refresh(tenant)
+        return tenant
+    if not tenant.is_active:
+        raise DefaultTenantInactiveError(tenant.id)
+    return tenant
+
+
+def register_member(
+    session: Session,
+    *,
+    username: str,
+    password: str,
+    email: str | None = None,
+) -> User:
+    """公开注册：加入 default 租户，角色固定为 member。"""
+    tenant = get_or_create_default_tenant(session)
+    _reject_taken_identity(session, username, email)
+    return create_user(
+        session,
+        tenant_id=tenant.id,
+        username=username,
+        password=password,
+        email=email,
+        role=Role.MEMBER,
+    )
+
+
+def system_admin_exists(session: Session) -> bool:
+    """库中是否已有系统管理员。停用的管理员也算已初始化。"""
+    row = session.exec(select(User).where(User.role == Role.SYSTEM_ADMIN.value)).first()
+    return row is not None
+
+
+def setup_system_admin(
+    session: Session,
+    *,
+    username: str,
+    password: str,
+    email: str | None = None,
+) -> User:
+    """没有系统管理员时，在 default 租户创建首个 system_admin。"""
+    if system_admin_exists(session):
+        raise SetupClosedError()
+    tenant = get_or_create_default_tenant(session)
+    _reject_taken_identity(session, username, email)
+    return create_user(
+        session,
+        tenant_id=tenant.id,
+        username=username,
+        password=password,
+        email=email,
+        role=Role.SYSTEM_ADMIN,
+    )
+
+
+def revoke_refresh_tokens(session: Session, user_id: str) -> User:
+    """递增 token_version，使该用户已发出的刷新令牌失效。"""
+    user = session.get(User, user_id)
+    if user is None:
+        raise UserNotFoundError(user_id)
+    user.token_version += 1
     session.add(user)
     session.commit()
     session.refresh(user)

@@ -4,7 +4,15 @@ from sqlmodel import Session, select
 
 from app.core.security import Role
 from app.models.user import Tenant, User
-from app.services.auth_service import create_user
+from app.services.auth_service import EmailTakenError, UsernameTakenError, create_user
+
+__all__ = [
+    "EmailTakenError",
+    "TenantInactiveError",
+    "TenantNameTakenError",
+    "TenantNotFoundError",
+    "UsernameTakenError",
+]
 
 
 class TenantNameTakenError(Exception):
@@ -17,14 +25,6 @@ class TenantNotFoundError(Exception):
 
 class TenantInactiveError(Exception):
     """租户已停用。"""
-
-
-class UsernameTakenError(Exception):
-    """用户名已被占用。"""
-
-
-class EmailTakenError(Exception):
-    """邮箱已被占用。"""
 
 
 def create_tenant(session: Session, *, name: str) -> Tenant:

@@ -15,7 +15,7 @@
 |---|---|---|---|
 | FastAPI 后端 | `Implemented` | `pyproject.toml`；`app/main.py` | — |
 | React + TypeScript + Vite 控制台 | `Implemented` | `frontend/package.json`；2026-09-13 `npm run typecheck` / `npm run build` 通过 | — |
-| JWT + RBAC + 多租户 | `Partial` | `app/core/security.py`；API dependencies；`app/rag/access.py` | 租户读路径已对齐（ADR-0001）；资源级 ACL 仍 `Planned` |
+| JWT + RBAC + 多租户 | `Partial` | `app/core/security.py`；`app/api/routes/auth.py`；`frontend/src/pages/Register.tsx`；`frontend/src/pages/Setup.tsx` | 公开注册加入 `default` 租户；系统管理员可撤销刷新令牌；无系统管理员时 `/setup` 只可用一次。邀请码、切换租户和资源级 ACL 仍未完成 |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
 
@@ -44,7 +44,7 @@
 | 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 基线已冻结；无指标不新增策略 |
 | Dense + BM25 + RRF | `Implemented` | `app/rag/vectorstore/`；`app/rag/retriever.py` | RRF 是融合，不是独立 Reranker |
 | 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | 迭代指导 §4.4 | 必须由同一 Evaluation 证明价值 |
-| 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs；`tests/eval/test_rag006_pipeline.py` | 当前版本读路径已与检索对齐；生效日期 Flag 默认关；资源 ACL `Planned` |
+| 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs；`frontend/src/pages/Knowledge.tsx`；`tests/test_rag_import_jobs.py` | 知识库页可重建未删除文档，已删除文档不能被重建救回。生效日期 Flag 默认关；资源 ACL `Planned` |
 | 结构化 Citation | `Partial` | 回答目前主要是 source 文本 | 缺 document/chunk/version/page/section |
 | 版本化 Evaluation | `Partial` | `evals/datasets/rag-v0.1/`；`docs/evaluations/rag-v0.1-baseline-report.md` | 未测生成层；语料规模小，不得当生产质量 |
 

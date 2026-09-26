@@ -435,6 +435,32 @@ def test_document_lifecycle(client: TestClient) -> None:
     assert detail_after.json()["deleted_at"] is not None
 
 
+def test_reparse_deleted_document_is_rejected(client: TestClient) -> None:
+    """已删除的文档不能重建，当前版标志保持不变。"""
+    ingest = client.post(
+        "/api/rag/documents/ingest",
+        json={
+            "text": "QA004 删除后不能重建。",
+            "title": "删除后重建",
+            "source": "qa004-reparse",
+        },
+    )
+    assert ingest.status_code == 200
+    doc_id = ingest.json()["id"]
+    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    assert deleted.status_code == 200
+    before = client.get(f"/api/rag/documents/{doc_id}")
+    assert before.status_code == 200
+    reparse = client.post(f"/api/rag/documents/{doc_id}/reparse")
+    assert reparse.status_code == 400
+    after = client.get(f"/api/rag/documents/{doc_id}")
+    assert after.status_code == 200
+    assert after.json()["deleted_at"] is not None
+    assert after.json()["is_current"] == before.json()["is_current"]
+    listing = client.get("/api/rag/documents")
+    assert all(item["id"] != doc_id for item in listing.json())
+
+
 def test_ingest_validation(client: TestClient) -> None:
     resp = client.post(
         "/api/rag/documents/ingest", json={"text": "", "title": ""}

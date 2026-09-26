@@ -21,6 +21,7 @@ const WorkflowsPage = lazy(() => import('@/pages/Workflows'))
 const AuditPage = lazy(() => import('@/pages/Audit'))
 const TenantsPage = lazy(() => import('@/pages/Tenants'))
 const UsersPage = lazy(() => import('@/pages/Users'))
+const InvitationsPage = lazy(() => import('@/pages/Invitations'))
 
 /** 路由切换时的降级视图：保持布局稳定，避免白屏。 */
 function PageFallback() {
@@ -210,6 +211,14 @@ export default function App() {
                 <AuditPage />
               </Lazy>
             </RequireAudit>
+          }
+        />
+        <Route
+          path="/invitations"
+          element={
+            <Lazy>
+              <InvitationsPage />
+            </Lazy>
           }
         />
         <Route

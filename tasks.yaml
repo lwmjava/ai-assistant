@@ -1860,7 +1860,7 @@ tasks:
 
   - id: "INV-001"
     title: "邀请码加入租户（交付 C2）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-28"
     depends_on:
@@ -1868,10 +1868,10 @@ tasks:
     context:
       problem: "已注册用户不能凭邀请码加入另一个租户。"
       facts:
-        - claim: "用户通过 users.tenant_id 只归属一个租户。"
-          evidence: "app/models/user.py"
-        - claim: "没有邀请码和成员表。"
-          evidence: "docs/plans/plan_b2_tenants.md"
+        - claim: "成员表记录用户在租户中的角色。users.tenant_id 仍是当前会话租户。"
+          evidence: "app/models/membership.py"
+        - claim: "租户管理员或系统管理员可生成邀请码，已登录用户可接受。接受不切换当前租户。"
+          evidence: "app/api/routes/invitations.py"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
@@ -1921,7 +1921,7 @@ tasks:
 
   - id: "INV-002"
     title: "校验成员身份后切换租户（交付 C2）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-28"
     depends_on:
@@ -1929,8 +1929,8 @@ tasks:
     context:
       problem: "加入多个租户后不能换成另一个租户的会话。"
       facts:
-        - claim: "令牌租户来自用户上的单个 tenant_id。"
-          evidence: "app/core/security.py"
+        - claim: "是成员才把 users.tenant_id 改为目标租户并换发令牌。不是成员则 403。"
+          evidence: "app/services/membership.py"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
@@ -1977,7 +1977,7 @@ tasks:
 
   - id: "INV-003"
     title: "邀请入口与切换入口（交付 C2）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-11-28"
     depends_on:
@@ -1985,8 +1985,8 @@ tasks:
     context:
       problem: "页面上不能生成邀请码，也不能切换租户。"
       facts:
-        - claim: "控制台没有邀请入口和顶栏切换。"
-          evidence: "frontend/src/components/layout/"
+        - claim: "邀请页可以生成和接受邀请码。成员关系多于一条时顶栏可以切换租户。"
+          evidence: "frontend/src/pages/Invitations.tsx"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"

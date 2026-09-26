@@ -40,6 +40,22 @@ export interface SetupStatus {
   needs_setup: boolean
 }
 
+export interface MembershipOut {
+  tenant_id: string
+  tenant_name: string
+  role: string
+}
+
+export interface InvitationOut {
+  id: string
+  code: string
+  tenant_id: string
+  role: string
+  expires_at: string
+  max_uses: number
+  use_count: number
+}
+
 // ── 对话 ─────────────────────────────────────────────
 export interface ConversationOut {
   id: string

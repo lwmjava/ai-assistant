@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.core.security import Role, hash_password, verify_password
 from app.models.user import Tenant, User
+from app.services.membership import backfill_memberships, ensure_membership
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ def create_user(
     session.add(user)
     session.commit()
     session.refresh(user)
+    ensure_membership(session, user)
     return user
 
 
@@ -161,6 +163,7 @@ def ensure_initial_admin(session: Session) -> None:
     仅当 ``INITIAL_ADMIN_USERNAME`` 与 ``INITIAL_ADMIN_PASSWORD`` 均已配置时生效；
     否则跳过（由运维手动创建首个账号）。
     """
+    backfill_memberships(session)
     existing = session.exec(select(User)).first()
     if existing is not None:
         return
@@ -188,6 +191,8 @@ def ensure_initial_admin(session: Session) -> None:
     )
     session.add(admin)
     session.commit()
+    session.refresh(admin)
+    ensure_membership(session, admin)
     logger.warning(
         "已创建初始 system_admin 账号 '%s'（来源：环境变量）。"
         "出于安全考虑，请在创建后修改密码或移除相关环境变量。",

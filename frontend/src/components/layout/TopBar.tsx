@@ -1,14 +1,17 @@
 /** 顶栏：移动端导航开关、后端连通性指示、主题切换与用户菜单。 */
 
 import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, LogOut, Moon, Sun, UserRound } from 'lucide-react'
 
+import { useMemberships, switchTenant } from '@/api/invitations'
+import { conversationKeys } from '@/api/chat'
 import { Badge } from '@/components/ui/Badge'
-import { api } from '@/lib/http'
+import { api, ApiError } from '@/lib/http'
 import { ROLE_META } from '@/types/api'
 import type { HealthInfo, UserInfo } from '@/types/api'
 import { cn } from '@/lib/cn'
+import { useAuthStore } from '@/store/auth'
 import { useThemeStore } from '@/store/theme'
 
 export interface TopBarProps {
@@ -108,6 +111,52 @@ function UserMenu({ user, onLogout }: { user: UserInfo; onLogout: () => void }) 
   )
 }
 
+function TenantSwitcher({ user }: { user: UserInfo }) {
+  const memberships = useMemberships()
+  const establish = useAuthStore((s) => s.establish)
+  const qc = useQueryClient()
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
+  const rows = memberships.data ?? []
+  if (rows.length < 2) return null
+
+  async function onChange(tenantId: string) {
+    if (!tenantId || tenantId === user.tenant_id) return
+    setPending(true)
+    setError('')
+    try {
+      const token = await switchTenant(tenantId)
+      await establish(token)
+      await qc.invalidateQueries({ queryKey: conversationKeys.all })
+      await qc.invalidateQueries({ queryKey: ['memberships'] })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : '切换失败')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <label className="flex min-w-0 items-center gap-2">
+      <span className="sr-only">切换租户</span>
+      <select
+        aria-label="切换租户"
+        className="h-11 max-w-40 rounded-lg border border-border bg-surface-2/70 px-2 text-sm text-text"
+        value={user.tenant_id}
+        disabled={pending}
+        onChange={(event) => void onChange(event.target.value)}
+      >
+        {rows.map((row) => (
+          <option key={row.tenant_id} value={row.tenant_id}>
+            {row.tenant_name}
+          </option>
+        ))}
+      </select>
+      {error && <span className="text-xs text-danger">{error}</span>}
+    </label>
+  )
+}
+
 function BackendStatus() {
   const { data, isError } = useQuery({
     queryKey: ['health'],
@@ -153,6 +202,7 @@ export function TopBar({ user, onOpenNav, onLogout }: TopBarProps) {
 
       <div className="flex-1" />
 
+      {user && <TenantSwitcher user={user} />}
       <BackendStatus />
       <ThemeToggle />
       {user && <UserMenu user={user} onLogout={onLogout} />}

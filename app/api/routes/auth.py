@@ -27,6 +27,7 @@ from app.schemas.auth import (
     Token,
     UserInfo,
 )
+from app.schemas.invitation import MembershipOut, SwitchTenantRequest
 from app.services.auth_service import (
     DefaultTenantInactiveError,
     EmailTakenError,
@@ -39,6 +40,7 @@ from app.services.auth_service import (
     setup_system_admin,
     system_admin_exists,
 )
+from app.services.membership import NotMemberError, list_memberships, switch_tenant
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -228,6 +230,32 @@ async def revoke_tokens(
         details={"action": "revoke_tokens", "token_version": user.token_version},
     )
     return RevokeTokensResult(user_id=user.id, token_version=user.token_version)
+
+
+@router.get("/memberships", response_model=list[MembershipOut])
+def memberships(
+    session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[MembershipOut]:
+    """返回当前用户已加入的租户。"""
+    return [
+        MembershipOut(tenant_id=row.tenant_id, tenant_name=tenant.name, role=row.role)
+        for row, tenant in list_memberships(session, current_user)
+    ]
+
+
+@router.post("/switch-tenant", response_model=Token)
+def switch_tenant_route(
+    body: SwitchTenantRequest,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Token:
+    """是成员才换发目标租户的令牌。不是成员时不改租户和令牌版本。"""
+    try:
+        user = switch_tenant(session, current_user, body.tenant_id)
+    except NotMemberError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="不是该租户的成员")
+    return _issue_token(user)
 
 
 @router.get("/me", response_model=UserInfo)

@@ -227,6 +227,11 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 认证 | `GET` | `/api/auth/setup-status` | 是否还没有系统管理员 |
 | 认证 | `POST` | `/api/auth/setup` | 没有系统管理员时创建首个管理员；已有时 404 |
 | 认证 | `POST` | `/api/auth/users/{id}/revoke-tokens` | 系统管理员撤销该用户的刷新令牌 |
+| 认证 | `GET` | `/api/auth/memberships` | 当前用户已加入的租户 |
+| 认证 | `POST` | `/api/auth/switch-tenant` | 换成已加入的租户并换发令牌；非成员 403 |
+| 邀请 | `POST` | `/api/invitations` | 系统管理员或租户管理员生成邀请码 |
+| 邀请 | `GET` | `/api/invitations` | 列出该租户的邀请码 |
+| 邀请 | `POST` | `/api/invitations/accept` | 已登录用户凭码加入租户，不切换当前会话 |
 | 对话 | `POST` | `/api/chat` | 非流式对话 |
 | 对话 | `POST` | `/api/chat/stream` | SSE 流式对话 |
 | 对话 | `GET` | `/api/chat/conversations` | 会话列表 |

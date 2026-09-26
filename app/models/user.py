@@ -1,7 +1,6 @@
 """租户与用户模型（多租户 RBAC）。"""
 
 import uuid
-from datetime import UTC, datetime
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -48,3 +47,7 @@ class User(SQLModel, TimestampMixin, table=True):
     def role_enum(self) -> Role:
         """将存储的角色字符串还原为 Role 枚举。"""
         return Role(self.role)
+
+
+# 导入成员表，使只加载用户模型的测试在建表时也能带上成员关系。
+import app.models.membership as _membership  # noqa: E402, F401

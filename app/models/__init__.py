@@ -4,6 +4,7 @@
 """
 
 from app.models.conversation import Conversation, Message  # noqa: F401
+from app.models.membership import Invitation, Membership  # noqa: F401
 from app.models.rag import Document, DocumentChunk  # noqa: F401
 from app.models.user import Tenant, User  # noqa: F401
 from app.models.workflow import Workflow, WorkflowExecution  # noqa: F401

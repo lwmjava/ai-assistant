@@ -15,7 +15,7 @@
 |---|---|---|---|
 | FastAPI 后端 | `Implemented` | `pyproject.toml`；`app/main.py` | — |
 | React + TypeScript + Vite 控制台 | `Implemented` | `frontend/package.json`；2026-09-13 `npm run typecheck` / `npm run build` 通过 | — |
-| JWT + RBAC + 多租户 | `Partial` | `app/core/security.py`；`app/api/routes/auth.py`；`frontend/src/pages/Register.tsx`；`frontend/src/pages/Setup.tsx` | 公开注册加入 `default` 租户；系统管理员可撤销刷新令牌；无系统管理员时 `/setup` 只可用一次。邀请码、切换租户和资源级 ACL 仍未完成 |
+| JWT + RBAC + 多租户 | `Partial` | `app/models/membership.py`；`app/api/routes/invitations.py`；`frontend/src/pages/Invitations.tsx` | 已注册用户可凭邀请码加入其他租户，并在已加入时切换当前租户。成员角色尚未接入整份权限矩阵。资源级 ACL 仍 `Planned` |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
 

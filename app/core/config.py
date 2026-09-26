@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     # ── 嵌入模型（RAG 检索）──
     # 默认使用阿里通义千问（DashScope 兼容模式）：与 OpenAI 的 /embeddings 协议一致。
     # 因 DeepSeek 不提供嵌入接口，向量模型与对话模型可以是不同厂商。
-    RAG_ENABLED: bool = False  # 是否将检索上下文注入对话管线
+    RAG_ENABLED: bool = True  # 是否将检索上下文注入对话管线
     EMBEDDING_PROVIDER: str = "openai"  # openai | ollama | mock（千问走 openai 兼容模式）
     EMBEDDING_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     EMBEDDING_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock

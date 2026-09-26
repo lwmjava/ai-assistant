@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-09-25
+> 最后更新：2026-09-26
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -68,7 +68,7 @@
 - 默认 RAG：`RAG_BACKEND=native`
 - 默认向量库：`RAG_VECTOR_STORE=local`（闭环门槛通过前）
 - 正式向量库目标：Milvus（开发 Lite / 生产 2.4+，ADR-0002）；当前实现仍为 `Partial`
-- 默认 RAG 对话注入：`RAG_ENABLED=false`
+- 默认 RAG 对话注入：`RAG_ENABLED=true`。无真实 Embedding 时，开发环境用 Mock，只能证明链路，不能证明检索质量。生产环境缺少 Embedding 密钥时检索会失败。
 - 默认 Prompt Injection 行为：检测但不阻断，`SECURITY_BLOCK_ON_INJECTION=false`
 - Trace：当前以内存环形缓冲为主
 
@@ -375,7 +375,7 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。下一项见交付排期 B3，尚未拆进 `tasks.yaml`。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003` 与 `QA-001` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现。下一项是 `QA-002`。
 
 A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 

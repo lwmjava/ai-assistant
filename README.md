@@ -53,7 +53,7 @@ flowchart LR
     Tools --> MCP[MCP 工具注入]
 ```
 
-默认配置事实：`AGENT_ORCHESTRATION=self`，`RAG_BACKEND=native`，`RAG_VECTOR_STORE=local`，`RAG_ENABLED=false`，`SECURITY_BLOCK_ON_INJECTION=false`。正式向量库目标为 Milvus（ADR-0002，开发 Lite / 生产 2.4+）；第 5 节门槛通过前不改默认。Trace 以内存环形缓冲为主。无真实 Embedding 时 Mock 只能证明链路，不能证明检索质量。
+默认配置事实：`AGENT_ORCHESTRATION=self`，`RAG_BACKEND=native`，`RAG_VECTOR_STORE=local`，`RAG_ENABLED=true`，`SECURITY_BLOCK_ON_INJECTION=false`。正式向量库目标为 Milvus（ADR-0002，开发 Lite / 生产 2.4+）；第 5 节门槛通过前不改默认。Trace 以内存环形缓冲为主。无真实 Embedding 时 Mock 只能证明链路，不能证明检索质量。
 
 ### 最终目标架构（TARGET）
 
@@ -312,7 +312,7 @@ docker compose up -d --build
 | `LLM_BASE_URL` | 大模型 API 地址（兼容 OpenAI 协议均可） | `https://api.deepseek.com/v1` |
 | `LLM_API_KEY` | 大模型 API Key（为空时开发环境自动降级 Mock） | — |
 | `LLM_DEFAULT_MODEL` | 默认模型名 | `deepseek-chat` |
-| `RAG_ENABLED` | 是否启用 RAG 检索 | `false` |
+| `RAG_ENABLED` | 是否将检索上下文注入对话。无真实 Embedding 时，开发环境用 Mock，只能证明链路 | `true` |
 | `RAG_DROP_INJECTED_CHUNKS` | 检索后剔除高置信度注入分块 | `true` |
 | `RAG_RETRIEVAL_CANDIDATE_MULTIPLIER` | 检索过取倍数，供剔除后补位 | `3` |
 | `RAG_KB_SCOPE` | 知识库读范围：`tenant` / `uploader` | `tenant` |

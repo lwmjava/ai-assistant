@@ -6,6 +6,7 @@
 """
 
 import io
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -980,3 +981,63 @@ def test_build_retriever_respects_flag(session: Session) -> None:
         assert svc._build_retriever(session, user) is not None
     finally:
         settings.RAG_ENABLED = original
+
+
+def test_rag_enabled_field_defaults_to_on() -> None:
+    from app.core.config import Settings
+
+    assert Settings.model_fields["RAG_ENABLED"].default is True
+
+
+async def test_retriever_context_is_tenant_current_only(tmp_path: Path, monkeypatch) -> None:
+    from sqlmodel import SQLModel, create_engine
+
+    monkeypatch.setattr(settings, "RAG_EFFECTIVE_DATE_FILTER", False)
+    engine = create_engine(
+        f"sqlite:///{(tmp_path / 'retrieval-scope.db').as_posix()}",
+        connect_args={"check_same_thread": False},
+    )
+    SQLModel.metadata.create_all(engine)
+    session = Session(engine)
+    embedding = MockEmbeddingProvider(dim=64)
+    try:
+        own = RAGService(session, "tenant-current", embedding_provider=embedding)
+        other = RAGService(session, "tenant-other", embedding_provider=embedding)
+        await own.ingest_text(
+            "QA001CURRENT 本租户当前版月费 199 元。",
+            "当前版",
+            "current.txt",
+            "member-a",
+        )
+        stale = await own.ingest_text(
+            "QA001STALE 已被替换的旧月费 99 元。",
+            "旧版",
+            "stale.txt",
+            "member-a",
+        )
+        stale.is_current = False
+        session.add(stale)
+        session.commit()
+        deleted = await own.ingest_text(
+            "QA001DELETED 已删除的月费 1 元。",
+            "已删",
+            "deleted.txt",
+            "member-a",
+        )
+        deleted.deleted_at = datetime.now(UTC)
+        session.add(deleted)
+        session.commit()
+        await other.ingest_text(
+            "QA001FOREIGN 其他租户月费 888 元。",
+            "外租户",
+            "foreign.txt",
+            "member-b",
+        )
+
+        context = await own.make_retriever(top_k=8).retrieve("QA001CURRENT 月费", "")
+        assert "QA001CURRENT" in context
+        assert "QA001STALE" not in context
+        assert "QA001DELETED" not in context
+        assert "QA001FOREIGN" not in context
+    finally:
+        session.close()

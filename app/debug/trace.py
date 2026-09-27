@@ -14,12 +14,30 @@
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 
 
 def _trace_id() -> str:
     """生成短 trace ID。"""
     return uuid.uuid4().hex[:12]
+
+
+_TRACE_REDACTED = "（追踪内容已省略）"
+
+
+def sanitize_trace_text(text: str | None) -> str:
+    """清理会写入 Trace 的文本。清理失败时返回固定占位。"""
+    if not text:
+        return ""
+    try:
+        from app.agents.tools.sandbox.runtime import sanitize_host_paths
+        from app.security.input_filter import InputFilter
+        from app.security.log_sanitizer import LogSanitizer
+
+        cleaned = InputFilter().filter(text).sanitized_text
+        cleaned = LogSanitizer().sanitize(cleaned)
+        return sanitize_host_paths(cleaned)
+    except Exception:
+        return _TRACE_REDACTED
 
 
 @dataclass
@@ -79,9 +97,9 @@ class AgentTrace:
         self.started_at = self._now()
 
     def finish(self, error: str | None = None) -> None:
-        """标记追踪结束。"""
+        """标记追踪结束。异常说明先脱敏再保存。"""
         self.finished_at = self._now()
-        self.error = error
+        self.error = sanitize_trace_text(error) if error else error
 
     # ── 阶段事件 ──
 
@@ -110,21 +128,35 @@ class AgentTrace:
     def llm_call(self, model: str, *, prompt: str = "", response: str = "", latency_ms: float = 0.0, **extra) -> None:
         if not self.debug_mode:
             return
+        data: dict = {
+            "prompt_preview": sanitize_trace_text(prompt)[:500],
+            "response_preview": sanitize_trace_text(response)[:500],
+            "latency_ms": round(latency_ms, 2),
+        }
+        for key, value in extra.items():
+            data[key] = sanitize_trace_text(value)[:500] if isinstance(value, str) else value
         self.events.append(TraceEvent(
             type="llm_call",
             name=model,
             timestamp=self._now(),
-            data={
-                "prompt_preview": prompt[:500] if prompt else "",
-                "response_preview": response[:500] if response else "",
-                "latency_ms": round(latency_ms, 2),
-                **extra,
-            },
+            data=data,
         ))
 
     # ── 工具调用 ──
 
-    def tool_call(self, tool_name: str, *, args: dict | None = None, result: str = "", latency_ms: float = 0.0, **extra) -> None:
+    def tool_call(
+        self,
+        tool_name: str,
+        *,
+        args: dict | None = None,
+        result: str = "",
+        latency_ms: float = 0.0,
+        status: str = "executed",
+        round_no: int | None = None,
+        **extra,
+    ) -> None:
+        """记录工具名、状态、轮次和耗时。不保存参数、参数指纹、结果或错误原文。"""
+        del args, result, extra
         if not self.debug_mode:
             return
         self.events.append(TraceEvent(
@@ -132,10 +164,9 @@ class AgentTrace:
             name=tool_name,
             timestamp=self._now(),
             data={
-                "args": args or {},
-                "result_preview": result[:500] if result else "",
+                "status": status,
+                "round": round_no,
                 "latency_ms": round(latency_ms, 2),
-                **extra,
             },
         ))
 

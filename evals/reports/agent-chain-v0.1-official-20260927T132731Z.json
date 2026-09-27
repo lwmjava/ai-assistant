@@ -1,0 +1,128 @@
+{
+  "dataset_version": "0.1.0",
+  "dataset_hash": "69899cc091e4ee28cbc1972cce3d210c61510f594aa11547f3e23ac608dfb1d6",
+  "prompt_hash": "0242bef0d76d0c7ed0f7c31b495c025e70d31a71a4251c2fc24a1585af2fc803",
+  "prompt_version": "preflight-history-v1",
+  "evaluator_version": "agent-chain-eval-0.2.0",
+  "model": "deepseek-chat",
+  "temperature": 0,
+  "seed_supported": false,
+  "git_commit": "a4b7007eaa641671b74d544d96203103df92a430",
+  "mode": "official",
+  "route_accuracy": 1.0,
+  "followup_recall": 1.0,
+  "tool_selection_recall": 1.0,
+  "side_effects": {
+    "sandbox": 0,
+    "mcp": 0,
+    "network": 0,
+    "rag": 0,
+    "database": 0
+  },
+  "cases": [
+    {
+      "case_id": "agent-001",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO",
+      "tool_reply": "",
+      "predicted_tools": []
+    },
+    {
+      "case_id": "agent-002",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO",
+      "tool_reply": "",
+      "predicted_tools": []
+    },
+    {
+      "case_id": "agent-003",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": true,
+      "passed": true,
+      "raw_reply": "YES",
+      "tool_reply": "<tool_call>{\"name\": \"code_sandbox\", \"arguments\": {\"code\": \"def bubble_sort(arr):\\n    n = len(arr)\\n    for i in range(n):\\n        swapped = False\\n        for j in range(0, n - i - 1):\\n            if arr[j] > arr[j + 1]:\\n                arr[j], arr[j + 1] = arr[j + 1], arr[j]\\n                swapped = True\\n        if not swapped:\\n            break\\n    return arr\\n\\nif __name__ == '__main__':\\n    data = [64, 34, 25, 12, 22, 11, 90]\\n    print('排序前:', data)\\n    print('排序后:', bubble_sort(data))\", \"language\": \"python\"}}</tool_call>",
+      "predicted_tools": [
+        "code_sandbox"
+      ]
+    },
+    {
+      "case_id": "agent-004",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": true,
+      "passed": true,
+      "raw_reply": "YES",
+      "tool_reply": "<tool_call>{\"name\": \"code_sandbox\", \"arguments\": {\"code\": \"def bubble_sort(arr):\\n    n = len(arr)\\n    for i in range(n):\\n        for j in range(0, n - i - 1):\\n            if arr[j] > arr[j + 1]:\\n                arr[j], arr[j + 1] = arr[j + 1], arr[j]\\n    return arr\\n\\nprint(bubble_sort([5, 2, 9, 1, 5, 6]))\"}}</tool_call>",
+      "predicted_tools": [
+        "code_sandbox"
+      ]
+    },
+    {
+      "case_id": "agent-005",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "YES",
+      "tool_reply": "",
+      "predicted_tools": []
+    },
+    {
+      "case_id": "agent-006",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO",
+      "tool_reply": "",
+      "predicted_tools": []
+    },
+    {
+      "case_id": "agent-007",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO",
+      "tool_reply": "",
+      "predicted_tools": []
+    },
+    {
+      "case_id": "agent-008",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "YES",
+      "tool_reply": "",
+      "predicted_tools": []
+    },
+    {
+      "case_id": "agent-009",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO",
+      "tool_reply": "",
+      "predicted_tools": []
+    },
+    {
+      "case_id": "agent-010",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO",
+      "tool_reply": "",
+      "predicted_tools": []
+    }
+  ]
+}

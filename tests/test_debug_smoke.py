@@ -84,8 +84,9 @@ t.quality_gate(0.75, 0.6)
 
 assert len(t.events) == 2
 assert t.events[0].type == "tool_call"
-assert t.events[0].data["args"] == {"q": "hello"}
-assert t.events[0].data["result_preview"] == "search result"
+assert "args" not in t.events[0].data
+assert "result_preview" not in t.events[0].data
+assert t.events[0].data["status"] == "executed"
 assert t.events[0].data["latency_ms"] == 50.0
 
 assert t.events[1].type == "quality_gate"

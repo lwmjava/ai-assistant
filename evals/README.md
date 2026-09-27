@@ -47,3 +47,18 @@ pytest tests/eval/ -v                                # 数据集校验 + 指标 
 - ADR-0003 已 Accepted（选项 A）。`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后带未来日期的查询才检索 scheduled 预告。
 - 不得改写 `evals/reports/rag-v0.1-baseline-20260919.json`。
 - `RAG-006` 读路径默认 `RAG_KB_SCOPE=tenant`。脚本化 LLM 已覆盖注入文档拒工具；真实 LLM 拒答/Citation/`forbidden_answer_points` 未测。
+
+## Agent 链路
+
+| 路径 | 说明 |
+|---|---|
+| `evals/schemas/agent_chain_case.schema.json` | 多轮分流用例契约 |
+| `evals/datasets/agent-chain-v0.1/` | 10 条 Silver 用例，不是 Gold |
+| `scripts/run_agent_chain_eval.py` | 冒烟模式验证链路；正式模式调用真实模型做分流和工具选择 |
+
+```powershell
+python scripts/run_agent_chain_eval.py --mode smoke
+python scripts/run_agent_chain_eval.py --mode official
+```
+
+正式模式不创建会话，不连接检索、沙箱、MCP 或业务数据库。工具选择只解析模型输出，记在内存里，不执行工具。报告写入新文件，拒绝覆盖已有报告。冒烟结果不能当作分流或工具选择质量。

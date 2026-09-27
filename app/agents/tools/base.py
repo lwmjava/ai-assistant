@@ -13,8 +13,8 @@ import inspect
 import json
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,17 @@ class ToolCall:
 
     name: str
     arguments: dict
+
+
+@dataclass
+class ToolIntent:
+    """模型输出里的工具调用意图。
+
+    ``status`` 为 ``none``（没有调用）、``ok``（可执行）或 ``invalid``（有调用意图但格式错误）。
+    """
+
+    status: str
+    call: ToolCall | None = None
 
 
 @dataclass
@@ -104,26 +115,44 @@ class ToolRegistry:
         return f"[{call.name}] 参数={shown} 结果={observation}"
 
 
-def parse_tool_call(text: str) -> ToolCall | None:
-    """从模型输出中解析工具调用。
+def inspect_tool_call(text: str) -> ToolIntent:
+    """区分没有调用、有效调用和格式错误。
 
-    仅识别 ``<tool_call>`` 信封内的 JSON；若无法解析或无 ``name``，返回 None，
-    表示模型意在直接输出回答。
+    缺少闭合标签、多个信封、坏 JSON、名称不是非空字符串、参数不是对象，都算格式错误。
     """
-    match = _TOOL_CALL_PATTERN.search(text or "")
+    body = text or ""
+    opens = body.count("<tool_call>")
+    closes = body.count("</tool_call>")
+    if opens == 0 and closes == 0:
+        return ToolIntent("none")
+    if opens != 1 or closes != 1:
+        return ToolIntent("invalid")
+    match = _TOOL_CALL_PATTERN.search(body)
     if not match:
-        return None
-    raw = match.group(1).strip()
+        return ToolIntent("invalid")
     try:
-        data = json.loads(raw)
+        data = json.loads(match.group(1).strip())
     except json.JSONDecodeError:
-        return None
+        return ToolIntent("invalid")
     if not isinstance(data, dict):
-        return None
-    name = data.get("name") or data.get("tool")
-    if not name:
-        return None
-    args = data.get("arguments") or data.get("args") or {}
+        return ToolIntent("invalid")
+    name = data.get("name", data.get("tool"))
+    if not isinstance(name, str) or not name.strip():
+        return ToolIntent("invalid")
+    if "arguments" in data:
+        args = data["arguments"]
+    elif "args" in data:
+        args = data["args"]
+    else:
+        args = {}
     if not isinstance(args, dict):
+        return ToolIntent("invalid")
+    return ToolIntent("ok", ToolCall(name=name.strip(), arguments=args))
+
+
+def parse_tool_call(text: str) -> ToolCall | None:
+    """解析有效工具调用。没有调用或格式错误时返回 None。"""
+    intent = inspect_tool_call(text)
+    if intent.status != "ok":
         return None
-    return ToolCall(name=name, arguments=args)
+    return intent.call

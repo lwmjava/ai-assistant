@@ -32,6 +32,19 @@ logger = logging.getLogger(__name__)
 
 # 送入管线的历史轮次上限，避免上下文过长。
 _HISTORY_LIMIT = 20
+HISTORY_REDACTED = "（历史内容已省略）"
+
+
+def sanitize_history_text(text: str) -> str:
+    """脱敏历史正文。不做限流或注入检测，失败时不回退原文。"""
+    try:
+        from app.security.input_filter import InputFilter
+        from app.security.log_sanitizer import LogSanitizer
+
+        filtered = InputFilter().filter(text or "").sanitized_text
+        return LogSanitizer().sanitize(filtered)
+    except Exception:  # noqa: BLE001 — 脱敏失败必须隐藏原文
+        return HISTORY_REDACTED
 
 
 class ChatService:
@@ -117,7 +130,8 @@ class ChatService:
         """
         recent = [m for m in conv.messages if m.content][-_HISTORY_LIMIT:]
         return [
-            ChatMessage(role=ChatRole(m.role), content=m.content) for m in recent
+            ChatMessage(role=ChatRole(m.role), content=sanitize_history_text(m.content))
+            for m in recent
         ]
 
     async def _build_memory(
@@ -135,7 +149,7 @@ class ChatService:
             )
         try:
             all_messages = [
-                ChatMessage(role=ChatRole(m.role), content=m.content)
+                ChatMessage(role=ChatRole(m.role), content=sanitize_history_text(m.content))
                 for m in conv.messages
                 if m.content
             ]
@@ -523,7 +537,7 @@ class ChatService:
         lines: list[str] = []
         for m in sorted(conv.messages, key=lambda x: x.created_at):
             role_label = role_map.get(m.role, m.role)
-            lines.append(f"{role_label}：{m.content}")
+            lines.append(f"{role_label}：{sanitize_history_text(m.content)}")
         return "\n".join(lines)
 
     # ── 安全治理 ──────────────────────────────────

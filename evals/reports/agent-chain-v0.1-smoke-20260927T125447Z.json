@@ -1,0 +1,96 @@
+{
+  "dataset_version": "0.1.0",
+  "dataset_hash": "6acd492428a389841ce9a5c088b89e61f536260f0fd0a6f71cd26d9af5d88550",
+  "prompt_hash": "0242bef0d76d0c7ed0f7c31b495c025e70d31a71a4251c2fc24a1585af2fc803",
+  "prompt_version": "preflight-history-v1",
+  "evaluator_version": "agent-chain-eval-0.1.0",
+  "model": "smoke-intent",
+  "temperature": 0,
+  "seed_supported": false,
+  "git_commit": "a4b7007eaa641671b74d544d96203103df92a430",
+  "mode": "smoke",
+  "route_accuracy": 1.0,
+  "followup_recall": 1.0,
+  "cases": [
+    {
+      "case_id": "agent-001",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO"
+    },
+    {
+      "case_id": "agent-002",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO"
+    },
+    {
+      "case_id": "agent-003",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": true,
+      "passed": true,
+      "raw_reply": "YES"
+    },
+    {
+      "case_id": "agent-004",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": true,
+      "passed": true,
+      "raw_reply": "YES"
+    },
+    {
+      "case_id": "agent-005",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "YES"
+    },
+    {
+      "case_id": "agent-006",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO"
+    },
+    {
+      "case_id": "agent-007",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO"
+    },
+    {
+      "case_id": "agent-008",
+      "expected_route": "full",
+      "predicted_route": "full",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "YES"
+    },
+    {
+      "case_id": "agent-009",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO"
+    },
+    {
+      "case_id": "agent-010",
+      "expected_route": "short",
+      "predicted_route": "short",
+      "critical_followup": false,
+      "passed": true,
+      "raw_reply": "NO"
+    }
+  ]
+}

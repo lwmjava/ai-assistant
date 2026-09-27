@@ -9,12 +9,18 @@
   流式模式会在最终「响应」环节逐字吐出 token，并向前端广播各环节进度事件。
 """
 
+from __future__ import annotations
+
 import json
 import logging
+import re
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from app.debug.trace import AgentTrace
 
 from app.agents.prompts import (
     SYSTEM_ACT,
@@ -26,7 +32,7 @@ from app.agents.prompts import (
     SYSTEM_RESPOND,
     SYSTEM_UNDERSTAND,
 )
-from app.agents.tools.base import ToolRegistry, parse_tool_call
+from app.agents.tools.base import ToolIntent, ToolRegistry, inspect_tool_call
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.routing import LLMUnavailableError
@@ -35,6 +41,16 @@ from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_ca
 logger = logging.getLogger(__name__)
 
 _GENERIC_FAILURE = "抱歉，处理你的请求时出现问题，请稍后重试。"
+_DUPLICATE_OBSERVATION = "相同参数已执行过，请直接使用已有结果"
+_INVALID_CALL_OBSERVATION = "[工具调用失败] 调用格式无法解析"
+_DENIED_OBSERVATION = "[工具调用失败] 当前步骤不允许调用该工具。"
+_EXHAUSTED_DRAFT = "工具调用次数已用完，未能得到最终结果。"
+_EXHAUSTED_NOTE = "工具次数已用完，请根据已有结果写草稿，不要再调用工具。"
+_RECENT_MESSAGE_LIMIT = 6
+_PROTECTED_CHARS = 2000
+_OLDER_CHARS = 300
+_CONTENT_BUDGET = 4000
+_PREFLIGHT_WORD = re.compile(r"\s*(YES|NO)\b", re.IGNORECASE)
 
 
 def _failure_text(exc: Exception) -> str:
@@ -42,6 +58,132 @@ def _failure_text(exc: Exception) -> str:
     if isinstance(exc, LLMUnavailableError):
         return str(exc)
     return _GENERIC_FAILURE
+
+
+def _role_label(message: ChatMessage) -> str:
+    labels = {
+        ChatRole.USER: "用户",
+        ChatRole.ASSISTANT: "助手",
+        ChatRole.SYSTEM: "系统",
+    }
+    return labels.get(message.role, message.role.value)
+
+
+def _trim_ends(text: str, limit: int) -> str:
+    """超长文本保留首尾，省略标记放在中间。"""
+    if len(text) <= limit:
+        return text
+    omitted = len(text)
+    for _ in range(4):
+        marker = f"…（省略 {omitted} 字）…"
+        remain = limit - len(marker)
+        if remain < 2:
+            return text[:limit]
+        head = remain // 2
+        tail = remain - head
+        actual = len(text) - head - tail
+        if actual == omitted:
+            return text[:head] + marker + text[-tail:]
+        omitted = actual
+    marker = f"…（省略 {omitted} 字）…"
+    remain = max(2, limit - len(marker))
+    head = remain // 2
+    tail = remain - head
+    return text[:head] + marker + text[-tail:]
+
+
+def _as_history(history: Sequence[ChatMessage | dict]) -> list[ChatMessage]:
+    messages: list[ChatMessage] = []
+    for item in history:
+        if isinstance(item, ChatMessage):
+            messages.append(item)
+            continue
+        messages.append(ChatMessage(role=ChatRole(item["role"]), content=item["content"]))
+    return messages
+
+
+def _protected_indexes(messages: list[ChatMessage]) -> set[int]:
+    assistant_idx = next(
+        (index for index in range(len(messages) - 1, -1, -1) if messages[index].role == ChatRole.ASSISTANT),
+        None,
+    )
+    if assistant_idx is None:
+        return set()
+    user_idx = next(
+        (index for index in range(assistant_idx - 1, -1, -1) if messages[index].role == ChatRole.USER),
+        None,
+    )
+    protected = {assistant_idx}
+    if user_idx is not None:
+        protected.add(user_idx)
+    return protected
+
+
+def recent_dialogue(history: Sequence[ChatMessage | dict]) -> str:
+    """截取最近对话。保护最近一轮，内容预算不超过 4000 字。"""
+    messages = _as_history(history)[-_RECENT_MESSAGE_LIMIT:]
+    if not messages:
+        return "（无历史对话）"
+    protected = _protected_indexes(messages)
+    pieces: list[tuple[str, str, bool]] = []
+    for index, message in enumerate(messages):
+        limit = _PROTECTED_CHARS if index in protected else _OLDER_CHARS
+        pieces.append((_role_label(message), _trim_ends(message.content or "", limit), index in protected))
+
+    def content_length() -> int:
+        return sum(len(content) for _, content, _ in pieces)
+
+    while content_length() > _CONTENT_BUDGET:
+        drop = next((index for index, piece in enumerate(pieces) if not piece[2]), None)
+        if drop is None:
+            break
+        del pieces[drop]
+    if content_length() > _CONTENT_BUDGET:
+        protected_pieces = [piece for piece in pieces if piece[2]]
+        allowance = _CONTENT_BUDGET // max(1, len(protected_pieces))
+        pieces = [
+            (role, _trim_ends(content, allowance) if is_protected else content, is_protected)
+            for role, content, is_protected in pieces
+        ]
+    if not pieces:
+        return "（无历史对话）"
+    return "\n".join(f"{role}：{content}" for role, content, _ in pieces)
+
+
+def build_preflight_user_content(history: Sequence[ChatMessage | dict], user_input: str) -> str:
+    """构造分流模型看到的用户消息，不包含标准答案字段。"""
+    return f"## 最近对话\n{recent_dialogue(history)}\n\n## 用户最新消息\n{user_input}"
+
+
+def build_tool_choice_messages(history: Sequence[ChatMessage | dict], user_input: str) -> list[ChatMessage]:
+    """构造工具选择请求。只列出短路允许的三个工具，不执行它们。"""
+    names = "\n".join(f"- {name}" for name in sorted(_SHORT_PATH_TOOLS))
+    user = (
+        f"## 最近对话\n{recent_dialogue(history)}\n\n"
+        "## 可用外部工具\n"
+        f"{names}\n\n"
+        "如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
+        '<tool_call>{"name": "工具名", "arguments": {}}</tool_call>\n\n'
+        f"## 用户最新消息\n{user_input}"
+    )
+    return [
+        ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_ACT),
+        ChatMessage(role=ChatRole.USER, content=user),
+    ]
+
+
+def build_preflight_messages(history: Sequence[ChatMessage | dict], user_input: str) -> list[ChatMessage]:
+    """构造完整分流请求。调用方不得把 expected 字段放进 history 或 user_input。"""
+    return [
+        ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_PREFLOW),
+        ChatMessage(role=ChatRole.USER, content=build_preflight_user_content(history, user_input)),
+    ]
+
+
+def preflight_needs_full_pipeline(decision: str | None) -> bool:
+    """只有回复开头的一个词是 NO 才走短路，其余都走完整流程。"""
+    match = _PREFLIGHT_WORD.match(decision or "")
+    return not (match is not None and match.group(1).upper() == "NO")
 
 
 class Retriever(Protocol):
@@ -73,6 +215,7 @@ class AgentState:
     needs_full_pipeline: bool = True  # Preflight 意图短路：False 表示简单问题，跳过规划/检索/反思
     quality_score: float = 0.0  # QualityGate 最近一次质量评分
     revision: int = 0  # QualityGate 自纠错已执行的轮数
+    executed_tool_fingerprints: set[str] = field(default_factory=set)
 
 
 class AgentEvent:
@@ -84,6 +227,35 @@ class AgentEvent:
 
     def to_dict(self) -> dict:
         return {"type": self.type, "data": self.data}
+
+
+@dataclass
+class ExecutionPolicy:
+    """一次行动循环允许使用的工具。
+
+    ``allowed_tool_names`` 为 None 时沿用注册表里的全部工具。
+    提示词里的工具清单和执行前校验使用同一份策略。
+    """
+
+    allowed_tool_names: frozenset[str] | None = None
+    include_tools: bool = True
+
+
+_SHORT_PATH_TOOLS = frozenset({"calculator", "code_sandbox", "get_current_datetime"})
+_SHORT_PATH_POLICY = ExecutionPolicy(allowed_tool_names=_SHORT_PATH_TOOLS)
+
+
+def tool_fingerprint(name: str, arguments: dict) -> str:
+    """同一请求内按工具名和排序后的参数判断是否重复。"""
+    try:
+        return json.dumps(
+            {"arguments": arguments, "name": name},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    except TypeError:
+        return f"{name}:{arguments!r}"
 
 
 # 前四个环节（理解 / 规划 / 行动 / 反思）：(状态属性, 阶段名, 系统提示, 内容构造器)
@@ -110,7 +282,7 @@ class AgentPipeline:
         options: LLMOptions | None = None,
         retriever: Retriever | None = None,
         tools: ToolRegistry | None = None,
-        trace: "AgentTrace | None" = None,
+        trace: AgentTrace | None = None,
         intent_llm: LLMProvider | None = None,
     ) -> None:
         self.llm = llm
@@ -123,6 +295,7 @@ class AgentPipeline:
         self.skill_prompt_injection: str = ""
         # 调试追踪
         self.trace = trace
+        self._execution_policy = ExecutionPolicy()
 
     def _messages(self, system: str, user_content: str) -> list[ChatMessage]:
         return [
@@ -180,16 +353,31 @@ class AgentPipeline:
             "请按系统要求制定步骤计划。"
         )
 
+    def _tools_for_policy(self, policy: ExecutionPolicy) -> ToolRegistry | None:
+        if self.tools is None or not policy.include_tools:
+            return None
+        if policy.allowed_tool_names is None:
+            return self.tools
+        selected = [tool for tool in self.tools.all() if tool.name in policy.allowed_tool_names]
+        if not selected:
+            return None
+        return ToolRegistry(selected)
+
     def _build_act(self, state: AgentState) -> str:
         context = state.context or "（未接入外部检索，仅基于模型知识作答）"
+        policy = self._execution_policy
         tools_text = ""
-        if self.tools is not None:
-            tools_text = (
-                "## 可用外部工具\n"
-                + self.tools.describe()
-                + "\n\n如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
-                '<tool_call>{"name": "工具名", "arguments": {参数键值对}}</tool_call>'
-            )
+        if not policy.include_tools:
+            tools_text = _EXHAUSTED_NOTE
+        else:
+            registry = self._tools_for_policy(policy)
+            if registry is not None:
+                tools_text = (
+                    "## 可用外部工具\n"
+                    + registry.describe()
+                    + "\n\n如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
+                    '<tool_call>{"name": "工具名", "arguments": {参数键值对}}</tool_call>'
+                )
         tool_results = ""
         if state.tool_results:
             tool_results = "## 已调用工具结果\n" + "\n".join(state.tool_results)
@@ -198,6 +386,7 @@ class AgentPipeline:
             f"## 外部上下文\n{context}\n\n"
             f"{tools_text}\n\n"
             f"{tool_results}\n\n"
+            f"## 最近对话\n{recent_dialogue(state.history)}\n\n"
             f"## 用户消息\n{state.user_input}\n\n"
             "请按系统要求撰写回答草稿，或输出工具调用指令。"
         )
@@ -246,6 +435,7 @@ class AgentPipeline:
             else "（审查认为无需修正）"
         )
         return (
+            f"## 最近对话\n{recent_dialogue(state.history)}\n\n"
             f"## 用户消息\n{state.user_input}\n\n"
             f"## 回答草稿\n{state.draft}\n\n"
             f"## 审查意见\n{reflection}\n\n"
@@ -277,7 +467,7 @@ class AgentPipeline:
                 # 简单问题：跳过规划/检索/反思，直接行动 → 响应
                 if self.trace:
                     self.trace.stage_start("行动（短路）")
-                state.draft = await self._run_action_once(state)
+                state.draft = await self._run_action_loop(state, _SHORT_PATH_POLICY)
                 if self.trace:
                     self.trace.stage_end("行动（短路）")
                     self.trace.stage_start("响应")
@@ -338,13 +528,10 @@ class AgentPipeline:
         解析失败时默认走完整流程（不轻易短路），避免漏掉需要检索/推理的问题。
         """
         decision = await self.intent_llm.chat(
-            [
-                ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_PREFLOW),
-                ChatMessage(role=ChatRole.USER, content=state.user_input),
-            ],
+            build_preflight_messages(state.history, state.user_input),
             self.options,
         )
-        return "NO" not in (decision or "").upper()
+        return preflight_needs_full_pipeline(decision)
 
     async def _quality_gate_loop(self, state: AgentState) -> str:
         """QualityGate 自纠错：低于阈值则把评审意见回灌「行动」并重跑，至多 N 轮。"""
@@ -394,16 +581,96 @@ class AgentPipeline:
             "请基于上述要点给出具体修正方向（仅要点，不要重写整段）。"
         )
 
-    async def _run_action_loop(self, state: AgentState) -> str:
-        """执行「行动」环节：如需工具则循环调用，直至产出最终草稿。"""
-        draft = ""
-        for _ in range(self.max_tool_rounds):
+    def _record_tool_trace(self, name: str, status: str, round_no: int, latency_ms: float) -> None:
+        if self.trace is None:
+            return
+        self.trace.tool_call(name, status=status, round_no=round_no, latency_ms=latency_ms)
+
+    async def _finalize_without_tools(self, state: AgentState) -> str:
+        """轮次用完或需要收尾时，再做一次不列工具的行动。"""
+        saved = self._execution_policy
+        self._execution_policy = ExecutionPolicy(
+            allowed_tool_names=saved.allowed_tool_names,
+            include_tools=False,
+        )
+        try:
             draft = await self._run_action_once(state)
-            call = parse_tool_call(draft)
-            if call is None:
-                break
-            await self._finish_tool(state, call)
-        return draft
+        finally:
+            self._execution_policy = saved
+        self._record_tool_trace("tool", "exhausted", max(self.max_tool_rounds, 0), 0.0)
+        if "<tool_call>" in (draft or ""):
+            return _EXHAUSTED_DRAFT
+        return draft or ""
+
+    def _reject_tool_call(self, state: AgentState, intent: ToolIntent, policy: ExecutionPolicy) -> str | None:
+        """返回 skip、invalid、denied 或 None。None 表示可以执行。"""
+        if intent.status == "invalid" or intent.call is None:
+            state.tool_results.append(_INVALID_CALL_OBSERVATION)
+            return "invalid"
+        call = intent.call
+        if tool_fingerprint(call.name, call.arguments) in state.executed_tool_fingerprints:
+            state.tool_results.append(_DUPLICATE_OBSERVATION)
+            return "skip"
+        if policy.allowed_tool_names is not None and call.name not in policy.allowed_tool_names:
+            state.tool_results.append(_DENIED_OBSERVATION)
+            return "denied"
+        return None
+
+    async def _iter_action_loop(
+        self,
+        state: AgentState,
+        execution_policy: ExecutionPolicy | None = None,
+    ) -> AsyncIterator[AgentEvent]:
+        """产出 tool 与 code_result，并把草稿写进 state.draft。"""
+        policy = execution_policy or ExecutionPolicy()
+        self._execution_policy = policy
+        try:
+            if self.max_tool_rounds <= 0:
+                state.draft = await self._finalize_without_tools(state)
+                return
+            wrap_up = False
+            for round_no in range(1, self.max_tool_rounds + 1):
+                state.draft = await self._run_action_once(state)
+                intent = inspect_tool_call(state.draft)
+                if intent.status == "none":
+                    return
+                decision = self._reject_tool_call(state, intent, policy)
+                if decision == "skip":
+                    self._record_tool_trace(intent.call.name if intent.call else "tool", "skipped", round_no, 0.0)
+                    wrap_up = True
+                    break
+                if decision is not None:
+                    trace_name = intent.call.name if intent.call else "tool"
+                    status = "skipped" if decision == "denied" else "invalid"
+                    self._record_tool_trace(trace_name, status, round_no, 0.0)
+                    wrap_up = True
+                    continue
+                call = intent.call
+                if call is None:
+                    continue
+                yield AgentEvent("tool", f"调用工具：{call.name}")
+                started = time.monotonic()
+                fresh = await self._finish_tool(state, call)
+                latency_ms = (time.monotonic() - started) * 1000
+                state.executed_tool_fingerprints.add(tool_fingerprint(call.name, call.arguments))
+                self._record_tool_trace(call.name, "executed", round_no, latency_ms)
+                for item in fresh:
+                    yield AgentEvent("code_result", json.dumps(item, ensure_ascii=False))
+                wrap_up = True
+            if wrap_up and inspect_tool_call(state.draft).status != "none":
+                state.draft = await self._finalize_without_tools(state)
+        finally:
+            self._execution_policy = ExecutionPolicy()
+
+    async def _run_action_loop(
+        self,
+        state: AgentState,
+        execution_policy: ExecutionPolicy | None = None,
+    ) -> str:
+        """执行行动循环并返回草稿。Supervisor 继续按字符串调用。"""
+        async for _event in self._iter_action_loop(state, execution_policy):
+            pass
+        return state.draft
 
     async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
         """流式执行：广播阶段进度事件，最终环节逐字吐出 token。"""
@@ -418,7 +685,8 @@ class AgentPipeline:
             state.needs_full_pipeline = await self._needs_plan(state)
             if not state.needs_full_pipeline:
                 yield AgentEvent("stage", "行动")
-                state.draft = await self._run_action_once(state)
+                async for event in self._iter_action_loop(state, _SHORT_PATH_POLICY):
+                    yield event
                 yield AgentEvent("stage", "响应")
                 chunks: list[str] = []
                 async for delta in self.llm.stream_chat(
@@ -440,16 +708,8 @@ class AgentPipeline:
             await self._fill_retrieval(state)
             # 5. 行动
             yield AgentEvent("stage", "行动")
-            draft = ""
-            for _ in range(self.max_tool_rounds):
-                draft = await self._run_action_once(state)
-                call = parse_tool_call(draft)
-                if call is None:
-                    break
-                yield AgentEvent("tool", f"调用工具：{call.name}")
-                for item in await self._finish_tool(state, call):
-                    yield AgentEvent("code_result", json.dumps(item, ensure_ascii=False))
-            state.draft = draft
+            async for event in self._iter_action_loop(state):
+                yield event
             # 5b. QualityGate 自纠错
             if settings.AGENT_QUALITY_GATE_ENABLED:
                 for _ in range(max(0, settings.AGENT_MAX_REVISIONS)):
@@ -462,17 +722,8 @@ class AgentPipeline:
                         SYSTEM_QUALITY_CRITIQUE, "_build_critique", state
                     )
                     state.context = (state.context + "\n" + critique).strip()
-                    new_draft = ""
-                    for _ in range(self.max_tool_rounds):
-                        new_draft = await self._run_action_once(state)
-                        call = parse_tool_call(new_draft)
-                        if call is None:
-                            break
-                        for item in await self._finish_tool(state, call):
-                            yield AgentEvent(
-                                "code_result", json.dumps(item, ensure_ascii=False)
-                            )
-                    state.draft = new_draft
+                    async for event in self._iter_action_loop(state):
+                        yield event
                     state.revision += 1
             # 6. 反思
             yield AgentEvent("stage", "反思")

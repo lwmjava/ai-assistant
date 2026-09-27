@@ -1,0 +1,133 @@
+[
+  {
+    "case_id": "agent-001",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [],
+    "user_input": "你好",
+    "expected_route": "short",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["greeting"]
+  },
+  {
+    "case_id": "agent-002",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [],
+    "user_input": "在吗",
+    "expected_route": "short",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["greeting"]
+  },
+  {
+    "case_id": "agent-003",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [
+      {"role": "user", "content": "请使用 python 写冒泡排序，并调用 code_sandbox 执行，不要只把代码写出来。"},
+      {"role": "assistant", "content": "这个要求和只写代码有冲突。请选择：\n1. 写入沙箱并执行\n2. 只解释算法"}
+    ],
+    "user_input": "1",
+    "expected_route": "full",
+    "expected_tools": ["code_sandbox"],
+    "critical_followup": true,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["followup", "options"]
+  },
+  {
+    "case_id": "agent-004",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [
+      {"role": "user", "content": "请调用 code_sandbox 运行刚才那段冒泡排序。"},
+      {"role": "assistant", "content": "确认后我就执行。回复好的即可继续。"}
+    ],
+    "user_input": "好的",
+    "expected_route": "full",
+    "expected_tools": ["code_sandbox"],
+    "critical_followup": true,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["followup", "confirm"]
+  },
+  {
+    "case_id": "agent-005",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [],
+    "user_input": "请比较 TCP 和 UDP 的可靠性，并给出企业内网选型建议。",
+    "expected_route": "full",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["reasoning"]
+  },
+  {
+    "case_id": "agent-006",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [],
+    "user_input": "一加一等于几",
+    "expected_route": "short",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["common-sense"]
+  },
+  {
+    "case_id": "agent-007",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [],
+    "user_input": "什么是质数，用一句话回答",
+    "expected_route": "short",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["common-sense"]
+  },
+  {
+    "case_id": "agent-008",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [],
+    "user_input": "请把排查演示订单支付失败拆成可执行步骤，并说明每步要查什么。",
+    "expected_route": "full",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["planning"]
+  },
+  {
+    "case_id": "agent-009",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [
+      {"role": "user", "content": "今天天气真好"},
+      {"role": "assistant", "content": "是啊，适合出去走走。"}
+    ],
+    "user_input": "哈哈",
+    "expected_route": "short",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["smalltalk"]
+  },
+  {
+    "case_id": "agent-010",
+    "dataset_version": "0.1.0",
+    "tier": "silver",
+    "synthetic": true,
+    "history": [],
+    "user_input": "谢谢",
+    "expected_route": "short",
+    "critical_followup": false,
+    "provenance": {"generator": "agent-chain-plan/cursor", "generated_at": "2026-09-27", "review_status": "silver"},
+    "tags": ["smalltalk"]
+  }
+]

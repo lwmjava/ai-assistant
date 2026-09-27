@@ -3773,3 +3773,261 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
+  - id: "AGT-001"
+    title: "意图分流看见上一轮，并只认 YES 或 NO"
+    status: "done"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "意图分流只看最新一句，用户回复上一轮选项时被判成简单问题；回复里任意位置出现 NO 就短路。"
+      facts:
+        - claim: "分流请求只含 state.user_input；结果用 \"NO\" not in 判断。"
+          evidence: "app/agents/pipeline.py _needs_plan"
+        - claim: "拆分与验收见计划。"
+          evidence: "docs/plans/plan_agent_chain_fix.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_agent_chain_fix.md"
+        - "docs/plans/implementation_agt_001.md"
+        - "app/agents/pipeline.py"
+        - "app/agents/prompts.py"
+        - "app/services/chat_service.py"
+        - "tests/"
+        - "evals/README.md"
+        - "evals/schemas/agent_chain_case.schema.json"
+        - "evals/datasets/agent-chain-v0.1/"
+        - "evals/reports/agent-chain-v0.1-*.json"
+        - "scripts/run_agent_chain_eval.py"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "纯函数历史脱敏 helper：无条件执行 InputFilter 与 LogSanitizer，不做限流/注入检测，失败时不得回退原文"
+        - "最近对话截取函数：保护最近一轮，最多 6 条；保留首尾；内容总预算 4000 字"
+        - "分流请求带最近对话"
+        - "只看回复开头一个词，NO 才短路"
+        - "Agent Evaluation Schema、数据集、index、独立运行器和机器可读报告"
+        - "docs/plans/implementation_agt_001.md"
+      non_goals:
+        - "不改路由和兜底链"
+        - "不新增配置项"
+        - "不改理解阶段 Prompt 结构；只脱敏历史内容"
+        - "不改规划、检索的输入结构"
+        - "不改 Supervisor"
+    acceptance:
+      - "历史中的手机号、Token 和密钥哨兵不进入 Memory 压缩、任一 Agent Prompt 或异步反思；正常与回退路径都覆盖"
+      - "上一轮给出选项时，分流请求里能看到选项"
+      - "助手回复超过 2000 字、选项在末尾时，分流请求里仍能看到选项"
+      - "最近一轮两条内容都接近 2000 字时均保留首尾，内容预算不超过 4000 字"
+      - "NOT SURE、NONE、I don't know、空串走完整流程；NO、NO。、no 走短路"
+      - "无历史的你好仍走短路"
+      - "真实模型报告记录数据集、Prompt hash、模型/配置/评测器版本和 temperature=0；follow-up recall=100%，route accuracy>=90%"
+      - "Evaluation 不构建 ChatService，不连接 MCP/RAG/网络/沙箱或业务数据库；报告拒绝覆盖"
+    risk:
+      level: "L1"
+      side_effect: "agent-intent-routing"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "选项续答"
+        - "开头词解析"
+        - "问候短路不变"
+      commands:
+        - "pytest tests/test_agent_chain.py tests/test_supervisor.py tests/test_tools.py tests/test_llm_route.py tests/test_agent.py tests/eval/test_rag006_pipeline.py -v"
+        - "pytest tests/test_chat.py tests/test_chat_controls.py tests/test_workflow.py tests/test_sandbox.py -v"
+        - "pytest"
+        - "pytest tests/eval/test_agent_chain_dataset.py -v"
+        - "ruff check app/agents/pipeline.py app/agents/prompts.py app/services/chat_service.py tests/test_agent_chain.py tests/eval/test_agent_chain_dataset.py scripts/run_agent_chain_eval.py"
+        - "mypy app/"
+        - "python scripts/run_agent_chain_eval.py --mode smoke"
+        - "python scripts/run_agent_chain_eval.py --mode official"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AGT-002"
+    title: "共享工具循环与执行护栏"
+    status: "done"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "AGT-001"
+    context:
+      problem: "工具循环有四份近似副本；重复和格式错误调用缺少护栏；轮次用完时调用指令成为草稿；工具和 LLM Trace 可能记录敏感内容。"
+      facts:
+        - claim: "_run_action_loop、流式行动循环和质量门循环都在轮次用完后保留最后一次输出。"
+          evidence: "app/agents/pipeline.py"
+        - claim: "parse_tool_call 遇到坏 JSON 返回 None，循环把原文当最终草稿。"
+          evidence: "app/agents/tools/base.py"
+        - claim: "Trace 当前保存 LLM Prompt/Response 与工具参数/结果预览。"
+          evidence: "app/debug/trace.py"
+        - claim: "拆分与验收见计划。"
+          evidence: "docs/plans/plan_agent_chain_fix.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_agent_chain_fix.md"
+        - "docs/plans/implementation_agt_002.md"
+        - "app/agents/pipeline.py"
+        - "app/agents/prompts.py"
+        - "app/agents/tools/base.py"
+        - "app/debug/trace.py"
+        - "tests/"
+        - "evals/README.md"
+        - "evals/schemas/agent_chain_case.schema.json"
+        - "evals/datasets/agent-chain-v0.1/"
+        - "evals/reports/agent-chain-v0.1-*.json"
+        - "scripts/run_agent_chain_eval.py"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "_iter_action_loop(state, execution_policy) 产出事件并写 state.draft；_run_action_loop 保留返回字符串契约"
+        - "Prompt 工具清单与执行前硬校验共用显式 allowed_tool_names"
+        - "AgentState 保存请求级工具指纹，覆盖 QualityGate 重跑"
+        - "解析、重复调用、轮次耗尽和 max_tool_rounds<=0 护栏"
+        - "LLM 预览和异常 Trace 统一脱敏并清理主机路径；工具 Trace 不记录参数、指纹或结果"
+        - "docs/plans/implementation_agt_002.md"
+      non_goals:
+        - "本任务不启用短路工具循环"
+        - "不改 AGENT_MAX_TOOL_ROUNDS 默认值"
+        - "不做跨请求熔断"
+        - "不改 Supervisor 的事件接口"
+        - "不给流式接口补 Trace"
+    acceptance:
+      - "重复同一调用时工具只执行 1 次，模型调用不超过首次加一次重复加一次收尾，回答无 <tool_call>"
+      - "初次行动执行过的调用在 QualityGate 重跑时再次出现，整次请求仍只执行 1 次"
+      - "参数各不相同时执行次数等于上限，回答无 <tool_call>"
+      - "坏 JSON、非法名称/参数、缺失闭合标签和多个信封不执行，回答无 <tool_call>"
+      - "max_tool_rounds=0 时工具不执行且草稿非空"
+      - "流式质量门循环里的工具调用发出 tool 事件"
+      - "_run_action_loop 仍返回字符串，Supervisor 现有调用契约不变"
+      - "Trace 的 LLM、工具和异常事件不含手机号、Token、密钥或主机路径哨兵；工具事件没有参数值和结果字段"
+    risk:
+      level: "L1"
+      side_effect: "agent-tool-loop-guard"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "重复调用与 QualityGate 请求级去重"
+        - "格式错误的调用"
+        - "轮次用完与 max_tool_rounds=0"
+        - "正常一次调用"
+        - "共享循环一次性、流式和 Supervisor 契约"
+        - "全 Trace 脱敏"
+      commands:
+        - "pytest tests/test_agent_chain.py tests/test_supervisor.py tests/test_tools.py tests/test_llm_route.py tests/test_agent.py tests/eval/test_rag006_pipeline.py -v"
+        - "pytest tests/test_chat.py tests/test_chat_controls.py tests/test_workflow.py tests/test_sandbox.py -v"
+        - "pytest"
+        - "pytest tests/eval/test_agent_chain_dataset.py -v"
+        - "ruff check app/agents/pipeline.py app/agents/prompts.py app/agents/tools/base.py app/debug/trace.py tests/test_agent_chain.py tests/eval/test_agent_chain_dataset.py scripts/run_agent_chain_eval.py"
+        - "mypy app/"
+        - "python scripts/run_agent_chain_eval.py --mode smoke"
+        - "python scripts/run_agent_chain_eval.py --mode official"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AGT-003"
+    title: "短路路径带上历史，并执行安全工具"
+    status: "done"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "AGT-002"
+    context:
+      problem: "行动与最终回复的提示不带历史；短路路径只调一次行动，工具调用不执行；直接复用完整注册表会暴露未分级 MCP 工具。"
+      facts:
+        - claim: "_build_act、_build_respond 只含本轮用户消息；短路分支调用 _run_action_once。"
+          evidence: "app/agents/pipeline.py"
+        - claim: "Tool 和 MCP 适配器没有风险、权限、副作用或审批字段。"
+          evidence: "app/agents/tools/base.py；app/mcp/adapter.py"
+        - claim: "reject_untrusted_tool_call 看整段 state.context 与最新用户消息。"
+          evidence: "app/rag/context_merge.py"
+        - claim: "拆分与验收见计划。"
+          evidence: "docs/plans/plan_agent_chain_fix.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_agent_chain_fix.md"
+        - "docs/plans/implementation_agt_003.md"
+        - "app/agents/pipeline.py"
+        - "tests/"
+        - "evals/README.md"
+        - "evals/schemas/agent_chain_case.schema.json"
+        - "evals/datasets/agent-chain-v0.1/"
+        - "evals/reports/agent-chain-v0.1-*.json"
+        - "scripts/run_agent_chain_eval.py"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "行动与最终回复带最近对话一节"
+        - "短路路径使用 AGT-002 共享循环"
+        - "短路 Prompt 与执行层只允许 calculator、code_sandbox、get_current_datetime"
+        - "真实模型工具选择 Evaluation 使用内存 recording fake"
+        - "docs/plans/implementation_agt_003.md"
+      non_goals:
+        - "不把历史写进 state.context"
+        - "不改检索查询和不可信资料拦截规则"
+        - "不改 Supervisor 和前端"
+        - "不建立完整 Tool 风险模型"
+    acceptance:
+      - "上一轮给出选项、用户回 1 时，完整流程与短路都执行 code_sandbox 并有 code_result，结果落库"
+      - "上一轮用户消息含 1500 字代码时，行动提示里的代码完整"
+      - "短路无工具调用时模型调用次数不变"
+      - "短路白名单工具可执行；web_fetch、MCP 和未知工具不展示且执行时被拒绝"
+      - "检索不可信内容点名工具的拦截仍生效"
+      - "官方 Evaluation 只调用真实 LLM；真实沙箱、MCP、网络、RAG 和数据库执行/写入计数均为 0"
+      - "Evaluation 报告使用新文件且拒绝覆盖已有报告"
+    risk:
+      level: "L1"
+      side_effect: "agent-short-path-tools"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "选项续答执行工具"
+        - "长代码不截断"
+        - "短路调用次数"
+        - "短路工具白名单与拒绝"
+        - "不可信工具拦截"
+        - "无副作用真实模型 Evaluation"
+      commands:
+        - "pytest tests/test_agent_chain.py tests/test_supervisor.py tests/test_tools.py tests/test_llm_route.py tests/test_agent.py tests/eval/test_rag006_pipeline.py -v"
+        - "pytest tests/test_chat.py tests/test_chat_controls.py tests/test_workflow.py tests/test_sandbox.py -v"
+        - "pytest"
+        - "pytest tests/eval/test_agent_chain_dataset.py -v"
+        - "ruff check app/agents/pipeline.py tests/test_agent_chain.py tests/eval/test_agent_chain_dataset.py scripts/run_agent_chain_eval.py"
+        - "mypy app/"
+        - "python scripts/run_agent_chain_eval.py --mode smoke"
+        - "python scripts/run_agent_chain_eval.py --mode official"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false

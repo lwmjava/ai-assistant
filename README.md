@@ -238,10 +238,10 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 租户 | `PATCH` | `/api/admin/tenants/{id}` | 修改未停用租户的名称 |
 | 租户 | `POST` | `/api/admin/tenants/{id}/deactivate` | 停用租户；当前在该租户中的成员不能继续访问 |
 | 系统 | `GET` | `/api/admin/system/status` | 系统管理员查看数据库、向量库、版本和启动时间 |
-| 对话 | `POST` | `/api/chat` | 非流式对话 |
-| 对话 | `POST` | `/api/chat/stream` | SSE 流式对话 |
+| 对话 | `POST` | `/api/chat` | 非流式对话。响应含 `sources` 与 `code_results`（代码执行的 `status`、`stdout`、`reason`，不含宿主机路径） |
+| 对话 | `POST` | `/api/chat/stream` | SSE 流式对话。`code_result` 事件带同结构的单次执行结果 |
 | 对话 | `GET` | `/api/chat/conversations` | 会话列表 |
-| 对话 | `GET` | `/api/chat/conversations/{id}` | 会话详情（含消息） |
+| 对话 | `GET` | `/api/chat/conversations/{id}` | 会话详情。助手消息含 `code_results`，刷新后仍在 |
 | 对话 | `PATCH` | `/api/chat/conversations/{id}` | 重命名会话（请求体只有 `title`） |
 | 对话 | `DELETE` | `/api/chat/conversations/{id}` | 删除会话 |
 | 对话 | `GET` | `/api/chat/tools` | 可用工具列表 |

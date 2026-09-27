@@ -7,6 +7,7 @@
  * - `token`：增量文本
  * - `tool`：工具调用提示
  * - `sources`：检索来源列表，不拼进回复正文
+ * - `code_result`：一次代码执行的标准输出或失败原因，不拼进回复正文
  * - `done`：携带 `state.answer`
  * - `error`：安全拦截或管线异常
  * - `conversation`：会话编号。新建会话时页面靠它在断线后拉取，不再按更新时间猜测。
@@ -21,7 +22,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { streamPost } from '@/lib/sse'
-import type { SourceRef, StreamEventType } from '@/types/api'
+import type { CodeResult, SourceRef, StreamEventType } from '@/types/api'
 import { getAccessToken } from '@/store/auth'
 
 export interface StreamSnapshot {
@@ -33,6 +34,7 @@ export interface StreamSnapshot {
   text: string
   tools: string[]
   sources: SourceRef[]
+  codeResults: CodeResult[]
   error: string | null
   /** 用户点击了停止。已看到的文字留下，不按网络错误处理。 */
   stoppedByUser: boolean
@@ -47,6 +49,7 @@ const EMPTY: StreamSnapshot = {
   text: '',
   tools: [],
   sources: [],
+  codeResults: [],
   error: null,
   stoppedByUser: false,
   interrupted: false,
@@ -59,6 +62,17 @@ export interface SendOptions {
   onConversation?: (conversationId: string) => void
   /** 后端流式响应在 done 前已落库。成功后由调用方刷新详情。 */
   onFinished?: (text: string) => void
+}
+
+function asCodeResult(data: unknown): CodeResult | null {
+  if (!data || typeof data !== 'object') return null
+  const row = data as { status?: unknown; stdout?: unknown; reason?: unknown }
+  if (row.status !== 'ok' && row.status !== 'error' && row.status !== 'timeout') return null
+  return {
+    status: row.status,
+    stdout: typeof row.stdout === 'string' ? row.stdout : '',
+    reason: typeof row.reason === 'string' ? row.reason : '',
+  }
 }
 
 function asSources(data: unknown): SourceRef[] {
@@ -134,6 +148,13 @@ export function useChatStream() {
             if (type === 'sources') {
               const sources = asSources(payload.data)
               setSnapshot((prev) => ({ ...prev, sources }))
+              return
+            }
+
+            if (type === 'code_result') {
+              const item = asCodeResult(payload.data)
+              if (!item) return
+              setSnapshot((prev) => ({ ...prev, codeResults: [...prev.codeResults, item] }))
               return
             }
 

@@ -8,13 +8,14 @@ import { Bot, UserRound } from 'lucide-react'
 import { StageTracker } from './StageTracker'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/cn'
-import type { MessageOut, SourceRef } from '@/types/api'
+import type { CodeResult, MessageOut, SourceRef } from '@/types/api'
 
 export interface MessageListProps {
   messages: MessageOut[]
   /** 流式中的助手文本（未落库，作为临时气泡渲染）。 */
   streamingText: string
   streamingSources?: SourceRef[]
+  streamingCodeResults?: CodeResult[]
   stageStages: string[]
   currentStage: string | null
   tools: string[]
@@ -115,6 +116,42 @@ function sourceLabel(source: SourceRef): string {
   return parts.join(' · ')
 }
 
+function hideHostPaths(text: string): string {
+  return text
+    .replace(/\\\\\?[^\s"']+/g, '<sandbox>')
+    .replace(/\\\\[^\s"']+/g, '<sandbox>')
+    .replace(/(?<![A-Za-z])[A-Za-z]:[\\/][^\s"']*/g, '<sandbox>')
+    .replace(/(?<![\w:/])\/(?!\/)[^\s"']*/g, '<sandbox>')
+}
+
+function CodeResults({ results }: { results?: CodeResult[] }) {
+  if (!results?.length) return null
+  return (
+    <div className="mt-2 space-y-2">
+      {results.map((result, index) => {
+        const stdout = hideHostPaths(result.stdout || '')
+        const reason = hideHostPaths(result.reason || '')
+        const title =
+          result.status === 'timeout' ? '执行超时' : result.status === 'error' ? '执行失败' : '标准输出'
+        return (
+          <div key={`${result.status}-${index}`} className="rounded-lg border border-border bg-surface-2/70 px-3 py-2">
+            <p className="text-xs text-text-muted">{title}</p>
+            {result.status === 'ok' && !stdout.trim() ? (
+              <p className="mt-1 text-sm text-text-faint">没有标准输出</p>
+            ) : null}
+            {stdout.trim() ? (
+              <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-sm text-text">{stdout}</pre>
+            ) : null}
+            {result.status !== 'ok' && reason ? (
+              <p className="mt-1 text-sm text-text">{reason}</p>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function SourceNotes({ sources }: { sources?: SourceRef[] }) {
   if (!sources?.length) return null
   return (
@@ -132,6 +169,7 @@ export function MessageList({
   messages,
   streamingText,
   streamingSources = [],
+  streamingCodeResults = [],
   stageStages,
   currentStage,
   tools,
@@ -169,6 +207,7 @@ export function MessageList({
                 <p className="mt-2 text-xs text-text-faint">已停止</p>
               )}
               <SourceNotes sources={m.sources} />
+              <CodeResults results={m.code_results} />
             </>
           ) : (
             <div className="markdown">{m.content}</div>
@@ -194,13 +233,22 @@ export function MessageList({
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
                   </div>
                   <SourceNotes sources={streamingSources} />
+                  <CodeResults results={streamingCodeResults} />
                   {stopped && <p className="mt-2 text-xs text-text-faint">已停止</p>}
                 </>
               ) : stopped ? (
-                <p className="text-sm text-text-faint">已停止，没有生成内容</p>
+                <>
+                  <CodeResults results={streamingCodeResults} />
+                  <p className="text-sm text-text-faint">已停止，没有生成内容</p>
+                </>
               ) : streaming ? (
-                <p className="text-sm text-text-faint">正在思考…</p>
-              ) : null}
+                <>
+                  <CodeResults results={streamingCodeResults} />
+                  <p className="text-sm text-text-faint">正在思考…</p>
+                </>
+              ) : (
+                <CodeResults results={streamingCodeResults} />
+              )}
               {interrupted && (
                 <div className="space-y-2">
                   <p className="text-sm text-text-muted">{interruptTitle}</p>

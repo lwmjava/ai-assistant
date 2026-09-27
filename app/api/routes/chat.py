@@ -45,6 +45,14 @@ class SourceOut(BaseModel):
     section: str | None = None
 
 
+class CodeResultOut(BaseModel):
+    """一次代码执行给界面的结果。不含宿主机路径。"""
+
+    status: str
+    stdout: str = ""
+    reason: str = ""
+
+
 class ChatResponse(BaseModel):
     """非流式对话响应。"""
 
@@ -52,6 +60,7 @@ class ChatResponse(BaseModel):
     reply: str
     model: str | None = None
     sources: list[SourceOut] = []
+    code_results: list[CodeResultOut] = []
 
 
 class ConversationOut(BaseModel):
@@ -74,6 +83,7 @@ class MessageOut(BaseModel):
     model: str | None
     created_at: str
     sources: list[SourceOut] = []
+    code_results: list[CodeResultOut] = []
     # complete：正常写完。stopped：生成已停下，正文不是完整回复。
     status: str = "complete"
 
@@ -109,6 +119,37 @@ def _parse_sources(raw: str | None) -> list[SourceOut]:
     return sources
 
 
+def _parse_code_results(raw: str | None) -> list[CodeResultOut]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    results: list[CodeResultOut] = []
+    for item in parsed:
+        if not isinstance(item, dict) or not item.get("status"):
+            continue
+        results.append(
+            CodeResultOut(
+                status=str(item.get("status")),
+                stdout=str(item.get("stdout") or ""),
+                reason=str(item.get("reason") or ""),
+            )
+        )
+    return results
+
+
+def _latest_assistant_code_results(conv: Conversation) -> list[CodeResultOut]:
+    assistants = [message for message in conv.messages if message.role == "assistant"]
+    if not assistants:
+        return []
+    latest = max(assistants, key=lambda message: message.created_at)
+    return _parse_code_results(latest.code_results)
+
+
 def _latest_assistant_sources(conv: Conversation) -> list[SourceOut]:
     assistants = [message for message in conv.messages if message.role == "assistant"]
     if not assistants:
@@ -137,6 +178,7 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
             model=m.model,
             created_at=m.created_at.isoformat(),
             sources=_parse_sources(m.sources),
+            code_results=_parse_code_results(m.code_results),
             status=m.status or "complete",
         )
         for m in sorted(conv.messages, key=lambda x: x.created_at)
@@ -169,6 +211,7 @@ async def chat(
         reply=reply,
         model=getattr(_service.llm, "model", None),
         sources=_latest_assistant_sources(conv),
+        code_results=_latest_assistant_code_results(conv),
     )
 
 
@@ -188,7 +231,7 @@ async def chat_stream(
                 session, current_user, req.message, req.conversation_id
             ):
                 data = event.data
-                if event.type == "sources":
+                if event.type in {"sources", "code_result"}:
                     data = json.loads(event.data) if event.data else []
                 yield {
                     "event": event.type,

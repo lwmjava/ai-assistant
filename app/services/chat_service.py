@@ -257,7 +257,13 @@ class ChatService:
         # 10. 回复在生成结束后写入。用户消息已在生成前写入。
         sources = self._reply_sources(session, retriever)
         self._persist_assistant(
-            session, conv, result.answer, self._model_name(), sources, status="complete"
+            session,
+            conv,
+            result.answer,
+            self._model_name(),
+            sources,
+            status="complete",
+            code_results=result.code_results,
         )
         session.refresh(conv)
         session.expire(conv, ["messages"])
@@ -316,6 +322,7 @@ class ChatService:
                         self._model_name(),
                         sources,
                         status="complete",
+                        code_results=state.code_results,
                     )
                     assistant_saved = True
                     session.refresh(conv)
@@ -343,6 +350,7 @@ class ChatService:
                     self._model_name(),
                     sources,
                     status="stopped",
+                    code_results=state.code_results,
                 )
 
     # ── 内部辅助 ──────────────────────────────────
@@ -375,8 +383,10 @@ class ChatService:
         model: str | None,
         sources: list[dict] | None = None,
         status: str = "complete",
+        code_results: list[dict] | None = None,
     ) -> None:
         payload = json.dumps(sources, ensure_ascii=False) if sources else None
+        code_payload = json.dumps(code_results, ensure_ascii=False) if code_results else None
         session.add(
             Message(
                 conversation_id=conv.id,
@@ -385,6 +395,7 @@ class ChatService:
                 model=model,
                 sources=payload,
                 status=status,
+                code_results=code_payload,
             )
         )
         session.commit()
@@ -396,11 +407,13 @@ class ChatService:
         model: str | None,
         sources: list[dict] | None,
         status: str,
+        code_results: list[dict] | None = None,
     ) -> None:
         """在独立会话里写入助手消息。用于生成器被关闭、原请求会话已不可用时。"""
         from app.core.database import engine
 
         payload = json.dumps(sources, ensure_ascii=False) if sources else None
+        code_payload = json.dumps(code_results, ensure_ascii=False) if code_results else None
         with Session(engine) as extra:
             extra.add(
                 Message(
@@ -410,6 +423,7 @@ class ChatService:
                     model=model,
                     sources=payload,
                     status=status,
+                    code_results=code_payload,
                 )
             )
             extra.commit()

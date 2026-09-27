@@ -2644,7 +2644,7 @@ tasks:
 
   - id: "SAND-001"
     title: "沙箱文件隔离、资源限制与进程树结束（交付 C5）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-22"
     depends_on:
@@ -2698,7 +2698,7 @@ tasks:
 
   - id: "SAND-002"
     title: "代码执行结果展示（交付 C5）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-22"
     depends_on:
@@ -2706,12 +2706,24 @@ tasks:
     context:
       problem: "沙箱的输出、错误和超时原因没有单独展示。"
       facts:
-        - claim: "工具结果混在对话文本里。"
-          evidence: "frontend/src/components/chat/"
+        - claim: "流式事件只有工具名。标准输出在模型上下文里。历史消息没有单独字段。"
+          evidence: "app/agents/pipeline.py"
+        - claim: "详细改动文件见实现计划。"
+          evidence: "docs/plans/plan_sand_c5.md"
     scope:
       allowed_paths:
+        - "docs/plans/plan_sand_c5.md"
         - "docs/plans/plan_remaining_delivery.md"
+        - "app/agents/tools/builtin.py"
+        - "app/agents/tools/base.py"
+        - "app/agents/pipeline.py"
+        - "app/services/chat_service.py"
+        - "app/api/routes/chat.py"
+        - "app/models/conversation.py"
+        - "app/core/migration.py"
         - "frontend/src/"
+        - "tests/"
+        - "README.md"
         - "tasks.yaml"
         - "AGENTS.md"
       forbidden_paths:
@@ -2737,6 +2749,7 @@ tasks:
         - "成功输出"
         - "失败原因"
       commands:
+        - "pytest tests/test_sandbox.py tests/test_chat.py -k \"sandbox or code_result\" -v"
         - "cd frontend; npm run typecheck"
         - "cd frontend; npm run build"
     execution:

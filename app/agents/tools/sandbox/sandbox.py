@@ -7,28 +7,25 @@
 4. **超时 Kill** — 超时硬杀进程树，确保不残留
 
 平台兼容：
-- Linux/macOS：全部四层可用
-- Windows：Layer 1/2/4 可用；Layer 3 资源限制通过 Job Object 部分实现，
-  不可用时不阻塞执行，仅记录告警
+- Linux/macOS：setrlimit 后 execv 进入用户脚本，超时结束进程组
+- Windows：Job Object 结束进程树。内存和 CPU 限额仍不在 Windows 上设置
 
 未实现的能力（可按需扩展）：
-- SKELETON：Layer 2 进程隔离 — 当前 subprocess.run 未限制文件系统访问
-- SKELETON：Layer 3 资源限制 — Windows 上 Job Object 未实现，仅 Unix setrlimit 包装
-- SKELETON：Layer 3 输出截断 — 当前未在子进程内做流式截断，依赖 stdout 全量捕获
-- SKELETON：Layer 4 进程树强杀 — 当前仅 kill 直接子进程，未递归 kill 孙进程
+- 沿类继承链拿到文件能力的绕过
+- Windows 内存与 CPU 限额
+- 子进程内流式截断输出
+- chroot、非特权用户、网络隔离
 """
 
 from __future__ import annotations
 
 import ast
+import asyncio
 import logging
-import os
 import platform
-import subprocess
-import sys
+import shutil
 import tempfile
 import time
-import uuid
 from pathlib import Path
 from typing import ClassVar
 
@@ -37,6 +34,12 @@ from app.agents.tools.sandbox.base import (
     SandboxConfig,
     SandboxResult,
     SecurityError,
+)
+from app.agents.tools.sandbox.proc import ISOLATION_FAILURE, ProcessOutcome, run_script
+from app.agents.tools.sandbox.runtime import (
+    child_environment,
+    effective_timeout,
+    sanitize_host_paths,
 )
 
 logger = logging.getLogger(__name__)
@@ -128,10 +131,6 @@ _ALLOWED_BUILTINS: frozenset[str] = frozenset({
     "RuntimeError", "NotImplementedError", "AttributeError",
 })
 
-# 资源限制的哨兵值（表示该平台不支持）
-_SENTINEL_UNSUPPORTED = -1
-
-
 class CodeSandbox:
     """四层防护代码沙箱。
 
@@ -206,6 +205,7 @@ for __name in dir(__sandbox_builtins__):
             SandboxResult：无论成功/失败/被 kill 均返回。
         """
         cfg = config or SandboxConfig()
+        timeout = effective_timeout(cfg.timeout_seconds)
         start = time.perf_counter()
 
         # ── Layer 1：AST 白名单 ──
@@ -213,16 +213,19 @@ for __name in dir(__sandbox_builtins__):
             self._check_ast(code, cfg)
         except SecurityError as exc:
             elapsed = (time.perf_counter() - start) * 1000
-            return SandboxResult(
-                exit_code=-1,
-                duration_ms=elapsed,
-                killed_by=exc.reason,
-                killed_detail=exc.detail,
+            return self._clean_result(
+                SandboxResult(
+                    exit_code=-1,
+                    duration_ms=elapsed,
+                    killed_by=exc.reason,
+                    killed_detail=exc.detail,
+                    output_limit=cfg.max_output_chars,
+                )
             )
 
         # ── Layer 2：进程隔离 + Layer 3：资源限制 + Layer 4：超时 ──
-        # 三层合并到子进程执行中，减少跨进程通信开销
-        with tempfile.TemporaryDirectory(prefix="sandbox_") as tmp_dir:
+        tmp_dir = tempfile.mkdtemp(prefix="sandbox_")
+        try:
             script_path = Path(tmp_dir) / "user_script.py"
             script_path.write_text(
                 self._SCRIPT_TEMPLATE.format(
@@ -232,49 +235,21 @@ for __name in dir(__sandbox_builtins__):
                 ),
                 encoding="utf-8",
             )
-
+            outcome = await asyncio.to_thread(
+                run_script,
+                str(script_path),
+                cwd=tmp_dir,
+                env=child_environment(cfg.env_vars, windows=self._platform == "Windows"),
+                timeout=timeout,
+                config=cfg,
+            )
+        finally:
             try:
-                proc = await self._run_subprocess(script_path, cfg, tmp_dir)
-            except subprocess.TimeoutExpired:
-                elapsed = (time.perf_counter() - start) * 1000
-                return SandboxResult(
-                    exit_code=-1,
-                    duration_ms=elapsed,
-                    killed_by=KillReason.TIMEOUT,
-                    killed_detail=f"执行超过 {cfg.timeout_seconds}s 被终止",
-                )
+                shutil.rmtree(tmp_dir)
+            except OSError:
+                logger.warning("沙箱临时目录未能删除")
 
-        elapsed = (time.perf_counter() - start) * 1000
-
-        # 检查输出是否超限
-        total_output = (proc.stdout or "") + (proc.stderr or "")
-        truncated = len(total_output) > cfg.max_output_chars
-        if truncated:
-            stdout = (proc.stdout or "")[:cfg.max_output_chars]
-            stderr = (proc.stderr or "")[:max(0, cfg.max_output_chars - len(stdout))]
-        else:
-            stdout = proc.stdout or ""
-            stderr = proc.stderr or ""
-
-        # 检查是否因资源限制被 kill
-        killed_by = KillReason.NONE
-        killed_detail = ""
-        if proc.returncode == -9 or proc.returncode == 137:  # SIGKILL
-            killed_by = KillReason.TIMEOUT
-            killed_detail = "进程被 SIGKILL 终止（可能超时或内存超限）"
-        elif proc.returncode == -6 or proc.returncode == 134:  # SIGABRT
-            killed_by = KillReason.RESOURCE_MEMORY
-            killed_detail = "进程被 SIGABRT 终止（可能内存超限）"
-
-        return SandboxResult(
-            stdout=stdout,
-            stderr=stderr,
-            exit_code=proc.returncode,
-            duration_ms=elapsed,
-            truncated=truncated,
-            killed_by=killed_by,
-            killed_detail=killed_detail,
-        )
+        return self._clean_result(self._result_from_outcome(outcome, cfg, start, timeout))
 
     # ── Layer 1：AST 白名单 ───────────────────────────────
     def _check_ast(self, code: str, config: SandboxConfig) -> None:
@@ -341,116 +316,60 @@ for __name in dir(__sandbox_builtins__):
                 f"不在白名单中的模块：{root}（仅允许 {config.allowed_imports}）",
             )
 
-    # ── Layer 2：进程隔离 ─────────────────────────────────
-    async def _run_subprocess(
+    def _result_from_outcome(
         self,
-        script_path: Path,
+        outcome: ProcessOutcome,
         config: SandboxConfig,
-        tmp_dir: str,
-    ) -> subprocess.CompletedProcess:
-        """在独立子进程中执行脚本，合并 Layer 2/3/4。
-
-        SKELETON：当前实现为最简版本。
-        - 未限制文件系统访问（应 chroot 或限制 work_dir）
-        - 未设置进程用户（应以 nobody 运行）
-        - 未设置网络隔离（应禁止网络访问）
-        """
-        env = os.environ.copy()
-        env.update(config.env_vars)
-        # 限制 PATH 为安全目录
-        env["PATH"] = "/usr/local/bin:/usr/bin:/bin"
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
-
-        # SKELETON：Layer 3 资源限制 — Unix 平台通过 setrlimit
-        # 通过 Python 包装器设置资源限制后执行用户脚本
-        limit_wrapper = self._build_limit_wrapper(script_path, config)
-
-        try:
-            # SKELETON：使用 asyncio.create_subprocess_exec 替代 subprocess.run
-            # 以支持流式输出截断和非阻塞超时
-            proc = await self._run_with_limits(
-                limit_wrapper, config, tmp_dir, env
+        start: float,
+        timeout: float,
+    ) -> SandboxResult:
+        elapsed = (time.perf_counter() - start) * 1000
+        if outcome.isolation_error:
+            detail = outcome.isolation_error or ISOLATION_FAILURE
+            return SandboxResult(
+                exit_code=-1,
+                stderr=detail,
+                duration_ms=elapsed,
+                killed_detail=detail,
+                output_limit=config.max_output_chars,
+                child_pid=outcome.pid,
             )
-        except subprocess.TimeoutExpired:
-            raise
-        return proc
-
-    def _build_limit_wrapper(self, script_path: Path, config: SandboxConfig) -> str:
-        """构建资源限制包装脚本（Unix 平台）。
-
-        在子进程内通过 setrlimit 设置资源上限后 exec 用户脚本。
-        Windows 上跳过 setrlimit（不支持），直接执行用户脚本。
-        """
-        if self._platform == "Windows":
-            # SKELETON：Windows 上通过 Job Object 实现资源限制
-            return str(script_path)
-
-        wrapper = f"""\
-import resource
-import sys
-import os
-
-# CPU 时间限制
-try:
-    resource.setrlimit(resource.RLIMIT_CPU, ({config.max_cpu_seconds}, {config.max_cpu_seconds}))
-except (ValueError, OSError):
-    pass
-
-# 内存限制
-try:
-    mem_bytes = {config.max_memory_mb} * 1024 * 1024
-    resource.setrlimit(resource.RLIMIT_AS, (mem_bytes, mem_bytes))
-except (ValueError, OSError):
-    pass
-
-# 磁盘写入限制
-try:
-    disk_bytes = {config.max_disk_mb} * 1024 * 1024
-    resource.setrlimit(resource.RLIMIT_FSIZE, (disk_bytes, disk_bytes))
-except (ValueError, OSError):
-    pass
-
-# 禁止创建子进程
-try:
-    resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
-except (ValueError, OSError):
-    pass
-
-# 执行用户脚本
-sys.path.insert(0, os.path.dirname('{script_path.as_posix()}'))
-exec(open('{script_path.as_posix()}', encoding='utf-8').read())
-"""
-        return wrapper
-
-    async def _run_with_limits(
-        self,
-        code_or_path: str,
-        config: SandboxConfig,
-        tmp_dir: str,
-        env: dict,
-    ) -> subprocess.CompletedProcess:
-        """执行子进程（带超时和资源限制）。"""
-        # 判断是包装脚本还是直接路径
-        if code_or_path.endswith(".py") and "\n" not in code_or_path:
-            # 直接执行脚本文件
-            args = [sys.executable, code_or_path]
-        else:
-            # 通过 -c 执行包装脚本
-            args = [sys.executable, "-c", code_or_path]
-
-        # SKELETON：使用 subprocess.run 阻塞执行。
-        # 可按需改为 asyncio.create_subprocess_exec + 流式读取。
-        return subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            timeout=config.timeout_seconds,
-            cwd=tmp_dir,
-            env=env,
-            # SKELETON：未设置 preexec_fn=os.setpgrp（Unix 进程组隔离）
-            # SKELETON：未设置 start_new_session=True（进程组 leader）
-            # SKELETON：未设置 close_fds=True
+        stdout = outcome.stdout or ""
+        stderr = outcome.stderr or ""
+        total_output = stdout + stderr
+        truncated = len(total_output) > config.max_output_chars
+        if truncated:
+            stdout = stdout[: config.max_output_chars]
+            stderr = stderr[: max(0, config.max_output_chars - len(stdout))]
+        killed_by = KillReason.NONE
+        killed_detail = ""
+        if outcome.timed_out:
+            killed_by = KillReason.TIMEOUT
+            killed_detail = f"执行超过 {timeout:g}s 被终止"
+        elif outcome.exit_code in (-9, 137):
+            killed_by = KillReason.TIMEOUT
+            killed_detail = "进程被 SIGKILL 终止（可能超时或内存超限）"
+        elif outcome.exit_code in (-6, 134):
+            killed_by = KillReason.RESOURCE_MEMORY
+            killed_detail = "进程被 SIGABRT 终止（可能内存超限）"
+        return SandboxResult(
+            stdout=stdout,
+            stderr=stderr,
+            exit_code=-1 if outcome.timed_out else outcome.exit_code,
+            duration_ms=elapsed,
+            truncated=truncated,
+            killed_by=killed_by,
+            killed_detail=killed_detail,
+            output_limit=config.max_output_chars,
+            child_pid=outcome.pid,
         )
+
+    @staticmethod
+    def _clean_result(result: SandboxResult) -> SandboxResult:
+        result.stdout = sanitize_host_paths(result.stdout)
+        result.stderr = sanitize_host_paths(result.stderr)
+        result.killed_detail = sanitize_host_paths(result.killed_detail)
+        return result
 
 
 # ── 工厂函数（供 Tool 注册使用）──────────────────────────

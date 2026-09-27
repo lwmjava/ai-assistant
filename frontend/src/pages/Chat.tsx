@@ -510,6 +510,7 @@ export default function ChatPage() {
             <MessageList
               messages={messages}
               streamingSources={snapshot.sources}
+              streamingCodeResults={snapshot.codeResults}
               stageStages={snapshot.stages}
               currentStage={snapshot.currentStage}
               tools={snapshot.tools}

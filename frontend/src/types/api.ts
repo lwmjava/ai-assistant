@@ -95,6 +95,12 @@ export interface SourceRef {
   section: string | null
 }
 
+export interface CodeResult {
+  status: 'ok' | 'error' | 'timeout' | string
+  stdout: string
+  reason: string
+}
+
 export interface MessageOut {
   id: string
   role: string
@@ -102,6 +108,7 @@ export interface MessageOut {
   model: string | null
   created_at: string
   sources?: SourceRef[]
+  code_results?: CodeResult[]
   /** complete：正常写完。stopped：生成已停下，不是完整回复。 */
   status?: 'complete' | 'stopped' | string
 }
@@ -120,6 +127,7 @@ export interface ChatResponse {
   reply: string
   model: string | null
   sources?: SourceRef[]
+  code_results?: CodeResult[]
 }
 
 /**
@@ -135,6 +143,7 @@ export type StreamEventType =
   | 'token'
   | 'tool'
   | 'sources'
+  | 'code_result'
   | 'done'
   | 'error'
   | 'conversation'

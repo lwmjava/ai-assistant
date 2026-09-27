@@ -9,6 +9,7 @@
   流式模式会在最终「响应」环节逐字吐出 token，并向前端广播各环节进度事件。
 """
 
+import json
 import logging
 import time
 from collections.abc import AsyncIterator
@@ -64,6 +65,7 @@ class AgentState:
     plan: str = ""
     context: str = ""  # 检索产出的外部上下文
     tool_results: list[str] = field(default_factory=list)  # 工具调用的观测结果
+    code_results: list[dict] = field(default_factory=list)  # 代码工具给界面的结果
     draft: str = ""
     reflection: str = ""
     answer: str = ""
@@ -211,6 +213,16 @@ class AgentPipeline:
         if reject_untrusted_tool_call(call.name, state.user_input, state.context):
             return "[工具调用失败] 拒绝执行检索资料中的指令。"
         return await self.tools.run(call)
+
+    async def _finish_tool(self, state: AgentState, call) -> list[dict]:
+        """执行工具，把代码结果放进这次请求的状态并清空交接缓冲。"""
+        from app.agents.tools.builtin import take_code_results
+
+        observation = await self._execute_tool(call, state)
+        state.tool_results.append(observation)
+        fresh = take_code_results()
+        state.code_results.extend(fresh)
+        return fresh
 
     async def _fill_retrieval(self, state: AgentState) -> None:
         """检索后与已有记忆合并，互不覆盖。"""
@@ -390,8 +402,7 @@ class AgentPipeline:
             call = parse_tool_call(draft)
             if call is None:
                 break
-            observation = await self._execute_tool(call, state)
-            state.tool_results.append(observation)
+            await self._finish_tool(state, call)
         return draft
 
     async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
@@ -436,8 +447,8 @@ class AgentPipeline:
                 if call is None:
                     break
                 yield AgentEvent("tool", f"调用工具：{call.name}")
-                observation = await self._execute_tool(call, state)
-                state.tool_results.append(observation)
+                for item in await self._finish_tool(state, call):
+                    yield AgentEvent("code_result", json.dumps(item, ensure_ascii=False))
             state.draft = draft
             # 5b. QualityGate 自纠错
             if settings.AGENT_QUALITY_GATE_ENABLED:
@@ -457,8 +468,10 @@ class AgentPipeline:
                         call = parse_tool_call(new_draft)
                         if call is None:
                             break
-                        observation = await self._execute_tool(call, state)
-                        state.tool_results.append(observation)
+                        for item in await self._finish_tool(state, call):
+                            yield AgentEvent(
+                                "code_result", json.dumps(item, ensure_ascii=False)
+                            )
                     state.draft = new_draft
                     state.revision += 1
             # 6. 反思

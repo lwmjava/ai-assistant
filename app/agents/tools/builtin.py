@@ -11,7 +11,14 @@
 
 import ast
 import datetime
+from contextvars import ContextVar
+
 from app.agents.tools.base import Tool
+
+# 只在这一次工具调用里交接界面结果。管线取走后清空，不在进程里攒列表。
+_pending_code_results: ContextVar[list[dict[str, str]] | None] = ContextVar(
+    "code_sandbox_public_results", default=None
+)
 
 _ALLOWED_NODES = (
     ast.Expression,
@@ -62,21 +69,48 @@ async def get_current_datetime(arguments: dict) -> str:
         return now.isoformat()
 
 
-async def code_sandbox(arguments: dict) -> str:
-    """在四层防护沙箱中执行 Python 代码，返回执行结果。
+def publish_code_result(view: dict[str, str]) -> None:
+    """把一条界面结果放进这次调用的缓冲。"""
+    current = _pending_code_results.get()
+    if current is None:
+        current = []
+        _pending_code_results.set(current)
+    current.append(
+        {
+            "status": str(view.get("status", "")),
+            "stdout": str(view.get("stdout", "")),
+            "reason": str(view.get("reason", "")),
+        }
+    )
 
-    SKELETON：当前为骨架实现，四层防护中 Layer 2/3/4 为最简版本。
-    可按需扩展：进程隔离加固、资源限制增强、进程树强杀。
-    """
+
+def take_code_results() -> list[dict[str, str]]:
+    """取走并清空这次调用的界面结果。"""
+    current = _pending_code_results.get()
+    _pending_code_results.set(None)
+    return list(current or [])
+
+
+async def code_sandbox(arguments: dict) -> str:
+    """在四层防护沙箱中执行 Python 代码，返回执行结果。"""
     from app.agents.tools.sandbox import CodeSandbox, SandboxConfig
+    from app.agents.tools.sandbox.runtime import effective_timeout
 
     code = str(arguments.get("code", "")).strip()
     if not code:
+        publish_code_result(
+            {"status": "error", "stdout": "", "reason": "未提供 code 参数。"}
+        )
         return "未提供 code 参数。"
-    timeout = float(arguments.get("timeout", 30))
+    raw_timeout = arguments.get("timeout", 30)
+    try:
+        timeout = float(raw_timeout)
+    except (TypeError, ValueError):
+        timeout = 30
     sandbox = CodeSandbox()
-    config = SandboxConfig(timeout_seconds=timeout)
+    config = SandboxConfig(timeout_seconds=effective_timeout(timeout))
     result = await sandbox.execute(code, config)
+    publish_code_result(result.public_view())
     return result.to_observation()
 
 

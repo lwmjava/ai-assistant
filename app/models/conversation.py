@@ -45,6 +45,8 @@ class Message(SQLModel, TimestampMixin, table=True):
     model: str | None = Field(default=None)
     # 助手消息引用的检索来源，JSON 数组。没有来源时为空。
     sources: str | None = Field(default=None)
+    # 代码工具给界面的结果，JSON 数组。没有代码执行时为空。
+    code_results: str | None = Field(default=None)
     # complete：正常写完。stopped：生成被停下，正文只保留已经产出的文字。
     status: str = Field(default="complete")
 

@@ -170,6 +170,9 @@ def _ensure_message_columns() -> None:
                     "ALTER TABLE messages ADD COLUMN status VARCHAR NOT NULL DEFAULT 'complete'"
                 )
             )
+        if "code_results" not in columns:
+            logger.warning("补齐缺失的代码结果列")
+            conn.execute(text("ALTER TABLE messages ADD COLUMN code_results VARCHAR"))
 
 
 def _ensure_rag_schema_columns() -> None:

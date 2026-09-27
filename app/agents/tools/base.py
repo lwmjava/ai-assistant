@@ -87,12 +87,21 @@ class ToolRegistry:
         tool = self.get(call.name)
         if tool is None:
             return f"[工具调用失败] 未找到名为「{call.name}」的工具。"
+        arguments = call.arguments or {}
         try:
-            observation = await tool.execute(call.arguments or {})
+            observation = await tool.execute(arguments)
         except Exception as exc:  # noqa: BLE001 — 工具异常不应中断整个管线
             logger.exception("工具执行失败：%s", call.name)
             return f"[工具执行错误] {call.name}：{exc}"
-        return f"[{call.name}] 参数={call.arguments} 结果={observation}"
+        shown = arguments
+        if call.name == "code_sandbox":
+            from app.agents.tools.sandbox.runtime import sanitize_host_paths
+
+            shown = {
+                key: sanitize_host_paths(value) if isinstance(value, str) else value
+                for key, value in arguments.items()
+            }
+        return f"[{call.name}] 参数={shown} 结果={observation}"
 
 
 def parse_tool_call(text: str) -> ToolCall | None:

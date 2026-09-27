@@ -45,6 +45,12 @@ class ChatService:
     def llm(self):
         return self._llm or get_llm_provider()
 
+    def _intent_llm(self):
+        """构造时传入的客户端盖住意图链，避免评测脚本再去读环境变量。"""
+        if self._llm is not None:
+            return self._llm
+        return get_llm_provider("intent")
+
     @property
     def _options(self) -> LLMOptions:
         return LLMOptions(
@@ -183,7 +189,12 @@ class ChatService:
         """
         if settings.AGENT_ORCHESTRATION != "langgraph":
             pipeline = AgentPipeline(
-                self.llm, options=self._options, retriever=retriever, tools=tools, trace=trace
+                self.llm,
+                options=self._options,
+                retriever=retriever,
+                tools=tools,
+                trace=trace,
+                intent_llm=self._intent_llm(),
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
@@ -199,7 +210,11 @@ class ChatService:
                 "AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc
             )
             pipeline = AgentPipeline(
-                self.llm, options=self._options, retriever=retriever, tools=tools
+                self.llm,
+                options=self._options,
+                retriever=retriever,
+                tools=tools,
+                intent_llm=self._intent_llm(),
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection

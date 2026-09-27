@@ -28,9 +28,19 @@ from app.agents.prompts import (
 from app.agents.tools.base import ToolRegistry, parse_tool_call
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.routing import LLMUnavailableError
 from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_call
 
 logger = logging.getLogger(__name__)
+
+_GENERIC_FAILURE = "抱歉，处理你的请求时出现问题，请稍后重试。"
+
+
+def _failure_text(exc: Exception) -> str:
+    """全部模型都不可用时用固定句子。其它失败仍用原来的笼统提示。"""
+    if isinstance(exc, LLMUnavailableError):
+        return str(exc)
+    return _GENERIC_FAILURE
 
 
 class Retriever(Protocol):
@@ -99,8 +109,10 @@ class AgentPipeline:
         retriever: Retriever | None = None,
         tools: ToolRegistry | None = None,
         trace: "AgentTrace | None" = None,
+        intent_llm: LLMProvider | None = None,
     ) -> None:
         self.llm = llm
+        self.intent_llm = intent_llm or llm
         self.options = options or LLMOptions()
         self.retriever = retriever
         self.tools = tools
@@ -305,7 +317,7 @@ class AgentPipeline:
             logger.exception("Agent 管线执行失败")
             state.error = str(exc)
             if not state.answer:
-                state.answer = "抱歉，处理你的请求时出现问题，请稍后重试。"
+                state.answer = _failure_text(exc)
         return state
 
     async def _needs_plan(self, state: AgentState) -> bool:
@@ -313,7 +325,7 @@ class AgentPipeline:
 
         解析失败时默认走完整流程（不轻易短路），避免漏掉需要检索/推理的问题。
         """
-        decision = await self.llm.chat(
+        decision = await self.intent_llm.chat(
             [
                 ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_PREFLOW),
                 ChatMessage(role=ChatRole.USER, content=state.user_input),
@@ -468,7 +480,7 @@ class AgentPipeline:
             logger.exception("Agent 流式管线执行失败")
             state.error = str(exc)
             if not state.answer:
-                state.answer = "抱歉，处理你的请求时出现问题，请稍后重试。"
+                state.answer = _failure_text(exc)
             yield AgentEvent("error", state.answer)
 
         yield AgentEvent("done", state.answer)

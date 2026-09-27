@@ -2534,7 +2534,7 @@ tasks:
 
   - id: "ROUTE-001"
     title: "按任务类型路由并按兜底链降级（交付 C5）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-22"
     depends_on:
@@ -2593,7 +2593,7 @@ tasks:
 
   - id: "ROUTE-002"
     title: "无可用模型时的引导（交付 C5）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-22"
     depends_on:

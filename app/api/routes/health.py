@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.database import engine
+from app.llm.factory import llm_availability
 from app.models.rag import DocumentChunk
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,7 @@ def health_check() -> JSONResponse:
         "checks": {
             "database": {"status": database},
             "vector_store": {"status": vector_status, "backend": backend},
+            "llm": {"mode": llm_availability()},
         },
     }
     return JSONResponse(status_code=200 if overall == "ok" else 503, content=body)

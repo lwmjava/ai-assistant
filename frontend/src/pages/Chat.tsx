@@ -1,7 +1,7 @@
 /** 对话页：会话列表 + 流式消息流 + 管线阶段可视化。 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { MessagesSquare, PanelLeft, Sparkles } from 'lucide-react'
 
 import { Composer } from '@/components/chat/Composer'
@@ -23,13 +23,16 @@ import { useChatStream } from '@/hooks/useChatStream'
 import { api, ApiError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
-import type { ConversationDetail, ConversationOut, MessageOut, SendMode } from '@/types/api'
+import type { ConversationDetail, ConversationOut, HealthInfo, MessageOut, SendMode } from '@/types/api'
 
 /**
  * 后端流式响应在发出 done 之前才落库消息，刷新需留出这段窗口。
  * 非流式（POST /chat）在返回前已 commit，无需等待，因此不走这个延迟。
  */
 const PERSIST_DELAY_MS = 600
+
+const MODEL_GUIDE =
+  '当前没有接入可用的真实模型。请在环境变量中填写模型密钥，保存后重启服务。'
 
 /** 发送模式记忆在本地：这是纯界面偏好，不进后端。 */
 const MODE_STORAGE_KEY = 'aa-chat-mode'
@@ -107,6 +110,15 @@ export default function ChatPage() {
   const detailQuery = useConversation(activeId)
   const deleteMutation = useDeleteConversation()
   const { snapshot, send, stop, reset } = useChatStream()
+  const healthQuery = useQuery({
+    queryKey: ['health'],
+    queryFn: () => api.get<HealthInfo>('/health'),
+    retry: false,
+    staleTime: 20_000,
+  })
+  const llmMode = healthQuery.data?.checks?.llm?.mode
+  const showModelGuide =
+    !healthQuery.isError && (llmMode === 'mock' || llmMode === 'unavailable')
 
   const handleModeChange = useCallback((next: SendMode) => {
     setMode(next)
@@ -464,6 +476,15 @@ export default function ChatPage() {
             新建
           </Button>
         </div>
+
+        {showModelGuide && (
+          <div
+            role="status"
+            className="border-b border-border bg-surface-2/80 px-4 py-3 text-sm text-text"
+          >
+            {MODEL_GUIDE}
+          </div>
+        )}
 
         <div className="scroll-y flex-1">
           {detailError ? (

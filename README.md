@@ -25,7 +25,7 @@
 - **五阶段 Agent 管线**：理解 → 规划 → 行动（含工具调用循环）→ 反思 → 响应，逐步逼近高质量回答。
 - **流式与非流式双模式**：支持 SSE 流式增量输出（逐字推送 + 阶段进度广播），也支持一次性返回。
 - **原生 MCP 协议**：作为 AI 与企业系统的「万能连接器」，将 MCP 服务器工具动态注入 Agent 工具箱。
-- **多 LLM 提供商**：DeepSeek / OpenAI 兼容接口 / Ollama 本地部署 / Mock 离线占位，默认适配 DeepSeek，无 API Key 时自动降级为 Mock。
+- **多 LLM 提供商**：对话和意图分流可以各接一家 OpenAI 兼容接口，主家失败后再试兜底那一家。开发环境没有可用密钥时降为 Mock，对话页会提示填写密钥并重启。
 - **灵活向量库**：默认 Local（SQLite + numpy，零额外依赖）。Milvus 为可选适配（Partial，ADR-0002：本阶段正式 Local，Milvus 实验）。升格须另开 ADR 并补摄取/检索/删除闭环证据。
 - **企业级安全**：JWT 双令牌（access + refresh）、RBAC 五级角色权限矩阵、多租户数据隔离。
 
@@ -346,8 +346,14 @@ docker compose up -d --build
 | `AUTH_ENABLED` | 是否启用认证 | `true` |
 | `LLM_PROVIDER` | 大模型提供商：`openai` / `ollama` / `mock` | `openai` |
 | `LLM_BASE_URL` | 大模型 API 地址（兼容 OpenAI 协议均可） | `https://api.deepseek.com/v1` |
-| `LLM_API_KEY` | 大模型 API Key（为空时开发环境自动降级 Mock） | — |
+| `LLM_API_KEY` | 对话模型密钥。主密钥和兜底密钥都为空时，开发环境降为 Mock，对话页提示填写密钥并重启 | — |
 | `LLM_DEFAULT_MODEL` | 默认模型名 | `deepseek-chat` |
+| `LLM_FALLBACK_API_KEY` | 第二家模型密钥。主配置失败后改用这一家。留空表示没有兜底 | — |
+| `LLM_FALLBACK_BASE_URL` | 第二家的接口地址。留空则沿用 `LLM_BASE_URL` | — |
+| `LLM_FALLBACK_MODEL` | 第二家的模型名。留空则沿用 `LLM_DEFAULT_MODEL` | — |
+| `LLM_INTENT_API_KEY` | 意图分流专用密钥。留空则和对话用同一家 | — |
+| `LLM_INTENT_BASE_URL` | 意图分流的接口地址。留空则沿用对话地址 | — |
+| `LLM_INTENT_MODEL` | 意图分流的模型名。留空则沿用对话模型 | — |
 | `RAG_ENABLED` | 是否将检索上下文注入对话。无真实 Embedding 时，开发环境用 Mock，只能证明链路 | `true` |
 | `RAG_DROP_INJECTED_CHUNKS` | 检索后剔除高置信度注入分块 | `true` |
 | `RAG_RETRIEVAL_CANDIDATE_MULTIPLIER` | 检索过取倍数，供剔除后补位 | `3` |

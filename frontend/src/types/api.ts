@@ -279,4 +279,7 @@ export interface HealthInfo {
   app: string
   version: string
   env: string
+  checks?: {
+    llm?: { mode: string }
+  }
 }

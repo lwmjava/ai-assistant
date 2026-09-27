@@ -485,6 +485,13 @@ def test_member_can_delete_own_document(member_client: TestClient) -> None:
     assert missing.status_code == 404
 
 
+def _stored_upload_files(tmp_path: Path) -> list[Path]:
+    root = tmp_path / "data" / "knowledge"
+    if not root.exists():
+        return []
+    return [path for path in root.rglob("*") if path.is_file()]
+
+
 def test_upload_rejects_non_text(
     client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -492,6 +499,36 @@ def test_upload_rejects_non_text(
     files = {"file": ("data.bin", io.BytesIO(b"\x00\x01\x02"), "application/octet-stream")}
     resp = client.post("/api/rag/documents/upload", files=files)
     assert resp.status_code == 400
+    assert "当前允许" in resp.json()["detail"]
+    assert _stored_upload_files(tmp_path) == []
+
+
+def test_upload_rejects_oversize_before_save(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_storage_root(monkeypatch, tmp_path)
+    monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", 4)
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("note.txt", io.BytesIO(b"hello"), "text/plain")},
+    )
+    assert resp.status_code == 413
+    assert "上限" in resp.json()["detail"]
+    assert _stored_upload_files(tmp_path) == []
+
+
+def test_upload_accepts_file_at_configured_size_limit(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_storage_root(monkeypatch, tmp_path)
+    raw = "不超过上限。".encode()
+    monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", len(raw))
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("note.txt", io.BytesIO(raw), "text/plain")},
+    )
+    assert resp.status_code == 200
+    assert _stored_upload_files(tmp_path)
 
 
 def test_upload_accepts_supported_text_types(

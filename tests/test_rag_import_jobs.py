@@ -65,6 +65,65 @@ def session():
         yield s
 
 
+def _stored_upload_files(tmp_path: Path) -> list[Path]:
+    root = tmp_path / "data" / "knowledge"
+    if not root.exists():
+        return []
+    return [path for path in root.rglob("*") if path.is_file()]
+
+
+def test_upload_batch_rejects_second_file_oversize_without_saving(
+    client: tuple[TestClient, User],
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    http, _user = client
+    _patch_storage_root(monkeypatch, tmp_path)
+    monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", 4)
+    batches_before = len(session.exec(select(ImportBatch)).all())
+    jobs_before = len(session.exec(select(ImportJob)).all())
+    resp = http.post(
+        "/api/rag/import-jobs/upload",
+        files=[
+            ("files", ("ok.txt", io.BytesIO(b"ok"), "text/plain")),
+            ("files", ("big.txt", io.BytesIO(b"hello"), "text/plain")),
+        ],
+    )
+    assert resp.status_code == 413
+    assert "上限" in resp.json()["detail"]
+    session.expire_all()
+    assert len(session.exec(select(ImportBatch)).all()) == batches_before
+    assert len(session.exec(select(ImportJob)).all()) == jobs_before
+    assert _stored_upload_files(tmp_path) == []
+
+
+def test_upload_batch_returns_first_error_when_type_precedes_oversize(
+    client: tuple[TestClient, User],
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    http, _user = client
+    _patch_storage_root(monkeypatch, tmp_path)
+    monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", 4)
+    batches_before = len(session.exec(select(ImportBatch)).all())
+    jobs_before = len(session.exec(select(ImportJob)).all())
+    resp = http.post(
+        "/api/rag/import-jobs/upload",
+        files=[
+            ("files", ("bad.bin", io.BytesIO(b"no"), "application/octet-stream")),
+            ("files", ("big.txt", io.BytesIO(b"hello"), "text/plain")),
+        ],
+    )
+    assert resp.status_code == 400
+    assert "当前允许" in resp.json()["detail"]
+    session.expire_all()
+    assert len(session.exec(select(ImportBatch)).all()) == batches_before
+    assert len(session.exec(select(ImportJob)).all()) == jobs_before
+    assert _stored_upload_files(tmp_path) == []
+
+
 def test_batch_upload_jobs_create_documents(
     client: tuple[TestClient, User],
     session: Session,

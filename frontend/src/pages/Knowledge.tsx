@@ -304,11 +304,6 @@ export default function KnowledgePage() {
   )
 
   async function handleFile(file: File) {
-    const ext = file.name.split('.').pop()?.toLowerCase()
-    if (ext !== 'txt' && ext !== 'md') {
-      toast.error('不支持的文件类型', '后端仅支持 .txt 与 .md 的 UTF-8 文本文件')
-      return
-    }
     try {
       const doc = await upload.mutateAsync(file)
       const stateLabel = VERSION_LABELS[doc.version_state] ?? doc.version_state
@@ -390,14 +385,14 @@ export default function KnowledgePage() {
     <div className="space-y-5">
       <PageHeader
         title="知识库"
-        description="摄取文本或上传文档后，对话会按混合检索（向量 + BM25 + RRF 融合）命中相关内容。"
+        description="摄取文本或上传文档后，对话会按混合检索（向量 + BM25 + RRF 融合）命中相关内容。可上传 txt、md、json、xml、csv、doc、xls、ppt、docx、xlsx、pptx、pdf，单个文件不超过 10MB。"
         actions={
           canWrite ? (
             <>
               <input
                 ref={fileRef}
                 type="file"
-                accept=".txt,.md,text/plain,text/markdown"
+                accept=".txt,.md,.json,.xml,.csv,.doc,.xls,.ppt,.docx,.xlsx,.pptx,.pdf"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0]

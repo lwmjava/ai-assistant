@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-09-26
+> 最后更新：2026-09-27
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -375,7 +375,7 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现。下一项是 `SEC-001`；`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`。下一项是 `SEC-002`；C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
 
 A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 

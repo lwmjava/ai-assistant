@@ -2763,7 +2763,7 @@ tasks:
 
   - id: "SEC-001"
     title: "上传类型与大小限制（交付 C6）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-25"
     depends_on:
@@ -2771,13 +2771,19 @@ tasks:
     context:
       problem: "不支持的类型和过大文件没有稳定的拒绝结果。"
       facts:
-        - claim: "解析器按格式注册。上传限制尚未按本交付包核对。"
-          evidence: "app/rag/"
+        - claim: "解析器按格式注册。没有配置项上的大小上限。知识库页只放行 txt 和 md。拒绝必须发生在写盘之前，因此要改上传路由。允许路径已经包含该路由、示例配置和 README。"
+          evidence: "app/rag/document_parsers/registry.py；app/api/routes/rag.py；frontend/src/pages/Knowledge.tsx；docs/plans/plan_sec_c6.md"
+        - claim: "doc、xls、ppt 写入磁盘时会被收成 .bin。解析使用原始文件名。本任务不改存储扩展名集合。"
+          evidence: "app/rag/document_storage.py"
     scope:
       allowed_paths:
+        - "docs/plans/plan_sec_c6.md"
         - "docs/plans/plan_remaining_delivery.md"
         - "app/rag/"
+        - "app/api/routes/rag.py"
         - "app/core/config.py"
+        - ".env.example"
+        - "README.md"
         - "frontend/src/"
         - "tests/"
         - "tasks.yaml"
@@ -2793,9 +2799,12 @@ tasks:
         - "页面显示该错误"
       non_goals:
         - "不扩大解析格式范围"
+        - "不修改 document_storage 的扩展名集合"
     acceptance:
       - "非法类型和大文件被拒绝"
       - "允许的小文件仍可上传"
+      - "同一请求里按文件顺序返回第一个错误"
+      - "新增用例名能被 pytest -k upload 选中"
     risk:
       level: "L1"
       side_effect: "upload-limits"
@@ -2805,6 +2814,7 @@ tasks:
         - "非法类型拒绝"
         - "超大拒绝"
         - "小文件通过"
+        - "类型错误排在超限之前时返回第一个错误"
       commands:
         - "pytest tests/ -k upload -v"
         - "cd frontend; npm run typecheck"
@@ -2827,12 +2837,14 @@ tasks:
     context:
       problem: "失败时页面可能露出堆栈，日志里可能出现密钥或令牌。"
       facts:
-        - claim: "已有日志脱敏工具。界面仍可能直接展示接口原文。"
-          evidence: "app/security/"
+        - claim: "已有日志脱敏工具，未挂到日志系统。对话、登录和上传失败会直接展示接口原文。允许路径已经包含 app/main.py。"
+          evidence: "app/security/log_sanitizer.py；frontend/src/lib/http.ts；app/main.py；docs/plans/plan_sec_c6.md"
     scope:
       allowed_paths:
+        - "docs/plans/plan_sec_c6.md"
         - "docs/plans/plan_remaining_delivery.md"
         - "app/security/"
+        - "app/main.py"
         - "frontend/src/"
         - "tests/"
         - "tasks.yaml"
@@ -2851,6 +2863,7 @@ tasks:
     acceptance:
       - "页面无堆栈"
       - "日志样本无密钥和令牌"
+      - "新增用例名能被 pytest -k \"security or log\" 选中"
     risk:
       level: "L1"
       side_effect: "redact-and-ui-errors"
@@ -2881,10 +2894,11 @@ tasks:
     context:
       problem: "Milvus 五条门槛没有完整证据，不能判断向量库是否完成。"
       facts:
-        - claim: "默认向量库仍是 Local。五条未过不得改默认。"
-          evidence: "docs/adr/0002-official-vectorstore.md"
+        - claim: "默认向量库仍是 Local。五条未过不得改默认。当前编排未把 Milvus 端口映射到宿主机，也未把 pymilvus 列为已安装依赖。"
+          evidence: "docs/adr/0002-official-vectorstore.md；docker-compose.yml；docs/plans/plan_sec_c6.md"
     scope:
       allowed_paths:
+        - "docs/plans/plan_sec_c6.md"
         - "docs/plans/plan_remaining_delivery.md"
         - "docs/"
         - "tests/"
@@ -2931,6 +2945,7 @@ tasks:
     target_date: "2026-12-25"
     depends_on:
       - "SEC-001"
+      - "SEC-002"
       - "SEC-003"
       - "CHAT-005"
       - "ROUTE-002"
@@ -2938,8 +2953,8 @@ tasks:
     context:
       problem: "前 16 个交付包没有一份带证据的清点。"
       facts:
-        - claim: "第 1 到第 5 项已完成。第 6 到第 16 项对应本批任务。"
-          evidence: "docs/plans/plan_delivery_2027-03-25.md"
+        - claim: "第 1 到第 12 项和第 14 到第 16 项对应的任务已完成。第 13 项是 SEC-001 到 SEC-003。清点办法见 C6 计划。depends_on 已经包含 SEC-002。"
+          evidence: "docs/plans/plan_delivery_2027-03-25.md；docs/plans/plan_sec_c6.md"
     scope:
       allowed_paths:
         - "docs/plans/"
@@ -2956,9 +2971,10 @@ tasks:
       non_goals:
         - "不实现新功能"
         - "不把 D1 到 D4 算进 80%"
+        - "不因缺少单独的 implementation 说明就把已完成项判成未完成"
     acceptance:
-      - "清点覆盖第 6 节 1 到 16 项"
-      - "每项有证据"
+      - "清点覆盖第 6 节 1 到 16 项，结果保持 16 行"
+      - "一项算完成时，tasks.yaml 状态为 done，并且能指出一份写了验证命令和结果的计划或实现说明"
     risk:
       level: "L0"
       side_effect: "mvp-80-checklist"

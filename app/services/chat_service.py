@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 
 from sqlmodel import Session, select
 
@@ -83,6 +84,20 @@ class ChatService:
         session.commit()
         return True
 
+    def rename_conversation(
+        self, session: Session, user: User, conversation_id: str, title: str
+    ) -> Conversation | None:
+        """修改会话标题。无权或不存在时返回 None。"""
+        conv = self.get_conversation(session, user, conversation_id)
+        if conv is None:
+            return None
+        conv.title = title.strip()
+        conv.updated_at = datetime.now(UTC)
+        session.add(conv)
+        session.commit()
+        session.refresh(conv)
+        return conv
+
     def _can_access(self, conv: Conversation, user: User) -> bool:
         if user.role_enum.value == "system_admin":
             return conv.tenant_id == user.tenant_id
@@ -94,7 +109,7 @@ class ChatService:
 
         注意：此方法仅做简单窗口裁剪；记忆压缩由 MemoryManager 负责。
         """
-        recent = conv.messages[-_HISTORY_LIMIT:]
+        recent = [m for m in conv.messages if m.content][-_HISTORY_LIMIT:]
         return [
             ChatMessage(role=ChatRole(m.role), content=m.content) for m in recent
         ]
@@ -116,6 +131,7 @@ class ChatService:
             all_messages = [
                 ChatMessage(role=ChatRole(m.role), content=m.content)
                 for m in conv.messages
+                if m.content
             ]
             mgr = MemoryManager(self.llm)
             return await mgr.manage(all_messages)
@@ -204,6 +220,8 @@ class ChatService:
         # 2. 注入记忆上下文到管线
         if memory.memory_context:
             state.context = memory.memory_context
+        # 问题先落库。生成失败或用户放弃等待时，提问仍在。
+        self._persist_user(session, conv, message)
         # 3. 构建检索器（通过 RAGService）/ 工具箱
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
@@ -221,11 +239,10 @@ class ChatService:
         self._collect_trace(trace)
         # 9. 安全治理：输出过滤
         self._apply_output_security(result.answer, sec_ctx)
-        # 10. 持久化用户消息和助手回复
+        # 10. 回复在生成结束后写入。用户消息已在生成前写入。
         sources = self._reply_sources(session, retriever)
-        self._persist_user(session, conv, message)
         self._persist_assistant(
-            session, conv, result.answer, self._model_name(), sources
+            session, conv, result.answer, self._model_name(), sources, status="complete"
         )
         session.refresh(conv)
         session.expire(conv, ["messages"])
@@ -259,24 +276,59 @@ class ChatService:
         )
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
+        # 先记住问题，再把会话编号交给页面，断线后才知道向哪一条拉取。
+        # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。
+        self._persist_user(session, conv, message)
+        conversation_id = conv.id
+        yield AgentEvent("conversation", conversation_id)
+
         collected: list[str] = []
         sources: list[dict] = []
-        async for event in pipeline.run_stream(state):
-            if event.type == "done":
-                sources = self._reply_sources(session, retriever)
-                yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
-            if event.type == "token":
-                collected.append(event.data)
-            yield event
-
-        answer = "".join(collected) or state.answer
-        # 安全治理：输出过滤
-        self._apply_output_security(answer, sec_ctx)
-        self._persist_user(session, conv, message)
-        self._persist_assistant(session, conv, answer, self._model_name(), sources)
-        session.refresh(conv)
-        # 异步反思（不阻塞流式响应）
-        self._maybe_reflect(conv, state)
+        assistant_saved = False
+        stopped = False
+        try:
+            async for event in pipeline.run_stream(state):
+                if event.type == "token":
+                    collected.append(event.data)
+                if event.type == "done":
+                    sources = self._reply_sources(session, retriever)
+                    answer = "".join(collected) or state.answer
+                    self._apply_output_security(answer, sec_ctx)
+                    self._persist_assistant(
+                        session,
+                        conv,
+                        answer,
+                        self._model_name(),
+                        sources,
+                        status="complete",
+                    )
+                    assistant_saved = True
+                    session.refresh(conv)
+                    self._maybe_reflect(conv, state)
+                    yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
+                yield event
+        except (GeneratorExit, asyncio.CancelledError):
+            stopped = True
+            raise
+        finally:
+            if stopped and not assistant_saved:
+                # 只用已经交给页面的 token。不用 state.answer，避免把未展示的后文写进去。
+                # 另开会话写入：客户端断开时，请求上的会话可能已经解除绑定。
+                answer = "".join(collected)
+                self._apply_output_security(answer, sec_ctx)
+                if not sources:
+                    try:
+                        sources = self._reply_sources(session, retriever)
+                    except Exception:  # noqa: BLE001 — 停止时请求会话可能已关闭
+                        logger.exception("停止时读取来源失败，仍保存已生成文本")
+                        sources = []
+                self._persist_assistant_standalone(
+                    conversation_id,
+                    answer,
+                    self._model_name(),
+                    sources,
+                    status="stopped",
+                )
 
     # ── 内部辅助 ──────────────────────────────────
     def _resolve_conversation(
@@ -307,6 +359,7 @@ class ChatService:
         content: str,
         model: str | None,
         sources: list[dict] | None = None,
+        status: str = "complete",
     ) -> None:
         payload = json.dumps(sources, ensure_ascii=False) if sources else None
         session.add(
@@ -316,9 +369,35 @@ class ChatService:
                 content=content,
                 model=model,
                 sources=payload,
+                status=status,
             )
         )
         session.commit()
+
+    def _persist_assistant_standalone(
+        self,
+        conversation_id: str,
+        content: str,
+        model: str | None,
+        sources: list[dict] | None,
+        status: str,
+    ) -> None:
+        """在独立会话里写入助手消息。用于生成器被关闭、原请求会话已不可用时。"""
+        from app.core.database import engine
+
+        payload = json.dumps(sources, ensure_ascii=False) if sources else None
+        with Session(engine) as extra:
+            extra.add(
+                Message(
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=content,
+                    model=model,
+                    sources=payload,
+                    status=status,
+                )
+            )
+            extra.commit()
 
     @staticmethod
     def _reply_sources(session: Session, retriever) -> list[dict]:

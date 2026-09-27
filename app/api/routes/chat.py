@@ -9,7 +9,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -74,12 +74,22 @@ class MessageOut(BaseModel):
     model: str | None
     created_at: str
     sources: list[SourceOut] = []
+    # complete：正常写完。stopped：生成已停下，正文不是完整回复。
+    status: str = "complete"
 
 
 class ConversationDetail(ConversationOut):
     """会话详情（含消息列表）。"""
 
     messages: list[MessageOut]
+
+
+class ConversationRename(BaseModel):
+    """重命名会话。只接受标题。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
 
 
 def _parse_sources(raw: str | None) -> list[SourceOut]:
@@ -127,6 +137,7 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
             model=m.model,
             created_at=m.created_at.isoformat(),
             sources=_parse_sources(m.sources),
+            status=m.status or "complete",
         )
         for m in sorted(conv.messages, key=lambda x: x.created_at)
     ]
@@ -219,6 +230,39 @@ def get_conversation(
             status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
         )
     return _conv_detail(conv)
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationOut)
+async def rename_conversation(
+    conversation_id: str,
+    req: ConversationRename,
+    request: Request,
+    current_user: User = Depends(require_permission("conversations", "write")),
+    session: Session = Depends(get_db),
+) -> ConversationOut:
+    """修改自己的会话标题。当前租户的系统管理员也可修改该租户内的会话。"""
+    title = req.title.strip()
+    if not title:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="标题不能为空")
+    if len(title) > 80:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="标题不能超过 80 个字",
+        )
+    conv = _service.rename_conversation(session, current_user, conversation_id, title)
+    if conv is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
+        )
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=current_user,
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details={"action": "conversation_rename"},
+    )
+    return _conv_out(conv)
 
 
 @router.delete("/conversations/{conversation_id}")

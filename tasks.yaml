@@ -2259,7 +2259,7 @@ tasks:
 
   - id: "CHAT-001"
     title: "停止生成（交付 C4）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-16"
     depends_on:
@@ -2314,7 +2314,7 @@ tasks:
 
   - id: "CHAT-002"
     title: "断线后查看完整回复（交付 C4）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-16"
     depends_on:
@@ -2368,7 +2368,7 @@ tasks:
 
   - id: "CHAT-003"
     title: "会话重命名与删除（交付 C4）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-16"
     depends_on:
@@ -2426,7 +2426,7 @@ tasks:
 
   - id: "CHAT-004"
     title: "只读成员不能发送（交付 C4）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-16"
     depends_on:
@@ -2482,7 +2482,7 @@ tasks:
 
   - id: "CHAT-005"
     title: "会话隔离回归（交付 C4）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-16"
     depends_on:

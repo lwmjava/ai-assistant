@@ -9,6 +9,7 @@
  * - `sources`：检索来源列表，不拼进回复正文
  * - `done`：携带 `state.answer`
  * - `error`：安全拦截或管线异常
+ * - `conversation`：会话编号。新建会话时页面靠它在断线后拉取，不再按更新时间猜测。
  *
  * **关于最终文本取哪个**：后端 `ChatService.chat_stream` 落库用的是
  * `answer = "".join(collected) or state.answer`，即 **token 累积结果**，而不是
@@ -33,6 +34,10 @@ export interface StreamSnapshot {
   tools: string[]
   sources: SourceRef[]
   error: string | null
+  /** 用户点击了停止。已看到的文字留下，不按网络错误处理。 */
+  stoppedByUser: boolean
+  /** 连接中断，且不是用户主动停止。 */
+  interrupted: boolean
 }
 
 const EMPTY: StreamSnapshot = {
@@ -43,12 +48,16 @@ const EMPTY: StreamSnapshot = {
   tools: [],
   sources: [],
   error: null,
+  stoppedByUser: false,
+  interrupted: false,
 }
 
 export interface SendOptions {
   message: string
   conversationId: string | null
-  /** 后端流式响应不回传 conversation_id，成功后需由调用方刷新列表来定位新会话。 */
+  /** 收到会话编号。新建会话时用来定位，断线后也靠它拉取。 */
+  onConversation?: (conversationId: string) => void
+  /** 后端流式响应在 done 前已落库。成功后由调用方刷新详情。 */
   onFinished?: (text: string) => void
 }
 
@@ -78,13 +87,19 @@ export function useChatStream() {
   }, [])
 
   const stop = useCallback(() => {
+    setSnapshot((prev) => ({
+      ...prev,
+      streaming: false,
+      stoppedByUser: true,
+      interrupted: false,
+      error: null,
+    }))
     abortRef.current?.abort()
     abortRef.current = null
-    setSnapshot((prev) => ({ ...prev, streaming: false }))
   }, [])
 
   const send = useCallback(
-    async ({ message, conversationId, onFinished }: SendOptions) => {
+    async ({ message, conversationId, onConversation, onFinished }: SendOptions) => {
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
@@ -109,13 +124,18 @@ export function useChatStream() {
 
             if (!mountedRef.current) return
 
+            const value = typeof payload.data === 'string' ? payload.data : ''
+
+            if (type === 'conversation') {
+              if (value) onConversation?.(value)
+              return
+            }
+
             if (type === 'sources') {
               const sources = asSources(payload.data)
               setSnapshot((prev) => ({ ...prev, sources }))
               return
             }
-
-            const value = typeof payload.data === 'string' ? payload.data : ''
 
             switch (type) {
               case 'stage':
@@ -146,11 +166,16 @@ export function useChatStream() {
           },
           onError: (err) => {
             if (!mountedRef.current) return
-            setSnapshot((prev) => ({
-              ...prev,
-              streaming: false,
-              error: err instanceof Error ? err.message : '流式连接中断',
-            }))
+            setSnapshot((prev) => {
+              if (prev.stoppedByUser) return { ...prev, streaming: false }
+              return {
+                ...prev,
+                streaming: false,
+                interrupted: true,
+                error: '连接中断',
+              }
+            })
+            void err
           },
         },
       )

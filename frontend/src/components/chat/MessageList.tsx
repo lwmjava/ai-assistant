@@ -20,6 +20,13 @@ export interface MessageListProps {
   tools: string[]
   streaming: boolean
   streamError: string | null
+  /** 用户主动停止。气泡上标已停止，不显示断线按钮。 */
+  stopped?: boolean
+  /** 连接中断或已停止等待。展示加载完整回复，不把当前半截说成已完成。 */
+  interrupted?: boolean
+  interruptTitle?: string
+  onLoadReply?: () => void
+  loadReplyNote?: string | null
   /**
    * 非流式（POST /chat）等待中：此时后端不回传任何中间态，
    * 没有阶段信息可展示，只渲染等待指示，避免把空的阶段骨架误显示为进度。
@@ -131,6 +138,11 @@ export function MessageList({
   streaming,
   streamError,
   awaiting = false,
+  stopped = false,
+  interrupted = false,
+  interruptTitle = '连接中断',
+  onLoadReply,
+  loadReplyNote,
   className,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -146,9 +158,16 @@ export function MessageList({
         <Bubble key={m.id} role={m.role} meta={m.model ?? formatDateTime(m.created_at)}>
           {m.role === 'assistant' ? (
             <>
-              <div className="markdown">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-              </div>
+              {m.content ? (
+                <div className="markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                </div>
+              ) : m.status === 'stopped' ? (
+                <p className="text-sm text-text-faint">已停止，没有生成内容</p>
+              ) : null}
+              {m.content && m.status === 'stopped' && (
+                <p className="mt-2 text-xs text-text-faint">已停止</p>
+              )}
               <SourceNotes sources={m.sources} />
             </>
           ) : (
@@ -157,7 +176,7 @@ export function MessageList({
         </Bubble>
       ))}
 
-      {(awaiting || streaming || streamingText || streamError) && (
+      {(awaiting || streaming || streamingText || streamError || stopped || interrupted) && (
         <Bubble role="assistant">
           {awaiting ? (
             <TypingDots />
@@ -169,17 +188,34 @@ export function MessageList({
                 tools={tools}
                 streaming={streaming}
               />
-              {streamError ? (
-                <p className="text-sm text-danger">{streamError}</p>
-              ) : streamingText ? (
+              {streamingText ? (
                 <>
                   <div className="markdown">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
                   </div>
                   <SourceNotes sources={streamingSources} />
+                  {stopped && <p className="mt-2 text-xs text-text-faint">已停止</p>}
                 </>
-              ) : (
+              ) : stopped ? (
+                <p className="text-sm text-text-faint">已停止，没有生成内容</p>
+              ) : streaming ? (
                 <p className="text-sm text-text-faint">正在思考…</p>
+              ) : null}
+              {interrupted && (
+                <div className="space-y-2">
+                  <p className="text-sm text-text-muted">{interruptTitle}</p>
+                  <button
+                    type="button"
+                    onClick={onLoadReply}
+                    className="min-h-touch rounded-lg border border-border px-3 py-1.5 text-sm text-text hover:bg-surface-2"
+                  >
+                    加载完整回复
+                  </button>
+                  {loadReplyNote && <p className="text-xs text-text-faint">{loadReplyNote}</p>}
+                </div>
+              )}
+              {streamError && !interrupted && (
+                <p className="text-sm text-danger">{streamError}</p>
               )}
             </div>
           )}

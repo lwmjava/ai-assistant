@@ -242,6 +242,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 对话 | `POST` | `/api/chat/stream` | SSE 流式对话 |
 | 对话 | `GET` | `/api/chat/conversations` | 会话列表 |
 | 对话 | `GET` | `/api/chat/conversations/{id}` | 会话详情（含消息） |
+| 对话 | `PATCH` | `/api/chat/conversations/{id}` | 重命名会话（请求体只有 `title`） |
 | 对话 | `DELETE` | `/api/chat/conversations/{id}` | 删除会话 |
 | 对话 | `GET` | `/api/chat/tools` | 可用工具列表 |
 | 知识库 | `POST` | `/api/rag/documents/ingest` | 文本摄取（自动分块嵌入） |

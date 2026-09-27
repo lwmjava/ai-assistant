@@ -105,4 +105,4 @@
 - 阶段 A3 若超过 2026-10-23，从 B1 起整表后移，12 月 25 日的 80% 失效。
 - C5 把模型路由和沙箱挤在六个日历日里，是 80% 死线最可能失守的一段。
 - Milvus 正式目标已写入 ADR-0002；默认配置在第 5 节门槛通过前仍是 Local。C6 五条未过则向量库不算进 80%。
-- 本文件的阶段 A 已对应 `RAG-011`～`RAG-013`，均已完成。B1 已拆为 `INST-001`～`INST-003`，均已完成。B2 已拆为 `TEN-001`～`TEN-003`，均已完成。B3 的 `QA-001`～`QA-004`、C1 的 `AUTH-001`～`AUTH-004`、C2 的 `INV-001`～`INV-003` 与 C3 的 `ADM-001`～`ADM-004` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`，尚未实现。
+- 本文件的阶段 A 已对应 `RAG-011`～`RAG-013`，均已完成。B1 已拆为 `INST-001`～`INST-003`，均已完成。B2 已拆为 `TEN-001`～`TEN-003`，均已完成。B3 的 `QA-001`～`QA-004`、C1 的 `AUTH-001`～`AUTH-004`、C2 的 `INV-001`～`INV-003`、C3 的 `ADM-001`～`ADM-004` 与 C4 的 `CHAT-001`～`CHAT-005` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`，尚未实现。

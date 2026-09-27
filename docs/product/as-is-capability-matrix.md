@@ -27,6 +27,7 @@
 | 自研五阶段 `AgentPipeline`（默认） | `Implemented` | `AGENT_ORCHESTRATION=self`；`app/agents/pipeline.py`；`app/services/chat_service.py` | 不是 LangGraph 五阶段主路径 |
 | LangGraph Supervisor | `Partial` | `app/agents/supervisor.py` | 可选编排，不是默认主路径 |
 | ChatService 组装 Memory/RAG/Tools/Skills/安全 | `Partial` | `app/services/chat_service.py` | 同时承担部分 Harness 职责，未独立提取 |
+| 对话停止、断线加载、重命名与只读禁发 | `Partial` | `app/services/chat_service.py`；`frontend/src/pages/Chat.tsx`；`tests/test_chat_controls.py` | 流式可停止并留下已停止标记。断线后可加载已写完的回复，未写完不会显示成完成。可重命名和删除自己的会话。viewer 不能发送。不做自动重连，也不把生成放到请求之外继续跑 |
 | 独立 Agent Harness / Context Builder / State Manager | `Planned` | `docs/governance/agent-harness-engineering.md` | RAG-005 基线已冻结；仍禁止无指标大爆炸重构 |
 | Tool Registry（名称/描述/Schema/函数） | `Partial` | `app/agents/tools/` | 权限、风险、超时、审计、版本未齐 |
 | 独立 Tool Executor | `Planned` | 治理规范 §3 | — |

@@ -102,6 +102,8 @@ export interface MessageOut {
   model: string | null
   created_at: string
   sources?: SourceRef[]
+  /** complete：正常写完。stopped：生成已停下，不是完整回复。 */
+  status?: 'complete' | 'stopped' | string
 }
 
 export interface ConversationDetail extends ConversationOut {
@@ -128,7 +130,14 @@ export interface ChatResponse {
 export type SendMode = 'stream' | 'once'
 
 /** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、sources=检索来源、done=完成、error=失败。 */
-export type StreamEventType = 'stage' | 'token' | 'tool' | 'sources' | 'done' | 'error'
+export type StreamEventType =
+  | 'stage'
+  | 'token'
+  | 'tool'
+  | 'sources'
+  | 'done'
+  | 'error'
+  | 'conversation'
 
 export interface StreamEvent {
   type: StreamEventType

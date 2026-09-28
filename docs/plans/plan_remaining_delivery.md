@@ -389,7 +389,7 @@
 
 ## SEC-004 16/20 交付包清点
 
-实现计划见 `docs/plans/plan_sec_c6.md`。状态：未实现。依赖在原列表上增加 SEC-002，避免第 13 项在日志脱敏未完成时被清点。
+实现计划见 `docs/plans/plan_sec_c6.md`。状态：已清点。清点见 `docs/plans/record_delivery_16.md`，说明见 `docs/plans/implementation_sec_004.md`。第 1、2、3、4、13、15 项未完成，80% 未达到。
 
 - 目标：对照交付排期第 6 节，写出前 16 项是否完成。
 - 现状：1–12 与 14–16 对应的任务已完成。第 13 项是 SEC-001～SEC-003。

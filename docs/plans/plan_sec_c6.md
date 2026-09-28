@@ -1,6 +1,6 @@
 # SEC-001～SEC-004：上传限制、日志与界面错误、Milvus 门槛、16/20 清点
 
-> 状态：SEC-001、SEC-002、SEC-003 已实现。SEC-004 未实现。SEC-003 的五条门槛未通过，默认向量库仍是 local。
+> 状态：SEC-001、SEC-002、SEC-003、SEC-004 已实现。SEC-003 的五条门槛未通过，默认向量库仍是 local。SEC-004 清点见 `docs/plans/record_delivery_16.md`。第 1、2、3、4、13、15 项未完成，80% 未达到。
 > 来源：`tasks.yaml` 的 SEC-001～SEC-004；`docs/plans/plan_remaining_delivery.md`；交付排期第 6 节第 13 项。
 > 日期：2026-09-27
 > 分支：`feat/sec-c6`
@@ -100,6 +100,8 @@
 - 验证：核对记录的路径和每条结论写入实现说明。
 
 ## SEC-004 16/20 交付包清点
+
+清点表见 `docs/plans/record_delivery_16.md`，实现说明见 `docs/plans/implementation_sec_004.md`。完成 10 项，未完成 6 项（第 1、2、3、4、13、15 项）。80% 未达到。下面是实现前的计划，保留不动。
 
 - 目标：对照 `docs/plans/plan_delivery_2027-03-25.md` 第 6 节，为第 1–16 项各写完成或未完成，并附证据。
 - 风险：L0。只改文档、`tasks.yaml` 和 `AGENTS.md`。

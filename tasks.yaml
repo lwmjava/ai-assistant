@@ -2940,7 +2940,7 @@ tasks:
 
   - id: "SEC-004"
     title: "16/20 交付包清点（交付 C6）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-25"
     depends_on:
@@ -2993,13 +2993,280 @@ tasks:
         auto_merge: false
         auto_deploy: false
 
+  - id: "EVD-001"
+    title: "补记知识库治理三项的验证输出"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "SEC-004"
+    context:
+      problem: "第 1 到第 3 项的计划列出了验证命令，没有记录输出，清点因此未完成。"
+      facts:
+        - claim: "RAG-011、RAG-012、RAG-013 的状态是 done。第 8 节有命令，没有通过条数或退出码。"
+          evidence: "docs/plans/plan_rag_011_control_plane.md；docs/plans/plan_rag_012_soft_delete.md；docs/plans/plan_rag_013_version_states.md"
+        - claim: "处理方式是原样重跑这些命令并写入输出。失败不改业务代码。"
+          evidence: "docs/plans/plan_delivery_16_evidence.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_rag_011_control_plane.md"
+        - "docs/plans/plan_rag_012_soft_delete.md"
+        - "docs/plans/plan_rag_013_version_states.md"
+        - "docs/plans/record_delivery_16.md"
+        - "docs/plans/implementation_evd_001.md"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "app/"
+        - "frontend/"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "三份计划各有验证命令和输出"
+        - "命令全部退出码为 0 时，清点表第 1 到第 3 行改为完成"
+      non_goals:
+        - "不补浏览器走查、真实模型、Milvus 或生产库迁移"
+        - "不修改知识库实现"
+        - "命令失败时不把清点行改成完成"
+    acceptance:
+      - "计划第 8 节所列命令都有输出和退出码"
+      - "退出码都是 0 时，清点表第 1 到第 3 行为完成；否则保持未完成且本任务不标 done"
+    risk:
+      level: "L0"
+      side_effect: "record-rag-verification"
+      rollback: "回退本任务的文档改动。不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "三组命令有输出"
+        - "失败保持未完成"
+      commands:
+        - "按 docs/plans/plan_delivery_16_evidence.md 的 EVD-001 命令执行"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "EVD-002"
+    title: "补记安装三项的验证输出"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "EVD-001"
+    context:
+      problem: "第 4 项的健康检查、编排配置和前端构建没有记录输出，清点因此未完成。"
+      facts:
+        - claim: "INST-001、INST-002、INST-003 的状态是 done。规定的编排命令是 docker compose config，不要求启动容器。"
+          evidence: "docs/plans/plan_b1_install.md；docs/plans/plan_inst_002_compose.md；docs/plans/plan_inst_003_console.md"
+        - claim: "成功展开编排需要进程内的 JWT 和模型密钥，这两项不能写入仓库或说明。"
+          evidence: "docker-compose.yml；docs/plans/plan_delivery_16_evidence.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_b1_install.md"
+        - "docs/plans/plan_inst_002_compose.md"
+        - "docs/plans/plan_inst_003_console.md"
+        - "docs/plans/record_delivery_16.md"
+        - "docs/plans/implementation_evd_002.md"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "docker-compose.yml"
+        - "app/"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "健康检查、编排配置和前端构建的输出写入对应计划"
+        - "全部达到验收时，清点表第 4 行改为完成"
+      non_goals:
+        - "不执行 docker compose up"
+        - "不把编排配置成功写成 Milvus 五条已过"
+        - "不修改编排文件"
+        - "不把密钥写入说明"
+    acceptance:
+      - "pytest tests/ -k health -v 与 ruff check app/api/routes/health.py 退出码为 0"
+      - "缺少 JWT 或模型密钥时 docker compose config 失败，且输出不含仓库内 JWT 占位口令"
+      - "两项按计划设置后 docker compose config 退出码为 0，RAG_VECTOR_STORE 为 local，MILVUS_URI 指向 milvus:19530，SERVE_FRONTEND 为真"
+      - "前端类型检查与构建退出码为 0"
+      - "未全部达到时清点表第 4 行保持未完成，本任务不标 done"
+    risk:
+      level: "L0"
+      side_effect: "record-install-verification"
+      rollback: "回退本任务的文档改动。进程里的密钥不进入仓库。"
+    evaluation:
+      cases:
+        - "缺少密钥时配置失败"
+        - "设置密钥后配置成功且默认向量库仍是 local"
+        - "健康检查与前端构建有退出码"
+      commands:
+        - "pytest tests/ -k health -v"
+        - "docker compose config"
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "EVD-003"
+    title: "按 README 走完首次运行并记录结果"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "EVD-002"
+    context:
+      problem: "第 15 项没有按 README 走到发出一条消息的记录，清点因此未完成。"
+      facts:
+        - claim: "README 快速开始是填写环境、启动、建立管理员、注册或登录、发送第一条消息。"
+          evidence: "README.md"
+        - claim: "已有系统管理员时打开 /setup 会离开向导。这次必须用单独的空库走过向导。"
+          evidence: "docs/plans/plan_auth_c1.md；docs/plans/record_delivery_16.md"
+        - claim: "不设置 DATABASE_URL 时，进程使用 data/ai_assistant.db。这次启动前只在该进程设置 sqlite:///./data/readme_walk.db。"
+          evidence: "app/core/config.py；docs/plans/plan_delivery_16_evidence.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_auth_c1.md"
+        - "docs/plans/record_delivery_16.md"
+        - "docs/plans/implementation_evd_003.md"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "README.md"
+        - "app/"
+        - "frontend/"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "README 五步各自的结果"
+        - "五步走完且消息已发出时，清点表第 15 行改为完成"
+      non_goals:
+        - "不修改 README 或页面"
+        - "不使用现有开发库或测试库 data/test_ai_assistant.db"
+        - "不把模拟模型的回复写成真实模型可用"
+        - "不把口令写入说明"
+    acceptance:
+      - "启动该进程前设置 DATABASE_URL=sqlite:///./data/readme_walk.db，且不改 .env"
+      - "单独 SQLite 上实际走过空库 /setup"
+      - "说明按 README 五步写出结果，并且有一条已发出的消息"
+      - "文档与页面不一致时停止，第 15 行保持未完成，本任务不标 done"
+    risk:
+      level: "L0"
+      side_effect: "readme-walk-disposable-db"
+      rollback: "删掉单独的 SQLite 文件并回退文档改动。"
+    evaluation:
+      cases:
+        - "空库向导"
+        - "发出一条消息"
+      commands:
+        - "按 docs/plans/plan_delivery_16_evidence.md 的 EVD-003 用单独 SQLite 走 README 五步"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "EVD-004"
+    title: "重跑 Milvus 五条门槛并记录结果"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "EVD-003"
+    context:
+      problem: "第 13 项的上传限制和日志脱敏已有结果。Milvus 第 1 到第 4 条未执行，整项因此未完成。"
+      facts:
+        - claim: "默认向量库是 local。pymilvus 不在主依赖里。已提交的编排不发布 19530。"
+          evidence: "app/core/config.py；pyproject.toml；docker-compose.yml"
+        - claim: "现有摄取不调用 MilvusVectorStore.add。接口删除不调用 delete_by_document。"
+          evidence: "docs/plans/record_milvus_five_gates.md"
+        - claim: "上次没有做备份，第 5 条不能把备份记成通过。"
+          evidence: "docs/plans/record_milvus_five_gates.md"
+        - claim: "可选客户端是 pymilvus==2.4.7，已提交镜像是 milvusdb/milvus:v2.5.11。覆盖文件不改镜像。版本不匹配时本条记为 blocked。"
+          evidence: "pyproject.toml；docker-compose.yml；docs/plans/plan_delivery_16_evidence.md"
+    scope:
+      allowed_paths:
+        - "scripts/milvus_five_gates.py"
+        - ".gitignore"
+        - "docs/plans/record_milvus_five_gates.md"
+        - "docs/plans/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "app/"
+        - "docker-compose.yml"
+        - ".env.example"
+        - "requirements.txt"
+        - "pyproject.toml"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "五条各自的通过、失败或未执行"
+        - "五条全部通过且核对卷备份存在时，清点表第 13 行改为完成"
+        - "默认向量库保持 local"
+      non_goals:
+        - "不把 pymilvus 放进主依赖或镜像"
+        - "不把 19530 写进已提交的编排"
+        - "不修改摄取或 Milvus 适配来换通过"
+        - "不把 skip 或 Mock 嵌入写成通过"
+        - "不把 Milvus 标成 Implemented"
+        - "不在本条把默认向量库改为 milvus"
+        - "不在覆盖文件里把镜像改成 2.4"
+        - "不在容器运行中拷贝核对卷"
+    acceptance:
+      - "五条都有本次输出"
+      - "新建 scripts/milvus_five_gates.py，应用不导入它"
+      - "全部通过且停止容器后 data/gate-backup 有备份拷贝时，第 13 行为完成，测试仍证明默认是 local"
+      - "任一未执行或失败时第 13 行保持未完成，本任务不标 done"
+      - "解释器没有 pymilvus、没有 Docker、19530 连接不上，或 pymilvus 2.4.7 与镜像 v2.5.11 不匹配时，本条标为 blocked"
+    risk:
+      level: "L1"
+      side_effect: "milvus-gate-disposable-volume"
+      rollback: "进程内 RAG_VECTOR_STORE 设回 local，删除独立 Compose 项目 aigates 的容器和卷。"
+    evaluation:
+      cases:
+        - "摄取后显式 add 再检索"
+        - "重解析后旧主键不再命中"
+        - "delete_by_document 条数与删除前分块数一致"
+        - "其他租户不命中"
+        - "失败报告、回滚和核对卷备份"
+      commands:
+        - "按 docs/plans/plan_delivery_16_evidence.md 的 EVD-004 执行"
+        - "pytest tests/test_vectorstore_policy.py -v"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
   - id: "FLOW-001"
     title: "调度在目标环境可启动（交付 D1）"
     status: "ready"
     priority: "P1"
     target_date: "2027-01-15"
     depends_on:
-      - "SEC-004"
+      - "EVD-004"
     context:
       problem: "目标环境里工作流调度不能稳定启动和停止。"
       facts:

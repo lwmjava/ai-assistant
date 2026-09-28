@@ -432,6 +432,9 @@ Agent 系统变更只有满足以下条件才能完成：
 → 阶段 B 最小安装点
 → 阶段 C MVP（2026-12-25 达到约定范围的 80%）
 → 阶段 D 完整交付（2027-03-25 达到约定范围的 100%）
+→ 阶段 E 生产就绪（D4 之后，不在原交付排期内）
 ```
 
-不把切分、Embedding、独立 Reranker、Query Rewrite 排成跨月当前任务。正式向量库目标为 Milvus（ADR-0002）；默认 `RAG_VECTOR_STORE` 在第 5 节门槛通过前仍是 Local。详细任务以根目录 `tasks.yaml` 为准。知识库权限与正式 VectorStore 已由 ADR-0001/0002 决定。
+阶段 E 对应 `tasks.yaml` 的 `NFR`/`OPS` 族与四个打磨族（`PAGT`/`PWFL`/`PRAG`/`PMCP`），覆盖非功能需求、运维与发布；当前共 104 条任务，其中 38 张为企业上线补充卡。
+
+不把切分、Embedding、独立 Reranker、Query Rewrite 排成跨月当前任务。独立重排只做一轮，由 `REL-004` 承担，`PRAG-002` 只在其结论采纳后做落地。正式向量库目标为 Milvus（ADR-0002）；默认 `RAG_VECTOR_STORE` 在第 5 节门槛通过前仍是 Local。详细任务以根目录 `tasks.yaml` 为准。知识库权限与正式 VectorStore 已由 ADR-0001/0002 决定。

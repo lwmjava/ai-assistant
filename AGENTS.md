@@ -35,6 +35,7 @@
 - 当前能力矩阵：`docs/product/as-is-capability-matrix.md`
 - ADR：`docs/adr/`（已批准：ADR-0001 权限、ADR-0002 VectorStore、ADR-0003 生效日期；不得把目录存在或 Proposed 草稿当成已决策）
 - 已批准计划：`docs/plans/`
+- 评审结论：`docs/reviews/`。评审不要写入 `docs/plans/`
 - AI 提示词：`docs/ai-prompts/`
 - 开发流程：`docs/workflows/`
 - 审查门禁：`docs/checklists/`
@@ -289,6 +290,7 @@ npm run build
 - 新增或修改 Prompt、Skill、Tool、RAG、Agent Loop、State、Guardrail 时，必须增加或更新 Evaluation Case。
 - 确定性逻辑优先使用单元/契约测试；非确定性行为使用版本化 Evaluation。
 - HTTP 200、模型自评和 Mock 全绿不等于真实业务成功。
+- 性能与检索质量数字必须写明所用 Embedding 的 provider、模型与维度，以及机器规格。Mock Embedding 的结果只能用来证明链路走通，不得写成上线指标或质量提升。
 
 Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Smoke。AI 生成数据默认不是 Gold。
 
@@ -305,6 +307,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 - 模板：`docs/templates/`
 - 任务契约：`tasks.yaml`
 - 拆分计划与实现说明：`docs/plans/`
+- 评审结论：`docs/reviews/`。评审不要写入 `docs/plans/`
 
 以下变更必须同步：
 
@@ -317,6 +320,8 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 | Harness/状态/HITL/MCP 边界 | ADR、流程、测试和运行手册 |
 | 前端 API/交互 | 前后端契约、类型检查和构建 |
 | 任务拆分或单任务实现 | `docs/plans/` 中的拆分计划与实现说明 |
+| 非功能需求、运维与发布（`NFR`/`OPS` 族） | 需求文档第六章、`tasks.yaml` 的 `NFR`/`OPS` 族、运行手册与备份恢复步骤 |
+| 评审 | `docs/reviews/` 中的评审结论，不写入 `docs/plans/` |
 
 交付证据必须包含：
 
@@ -377,13 +382,33 @@ GOV-001 治理文件项目化
 
 `tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`。下一项是 `SEC-002`；C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
 
-A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
+按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 104 条（48 done / 18 ready / 38 backlog）：
+
+| 族 | 任务 | 定位 |
+|---|---|---|
+| `NFR-001`～`NFR-011` | 非功能需求 | CI、结构化日志、PostgreSQL 生产验证、密钥与依赖扫描、密钥加密存储、审计保留、性能压测、生产编排、反向代理与 SSE、备份脚本、`/health` 暴露 Embedding 状态 |
+| `PAGT-001`～`PAGT-005` | Agent 工具打磨 | web_search 与 file_ops 读能力、工具十要素契约、调用预算、Plan 可编排、Skill 版本回归 |
+| `PWFL-001`～`PWFL-004` | 工作流打磨 | 重试、超时与取消、并发与幂等、失败告警与日志持久化 |
+| `PRAG-001`～`PRAG-004` | RAG 打磨 | 越权核对、重排落地、Citation 产品化、低分阈值与拒答 |
+| `PMCP-001`～`PMCP-005` | MCP 打磨 | 超时重连心跳、权限与风险分级、调用审计、凭据管理、版本兼容 |
+| `ERR-001` | 统一错误码 | 端到端验收 |
+| `OPS-001`～`OPS-007` | 运维与发布 | 多实例外部化、并发幂等、升级回滚演练、RTO/RPO、数据合规删除、依赖许可审计、指标与告警 |
+| `QA-005` | 测试修复 | 既有 8 个失败项归因与修复 |
+
+依赖关系见 `docs/plans/新增38卡与现有18任务依赖关系说明.md`，评审结论见 `docs/reviews/`。执行顺序由 `depends_on` 决定，不是文件位置。
+
+A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。独立重排只做一轮，由 `REL-004` 承担；`PRAG-002` 只在其结论采纳后做落地（开关、灰度、开销），不重复跑实验。Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 
 ```text
 阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）
 → 阶段 B 最小安装点
 → 阶段 C MVP（2026-12-25 达到约定范围的 80%）
 → 阶段 D 完整交付（2027-03-25 达到约定范围的 100%）
+→ 阶段 E 生产就绪（D4 之后，不在原交付排期内）
 ```
+
+阶段 E 分三组：E1 运行时与数据（`NFR-005` PostgreSQL 生产验证、`OPS-001` 多实例状态外部化、`OPS-002` 并发与幂等）；E2 安全合规（`NFR-006` 密钥与依赖扫描、`NFR-007` 密钥加密存储、`NFR-008` 审计保留 90 天、`OPS-005` 数据合规删除、`OPS-006` 依赖许可审计）；E3 性能与发布（`NFR-009` 五项性能压测、`NFR-003` 生产编排、`NFR-004` 反向代理与 SSE、`NFR-010` 备份脚本、`OPS-004` RTO/RPO 定义、`OPS-003` 升级回滚演练、`OPS-007` 指标与告警）。
+
+`OPS-004` 必须先于 `OPS-003`：先有恢复指标，演练才有合格线。`NFR-011` 不改生产缺密钥时的启动失败行为，只在进程已启动时让 `/health` 写出 provider、模型、维度与是否为 Mock。`NFR-009` 的检索延迟必须用真实 Embedding 测，Mock 结果不得写成达标。
 
 资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）；默认配置在闭环门槛通过前仍是 Local。

@@ -4,7 +4,7 @@
 > 基线日期：2026-09-25  
 > 适用项目：`ai-assistant`  
 > 适用对象：个人开发者及参与规划、实现、测试、评审的 AI Coding Agent  
-> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现；按企业上线标准补充的 38 张卡（`NFR`/`OPS`/`PAGT`/`PWFL`/`PRAG`/`PMCP`/`ERR`/`QA-005`）也已并入，当前共 104 条。下一项是 `SEC-002`。
+> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`、`SEC-002`、`SEC-003` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。B3 至 D4 其余任务已拆入 `tasks.yaml`，其余尚未实现；按企业上线标准补充的 38 张卡（`NFR`/`OPS`/`PAGT`/`PWFL`/`PRAG`/`PMCP`/`ERR`/`QA-005`）也已并入，当前共 104 条。下一项是 `SEC-004`。
 
 ## 1. 目的
 
@@ -243,7 +243,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 → 渐进 Harness 治理
 ```
 
-文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，尚未实现；按企业上线标准补充的 38 张卡（`NFR`/`OPS`/`PAGT`/`PWFL`/`PRAG`/`PMCP`/`ERR`/`QA-005`）也已并入，当前共 104 条。下一项是 `SEC-002`。
+文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`、`SEC-002`、`SEC-003` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。B3 至 D4 其余任务已拆入 `tasks.yaml`，其余尚未实现；按企业上线标准补充的 38 张卡（`NFR`/`OPS`/`PAGT`/`PWFL`/`PRAG`/`PMCP`/`ERR`/`QA-005`）也已并入，当前共 104 条。下一项是 `SEC-004`。
 
 ### 阶段 0：事实与决策，预计 1～2 天
 
@@ -694,7 +694,7 @@ AI 完成后必须：
 
 `GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。B2 的三条任务都已完成。
 
-其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）→ E 生产就绪（D4 之后，不在原交付排期内）。B3 至 D4 已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001` 已完成，其余未实现。下一项是 `SEC-002`。
+其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）→ E 生产就绪（D4 之后，不在原交付排期内）。B3 至 D4 已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`、`SEC-002`、`SEC-003` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。其余未实现。下一项是 `SEC-004`。
 
 正式向量库目标为 Milvus（ADR-0002）；默认配置在第 5 节门槛通过前仍是 Local。闭环放在 B1 与 C6。切分 / Embedding / 独立 Reranker / Query Rewrite 不排成连续数月深耕。
 

@@ -1,6 +1,6 @@
 # SEC-001～SEC-004：上传限制、日志与界面错误、Milvus 门槛、16/20 清点
 
-> 状态：SEC-001、SEC-002 已实现。SEC-003、SEC-004 未实现。
+> 状态：SEC-001、SEC-002、SEC-003 已实现。SEC-004 未实现。SEC-003 的五条门槛未通过，默认向量库仍是 local。
 > 来源：`tasks.yaml` 的 SEC-001～SEC-004；`docs/plans/plan_remaining_delivery.md`；交付排期第 6 节第 13 项。
 > 日期：2026-09-27
 > 分支：`feat/sec-c6`
@@ -83,6 +83,8 @@
 - 验证：命令退出码写入实现说明。登录错密码、上传失败、对话失败各看一次页面和日志。连接中断仍显示「连接中断」。
 
 ## SEC-003 Milvus 五条门槛核对
+
+已核对，记录见 `docs/plans/record_milvus_five_gates.md`，说明见 `docs/plans/implementation_sec_003.md`。第 1 到第 4 条未执行，总结论未通过，默认仍是 `local`。
 
 - 目标：按 ADR-0002 第 5 节留下五条可重复记录。任一条没有通过证据，结论就是未通过，默认向量库保持 `local`。
 - 风险：L0。不改默认配置，不改已冻结基线 `evals/reports/rag-v0.1-baseline-20260919.json`。

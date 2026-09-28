@@ -378,7 +378,7 @@
 
 ## SEC-003 Milvus 五条门槛核对
 
-实现计划见 `docs/plans/plan_sec_c6.md`。状态：未实现。
+实现计划见 `docs/plans/plan_sec_c6.md`。状态：已核对。记录见 `docs/plans/record_milvus_five_gates.md`。第 1 到第 4 条未执行，总结论未通过，默认仍是 Local。
 
 - 目标：用可重复证据核对 Milvus 是否过门槛。
 - 现状：默认向量库是 Local。Milvus 适配存在，五条门槛没有全部证据。

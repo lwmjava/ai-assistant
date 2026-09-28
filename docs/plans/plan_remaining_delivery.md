@@ -367,7 +367,7 @@
 
 ## SEC-002 日志脱敏与界面错误提示
 
-实现计划见 `docs/plans/plan_sec_c6.md`。状态：未实现。
+实现计划见 `docs/plans/plan_sec_c6.md`。状态：已实现。行为见 `docs/plans/implementation_sec_002.md`。
 
 - 目标：日志里不出现密钥和令牌；页面上的错误是可理解的提示。
 - 现状：已有日志脱敏工具，未挂到日志系统。界面直接展示接口原文。

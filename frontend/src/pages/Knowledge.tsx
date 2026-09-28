@@ -14,7 +14,7 @@ import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
 import { createConfirmation, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
-import { ApiError, isSessionExpiredError } from '@/lib/http'
+import { ApiError, hideStackTrace, isSessionExpiredError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
@@ -310,7 +310,7 @@ export default function KnowledgePage() {
       toast.success('上传成功', `《${doc.title}》${stateLabel}，${doc.chunk_count} 个分块`)
     } catch (err) {
       if (isSessionExpiredError(err)) return
-      toast.error('上传失败', err instanceof ApiError ? err.detail : undefined)
+      toast.error('上传失败', err instanceof ApiError ? hideStackTrace(err.detail) : undefined)
     } finally {
       if (fileRef.current) fileRef.current.value = ''
     }

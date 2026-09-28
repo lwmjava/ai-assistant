@@ -29,9 +29,11 @@ _SENSITIVE_FIELDS: list[str] = [
     "bearer",
 ]
 
-# 构建匹配模式：覆盖 JSON 键值对、key=value、key: value 等格式
+# 字段值：引号内可含空格；无引号时连续词（含空格）算同一段，在逗号、&、}、引号或换行处停下。
+_FIELD_ALTERNATION = "|".join(_SENSITIVE_FIELDS)
 _SENSITIVE_KEY_PATTERN = re.compile(
-    r'(?i)(["\']?(' + "|".join(_SENSITIVE_FIELDS) + r')["\']?\s*[:=]\s*)(["\']?)([^"\'\,\s\}\&]+)(["\']?)',
+    rf"(?i)([\"']?(?:{_FIELD_ALTERNATION})[\"']?\s*[:=]\s*)"
+    r"(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'|[^\s\"',}&]+(?:[ \t]+[^\s\"',}&]+)*)"
 )
 
 # 敏感值模式（独立于字段名，作为兜底）
@@ -56,6 +58,14 @@ class LogSanitizer:
     def __init__(self, *, mask_char: str = "***") -> None:
         self._mask = mask_char
 
+    def _mask_sensitive_field(self, match: re.Match[str]) -> str:
+        """保留字段名和引号，把整段值换成占位符。"""
+        prefix = match.group(1)
+        value = match.group(2)
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            return f"{prefix}{value[0]}{self._mask}{value[-1]}"
+        return f"{prefix}{self._mask}"
+
     def sanitize(self, text: str) -> str:
         """脱敏文本中的敏感信息。
 
@@ -66,10 +76,7 @@ class LogSanitizer:
             脱敏后的文本。
         """
         # 1. 按字段名脱敏
-        text = _SENSITIVE_KEY_PATTERN.sub(
-            lambda m: f"{m.group(1)}{m.group(3)}{self._mask}{m.group(5)}",
-            text,
-        )
+        text = _SENSITIVE_KEY_PATTERN.sub(self._mask_sensitive_field, text)
 
         # 2. 按值模式脱敏（兜底）
         for _label, pattern in _SENSITIVE_VALUE_PATTERNS:

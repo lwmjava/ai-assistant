@@ -2829,7 +2829,7 @@ tasks:
 
   - id: "SEC-002"
     title: "日志脱敏与界面错误提示（交付 C6）"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-25"
     depends_on:

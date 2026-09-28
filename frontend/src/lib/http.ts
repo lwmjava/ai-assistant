@@ -45,6 +45,14 @@ export function isSessionExpiredError(err: unknown): boolean {
   return err instanceof ApiError && err.sessionExpired
 }
 
+const STACK_TRACE = /Traceback \(most recent call last\)|File "[^"]*", line /
+
+/** 正文里出现 Python 回溯时改成固定提示，其它业务短句原样返回。 */
+export function hideStackTrace(message: string): string {
+  if (STACK_TRACE.test(message)) return '操作失败，请稍后重试'
+  return message
+}
+
 const BASE = '/api'
 const STORAGE_KEY = 'aa-auth'
 

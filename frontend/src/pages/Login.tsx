@@ -10,7 +10,7 @@ import { ArrowRight, Lock, UserRound } from 'lucide-react'
 import { AuthScreen } from '@/components/auth/AuthScreen'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Field'
-import { ApiError } from '@/lib/http'
+import { ApiError, hideStackTrace } from '@/lib/http'
 import { useAuthStore } from '@/store/auth'
 
 const schema = z.object({
@@ -51,9 +51,9 @@ export default function LoginPage() {
       const from = (location.state as { from?: string } | null)?.from ?? '/chat'
       void navigate(from, { replace: true })
     } catch (err) {
-      setFormError(
-        err instanceof ApiError ? err.detail : '登录失败，请检查网络或后端服务是否启动',
-      )
+      const detail =
+        err instanceof ApiError ? err.detail : '登录失败，请检查网络或后端服务是否启动'
+      setFormError(hideStackTrace(detail))
     }
   }
 

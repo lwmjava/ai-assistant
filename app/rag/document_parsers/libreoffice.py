@@ -94,11 +94,11 @@ def convert_office_bytes_with_libreoffice(
                 )
             return outputs[0].read_bytes()
     except subprocess.TimeoutExpired as exc:
-        command = " ".join(str(part) for part in (exc.cmd or []))
+        command_text = " ".join(str(part) for part in (exc.cmd or []))
         raise LegacyOfficeConversionError(
             message="老 Office 格式转换失败：LibreOffice 执行超时",
             error_code="libreoffice_timeout",
-            command=command,
+            command=command_text,
             stdout=(exc.stdout or b"").decode("utf-8", errors="replace"),
             stderr=(exc.stderr or b"").decode("utf-8", errors="replace"),
         ) from exc

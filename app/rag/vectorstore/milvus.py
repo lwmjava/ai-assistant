@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 
 import numpy as np
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
@@ -210,12 +210,12 @@ class MilvusVectorStore(VectorStore):
 
         stmt = (
             select(DocumentChunk)
-            .join(Document, Document.id == DocumentChunk.document_id)
+            .join(Document, col(Document.id) == col(DocumentChunk.document_id))
             .where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
         )
-        stmt = stmt.where(Document.deleted_at.is_(None))
+        stmt = stmt.where(col(Document.deleted_at).is_(None))
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
-            stmt = stmt.where(Document.is_current.is_(True))
+            stmt = stmt.where(col(Document.is_current).is_(True))
         rows = self.session.exec(stmt).all()
         rows, version_by_chunk = visible_chunks_with_status(
             self.session, rows, as_of, schedule_at

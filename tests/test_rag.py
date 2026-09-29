@@ -6,6 +6,7 @@
 """
 
 import io
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -869,7 +870,7 @@ async def test_hybrid_search_bm25_all_zero_preserves_dense_order(
 
     from app.rag.vectorstore.local import LocalVectorStore
 
-    tenant_id = "bm25-zero-tenant"
+    tenant_id = f"bm25-zero-{uuid.uuid4().hex}"
     # 插入顺序与余弦降序相反：最差 → 中等 → 最佳。
     _seed_hybrid_chunks(
         session,
@@ -915,7 +916,7 @@ async def test_hybrid_search_bm25_positive_keeps_rrf_and_skips_diag(
 
     from app.rag.vectorstore.local import LocalVectorStore, _rrf
 
-    tenant_id = "bm25-pos-tenant"
+    tenant_id = f"bm25-pos-{uuid.uuid4().hex}"
     # 插入：最差稠密且无词重合 → 中等稠密且词重合 → 最佳稠密无词重合。
     # 稀疏路会抬高「中等」块，融合结果与纯稠密不同。
     _seed_hybrid_chunks(
@@ -956,7 +957,7 @@ async def test_hybrid_search_bm25_all_zero_reason_empty_query_tokens(
 
     from app.rag.vectorstore.local import LocalVectorStore
 
-    tenant_id = "bm25-empty-q"
+    tenant_id = f"bm25-empty-q-{uuid.uuid4().hex}"
     doc_id = _seed_hybrid_chunks(
         session,
         tenant_id=tenant_id,
@@ -992,7 +993,7 @@ async def test_hybrid_search_bm25_all_zero_reason_empty_doc_tokens(
 
     from app.rag.vectorstore.local import LocalVectorStore
 
-    tenant_id = "bm25-empty-doc"
+    tenant_id = f"bm25-empty-doc-{uuid.uuid4().hex}"
     _seed_hybrid_chunks(
         session,
         tenant_id=tenant_id,

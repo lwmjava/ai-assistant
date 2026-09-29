@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-09-27
+> 最后更新：2026-09-29
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -40,6 +40,7 @@
 - 开发流程：`docs/workflows/`
 - 审查门禁：`docs/checklists/`
 - 文档模板：`docs/templates/`
+- 类型检查复盘：`docs/reviews/2026-09-29-mypy类型错误复盘.md`（改 SQLModel 查询或 mypy 相关代码时阅读）
 - 真实实现、配置、测试和 Git 历史
 
 文档是约束和意图，代码与运行证据说明当前事实。二者不一致时应报告漂移，不得静默选一方。
@@ -291,6 +292,22 @@ npm run build
 - 确定性逻辑优先使用单元/契约测试；非确定性行为使用版本化 Evaluation。
 - HTTP 200、模型自评和 Mock 全绿不等于真实业务成功。
 - 性能与检索质量数字必须写明所用 Embedding 的 provider、模型与维度，以及机器规格。Mock Embedding 的结果只能用来证明链路走通，不得写成上线指标或质量提升。
+- 类型检查与 pytest 使用 conda 环境 `ai-assistant` 的解释器（`D:\install\anaconda3\envs\ai-assistant\Scripts`）。默认 PATH 上的 base 解释器缺少项目依赖。那次失败要记下来，不能当成这批业务断言的结论，也不能改去另一个未声明的环境。
+
+### 类型检查
+
+2026-09-29 对 `mypy app/rag/access.py app/rag/import_jobs.py app/rag/service.py` 的复盘见 `docs/reviews/2026-09-29-mypy类型错误复盘.md`。当时 40 条报错、退出码 1。编写或修改 SQLModel 查询、注解和子进程错误处理时遵守：
+
+- 条件、排序、连接使用 `sqlmodel.col`。`is_current`、`deleted_at`、`updated_at`、`created_at`、`id` 的注解是 Python 类型，查询里仍要包 `col()` 再调用 `.is_()`、`.asc()`、`.desc()` 或做 `==` / `<`。新增调用同时补上 `col` 的 import。
+- `Session.exec` 只用于 `select`。`delete` 与 `update` 使用 `session.execute`。行数用 `getattr(result, "rowcount", 0)`。不用错误码对不上的 `type: ignore` 去压 `exec(delete(...))`。当前配置 `warn_unused_ignores = false`，忽略是否生效以命令输出里的错误码为准。
+- `session.exec(...).all()` 按 `Sequence` 接收。文件没有 `from __future__ import annotations` 时，注解里的 `Sequence`、模型名和其他名字必须有运行时 import。
+- 键固定的返回值用 `TypedDict`。需要符合既定值类型的字典写出注解。同一变量在不同分支要赋 `str` 和 `str | None` 时，先声明目标类型。
+- `subprocess` 超时异常的 stdout、stderr 按 `bytes | None` 解码后再交给 `str | None`。已经是 `list[str]` 的命令变量不要再赋成拼接后的字符串。
+- 数据类按字段构造，不用 `**dict`。未知键抛出带键名的 `ValueError`。
+- 可选依赖缺失时，不把 `None` 赋给 `import` 进来的类名。先 `Name: Any = None`，再 `import ... as _Name`。`Any` 要导入。
+- 用逐个 `is None` 收窄，不用 `None in (a, b, c)`。
+- 把可能为空的 Alembic head 收成 `str` 时，空值要失败。这个异常若发生在启动迁移路径上，必须进入开发环境「迁移失败不阻塞启动」的既有处理，不能留在那段 `try` 之外。
+- 不放宽 mypy 配置，不改 `follow_imports`，不用整文件 `type: ignore` 换退出码 0。
 
 Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Smoke。AI 生成数据默认不是 Gold。
 
@@ -308,6 +325,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 - 任务契约：`tasks.yaml`
 - 拆分计划与实现说明：`docs/plans/`
 - 评审结论：`docs/reviews/`。评审不要写入 `docs/plans/`
+- 类型检查复盘：`docs/reviews/2026-09-29-mypy类型错误复盘.md`
 
 以下变更必须同步：
 
@@ -380,9 +398,9 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1、2、3、4、13、15 项未完成，80% 未达到。这六项的处理计划见 `docs/plans/plan_delivery_16_evidence.md`，对应 `EVD-001`～`EVD-004`，尚未实现。B3 至 D4 其余任务已拆入 `tasks.yaml`。下一项是 `EVD-001`；`FLOW-001` 依赖 `EVD-004`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1、2、3 项已完成，第 4、13、15 项未完成，80% 未达到。这六项的处理计划见 `docs/plans/plan_delivery_16_evidence.md`。`EVD-001` 已完成，`EVD-002`～`EVD-004` 尚未实现。B3 至 D4 其余任务已拆入 `tasks.yaml`。下一项是 `EVD-002`；`FLOW-001` 依赖 `EVD-004`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
 
-按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（51 done / 19 ready / 38 backlog）：
+按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（52 done / 18 ready / 38 backlog）：
 
 | 族 | 任务 | 定位 |
 |---|---|---|

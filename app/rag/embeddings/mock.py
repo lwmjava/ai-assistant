@@ -33,7 +33,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
     def _vector_for_text(self, text: str) -> list[float]:
         buckets = [0.0] * self.dim
         for tok in tokenize(text):
-            digest = hashlib.md5(f"{self._seed}:{tok}".encode("utf-8")).hexdigest()
+            digest = hashlib.md5(f"{self._seed}:{tok}".encode()).hexdigest()
             buckets[int(digest, 16) % self.dim] += 1.0
         norm = math.sqrt(sum(b * b for b in buckets))
         if norm == 0.0:

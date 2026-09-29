@@ -12,10 +12,11 @@
 import json
 import logging
 import math
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 import numpy as np
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
@@ -146,12 +147,12 @@ class LocalVectorStore(VectorStore):
     ) -> list[ChunkResult]:
         stmt = (
             select(DocumentChunk)
-            .join(Document, Document.id == DocumentChunk.document_id)
+            .join(Document, col(Document.id) == col(DocumentChunk.document_id))
             .where(DocumentChunk.tenant_id == tenant_id)
         )
-        stmt = stmt.where(Document.deleted_at.is_(None))
+        stmt = stmt.where(col(Document.deleted_at).is_(None))
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
-            stmt = stmt.where(Document.is_current.is_(True))
+            stmt = stmt.where(col(Document.is_current).is_(True))
         rows = self.session.exec(stmt).all()
         if not rows:
             return []
@@ -241,12 +242,12 @@ class LocalVectorStore(VectorStore):
 
 def visible_chunks_with_status(
     session: Session,
-    rows: list[DocumentChunk],
+    rows: Sequence[DocumentChunk],
     as_of: datetime | None,
     schedule_at: datetime | None,
 ) -> tuple[list[DocumentChunk], dict[str, str]]:
     if not settings.RAG_EFFECTIVE_DATE_FILTER:
-        return rows, {row.id: "current" for row in rows}
+        return list(rows), {row.id: "current" for row in rows}
     moment = ensure_utc(as_of) if as_of is not None else datetime.now(UTC)
     visible: list[DocumentChunk] = []
     version_by_chunk: dict[str, str] = {}

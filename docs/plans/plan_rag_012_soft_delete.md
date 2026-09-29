@@ -115,4 +115,46 @@ mypy app/rag/access.py app/rag/service.py app/models/rag.py
 cd frontend; npm run typecheck
 ```
 
+### 验证结果（2026-09-29，EVD-001）
+
+上午因 RAG-011 的 mypy 退出码为 1，本组没有执行。类型修复之后按同一命令文本跑了一次，RAG-013 贴的是这一份。解释器是 conda 环境 `ai-assistant`。
+
+`pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py tests/test_rag.py tests/test_rag_import_jobs.py -v`，退出码 1：
+
+```text
+FAILED tests/test_rag.py::test_hybrid_search_bm25_all_zero_preserves_dense_order
+FAILED tests/test_rag.py::test_hybrid_search_bm25_positive_keeps_rrf_and_skips_diag
+FAILED tests/test_rag.py::test_hybrid_search_bm25_all_zero_reason_empty_doc_tokens
+3 failed, 66 passed, 1 warning in 61.89s
+```
+
+三条失败都是混合检索命中顺序和期望不一致。`test_hybrid_search_bm25_all_zero_preserves_dense_order` 在下标 1 处得到 `SENTINEL_BODY_BEST`，期望是 `SENTINEL_BODY_MID`。`test_hybrid_search_bm25_positive_keeps_rrf_and_skips_diag` 在下标 2 处得到 `POS_MID_SPARSE_HIT`，期望是 `POS_WORST`。`test_hybrid_search_bm25_all_zero_reason_empty_doc_tokens` 在下标 1 处得到 `EMPTY_DOC_BEST`，期望是 `EMPTY_DOC_WORST`。
+
+`ruff check app/rag/ app/models/rag.py app/api/routes/rag.py`，退出码 1：
+
+```text
+app\rag\embeddings\mock.py:36:34: UP012 Unnecessary UTF-8 `encoding` argument to `encode`
+Found 1 error.
+```
+
+`mypy app/rag/access.py app/rag/service.py app/models/rag.py`，退出码 0：`Success: no issues found in 3 source files`
+
+`cd frontend; npm run typecheck` 与 RAG-011 再次验证是同一次退出码 0 的运行（`tsc --noEmit`），没有重跑。
+
+pytest 与 ruff 退出码不是 0。按计划清点表第 1–3 行当时都保持未完成。本任务当时不改检索实现，也不改 `mock.py`。
+
+### 验证通过（2026-09-29，EVD-001 收口）
+
+上述失败已由混合检索重跑隔离与 Mock 编码检查处理。命令文本与 RAG-013 相同，只跑一次，两份计划贴同一份输出。解释器是 conda 环境 `ai-assistant`。
+
+`pytest tests/test_rag_access.py tests/test_rag_permission_semantics.py tests/test_rag.py tests/test_rag_import_jobs.py -v`，退出码 0：`69 passed, 1 warning in 64.93s`。原先失败的三条均为 PASSED：`test_hybrid_search_bm25_all_zero_preserves_dense_order`、`test_hybrid_search_bm25_positive_keeps_rrf_and_skips_diag`、`test_hybrid_search_bm25_all_zero_reason_empty_doc_tokens`。警告仍是 Starlette `anyio.abc.BlockingPortal` 的 `DeprecationWarning`。
+
+`ruff check app/rag/ app/models/rag.py app/api/routes/rag.py`，退出码 0：`All checks passed!`
+
+`mypy app/rag/access.py app/rag/service.py app/models/rag.py`，退出码 0：`Success: no issues found in 3 source files`
+
+`cd frontend; npm run typecheck` 与 RAG-011「验证通过」是同一次退出码 0 的运行（`tsc --noEmit`，无输出），没有重跑。
+
+本组退出码都是 0。清点表第 1–3 行改为完成。
+
 未验证：真实 LLM、Milvus 闭环、生产库上的加列迁移、知识库页浏览器点击。前端以类型检查为证。浏览器走查留到改该页时再做。

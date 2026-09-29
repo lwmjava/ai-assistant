@@ -17,7 +17,7 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
@@ -47,7 +47,7 @@ def demote_other_current_versions(session: Session, version_group_id: str, *, ke
     rows = session.exec(
         select(Document).where(
             Document.version_group_id == version_group_id,
-            Document.is_current.is_(True),
+            col(Document.is_current).is_(True),
             Document.id != keep_id,
         )
     ).all()
@@ -446,15 +446,15 @@ class RAGService:
             stmt = select(Document).where(
                 Document.tenant_id == user.tenant_id,
                 Document.user_id == user.id,
-                Document.is_current.is_(True),
+                col(Document.is_current).is_(True),
             )
             if restrict_list_to_uploader(user):
                 stmt = stmt.where(Document.user_id == user.id)
         if not (include_deleted and is_kb_admin(user)):
-            stmt = stmt.where(Document.deleted_at.is_(None))
+            stmt = stmt.where(col(Document.deleted_at).is_(None))
         if version_state and is_kb_admin(user):
             stmt = stmt.where(Document.version_state == version_state)
-        stmt = stmt.order_by(Document.updated_at.desc())
+        stmt = stmt.order_by(col(Document.updated_at).desc())
         return list(self.session.exec(stmt).all())
 
     def get_document(self, document_id: str, user: User) -> Document | None:

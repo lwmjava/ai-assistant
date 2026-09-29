@@ -8,11 +8,13 @@
 
 2026-12-25 的 80% 等于第 1–16 项全部完成。本表有未完成项，80% 未达到。第 13 项留在这 16 项里。
 
+2026-09-29 按 `EVD-001` 重跑。当天下午早些时候 RAG-012 与 RAG-013 的 pytest 退出码为 1、ruff 退出码为 1，第 1–3 行保持未完成。混合检索重跑隔离与 Mock 编码检查之后，同一天下午再次原样执行。RAG-011 四条与 RAG-012 / RAG-013 共用组全部退出码为 0。第 1–3 行改为完成。记录见 `docs/plans/implementation_evd_001.md`。
+
 | # | 交付包 | 任务 | tasks.yaml | 结论 | 证据 |
 |---|---|---|---|---|---|
-| 1 | A1 阶段 2 | RAG-011 | done | 未完成 | `docs/plans/plan_rag_011_control_plane.md` 第 8 节列出了 pytest、ruff、mypy 和前端类型检查，没有记录通过条数或退出码 |
-| 2 | A2 阶段 3 | RAG-012 | done | 未完成 | `docs/plans/plan_rag_012_soft_delete.md` 第 8 节同样只列出命令。验收句里的「相关 pytest 通过」不是一次运行的输出 |
-| 3 | A3 阶段 4 | RAG-013 | done | 未完成 | `docs/plans/plan_rag_013_version_states.md` 第 8 节只列出命令，没有记录输出 |
+| 1 | A1 阶段 2 | RAG-011 | done | 完成 | `docs/plans/plan_rag_011_control_plane.md` 第 8 节「验证通过」：pytest 30 passed, 1 warning in 37.08s，ruff、mypy、前端类型检查退出码都是 0 |
+| 2 | A2 阶段 3 | RAG-012 | done | 完成 | `docs/plans/plan_rag_012_soft_delete.md` 第 8 节「验证通过」：pytest 69 passed, 1 warning in 64.93s，ruff、mypy 退出码都是 0。前端类型检查引用 RAG-011 同一次退出码 0 的运行 |
+| 3 | A3 阶段 4 | RAG-013 | done | 完成 | 命令文本与 RAG-012 相同，只跑一次。输出见 `docs/plans/plan_rag_013_version_states.md` 第 8 节「验证通过」：pytest、ruff、mypy 退出码都是 0 |
 | 4 | B1 可安装 | INST-001～INST-003 | 均为 done | 未完成 | `docs/plans/plan_b1_install.md`、`docs/plans/plan_inst_002_compose.md`、`docs/plans/plan_inst_003_console.md` 写了 `/health`、`docker compose config`、前端类型检查和构建应如何判定，没有记录这些命令的输出 |
 | 5 | B2 租户与用户 | TEN-001～TEN-003 | 均为 done | 完成 | `docs/plans/plan_ten_001_create_tenant.md`：`pytest tests/test_admin_tenants.py -v`，4 项通过。`docs/plans/plan_ten_002_create_member.md`：`pytest tests/test_admin_members.py tests/test_admin_tenants.py`，7 项通过。`docs/plans/plan_ten_003_console_users.md`：浏览器创建租户和成员，成员登录后看不到管理入口；`npm run typecheck` 与 `npm run build` 通过 |
 | 6 | B3 问答与来源 | QA-001～QA-003 | 均为 done | 完成 | `docs/plans/plan_qa_001_default_retrieval.md`：47 passed，退出码 0。`docs/plans/plan_qa_002_reply_sources.md`：9 passed，退出码 0。`docs/plans/plan_qa_003_show_sources.md`：`npm run typecheck` 与 `npm run build` 退出码 0。浏览器当时没有看到文件名，记录写明本机 `RAG_ENABLED=false`，会话详情里 `sources` 为空 |
@@ -27,8 +29,8 @@
 | 15 | C1 首次运行旅程 | AUTH-004 | done | 未完成 | `docs/plans/plan_auth_c1.md` 写了 README 要按填写环境、启动、建管理员、注册或登录、发送第一条消息来写。实现说明的验证没有记录按 README 走到发出一条消息的结果。浏览器只核对了注册页和已有管理员时 `/setup` 离开向导，并写明没有走空库向导 |
 | 16 | C4 会话隔离 | CHAT-005 | done | 完成 | `docs/plans/plan_chat_c4.md` 实现说明覆盖隔离：成员不能处理别人的会话，系统管理员看不到其他租户。同一条验证是 `pytest tests/test_chat_controls.py tests/test_chat.py`，16 passed。`tests/test_chat_controls.py` 开头写明身份范围，其中包含同租户互不可见和其他租户不可见 |
 
-完成 10 项：5、6、7、8、9、10、11、12、14、16。
+完成 13 项：1、2、3、5、6、7、8、9、10、11、12、14、16。
 
-未完成 6 项：1、2、3、4、13、15。这 6 项留在分母里。
+未完成 3 项：4、13、15。这 3 项留在分母里。
 
 80% 未达到。

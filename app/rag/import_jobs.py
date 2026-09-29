@@ -8,10 +8,11 @@ import html
 import logging
 import re
 from pathlib import Path
+from typing import TypedDict
 from urllib.parse import urlparse
 
 import httpx
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.core.database import engine
@@ -343,6 +344,15 @@ def retry_import_job(session: Session, user: User, job_id: str) -> ImportJob:
     return job
 
 
+class Versioning(TypedDict):
+    """去重或新版本判定。键固定，避免下标变成宽联合。"""
+
+    deduplicated: bool
+    version_group_id: str | None
+    version_number: int
+    previous_document_id: str | None
+
+
 def _dedupe_or_version_existing(
     session: Session,
     *,
@@ -351,7 +361,7 @@ def _dedupe_or_version_existing(
     source_ref: str | None,
     content_hash: str,
     reparse_document_id: str | None,
-) -> tuple[Document | None, dict[str, str | int | bool | None]]:
+) -> tuple[Document | None, Versioning]:
     """判定是否去重或创建新版本。"""
     if reparse_document_id:
         current = session.get(Document, reparse_document_id)
@@ -372,7 +382,7 @@ def _dedupe_or_version_existing(
 
     stmt = select(Document).where(
         Document.tenant_id == tenant_id,
-        Document.is_current.is_(True),
+        col(Document.is_current).is_(True),
         Document.source_kind == source_kind,
     )
     if source_ref:
@@ -380,7 +390,7 @@ def _dedupe_or_version_existing(
             stmt = stmt.where(Document.source_uri == source_ref)
         else:
             stmt = stmt.where(Document.source == source_ref)
-    current = session.exec(stmt.order_by(Document.updated_at.desc())).first()
+    current = session.exec(stmt.order_by(col(Document.updated_at).desc())).first()
     if current and current.content_hash == content_hash:
         return current, {
             "deduplicated": True,
@@ -419,6 +429,7 @@ async def _process_job(session: Session, job: ImportJob) -> None:
                 raise ValueError("重解析目标文档不存在")
             if reparse_target.deleted_at is not None:
                 raise ValueError("已删除的文档不能重建")
+        source_ref: str | None
         if job.source_type == ImportSourceType.URL.value or (
             job.source_type == ImportSourceType.REPARSE.value and job.source_uri
         ):
@@ -490,7 +501,7 @@ async def _process_job(session: Session, job: ImportJob) -> None:
             source_uri=job.source_uri,
             content_hash=content_hash,
             version_group_id=versioning["version_group_id"],
-            version_number=int(versioning["version_number"]),
+            version_number=versioning["version_number"],
             previous_document_id=previous_id if isinstance(previous_id, str) else None,
             import_job_id=job.id,
         )
@@ -532,7 +543,7 @@ async def run_import_jobs_once(limit: int | None = None) -> int:
         jobs = session.exec(
             select(ImportJob)
             .where(ImportJob.status == ImportJobStatus.PENDING.value)
-            .order_by(ImportJob.created_at.asc())
+            .order_by(col(ImportJob.created_at).asc())
             .limit(limit)
         ).all()
         job_ids = [job.id for job in jobs]

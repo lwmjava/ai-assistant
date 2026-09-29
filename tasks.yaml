@@ -3121,7 +3121,7 @@ tasks:
 
   - id: "EVD-003"
     title: "按 README 走完首次运行并记录结果"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-25"
     depends_on:

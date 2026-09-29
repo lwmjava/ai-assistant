@@ -28,11 +28,11 @@
 | 12 | C5 沙箱 | SAND-001～SAND-002 | 均为 done | 完成 | `docs/plans/plan_sand_c5.md`：SAND-001 为 15 passed，以及 15 passed, 1 skipped；SAND-002 为 23 passed, 8 deselected，ruff 通过，前端类型检查与构建退出码 0。说明写明 Unix 限额没有在 Linux 上实机跑通，浏览器没有登录后点发送 |
 | 13 | C6 安全 P0 与 Milvus 门槛核对 | SEC-001～SEC-003 | 均为 done | 未完成 | 上传限制：完成。`docs/plans/implementation_sec_001.md` 记录 `pytest tests/ -k upload -q` 为 16 passed, 1 skipped，类型检查退出码 0，ruff 通过。日志脱敏：完成。`docs/plans/implementation_sec_002.md` 记录 `pytest tests/ -k "security or log" -q` 为 32 passed, 1 skipped，类型检查退出码 0，ruff 通过。Milvus 五条：未完成。`docs/plans/record_milvus_five_gates.md` 与 `docs/plans/implementation_sec_003.md` 写明第 1–4 条未执行，总结论未通过，默认向量库仍是 local。本项不因此移出 16 项 |
 | 14 | B3 知识库与软删除 | QA-004 | done | 完成 | `docs/plans/plan_qa_004_soft_delete_console.md`：列出的 pytest、ruff 和 `npm run typecheck` 均为通过、退出码 0。浏览器记录了删除确认、默认列表隐藏、显示已删除，以及重建状态 |
-| 15 | C1 首次运行旅程 | AUTH-004 | done | 未完成 | `docs/plans/plan_auth_c1.md` 写了 README 要按填写环境、启动、建管理员、注册或登录、发送第一条消息来写。实现说明的验证没有记录按 README 走到发出一条消息的结果。浏览器只核对了注册页和已有管理员时 `/setup` 离开向导，并写明没有走空库向导 |
+| 15 | C1 首次运行旅程 | AUTH-004 | done | 完成 | 2026-09-29：单独库 `data/readme_walk.db` 上走过 README 五步。健康检查 `status` 为 `ok`。空库 `/setup` 创建管理员后进入 `/chat`，向导随后关闭。`/register` 注册成员后进入 `/chat`。`/chat` 发出「你好」并看到助手回复。`checks.llm.mode` 为 `real`。见 `docs/plans/implementation_evd_003.md` |
 | 16 | C4 会话隔离 | CHAT-005 | done | 完成 | `docs/plans/plan_chat_c4.md` 实现说明覆盖隔离：成员不能处理别人的会话，系统管理员看不到其他租户。同一条验证是 `pytest tests/test_chat_controls.py tests/test_chat.py`，16 passed。`tests/test_chat_controls.py` 开头写明身份范围，其中包含同租户互不可见和其他租户不可见 |
 
-完成 14 项：1、2、3、4、5、6、7、8、9、10、11、12、14、16。
+完成 15 项：1、2、3、4、5、6、7、8、9、10、11、12、14、15、16。
 
-未完成 2 项：13、15。这 2 项留在分母里。
+未完成 1 项：13。这一项留在分母里。
 
 80% 未达到。

@@ -398,9 +398,9 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1、2、3、4 项已完成，第 13、15 项未完成，80% 未达到。这六项的处理计划见 `docs/plans/plan_delivery_16_evidence.md`。`EVD-001`、`EVD-002` 已完成，`EVD-003`～`EVD-004` 尚未实现。B3 至 D4 其余任务已拆入 `tasks.yaml`。下一项是 `EVD-003`；`FLOW-001` 依赖 `EVD-004`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1、2、3、4、15 项已完成，第 13 项未完成，80% 未达到。这六项的处理计划见 `docs/plans/plan_delivery_16_evidence.md`。`EVD-001`～`EVD-003` 已完成，`EVD-004` 尚未实现。B3 至 D4 其余任务已拆入 `tasks.yaml`。下一项是 `EVD-004`；`FLOW-001` 依赖 `EVD-004`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
 
-按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（53 done / 17 ready / 38 backlog）：
+按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（54 done / 16 ready / 38 backlog）：
 
 | 族 | 任务 | 定位 |
 |---|---|---|

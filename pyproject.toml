@@ -42,7 +42,7 @@ dev = [
     "mypy==1.14.1",
 ]
 milvus = [
-    "pymilvus==2.4.7",
+    "pymilvus==2.5.11",
 ]
 mcp = [
     "mcp>=1.2.0",

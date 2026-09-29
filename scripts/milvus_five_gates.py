@@ -73,10 +73,12 @@ def _looks_like_version_mismatch(exc: BaseException) -> bool:
 
 
 def _raise_connect_blocked(exc: BaseException) -> None:
-    """TCP 已通时的客户端调用失败：按次版本不一致记 blocked，不改适配代码。"""
+    """TCP 已通时的客户端调用失败：记 blocked，不把调用失败写成业务断言失败。"""
+    import pymilvus
+
     raise GateBlocked(
         "version_mismatch",
-        "pymilvus==2.4.7 与 milvusdb/milvus:v2.5.11 调用失败："
+        f"pymilvus=={pymilvus.__version__} 与 milvusdb/milvus:v2.5.11 调用失败："
         f"{type(exc).__name__}: {exc}",
     ) from exc
 
@@ -288,13 +290,13 @@ def main() -> int:
         return 3
 
     print(json.dumps({"pymilvus": pymilvus.__version__}, ensure_ascii=False), flush=True)
-    if pymilvus.__version__ != "2.4.7":
+    if pymilvus.__version__ != "2.5.11":
         _rollback_env()
         print(
             json.dumps(
                 {
                     "blocked": "version_mismatch",
-                    "detail": f"解释器 pymilvus={pymilvus.__version__}，要求 2.4.7",
+                    "detail": f"解释器 pymilvus={pymilvus.__version__}，要求 2.5.11",
                 },
                 ensure_ascii=False,
             )

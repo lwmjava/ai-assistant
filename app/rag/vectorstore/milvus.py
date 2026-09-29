@@ -114,13 +114,15 @@ class MilvusVectorStore(VectorStore):
             indexed = set()
         if "embedding" in indexed:
             return
+        index_params: dict = {
+            "index_type": settings.MILVUS_INDEX_TYPE,
+            "metric_type": "COSINE",
+        }
+        if "IVF" in settings.MILVUS_INDEX_TYPE.upper():
+            index_params["params"] = {"nlist": 128}
         collection.create_index(
             field_name="embedding",
-            params={
-                "index_type": settings.MILVUS_INDEX_TYPE,
-                "metric_type": "COSINE",
-                "params": {"nlist": 128},
-            },
+            index_params=index_params,
         )
         logger.info("Milvus 集合 %s 已创建向量索引", settings.MILVUS_COLLECTION)
 

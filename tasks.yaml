@@ -3184,7 +3184,7 @@ tasks:
 
   - id: "EVD-004"
     title: "重跑 Milvus 五条门槛并记录结果"
-    status: "blocked"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-25"
     depends_on:
@@ -3253,7 +3253,7 @@ tasks:
         - "pytest tests/test_vectorstore_policy.py -v"
     execution:
       owner: "个人开发者"
-      blocked_by: "pymilvus 2.4.7 与镜像 v2.5.11 在 create_index 调用失败"
+      blocked_by: ""
       nightly:
         eligible: false
         production_access: false

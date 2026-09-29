@@ -398,9 +398,9 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1、2、3、4、15 项已完成，第 13 项未完成，80% 未达到。这六项的处理计划见 `docs/plans/plan_delivery_16_evidence.md`。`EVD-001`～`EVD-003` 已完成，`EVD-004` 为 `blocked`：`pymilvus==2.4.7` 与 `milvusdb/milvus:v2.5.11` 在 `create_index` 调用失败。B3 至 D4 其余任务已拆入 `tasks.yaml`。下一项仍是 `EVD-004`；`FLOW-001` 依赖 `EVD-004`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004`、`EVD-001`～`EVD-004` 已完成。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1–16 项均已完成，约定范围的 80% 达到。Milvus 五条于 2026-09-29 通过，记录见 `docs/plans/implementation_evd_004_index_params.md`。默认向量库仍是 `local`，Milvus 不标成 `Implemented`。B3 至 D4 其余任务已拆入 `tasks.yaml`。`FLOW-001` 对 `EVD-004` 的依赖已满足。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
 
-按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（54 done / 15 ready / 38 backlog，另有 `EVD-004` blocked）：
+按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（55 done / 15 ready / 38 backlog）：
 
 | 族 | 任务 | 定位 |
 |---|---|---|
@@ -429,4 +429,4 @@ A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Re
 
 `OPS-004` 必须先于 `OPS-003`：先有恢复指标，演练才有合格线。`NFR-011` 不改生产缺密钥时的启动失败行为，只在进程已启动时让 `/health` 写出 provider、模型、维度与是否为 Mock。`NFR-009` 的检索延迟必须用真实 Embedding 测，Mock 结果不得写成达标。
 
-资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）；默认配置在闭环门槛通过前仍是 Local。
+资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）。五条门槛已有 2026-09-29 的核对证据；默认配置仍是 `local`，Milvus 仍为 `Partial`。

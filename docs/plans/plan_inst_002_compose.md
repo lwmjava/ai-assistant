@@ -79,11 +79,9 @@ Milvus 单容器的启动参数随镜像标签变化。实施时以所选标签�
 
 ## 验证结果（2026-09-29，EVD-002）
 
-Docker 客户端 28.1.1。`docker compose config` 不连接引擎。本次没有执行 `docker compose up`。
+`docker --version` 为 Docker 客户端 28.5.1。引擎管道 `dockerDesktopLinuxEngine` 不存在，`docker version` 连接引擎的退出码为 1。`docker compose config` 不连接引擎，三条配置检查不受影响。本次没有执行 `docker compose up`。
 
-项目目录中的 `.env` 会被 `docker compose` 自动读入。把 PowerShell 里的变量设成空字符串后直接执行 `docker compose config`，缺少 `JWT_SECRET_KEY` 的那次退出码为 0，展开结果含有仓库内占位口令 `change-me-in-production-use-a-random-secret`。展开正文未收录。
-
-下面三次改用系统临时目录中的 env 文件代替默认 `.env`，并在 `cmd` 里设置对应的进程变量。临时文件只含当次探针值，跑完已删除。探针值不写入本文。占位口令检查的是字符串 `change-me-in-production-use-a-random-secret` 是否出现。
+三次都用 `docker compose --env-file` 指向系统临时目录中的 env 文件，代替项目目录里会被自动读入的 `.env`。临时文件只含当次探针值，跑完已删除。探针值不写入本文。占位口令检查的是字符串 `change-me-in-production-use-a-random-secret` 是否出现。
 
 缺少 `JWT_SECRET_KEY`（另一项为非空探针），退出码 1，输出不含该占位口令：
 

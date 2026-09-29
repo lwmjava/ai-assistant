@@ -71,12 +71,6 @@ L1。回滚时去掉 Node 构建阶段和编排中的 `SERVE_FRONTEND`，镜像�
 
 `npm run typecheck`（`tsc --noEmit`），退出码 0，无输出。根 `tsconfig.json` 的 `files` 为空，且带有项目引用；这次 `tsc --noEmit` 没有带 `-b`。
 
-`npm run build`（`tsc -b && vite build`），退出码 2。`tsc -b` 报错后没有进入 Vite，本次结束后 `frontend/dist` 不存在：
+`npm run build`（`tsc -b && vite build`），退出码 0。Vite 5.4.8 完成生产构建，`built in 7.01s`，本次结束后 `frontend/dist` 存在。同一天早些时候的一次构建退出码为 2，原因是当时工作区没有 `frontend/src/lib/access-token.ts`。本次重跑时该文件已在工作区，并导出 `shouldRefreshAccessToken`。
 
-```text
-src/lib/http.ts(3,42): error TS2307: Cannot find module '@/lib/access-token' or its corresponding type declarations.
-```
-
-`frontend/src/lib/` 下有 `cn.ts`、`http.ts`、`permissions.ts`、`sse.ts`，没有 `access-token` 模块。`http.ts` 第 3 行从 `@/lib/access-token` 导入 `shouldRefreshAccessToken`。
-
-同一天编排展开里，应用的 `SERVE_FRONTEND` 为 `"true"`，`RAG_VECTOR_STORE` 为 `local`。字段来自 `docs/plans/plan_inst_002_compose.md` 的「验证结果」中两项都设置的那次 `docker compose config`，退出码 0。前端构建退出码不是 0，本项验证未收口。
+同一天编排展开里，应用的 `SERVE_FRONTEND` 为 `"true"`，`RAG_VECTOR_STORE` 为 `local`。字段来自 `docs/plans/plan_inst_002_compose.md` 的「验证结果」中两项都设置的那次 `docker compose config`，退出码 0。

@@ -3054,7 +3054,7 @@ tasks:
 
   - id: "EVD-002"
     title: "补记安装三项的验证输出"
-    status: "ready"
+    status: "done"
     priority: "P0"
     target_date: "2026-12-25"
     depends_on:

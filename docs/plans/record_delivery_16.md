@@ -10,14 +10,14 @@
 
 2026-09-29 按 `EVD-001` 重跑。当天下午早些时候 RAG-012 与 RAG-013 的 pytest 退出码为 1、ruff 退出码为 1，第 1–3 行保持未完成。混合检索重跑隔离与 Mock 编码检查之后，同一天下午再次原样执行。RAG-011 四条与 RAG-012 / RAG-013 共用组全部退出码为 0。第 1–3 行改为完成。记录见 `docs/plans/implementation_evd_001.md`。
 
-2026-09-29 按 `EVD-002` 补记第 4 项。健康检查与编排配置达到该任务的验收。`npm run build` 退出码为 2。第 4 行保持未完成。记录见 `docs/plans/implementation_evd_002.md`。
+2026-09-29 按 `EVD-002` 补记第 4 项。同一天早些时候 `npm run build` 退出码为 2，第 4 行保持未完成。工作区补上 `frontend/src/lib/access-token.ts` 后重跑，健康检查、编排配置、前端类型检查与构建退出码均为 0。第 4 行改为完成。记录见 `docs/plans/implementation_evd_002.md`。
 
 | # | 交付包 | 任务 | tasks.yaml | 结论 | 证据 |
 |---|---|---|---|---|---|
 | 1 | A1 阶段 2 | RAG-011 | done | 完成 | `docs/plans/plan_rag_011_control_plane.md` 第 8 节「验证通过」：pytest 30 passed, 1 warning in 37.08s，ruff、mypy、前端类型检查退出码都是 0 |
 | 2 | A2 阶段 3 | RAG-012 | done | 完成 | `docs/plans/plan_rag_012_soft_delete.md` 第 8 节「验证通过」：pytest 69 passed, 1 warning in 64.93s，ruff、mypy 退出码都是 0。前端类型检查引用 RAG-011 同一次退出码 0 的运行 |
 | 3 | A3 阶段 4 | RAG-013 | done | 完成 | 命令文本与 RAG-012 相同，只跑一次。输出见 `docs/plans/plan_rag_013_version_states.md` 第 8 节「验证通过」：pytest、ruff、mypy 退出码都是 0 |
-| 4 | B1 可安装 | INST-001～INST-003 | 均为 done | 未完成 | 2026-09-29：`pytest tests/ -k health -v` 为 10 passed, 2 skipped, 443 deselected，退出码 0；`ruff check app/api/routes/health.py` 退出码 0。缺少 JWT 或模型密钥时 `docker compose config` 退出码 1，输出不含仓库内 JWT 占位口令。两项设置后退出码 0，服务含 `db`、`milvus`、`app`，`RAG_VECTOR_STORE` 为 `local`，`MILVUS_URI` 为 `http://milvus:19530`，`SERVE_FRONTEND` 为 `"true"`。`npm run typecheck` 退出码 0，`npm run build` 退出码 2（`@/lib/access-token` 模块不存在）。构建未通过。见 `docs/plans/implementation_evd_002.md` |
+| 4 | B1 可安装 | INST-001～INST-003 | 均为 done | 完成 | 2026-09-29 重跑：`pytest tests/ -k health -v` 为 10 passed, 2 skipped, 443 deselected, 1 warning in 3.63s，退出码 0；`ruff check app/api/routes/health.py` 退出码 0。缺少 JWT 或模型密钥时 `docker compose config` 退出码 1，输出不含仓库内 JWT 占位口令。两项设置后退出码 0，服务含 `db`、`milvus`、`app`，`RAG_VECTOR_STORE` 为 `local`，`MILVUS_URI` 为 `http://milvus:19530`，`SERVE_FRONTEND` 为 `"true"`。`npm run typecheck` 与 `npm run build` 退出码 0，`frontend/dist` 已生成。见 `docs/plans/implementation_evd_002.md` |
 | 5 | B2 租户与用户 | TEN-001～TEN-003 | 均为 done | 完成 | `docs/plans/plan_ten_001_create_tenant.md`：`pytest tests/test_admin_tenants.py -v`，4 项通过。`docs/plans/plan_ten_002_create_member.md`：`pytest tests/test_admin_members.py tests/test_admin_tenants.py`，7 项通过。`docs/plans/plan_ten_003_console_users.md`：浏览器创建租户和成员，成员登录后看不到管理入口；`npm run typecheck` 与 `npm run build` 通过 |
 | 6 | B3 问答与来源 | QA-001～QA-003 | 均为 done | 完成 | `docs/plans/plan_qa_001_default_retrieval.md`：47 passed，退出码 0。`docs/plans/plan_qa_002_reply_sources.md`：9 passed，退出码 0。`docs/plans/plan_qa_003_show_sources.md`：`npm run typecheck` 与 `npm run build` 退出码 0。浏览器当时没有看到文件名，记录写明本机 `RAG_ENABLED=false`，会话详情里 `sources` 为空 |
 | 7 | C1 认证与向导 | AUTH-001～AUTH-003 | 均为 done | 完成 | `docs/plans/plan_auth_c1.md` 实现说明：注册、撤销和刷新用例 12 passed；改过的认证文件 ruff 通过；前端类型检查与构建退出码 0。运行中的 `GET /api/auth/setup-status` 返回 `needs_setup` 为 false；浏览器打开 `/register` 能看到表单，打开 `/setup` 后地址变为 `/chat` |
@@ -31,8 +31,8 @@
 | 15 | C1 首次运行旅程 | AUTH-004 | done | 未完成 | `docs/plans/plan_auth_c1.md` 写了 README 要按填写环境、启动、建管理员、注册或登录、发送第一条消息来写。实现说明的验证没有记录按 README 走到发出一条消息的结果。浏览器只核对了注册页和已有管理员时 `/setup` 离开向导，并写明没有走空库向导 |
 | 16 | C4 会话隔离 | CHAT-005 | done | 完成 | `docs/plans/plan_chat_c4.md` 实现说明覆盖隔离：成员不能处理别人的会话，系统管理员看不到其他租户。同一条验证是 `pytest tests/test_chat_controls.py tests/test_chat.py`，16 passed。`tests/test_chat_controls.py` 开头写明身份范围，其中包含同租户互不可见和其他租户不可见 |
 
-完成 13 项：1、2、3、5、6、7、8、9、10、11、12、14、16。
+完成 14 项：1、2、3、4、5、6、7、8、9、10、11、12、14、16。
 
-未完成 3 项：4、13、15。这 3 项留在分母里。
+未完成 2 项：13、15。这 2 项留在分母里。
 
 80% 未达到。

@@ -22,3 +22,11 @@
 ## 验收
 
 三件都完成后，按文档化步骤配置 JWT 与模型密钥即可启动，健康检查能区分数据库和向量库故障，控制台来自构建产物。
+
+## 验证结果（2026-09-29，EVD-002）
+
+解释器：conda 环境 `ai-assistant`（`D:\install\anaconda3\envs\ai-assistant\python.exe`，Python 3.12.0；pytest 8.3.4，ruff 0.8.4）。
+
+`pytest tests/ -k health -v`，退出码 0：`10 passed, 2 skipped, 443 deselected, 2 warnings in 30.25s`。`-k health` 命中 `tests/test_health.py` 里的全部用例，因此摘要里包含 `test_auth_me_requires_token` 与 `test_login_invalid_credentials`。两条警告是 Starlette `anyio.abc.BlockingPortal` 的 `DeprecationWarning`，以及 `app/agents/tools/sandbox/sandbox.py` 中 `ast.NameConstant` 的 `DeprecationWarning`。
+
+`ruff check app/api/routes/health.py`，退出码 0：`All checks passed!`

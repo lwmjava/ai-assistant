@@ -59,6 +59,9 @@ frontend/dist/
 *.pem
 *.key
 
+# Local Milvus gate overlay (host port only; do not commit)
+docker-compose.gate.local.yml
+
 # Data / runtime artifacts
 data/
 *.db

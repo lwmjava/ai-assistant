@@ -12,6 +12,8 @@
 
 2026-09-29 按 `EVD-002` 补记第 4 项。同一天早些时候 `npm run build` 退出码为 2，第 4 行保持未完成。工作区补上 `frontend/src/lib/access-token.ts` 后重跑，健康检查、编排配置、前端类型检查与构建退出码均为 0。第 4 行改为完成。记录见 `docs/plans/implementation_evd_002.md`。
 
+2026-09-29 按 `EVD-004` 重跑第 13 项的 Milvus 五条。`127.0.0.1:19530` 已连通，嵌入不是 Mock。`pymilvus==2.4.7` 在 `create_index` 调用失败，本条记为 `blocked`。第 1 到第 4 条未执行。停止 `aigates` 容器后已拷贝核对卷。第 13 行保持未完成。记录见 `docs/plans/implementation_evd_004.md`。
+
 | # | 交付包 | 任务 | tasks.yaml | 结论 | 证据 |
 |---|---|---|---|---|---|
 | 1 | A1 阶段 2 | RAG-011 | done | 完成 | `docs/plans/plan_rag_011_control_plane.md` 第 8 节「验证通过」：pytest 30 passed, 1 warning in 37.08s，ruff、mypy、前端类型检查退出码都是 0 |
@@ -26,7 +28,7 @@
 | 10 | C4 对话与会话 | CHAT-001～CHAT-004 | 均为 done | 完成 | `docs/plans/plan_chat_c4.md` 实现说明：`pytest tests/test_chat_controls.py tests/test_chat.py -v --tb=short`，16 passed。该说明同时写明，前端类型检查、构建和浏览器点击当时没有重新跑完 |
 | 11 | C5 模型路由 | ROUTE-001～ROUTE-002 | 均为 done | 完成 | `docs/plans/plan_route_c5.md` 实现说明：路由与健康检查 25 passed；`-k "llm or route"` 23 passed, 1 skipped；对话相关 15 passed；ruff 通过；前端类型检查通过，`npx vite build` 通过。浏览器停在登录页，没有进入对话页看引导是否消失 |
 | 12 | C5 沙箱 | SAND-001～SAND-002 | 均为 done | 完成 | `docs/plans/plan_sand_c5.md`：SAND-001 为 15 passed，以及 15 passed, 1 skipped；SAND-002 为 23 passed, 8 deselected，ruff 通过，前端类型检查与构建退出码 0。说明写明 Unix 限额没有在 Linux 上实机跑通，浏览器没有登录后点发送 |
-| 13 | C6 安全 P0 与 Milvus 门槛核对 | SEC-001～SEC-003 | 均为 done | 未完成 | 上传限制：完成。`docs/plans/implementation_sec_001.md` 记录 `pytest tests/ -k upload -q` 为 16 passed, 1 skipped，类型检查退出码 0，ruff 通过。日志脱敏：完成。`docs/plans/implementation_sec_002.md` 记录 `pytest tests/ -k "security or log" -q` 为 32 passed, 1 skipped，类型检查退出码 0，ruff 通过。Milvus 五条：未完成。`docs/plans/record_milvus_five_gates.md` 与 `docs/plans/implementation_sec_003.md` 写明第 1–4 条未执行，总结论未通过，默认向量库仍是 local。本项不因此移出 16 项 |
+| 13 | C6 安全 P0 与 Milvus 门槛核对 | SEC-001～SEC-003 | 均为 done | 未完成 | 上传限制：完成。`docs/plans/implementation_sec_001.md` 记录 `pytest tests/ -k upload -q` 为 16 passed, 1 skipped，类型检查退出码 0，ruff 通过。日志脱敏：完成。`docs/plans/implementation_sec_002.md` 记录 `pytest tests/ -k "security or log" -q` 为 32 passed, 1 skipped，类型检查退出码 0，ruff 通过。Milvus 五条：未完成。2026-09-29：`pymilvus==2.4.7` 与 `milvusdb/milvus:v2.5.11` 在 `create_index` 调用失败，记为 blocked。第 1–4 条未执行。停止 `aigates` 后 `data/gate-backup/milvus` 有拷贝。默认仍是 local。见 `docs/plans/implementation_evd_004.md` |
 | 14 | B3 知识库与软删除 | QA-004 | done | 完成 | `docs/plans/plan_qa_004_soft_delete_console.md`：列出的 pytest、ruff 和 `npm run typecheck` 均为通过、退出码 0。浏览器记录了删除确认、默认列表隐藏、显示已删除，以及重建状态 |
 | 15 | C1 首次运行旅程 | AUTH-004 | done | 完成 | 2026-09-29：单独库 `data/readme_walk.db` 上走过 README 五步。健康检查 `status` 为 `ok`。空库 `/setup` 创建管理员后进入 `/chat`，向导随后关闭。`/register` 注册成员后进入 `/chat`。`/chat` 发出「你好」并看到助手回复。`checks.llm.mode` 为 `real`。见 `docs/plans/implementation_evd_003.md` |
 | 16 | C4 会话隔离 | CHAT-005 | done | 完成 | `docs/plans/plan_chat_c4.md` 实现说明覆盖隔离：成员不能处理别人的会话，系统管理员看不到其他租户。同一条验证是 `pytest tests/test_chat_controls.py tests/test_chat.py`，16 passed。`tests/test_chat_controls.py` 开头写明身份范围，其中包含同租户互不可见和其他租户不可见 |

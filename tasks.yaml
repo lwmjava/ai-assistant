@@ -3321,7 +3321,7 @@ tasks:
 
   - id: "MEM-001"
     title: "超窗压缩回归（交付 D1）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-01-15"
     depends_on:
@@ -3331,9 +3331,13 @@ tasks:
       facts:
         - claim: "已有对话裁剪和压缩。"
           evidence: "app/memory/"
+        - claim: "默认 20/30/5 下，25 条只滑窗并留下 body-06 到 body-25；31 条压缩前 26 条并留下 body-27 到 body-31。"
+          evidence: "docs/plans/implementation_mem_001.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d1.md"
+        - "docs/plans/implementation_mem_001.md"
         - "tests/"
         - "app/memory/"
         - "tasks.yaml"

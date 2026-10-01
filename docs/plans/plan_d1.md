@@ -1,6 +1,6 @@
 # FLOW-001、MEM-001、FLOW-002：调度可启动、超窗压缩回归、工作流页失败态
 
-> 状态：FLOW-001 已实现，见 `docs/plans/implementation_flow_001.md`。MEM-001、FLOW-002 未实现。2026-09-30 修订：补上到点判定的根因、能力矩阵只改原因、默认 20/30/5 回归、手动运行的 201、实现说明路径、安装说明位置，以及浏览器验收步骤。
+> 状态：FLOW-001 已实现，见 `docs/plans/implementation_flow_001.md`。MEM-001 已实现，见 `docs/plans/implementation_mem_001.md`。FLOW-002 未实现。2026-09-30 修订：补上到点判定的根因、能力矩阵只改原因、默认 20/30/5 回归、手动运行的 201、实现说明路径、安装说明位置，以及浏览器验收步骤。
 > 来源：`tasks.yaml` 的 FLOW-001、MEM-001、FLOW-002；`docs/plans/plan_remaining_delivery.md` 对应三节；交付排期第 5 节 D1、第 6 节第 17 项。
 > 日期：2026-09-30
 > 截止：2027-01-15
@@ -88,7 +88,7 @@
 - 改动：
   - 新增 `tests/test_memory_overflow.py`。消息正文带序号，按条计数。`keep_recent` 是消息条数，不是对话轮数。
   - 默认配置对照，锁住 21–30 段：总条数 25，窗口 20、阈值 30、保留 5。只滑动窗口，`is_compressed` 为假，`recent_messages` 按顺序等于最后 20 条。
-  - 默认配置超阈：总条数 31，同一组 20 / 30 / 5。假 LLM 的异步 `chat(messages, options)` 返回固定非空摘要，并记下用户提示。断言：`is_compressed` 为真；`snapshot.summary` 等于该摘要；`snapshot.compressed_count` 等于被压缩的 26 条；`recent_messages` 按顺序等于最后 5 条；更早的序号不在 `recent_messages` 里，也不在压缩输入里。
+  - 默认配置超阈：总条数 31，同一组 20 / 30 / 5。假 LLM 的异步 `chat(messages, options)` 返回固定非空摘要，并记下用户提示。断言：`is_compressed` 为真；`snapshot.summary` 等于该摘要；`snapshot.compressed_count` 等于被压缩的 26 条；`recent_messages` 按顺序等于最后 5 条。序号 01–26 进入压缩输入，且不在 `recent_messages` 里。序号 27–31 不在压缩输入里。
   - 两条用例的文档字符串写明总条数、窗口、阈值、保留条数，以及留下的正文序号。
   - 不另写一套更小的自定义窗口来代替上述两段。未达阈值的对照就是 25 条那条，避免把滑窗误判成压缩。
 - 只有上述断言失败且原因在 `app/memory/` 时，才改压缩实现。改动限于让这组固定输入满足上述断言。

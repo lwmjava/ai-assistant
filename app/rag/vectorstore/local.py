@@ -149,6 +149,7 @@ class LocalVectorStore(VectorStore):
             .join(Document, Document.id == DocumentChunk.document_id)
             .where(DocumentChunk.tenant_id == tenant_id)
         )
+        stmt = stmt.where(Document.deleted_at.is_(None))
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
             stmt = stmt.where(Document.is_current.is_(True))
         rows = self.session.exec(stmt).all()

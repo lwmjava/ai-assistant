@@ -213,6 +213,7 @@ class MilvusVectorStore(VectorStore):
             .join(Document, Document.id == DocumentChunk.document_id)
             .where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
         )
+        stmt = stmt.where(Document.deleted_at.is_(None))
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
             stmt = stmt.where(Document.is_current.is_(True))
         rows = self.session.exec(stmt).all()

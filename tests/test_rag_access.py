@@ -56,7 +56,15 @@ async def test_kb03_member_cannot_delete_peer_admin_can(session: Session, monkey
     assert await rag.delete_document(doc.id, peer) is False
     assert session.get(Document, doc.id) is not None
     assert await rag.delete_document(doc.id, admin) is True
-    assert session.get(Document, doc.id) is None
+    kept = session.get(Document, doc.id)
+    assert kept is not None and kept.deleted_at is not None
+    assert doc.id not in {item.id for item in rag.list_documents(owner)}
+    assert rag.get_document(doc.id, owner) is None
+    assert doc.id in {item.id for item in rag.list_documents(admin, include_deleted=True)}
+    assert doc.id not in {item.id for item in rag.list_documents(peer, include_deleted=True)}
+    hits = await rag.search("KB-03", top_k=5)
+    assert all(hit.document_id != doc.id for hit in hits)
+    assert await rag.delete_document(doc.id, admin) is False
 
 
 async def test_stale_version_not_in_list_or_detail(session: Session, monkeypatch):
@@ -86,6 +94,37 @@ def test_cross_tenant_read_and_write_denied():
     assert can_write_document(doc, other) is False
     assert can_write_document(doc, admin) is True
     assert can_read_import("u-a", "t-a", other) is False
+
+
+async def test_purge_waits_for_retention_then_removes_and_audits(session: Session, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    from sqlmodel import select
+
+    from app.audit.models import AuditLog
+    from app.rag.retention import RETENTION_DAYS, purge_expired_documents
+
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", "tenant")
+    tenant = "kb-retention"
+    owner = _user("kb-ret-owner", tenant)
+    rag = RAGService(session, tenant)
+    recent = await rag.ingest_text("保留期内 KEEP-RECENT。", "近期", "recent", owner.id)
+    expired = await rag.ingest_text("已过保留期 PURGE-OLD。", "过期", "old", owner.id)
+    assert await rag.delete_document(recent.id, owner) is True
+    assert await rag.delete_document(expired.id, owner) is True
+    now = datetime.now(UTC)
+    expired_row = session.get(Document, expired.id)
+    assert expired_row is not None
+    expired_row.deleted_at = now - timedelta(days=RETENTION_DAYS + 1)
+    session.add(expired_row)
+    session.commit()
+
+    removed = await purge_expired_documents(session, now=now)
+    assert removed == 1
+    assert session.get(Document, recent.id) is not None
+    assert session.get(Document, expired.id) is None
+    logs = session.exec(select(AuditLog).where(AuditLog.resource_id == expired.id)).all()
+    assert any('"action": "purge"' in (log.details or "") for log in logs)
 
 
 def test_uploader_scope_hides_peer_list(monkeypatch):

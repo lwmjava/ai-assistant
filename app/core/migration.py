@@ -171,6 +171,7 @@ def _ensure_rag_schema_columns() -> None:
         "effective_at": "ALTER TABLE rag_documents ADD COLUMN effective_at DATETIME",
         "expires_at": "ALTER TABLE rag_documents ADD COLUMN expires_at DATETIME",
         "import_job_id": "ALTER TABLE rag_documents ADD COLUMN import_job_id VARCHAR",
+        "deleted_at": "ALTER TABLE rag_documents ADD COLUMN deleted_at DATETIME",
     }
     with engine.begin() as conn:
         table_names = set(inspect(conn).get_table_names())

@@ -427,8 +427,11 @@ def test_document_lifecycle(client: TestClient) -> None:
     assert deleted.status_code == 200
     assert deleted.json()["deleted"] is True
 
-    missing = client.get(f"/api/rag/documents/{doc_id}")
-    assert missing.status_code == 404
+    listing_after = client.get("/api/rag/documents")
+    assert all(item["id"] != doc_id for item in listing_after.json())
+    detail_after = client.get(f"/api/rag/documents/{doc_id}")
+    assert detail_after.status_code == 200
+    assert detail_after.json()["deleted_at"] is not None
 
 
 def test_ingest_validation(client: TestClient) -> None:
@@ -598,7 +601,7 @@ def test_upload_stores_source_file_and_downloads_it(
     assert "manual.pdf" in download.headers["content-disposition"]
 
 
-def test_delete_document_removes_source_file(
+def test_delete_document_keeps_source_file_until_purge(
     client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, session: Session
 ) -> None:
     from app.models.rag import Document
@@ -633,7 +636,12 @@ def test_delete_document_removes_source_file(
 
     deleted = client.delete(f"/api/rag/documents/{doc_id}")
     assert deleted.status_code == 200
-    assert not source_path.exists()
+    session.expire_all()
+    kept = session.get(Document, doc_id)
+    assert kept is not None and kept.deleted_at is not None
+    assert source_path.exists()
+    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    assert download.status_code == 404
 
 
 def test_download_missing_source_file_returns_404(

@@ -15,7 +15,9 @@ from datetime import UTC, datetime
 
 from sqlmodel import Session, select
 
+from app.agents.fast_path import iter_fast_path
 from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
+from app.agents.route import ChatRoute, RouteKind, route_message
 from app.agents.skills.base import SkillContext
 from app.agents.tools.base import Tool, ToolRegistry
 from app.agents.tools.builtin import default_tools
@@ -203,6 +205,36 @@ class ChatService:
                 logger.exception("加载 MCP 工具失败，仅使用内置工具")
         return ToolRegistry(tools)
 
+    def _fast_route(self, message: str) -> ChatRoute | None:
+        """langgraph 下，简单、工具、知识库走短路径。多轮和默认编排返回 None。"""
+        if settings.AGENT_ORCHESTRATION != "langgraph":
+            return None
+        route = route_message(message)
+        if route.kind is RouteKind.MULTI:
+            return None
+        return route
+
+    async def _iter_fast(
+        self,
+        state: AgentState,
+        route: ChatRoute,
+        retriever,
+        tools,
+        skill_ctx: SkillContext | None,
+    ) -> AsyncIterator[AgentEvent]:
+        skill_prompt = skill_ctx.prompt_injection if skill_ctx and skill_ctx.prompt_injection else ""
+        logger.info("对话走短路径：%s", route.kind.value)
+        async for event in iter_fast_path(
+            self.llm,
+            self._options,
+            state,
+            route,
+            retriever,
+            tools,
+            skill_prompt,
+        ):
+            yield event
+
     def _build_pipeline(self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None):
         """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
 
@@ -272,12 +304,18 @@ class ChatService:
         skill_ctx = self._match_skills(session, user, message)
         # 5. 调试追踪
         trace = self._create_trace()
-        # 6. 按配置构造编排器
-        pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
-        if isinstance(pipeline, AgentPipeline):
-            pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
-        # 7. 执行
-        result = await pipeline.run(state)
+        # 6. 短路径或按配置构造编排器
+        fast = self._fast_route(safe_message)
+        if fast is not None:
+            async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx):
+                pass
+            result = state
+        else:
+            pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
+            if isinstance(pipeline, AgentPipeline):
+                pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
+            # 7. 执行
+            result = await pipeline.run(state)
         # 8. 收集追踪
         self._collect_trace(trace)
         # 9. 安全治理：输出过滤
@@ -321,8 +359,12 @@ class ChatService:
         skill_ctx = self._match_skills(session, user, message)
 
         retriever = self._build_retriever(session, user)
-        pipeline = self._build_pipeline(
-            retriever, await self._build_tools(), skill_ctx
+        tools = await self._build_tools()
+        fast = self._fast_route(safe_message)
+        pipeline = (
+            None
+            if fast is not None
+            else self._build_pipeline(retriever, tools, skill_ctx)
         )
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
@@ -337,7 +379,12 @@ class ChatService:
         assistant_saved = False
         stopped = False
         try:
-            async for event in pipeline.run_stream(state):
+            if fast is not None:
+                events = self._iter_fast(state, fast, retriever, tools, skill_ctx)
+            else:
+                assert pipeline is not None
+                events = pipeline.run_stream(state)
+            async for event in events:
                 if event.type == "token":
                     collected.append(event.data)
                 if event.type == "done":

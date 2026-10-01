@@ -1,6 +1,6 @@
 # SKILL-001、SKILL-002、SUP-001、SUP-002：创建技能、技能管理页、Supervisor 分派、任务过程展示
 
-> 状态：SKILL-001、SKILL-002 已实现，说明见 `docs/plans/implementation_skill_001.md` 与 `docs/plans/implementation_skill_002.md`。SUP-001、SUP-002 尚未实现。2026-10-01 经两轮评审修订，同日按要求补上系统管理员跨租户管理和系统全局技能。前文若与计划正文冲突，以正文为准。
+> 状态：SKILL-001、SKILL-002、SUP-001、SUP-002 已实现，说明见 `docs/plans/implementation_skill_001.md`、`docs/plans/implementation_skill_002.md`、`docs/plans/implementation_sup_001.md` 与 `docs/plans/implementation_sup_002.md`。2026-10-01 经两轮评审修订，同日按要求补上系统管理员跨租户管理和系统全局技能。前文若与计划正文冲突，以正文为准。
 > 来源：`tasks.yaml` 的 SKILL-001、SKILL-002、SUP-001、SUP-002；`docs/plans/plan_remaining_delivery.md` 对应四节；交付排期第 5 节 D2、第 6 节第 18 项。评审处置见 `docs/reviews/2026-10-01-plan_d2评审.md`。
 > 日期：2026-10-01
 > 截止：2027-02-05

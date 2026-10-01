@@ -139,16 +139,24 @@ export interface ChatResponse {
  */
 export type SendMode = 'stream' | 'once'
 
-/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、sources=检索来源、done=完成、error=失败。 */
+/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、sources=检索来源、subtask=完成后的子任务摘要、done=完成、error=失败。 */
 export type StreamEventType =
   | 'stage'
   | 'token'
   | 'tool'
   | 'sources'
   | 'code_result'
+  | 'subtask'
   | 'done'
   | 'error'
   | 'conversation'
+
+/** 图执行完成后的子任务摘要。只接受版本 1、名称为 research 或 draft、状态为 done。 */
+export interface SubtaskSummary {
+  name: 'research' | 'draft'
+  status: 'done'
+  summary: string
+}
 
 export interface StreamEvent {
   type: StreamEventType

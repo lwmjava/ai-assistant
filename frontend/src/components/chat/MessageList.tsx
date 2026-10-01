@@ -6,9 +6,10 @@ import remarkGfm from 'remark-gfm'
 import { Bot, UserRound } from 'lucide-react'
 
 import { StageTracker } from './StageTracker'
+import { SubtaskSummary } from './SubtaskSummary'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/cn'
-import type { CodeResult, MessageOut, SourceRef } from '@/types/api'
+import type { CodeResult, MessageOut, SourceRef, SubtaskSummary as SubtaskItem } from '@/types/api'
 
 export interface MessageListProps {
   messages: MessageOut[]
@@ -19,6 +20,7 @@ export interface MessageListProps {
   stageStages: string[]
   currentStage: string | null
   tools: string[]
+  subtasks?: SubtaskItem[]
   streaming: boolean
   streamError: string | null
   /** 用户主动停止。气泡上标已停止，不显示断线按钮。 */
@@ -173,6 +175,7 @@ export function MessageList({
   stageStages,
   currentStage,
   tools,
+  subtasks = [],
   streaming,
   streamError,
   awaiting = false,
@@ -227,6 +230,7 @@ export function MessageList({
                 tools={tools}
                 streaming={streaming}
               />
+              <SubtaskSummary items={subtasks} />
               {streamingText ? (
                 <>
                   <div className="markdown">

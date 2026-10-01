@@ -514,6 +514,7 @@ export default function ChatPage() {
               stageStages={snapshot.stages}
               currentStage={snapshot.currentStage}
               tools={snapshot.tools}
+              subtasks={snapshot.subtasks}
               streaming={snapshot.streaming && !liveAlreadyStored}
               awaiting={awaiting}
               streamError={liveAlreadyStored ? null : snapshot.error}

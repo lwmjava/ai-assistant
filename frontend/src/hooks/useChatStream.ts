@@ -8,6 +8,7 @@
  * - `tool`：工具调用提示
  * - `sources`：检索来源列表，不拼进回复正文
  * - `code_result`：一次代码执行的标准输出或失败原因，不拼进回复正文
+ * - `subtask`：图执行完成后的子任务摘要。版本不是 1，或名称、状态不合格时忽略
  * - `done`：携带 `state.answer`
  * - `error`：安全拦截或管线异常
  * - `conversation`：会话编号。新建会话时页面靠它在断线后拉取，不再按更新时间猜测。
@@ -23,7 +24,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { hideStackTrace } from '@/lib/http'
 import { streamPost } from '@/lib/sse'
-import type { CodeResult, SourceRef, StreamEventType } from '@/types/api'
+import type { CodeResult, SourceRef, StreamEventType, SubtaskSummary } from '@/types/api'
 import { getAccessToken } from '@/store/auth'
 
 export interface StreamSnapshot {
@@ -34,6 +35,7 @@ export interface StreamSnapshot {
   /** 流式累积的助手文本。 */
   text: string
   tools: string[]
+  subtasks: SubtaskSummary[]
   sources: SourceRef[]
   codeResults: CodeResult[]
   error: string | null
@@ -49,6 +51,7 @@ const EMPTY: StreamSnapshot = {
   currentStage: null,
   text: '',
   tools: [],
+  subtasks: [],
   sources: [],
   codeResults: [],
   error: null,
@@ -74,6 +77,26 @@ function asCodeResult(data: unknown): CodeResult | null {
     stdout: typeof row.stdout === 'string' ? row.stdout : '',
     reason: typeof row.reason === 'string' ? row.reason : '',
   }
+}
+
+function asSubtask(data: unknown): SubtaskSummary | null {
+  let row: unknown = data
+  if (typeof data === 'string') {
+    const text = data.trim()
+    if (!text) return null
+    try {
+      row = JSON.parse(text) as unknown
+    } catch {
+      return null
+    }
+  }
+  if (!row || typeof row !== 'object') return null
+  const item = row as { v?: unknown; name?: unknown; status?: unknown; summary?: unknown }
+  if (item.v !== 1) return null
+  if (item.name !== 'research' && item.name !== 'draft') return null
+  if (item.status !== 'done') return null
+  if (typeof item.summary !== 'string') return null
+  return { name: item.name, status: 'done', summary: item.summary }
 }
 
 function asSources(data: unknown): SourceRef[] {
@@ -157,6 +180,13 @@ export function useChatStream() {
               const item = asCodeResult(payload.data)
               if (!item) return
               setSnapshot((prev) => ({ ...prev, codeResults: [...prev.codeResults, item] }))
+              return
+            }
+
+            if (type === 'subtask') {
+              const item = asSubtask(payload.data)
+              if (!item) return
+              setSnapshot((prev) => ({ ...prev, subtasks: [...prev.subtasks, item] }))
               return
             }
 

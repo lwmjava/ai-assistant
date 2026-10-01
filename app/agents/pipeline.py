@@ -216,6 +216,8 @@ class AgentState:
     quality_score: float = 0.0  # QualityGate 最近一次质量评分
     revision: int = 0  # QualityGate 自纠错已执行的轮数
     executed_tool_fingerprints: set[str] = field(default_factory=set)
+    # 一次 Supervisor 执行里的分派记录，只留在内存，不入库。
+    delegations: list[dict[str, str]] = field(default_factory=list)
 
 
 class AgentEvent:

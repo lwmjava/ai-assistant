@@ -3586,7 +3586,7 @@ tasks:
 
   - id: "SUP-001"
     title: "Supervisor 分派并返回结果（交付 D2）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-02-05"
     depends_on:
@@ -3656,7 +3656,7 @@ tasks:
 
   - id: "SUP-002"
     title: "任务过程展示（交付 D2）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-02-05"
     depends_on:

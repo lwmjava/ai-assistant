@@ -25,7 +25,7 @@
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
 | 自研五阶段 `AgentPipeline`（默认） | `Implemented` | `AGENT_ORCHESTRATION=self`；`app/agents/pipeline.py`；`app/services/chat_service.py` | 不是 LangGraph 五阶段主路径 |
-| LangGraph Supervisor | `Partial` | `app/agents/supervisor.py` | 可选编排，不是默认主路径 |
+| LangGraph Supervisor | `Partial` | `app/agents/supervisor.py`；`app/agents/route.py` | 显式打开且已安装 `langgraph>=1.0.0,<1.1` 时，只有明确要求多轮调研才进入 Supervisor；不需要工具和知识库的问题只生成一次。默认编排仍是五阶段管线 |
 | ChatService 组装 Memory/RAG/Tools/Skills/安全 | `Partial` | `app/services/chat_service.py` | 同时承担部分 Harness 职责，未独立提取 |
 | 对话停止、断线加载、重命名与只读禁发 | `Partial` | `app/services/chat_service.py`；`frontend/src/pages/Chat.tsx`；`tests/test_chat_controls.py` | 流式可停止并留下已停止标记。断线后可加载已写完的回复，未写完不会显示成完成。可重命名和删除自己的会话。viewer 不能发送。不做自动重连，也不把生成放到请求之外继续跑 |
 | 独立 Agent Harness / Context Builder / State Manager | `Planned` | `docs/governance/agent-harness-engineering.md` | RAG-005 基线已冻结；仍禁止无指标大爆炸重构 |

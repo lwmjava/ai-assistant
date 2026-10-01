@@ -455,7 +455,7 @@
 
 ## SUP-001 Supervisor 分派并返回结果
 
-实现计划见 `docs/plans/plan_d2.md`（2026-10-01 已按评审修订）。状态：尚未实现。依赖 SKILL-001。
+实现计划见 `docs/plans/plan_d2.md`（2026-10-01 已按评审修订）。状态：已实现，说明见 `docs/plans/implementation_sup_001.md`。依赖已完成的 SKILL-001。
 
 - 目标：打开 Supervisor 时，它能把任务交给子代理并带回结果。
 - 现状：Supervisor 是可选路径，默认仍是五阶段管线。现有测试只覆盖导入和缺依赖时的构造失败，没有分派并汇总的用例。`pyproject.toml` 还没有文档里写过的 `langgraph` extra。
@@ -466,7 +466,7 @@
 
 ## SUP-002 任务过程展示
 
-实现计划见 `docs/plans/plan_d2.md`（2026-10-01 已按评审修订）。状态：尚未实现。依赖 SUP-001。
+实现计划见 `docs/plans/plan_d2.md`（2026-10-01 已按评审修订）。状态：已实现，说明见 `docs/plans/implementation_sup_002.md`。依赖已完成的 SUP-001。
 
 - 目标：用户能看到这次是哪个子任务在执行。
 - 现状：对话有阶段展示。流式事件里没有子任务名称和结果，页面也不渲染这块。

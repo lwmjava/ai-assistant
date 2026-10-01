@@ -9,14 +9,14 @@ Supervisor**：由 supervisor 节点决定「先调研」还是「直接撰写�
 - LangGraph 仅覆盖「多 Agent 协作」这一层，不重写五阶段管线；
 - ``langgraph`` 为**可选依赖**，仅在真正构造 `SupervisorGraph` 时懒加载，
   import 失败会抛出带安装指引的 `ImportError`，不影响自研（self）路径；
-- 调研 worker 直接复用自研 `AgentPipeline` 已有的「行动」工具循环（含检索与工具），
-  避免在 LangGraph 侧再实现一遍，杜绝重复造轮子。
+- 调研 worker 只做一次模型调用，不进入行动循环，也不检索知识库。
 """
 
+import json
 import logging
 from typing import Optional, TypedDict
 
-from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
+from app.agents.pipeline import AgentEvent, AgentState
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 
@@ -26,6 +26,8 @@ _WORKERS = ("research", "draft")
 _ROUTES = (*_WORKERS, "FINISH")
 # 流式回放的单次 token 事件字符数：过小会放大事件开销，过大则失去增量意义。
 _STREAM_CHUNK = 24
+_SUMMARY_LIMIT = 500
+_EMPTY_SUMMARY = "没有文本结果"
 
 _SUPERVISOR_SYSTEM = (
     "你是编排调度器。根据「用户目标」「调研记录」判断下一步动作。\n"
@@ -37,14 +39,38 @@ _SUPERVISOR_SYSTEM = (
 )
 
 _RESEARCH_SYSTEM = (
-    "你是调研员。基于「用户目标」与「已掌握上下文」，调用可用工具/检索补齐关键信息。\n"
-    "输出一段精炼的调研记录（事实与出处），供后续撰写使用。"
+    "你是调研员。基于「用户目标」与已有调研，写一段精炼的调研记录。\n"
+    "不要调用工具，不要声称已经检索过知识库。"
 )
 
 _DRAFT_SYSTEM = (
     "你是撰写者。综合「用户目标」「调研记录」「已掌握上下文」，产出面向用户的最终回答。\n"
     "要求：直接回应用户、语言与用户一致、结构清晰易读。"
 )
+
+
+def _append_delegation(state: dict, name: str, result: str) -> list[dict[str, str]]:
+    """复制已有分派记录再追加当前一条，避免后一轮覆盖前一轮。"""
+    copied: list[dict[str, str]] = []
+    for item in state.get("delegations") or []:
+        copied.append(
+            {"name": str(item.get("name", "")), "result": str(item.get("result", ""))}
+        )
+    copied.append({"name": name, "result": result})
+    return copied
+
+
+def _public_summary(result: str) -> str:
+    """对外摘要先脱敏再截断。没有文本时用固定短句。"""
+    raw = result or ""
+    if not raw.strip():
+        return _EMPTY_SUMMARY
+    from app.security.log_sanitizer import LogSanitizer
+
+    cleaned = LogSanitizer().sanitize(raw)
+    if len(cleaned) > _SUMMARY_LIMIT:
+        return cleaned[:_SUMMARY_LIMIT]
+    return cleaned
 
 
 class SupervisorState(TypedDict, total=False):
@@ -60,6 +86,7 @@ class SupervisorState(TypedDict, total=False):
     draft: str
     next: str
     revisions: int  # 已完成的调研轮数，用于收敛循环
+    delegations: list[dict[str, str]]  # 本轮图执行内的分派记录，每次写回完整列表
 
 
 class SupervisorGraph:
@@ -82,8 +109,6 @@ class SupervisorGraph:
         self.retriever = retriever
         self.tools = tools
         self.max_revisions = max_revisions
-        # 复用自研管线的「行动」工具循环作为调研 worker，避免重复实现
-        self._pipeline = AgentPipeline(llm, options, retriever, tools)
         self._graph = self._build()
 
     # ── 懒加载 LangGraph ──
@@ -94,7 +119,7 @@ class SupervisorGraph:
         except ImportError as exc:  # 仅在真正需要时才暴露缺失依赖
             raise ImportError(
                 "langgraph 未安装。Supervisor 子编排需要它；"
-                "请运行 `pip install \"ai-assistant[langgraph]\"` 后再启用 "
+                '请运行 `pip install -e ".[langgraph]"` 后再启用 '
                 "AGENT_ORCHESTRATION=langgraph。"
             ) from exc
         return END, StateGraph
@@ -106,7 +131,7 @@ class SupervisorGraph:
         builder.add_node("research", self._node_research)
         builder.add_node("draft", self._node_draft)
         builder.add_edge("research", "supervisor")
-        builder.add_edge("draft", "supervisor")
+        builder.add_edge("draft", END)
         builder.add_conditional_edges(
             "supervisor",
             self._route,
@@ -139,16 +164,27 @@ class SupervisorGraph:
         return {"next": action}
 
     async def _node_research(self, state: dict) -> dict:
-        # 复用自研「行动」工具循环产出调研记录（含工具/检索），而非在 LangGraph 侧重做
-        agent_state = AgentState(
-            user_input=state.get("user_input", ""),
-            plan=state.get("plan", ""),
-            context=state.get("context", ""),
+        """一轮调研只调用一次模型，不进入行动循环。"""
+        prompt = (
+            f"## 用户目标\n{state.get('user_input', '')}\n\n"
+            f"## 已有调研\n{state.get('research') or '（尚无调研记录）'}\n\n"
+            "请写一段调研记录。"
         )
-        draft = await self._pipeline._run_action_loop(agent_state)
+        draft = await self.llm.chat(
+            [
+                ChatMessage(role=ChatRole.SYSTEM, content=_RESEARCH_SYSTEM),
+                ChatMessage(role=ChatRole.USER, content=prompt),
+            ],
+            self.options,
+        )
+        text = (draft or "").strip()
         prior = state.get("research", "")
-        updated = (prior + "\n" + draft).strip() if prior else draft
-        return {"research": updated, "revisions": state.get("revisions", 0) + 1}
+        updated = (prior + "\n" + text).strip() if prior else text
+        return {
+            "research": updated,
+            "revisions": state.get("revisions", 0) + 1,
+            "delegations": _append_delegation(state, "research", text),
+        }
 
     async def _node_draft(self, state: dict) -> dict:
         user_input = state.get("user_input", "")
@@ -167,21 +203,25 @@ class SupervisorGraph:
             ],
             self.options,
         )
-        return {"draft": answer.strip()}
+        text = answer.strip()
+        return {
+            "draft": text,
+            "delegations": _append_delegation(state, "draft", text),
+        }
 
     def _route(self, state: dict) -> str:
-        """决定下一步节点，并在调研轮数用尽时强制收敛。
+        """调研未达上限时才继续调研，其余一律进入一次撰写。
 
-        supervisor 与 research 构成回环，若模型持续输出 ``research`` 会无限循环，
-        因此达到 ``max_revisions`` 后不再调研，直接转撰写。
+        撰写节点直接结束，不再回到调度，因此模型反复输出 draft 也只会撰写一次。
         """
         action = state.get("next", "draft")
-        if action == "research" and state.get("revisions", 0) >= self.max_revisions:
+        if action == "research" and state.get("revisions", 0) < self.max_revisions:
+            return "research"
+        if action == "research":
             logger.info(
                 "Supervisor 调研轮数已达上限 %s，强制转入撰写", self.max_revisions
             )
-            return "draft"
-        return action
+        return "draft"
 
     # ── 对外契约（与 AgentPipeline 对齐）──
     async def run(self, state: AgentState) -> AgentState:
@@ -194,6 +234,7 @@ class SupervisorGraph:
             "draft": "",
             "next": "research",
             "revisions": 0,
+            "delegations": [],
         }
         try:
             final = await self._graph.ainvoke(graph_state)
@@ -205,6 +246,10 @@ class SupervisorGraph:
             return state
         state.draft = final.get("draft", "")
         state.answer = state.draft
+        state.delegations = [
+            {"name": str(item.get("name", "")), "result": str(item.get("result", ""))}
+            for item in (final.get("delegations") or [])
+        ]
         return state
 
     async def run_stream(self, state: AgentState):
@@ -216,6 +261,16 @@ class SupervisorGraph:
         """
         result = await self.run(state)
         yield AgentEvent("stage", "Supervisor 协作")
+        # 图已经跑完。这里发出的是完成后的摘要，不是节点开始时的进度。
+        if not result.error:
+            for item in result.delegations:
+                payload = {
+                    "v": 1,
+                    "name": item["name"],
+                    "status": "done",
+                    "summary": _public_summary(item["result"]),
+                }
+                yield AgentEvent("subtask", json.dumps(payload, ensure_ascii=False))
         answer = result.answer or ""
         for start in range(0, len(answer), _STREAM_CHUNK):
             yield AgentEvent("token", answer[start : start + _STREAM_CHUNK])

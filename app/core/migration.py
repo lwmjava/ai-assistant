@@ -151,6 +151,30 @@ def _stamp_legacy_unversioned_schema() -> None:
     stamp(base_revision)
 
 
+def _ensure_message_columns() -> None:
+    """历史库被直接标到 head 时，补上消息来源列和停止状态列。"""
+    from app.core.database import engine
+
+    with engine.begin() as conn:
+        tables = set(inspect(conn).get_table_names())
+        if "messages" not in tables:
+            return
+        columns = {col["name"] for col in inspect(conn).get_columns("messages")}
+        if "sources" not in columns:
+            logger.warning("补齐缺失的消息来源列")
+            conn.execute(text("ALTER TABLE messages ADD COLUMN sources VARCHAR"))
+        if "status" not in columns:
+            logger.warning("补齐缺失的消息状态列")
+            conn.execute(
+                text(
+                    "ALTER TABLE messages ADD COLUMN status VARCHAR NOT NULL DEFAULT 'complete'"
+                )
+            )
+        if "code_results" not in columns:
+            logger.warning("补齐缺失的代码结果列")
+            conn.execute(text("ALTER TABLE messages ADD COLUMN code_results VARCHAR"))
+
+
 def _ensure_rag_schema_columns() -> None:
     """为历史数据库补齐 RAG 版本化与导入平台所需列。
 
@@ -321,6 +345,7 @@ def auto_migrate() -> bool:
     pending = get_pending_migrations()
     if not pending:
         _ensure_rag_schema_columns()
+        _ensure_message_columns()
         logger.info("数据库 schema 已是最新版本，无需迁移。")
         return True
 
@@ -331,6 +356,7 @@ def auto_migrate() -> bool:
     try:
         upgrade("head")
         _ensure_rag_schema_columns()
+        _ensure_message_columns()
         logger.info("数据库迁移完成（%d 个版本）。", len(pending))
         return True
     except Exception as exc:

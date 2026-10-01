@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
-class KillReason(str, Enum):
+class KillReason(str, Enum):  # noqa: UP042 — 与项目其它枚举一致
     """沙箱拦截原因 — 标记代码被哪一层防护拒绝/终止。"""
 
     NONE = "none"  # 未被拦截，正常完成
@@ -44,7 +44,18 @@ class SandboxConfig:
     """最大写入磁盘量（MB），Unix 通过 setrlimit(RLIMIT_FSIZE) 实现。"""
 
     # ── Layer 1：AST 白名单 ──
-    allowed_imports: list[str] = field(default_factory=lambda: ["math", "json", "datetime", "re", "itertools", "collections", "functools", "statistics"])
+    allowed_imports: list[str] = field(
+        default_factory=lambda: [
+            "math",
+            "json",
+            "datetime",
+            "re",
+            "itertools",
+            "collections",
+            "functools",
+            "statistics",
+        ]
+    )
     """允许导入的模块白名单，其他 import 语句将被拒绝。"""
 
     # ── 通用 ──
@@ -79,22 +90,42 @@ class SandboxResult:
     killed_detail: str = ""
     """拦截详情（如 "AST 拒绝：不允许 import os"）。"""
 
+    output_limit: int = 100_000
+    """本次输出上限，用于截断说明。"""
+
+    child_pid: int = 0
+    """本次直接子进程编号。0 表示没有启动。不进入界面结果。"""
+
     def to_observation(self) -> str:
-        """生成供 Agent 阅读的观测文本。"""
-        if self.killed_by != KillReason.NONE:
-            return (
-                f"[沙箱执行被拦截] 原因：{self.killed_by.value}\n"
-                f"详情：{self.killed_detail}"
-            )
-        if self.exit_code != 0:
-            return (
-                f"[沙箱执行错误] exit_code={self.exit_code}\n"
-                f"stderr:\n{self.stderr[:2000]}"
-            )
+        """生成供 Agent 阅读的观测文本。路径应已在写入前清理。"""
         output = self.stdout
         if self.truncated:
-            output += "\n\n[输出已被截断，仅展示前 {max_output_chars} 字符]"
-        return output
+            output += f"\n\n[输出已被截断，仅展示前 {self.output_limit} 字符]"
+        if self.killed_by == KillReason.NONE and self.exit_code == 0:
+            return output
+        if self.killed_by != KillReason.NONE:
+            head = f"[沙箱执行被拦截] 原因：{self.killed_by.value}\n详情：{self.killed_detail}"
+        else:
+            head = f"[沙箱执行错误] exit_code={self.exit_code}\nstderr:\n{self.stderr[:2000]}"
+        if output:
+            return f"{head}\n{output}"
+        return head
+
+    def public_view(self) -> dict[str, str]:
+        """给界面的结果。不含宿主机路径。"""
+        if self.killed_by == KillReason.TIMEOUT:
+            status = "timeout"
+        elif self.killed_by != KillReason.NONE or self.exit_code != 0:
+            status = "error"
+        else:
+            status = "ok"
+        stdout = self.stdout
+        if self.truncated:
+            stdout += f"\n\n[输出已截断，仅展示前 {self.output_limit} 字符]"
+        reason = ""
+        if status != "ok":
+            reason = self.killed_detail or self.stderr[:500] or "执行失败"
+        return {"status": status, "stdout": stdout, "reason": reason}
 
     def to_dict(self) -> dict:
         """序列化为字典，供日志/审计使用。"""

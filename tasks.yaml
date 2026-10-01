@@ -1382,3 +1382,2652 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
+  - id: "QA-001"
+    title: "对话默认检索本租户当前版（交付 B3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-13"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "成员提问时默认不检索本租户文档。"
+      facts:
+        - claim: "RAG_ENABLED 的代码默认值为 true。显式关闭时对话仍跳过检索。本地 .env 若写了 false，仍以环境文件为准。"
+          evidence: "app/core/config.py；docs/plans/plan_qa_001_default_retrieval.md"
+        - claim: "检索读路径已按租户和当前版过滤，已软删除文档不进入检索。"
+          evidence: "app/services/chat_service.py；app/rag/service.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_qa_001_default_retrieval.md"
+        - "docs/AI辅助开发迭代指导.md"
+        - "docs/product/as-is-capability-matrix.md"
+        - "app/services/chat_service.py"
+        - "app/core/config.py"
+        - ".env.example"
+        - "README.md"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "安装后的默认对话会检索本租户已发布当前版"
+        - "另一租户和已软删除文档不进入上下文"
+      non_goals:
+        - "不改切分、Embedding 或 RRF"
+        - "不做独立重排"
+        - "不展示来源（归 QA-002、QA-003）"
+    acceptance:
+      - "本租户当前版可被注入"
+      - "跨租户与已删除文档不出现"
+      - "相关 pytest 通过"
+    risk:
+      level: "L1"
+      side_effect: "enable-tenant-current-rag"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "本租户当前版命中"
+        - "跨租户不命中"
+        - "已删除文档不命中"
+      commands:
+        - "pytest tests/ -k 'chat or rag' -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "QA-002"
+    title: "回复携带来源字段（交付 B3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-13"
+    depends_on:
+      - "QA-001"
+    context:
+      problem: "回复没有稳定的来源字段，调用方无法知道用了哪份文件。"
+      facts:
+        - claim: "回答目前主要是文本，没有文件名、页码或段落字段。"
+          evidence: "app/services/chat_service.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_qa_002_reply_sources.md"
+        - "app/schemas/"
+        - "app/api/routes/chat.py"
+        - "app/services/chat_service.py"
+        - "app/rag/retriever.py"
+        - "app/rag/service.py"
+        - "app/models/conversation.py"
+        - "app/core/migration.py"
+        - "alembic/versions/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "命中文档时响应含文件名"
+        - "解析结果已有页码或段落时一并返回"
+        - "无命中时来源为空"
+      non_goals:
+        - "不做引用角标和原文侧栏"
+        - "不新增引用准确率评测"
+    acceptance:
+      - "有命中时含文件名"
+      - "无页码时不编造页码"
+      - "无命中时来源为空"
+    risk:
+      level: "L1"
+      side_effect: "chat-source-fields"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "有文件名"
+        - "不编造页码"
+        - "无命中为空"
+      commands:
+        - "pytest tests/ -k 'chat or citation or source' -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "QA-003"
+    title: "对话页展示来源（交付 B3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-13"
+    depends_on:
+      - "QA-002"
+    context:
+      problem: "对话页不展示回复用了哪份文件。"
+      facts:
+        - claim: "助手回复有来源时，对话页在正文下展示文件名；已有页码或段落时一并展示。来源为空时不渲染来源区。"
+          evidence: "frontend/src/components/chat/MessageList.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_qa_003_show_sources.md"
+        - "frontend/src/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "有来源时展示文件名"
+        - "已有页码或段落时一起展示"
+        - "无来源时不显示空区块"
+      non_goals:
+        - "不做引用跳转和原文侧栏"
+    acceptance:
+      - "页面能看到文件名"
+      - "前端类型检查与构建通过"
+    risk:
+      level: "L0"
+      side_effect: "chat-show-sources"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "展示文件名"
+        - "无来源不显示空块"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "QA-004"
+    title: "知识库上传、状态、重建、删除与软删除一致（交付 B3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-13"
+    depends_on:
+      - "QA-001"
+    context:
+      problem: "知识库页的上传、状态、重建、删除尚未按软删除核对完整。"
+      facts:
+        - claim: "删除写入 deleted_at。成员列表默认看不到已删文档。管理员可看到已删除标记。重建不恢复已删文档。"
+          evidence: "app/rag/service.py"
+        - claim: "知识库页展示版本状态和分块数，可确认软删除，并可对未删除文档重建。"
+          evidence: "frontend/src/pages/Knowledge.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_qa_004_soft_delete_console.md"
+        - "docs/AI辅助开发迭代指导.md"
+        - "docs/product/as-is-capability-matrix.md"
+        - "app/rag/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "上传后能看到处理状态"
+        - "重建不把已删文档救回当前版"
+        - "删除后成员不可见，管理员仍能看到已删标记"
+      non_goals:
+        - "不做切分细节可视化"
+        - "不改保留期"
+        - "不做物理清理"
+    acceptance:
+      - "成员删除后列表不可见且提问不再命中"
+      - "管理员能看到已删"
+      - "重建不恢复已删文档"
+    risk:
+      level: "L1"
+      side_effect: "kb-soft-delete-console"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "成员看不到已删"
+        - "管理员看得到已删"
+        - "重建不恢复"
+      commands:
+        - "pytest tests/ -k 'rag or document' -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AUTH-001"
+    title: "注册并加入默认租户（交付 C1）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-21"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "新用户不能自己注册并进入默认租户。"
+      facts:
+        - claim: "公开注册成为 default 租户的 member，并返回不含密码的双令牌。"
+          evidence: "app/api/routes/auth.py"
+        - claim: "默认租户和环境变量管理员已经存在。"
+          evidence: "app/services/auth_service.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "app/schemas/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "公开注册成功后成为默认租户的 member"
+        - "用户名全局唯一"
+        - "注册响应不含密码"
+      non_goals:
+        - "不做邀请码"
+        - "不建成员表"
+        - "不做 /setup"
+        - "不实现 CLI"
+    acceptance:
+      - "注册后可登录且令牌租户为默认租户"
+      - "重复用户名被拒绝"
+      - "响应不含密码"
+    risk:
+      level: "L1"
+      side_effect: "public-register"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "注册后租户正确"
+        - "重名拒绝"
+        - "响应无密码"
+      commands:
+        - "pytest tests/ -k auth -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AUTH-002"
+    title: "管理员撤销用户令牌（交付 C1）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-21"
+    depends_on:
+      - "AUTH-001"
+    context:
+      problem: "管理员不能让已发出的刷新令牌失效。"
+      facts:
+        - claim: "刷新会核对 token_version。"
+          evidence: "app/core/security.py"
+        - claim: "系统管理员可递增 token_version，旧刷新令牌随之失效。"
+          evidence: "app/api/routes/auth.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "系统管理员可撤销指定用户"
+        - "旧刷新令牌失败"
+        - "撤销写入审计"
+      non_goals:
+        - "不在本任务做停用用户的全部语义（归 ADM-001）"
+        - "不改访问令牌的有效期"
+    acceptance:
+      - "撤销后旧 refresh 失败"
+      - "新登录成功"
+      - "非管理员 403"
+    risk:
+      level: "L2"
+      side_effect: "revoke-token-version"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "旧刷新失败"
+        - "重新登录成功"
+        - "非管理员 403"
+      commands:
+        - "pytest tests/ -k 'auth or token' -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AUTH-003"
+    title: "注册页与首次设置向导（交付 C1）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-21"
+    depends_on:
+      - "AUTH-001"
+    context:
+      problem: "没有管理员时，控制台不能引导完成第一次建号。"
+      facts:
+        - claim: "控制台有 /login、/register、/setup。没有系统管理员时进入向导。"
+          evidence: "frontend/src/App.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "frontend/src/"
+        - "app/api/routes/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "注册页可完成注册并进入对话"
+        - "没有系统管理员时进入 /setup"
+        - "已有管理员时 /setup 不可用"
+      non_goals:
+        - "不实现 CLI"
+        - "不强制首次登录改密"
+    acceptance:
+      - "空库能走完向导"
+      - "完成后再次访问进不了向导"
+      - "注册页能登录"
+    risk:
+      level: "L1"
+      side_effect: "register-and-setup-pages"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "空库向导"
+        - "向导只此一次"
+        - "注册可登录"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AUTH-004"
+    title: "首次运行旅程与 README 逐步一致（交付 C1）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-21"
+    depends_on:
+      - "AUTH-003"
+    context:
+      problem: "README 的快速开始和第一次使用的页面步骤不一致。"
+      facts:
+        - claim: "README 快速开始按填写环境、启动、建管理员、注册或登录、发送第一条消息书写。"
+          evidence: "README.md"
+        - claim: "C1 的路径是环境变量或 /setup，加上注册和登录。"
+          evidence: "docs/plans/plan_delivery_2027-03-25.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "README.md"
+        - "docs/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "README 按填写环境、启动、建管理员、注册或登录、发送第一条消息书写"
+        - "每步写明失败时看哪里"
+      non_goals:
+        - "不实现 ai-assistant init"
+        - "不把首次镜像下载算进计时"
+    acceptance:
+      - "按 README 能走到发出一条消息"
+      - "文档中的路径在控制台存在"
+    risk:
+      level: "L0"
+      side_effect: "readme-first-run"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "步骤与页面一致"
+        - "失败时有下一步"
+      commands:
+        - "按 README 手工核对一次并记录结果"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "INV-001"
+    title: "邀请码加入租户（交付 C2）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-28"
+    depends_on:
+      - "AUTH-001"
+    context:
+      problem: "已注册用户不能凭邀请码加入另一个租户。"
+      facts:
+        - claim: "成员表记录用户在租户中的角色。users.tenant_id 仍是当前会话租户。"
+          evidence: "app/models/membership.py"
+        - claim: "租户管理员或系统管理员可生成邀请码，已登录用户可接受。接受不切换当前租户。"
+          evidence: "app/api/routes/invitations.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/models/"
+        - "app/api/routes/"
+        - "app/services/"
+        - "app/schemas/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "成员表记录用户在租户中的角色"
+        - "现有用户迁移为一条成员记录"
+        - "租户管理员可生成邀请码，已注册用户可接受"
+      non_goals:
+        - "不做邮件"
+        - "不在本任务切换令牌（归 INV-002）"
+    acceptance:
+      - "凭码加入后成员关系存在"
+      - "重复加入、过期或用尽被拒绝"
+      - "审计有记录"
+    risk:
+      level: "L2"
+      side_effect: "invite-membership"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "加入成功"
+        - "重复加入拒绝"
+        - "过期码拒绝"
+      commands:
+        - "pytest tests/ -k 'invite or member' -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "INV-002"
+    title: "校验成员身份后切换租户（交付 C2）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-28"
+    depends_on:
+      - "INV-001"
+    context:
+      problem: "加入多个租户后不能换成另一个租户的会话。"
+      facts:
+        - claim: "是成员才把 users.tenant_id 改为目标租户并换发令牌。不是成员则 403。"
+          evidence: "app/services/membership.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "app/core/security.py"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "是成员才换发新令牌"
+        - "当前 tenant_id 改为目标租户"
+        - "不是成员则 403 且令牌不变"
+      non_goals:
+        - "不接受查询参数传租户"
+        - "不通过切换改变系统角色"
+    acceptance:
+      - "切换后列表属于新租户"
+      - "非成员 403"
+    risk:
+      level: "L2"
+      side_effect: "switch-tenant"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "成员切换成功"
+        - "非成员 403"
+      commands:
+        - "pytest tests/ -k 'switch or tenant' -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "INV-003"
+    title: "邀请入口与切换入口（交付 C2）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-11-28"
+    depends_on:
+      - "INV-002"
+    context:
+      problem: "页面上不能生成邀请码，也不能切换租户。"
+      facts:
+        - claim: "邀请页可以生成和接受邀请码。成员关系多于一条时顶栏可以切换租户。"
+          evidence: "frontend/src/pages/Invitations.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "frontend/src/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "租户管理员可生成邀请码"
+        - "已登录用户可输入邀请码"
+        - "多个租户时可从顶栏切换"
+      non_goals:
+        - "不做邮件"
+        - "不做六态全集"
+    acceptance:
+      - "页面能生成、接受并切换"
+      - "切换后对话列表属于新租户"
+    risk:
+      level: "L1"
+      side_effect: "invite-switch-ui"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "生成并接受"
+        - "切换后数据范围正确"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "ADM-001"
+    title: "用户列表、改角色与停用（交付 C3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-09"
+    depends_on:
+      - "AUTH-002"
+    context:
+      problem: "系统管理员不能查看用户、修改角色或停用用户。"
+      facts:
+        - claim: "系统管理员可分页列出用户、修改他人角色并停用。停用后访问与旧刷新失败，不能停用自己。"
+          evidence: "app/api/routes/admin_users.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "分页列出用户"
+        - "可修改角色"
+        - "停用后旧刷新失败，且不能停用自己"
+      non_goals:
+        - "不做租户管理员的成员管理页"
+        - "不物理删除用户"
+    acceptance:
+      - "列表可见"
+      - "新令牌角色已变"
+      - "停用后旧刷新失败"
+      - "非系统管理员 403"
+    risk:
+      level: "L2"
+      side_effect: "admin-user-lifecycle"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "列表"
+        - "改角色"
+        - "停用失效"
+        - "非管理员 403"
+      commands:
+        - "pytest tests/ -k 'user or auth' -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "ADM-002"
+    title: "租户编辑与停用（交付 C3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-09"
+    depends_on:
+      - "TEN-001"
+    context:
+      problem: "系统管理员不能修改或停用租户。"
+      facts:
+        - claim: "系统管理员可改未停用租户名称并停用租户。停用后非系统管理员不能继续访问该租户。"
+          evidence: "app/api/routes/admin_tenants.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "可修改未停用租户的名称"
+        - "停用后该租户用户不能继续访问"
+        - "管理页能看到已停用租户"
+      non_goals:
+        - "不物理删除租户"
+        - "不在本任务做六态"
+    acceptance:
+      - "改名成功"
+      - "停用后成员不能访问"
+      - "重名被拒绝"
+    risk:
+      level: "L2"
+      side_effect: "admin-tenant-lifecycle"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "改名"
+        - "停用拒绝访问"
+        - "重名拒绝"
+      commands:
+        - "pytest tests/ -k tenant -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "ADM-003"
+    title: "系统状态（交付 C3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-09"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "管理页看不到数据库和向量库是否连通。"
+      facts:
+        - claim: "系统管理员可在系统状态页看到数据库、向量库、版本和启动时间。"
+          evidence: "app/api/routes/admin_system.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "管理接口返回数据库连通、向量库连通和能证明的版本或启动信息"
+        - "系统状态页展示这些字段"
+      non_goals:
+        - "不做监控大盘"
+        - "不编造在线人数或调用量"
+    acceptance:
+      - "管理员能看到连通状态"
+      - "非管理员进不了"
+    risk:
+      level: "L0"
+      side_effect: "admin-system-status"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "连通状态可见"
+        - "非管理员被拦"
+      commands:
+        - "pytest tests/ -k 'health or status' -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "ADM-004"
+    title: "用户、租户、审计、系统状态四页六态（交付 C3）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-09"
+    depends_on:
+      - "ADM-001"
+      - "ADM-003"
+    context:
+      problem: "四页缺少加载、空、错误、无权限、成功、失败。"
+      facts:
+        - claim: "用户、租户、审计、系统状态四页能区分加载、空、错误、无权限、成功和失败。"
+          evidence: "frontend/src/pages/Users.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "frontend/src/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "四页补齐六态"
+        - "无权限有说明"
+        - "停用和删除有成功或失败反馈"
+      non_goals:
+        - "不改对话页和知识库页的六态"
+        - "不做租户设置页"
+    acceptance:
+      - "逐页能区分空、错误和无权限"
+      - "破坏性操作有反馈"
+      - "前端构建通过"
+    risk:
+      level: "L1"
+      side_effect: "admin-six-states"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "空态"
+        - "错误态"
+        - "无权限"
+        - "操作反馈"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "CHAT-001"
+    title: "停止生成（交付 C4）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-16"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "生成过程中不能停止，已生成内容也没有停住标记。"
+      facts:
+        - claim: "对话使用流式输出。没有取消正在运行的生成。"
+          evidence: "frontend/src/pages/Chat.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "流式期间可停止"
+        - "停止后保留已输出内容并标记已停止"
+      non_goals:
+        - "不做重新生成"
+        - "不做对话分支"
+    acceptance:
+      - "停止后不再追加"
+      - "刷新后内容仍在且带已停止标记"
+    risk:
+      level: "L1"
+      side_effect: "stop-generation"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "停止后不再追加"
+        - "刷新仍可见"
+      commands:
+        - "pytest tests/ -k chat -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "CHAT-002"
+    title: "断线后查看完整回复（交付 C4）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-16"
+    depends_on:
+      - "CHAT-001"
+    context:
+      problem: "流中断后不能取回已经完成的回复。"
+      facts:
+        - claim: "页面没有加载完整回复的入口。"
+          evidence: "frontend/src/hooks/useChatStream.ts"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "运行结束后可加载完整助手消息"
+        - "运行进行中时只提示中断，不显示成已完成"
+      non_goals:
+        - "不保证网络层自动重连"
+        - "不做多端同步"
+    acceptance:
+      - "结束后能拉回完整消息"
+      - "进行中不会显示成已完成"
+    risk:
+      level: "L1"
+      side_effect: "reload-finished-reply"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "完整回复可加载"
+        - "进行中不谎报完成"
+      commands:
+        - "pytest tests/ -k chat -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "CHAT-003"
+    title: "会话重命名与删除（交付 C4）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-16"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "用户不能重命名或删除自己的会话。"
+      facts:
+        - claim: "会话已有标题字段。控制台没有重命名和删除。"
+          evidence: "app/models/conversation.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "本人可重命名和删除自己的会话"
+        - "删除前确认"
+        - "删除后不能再打开"
+      non_goals:
+        - "不删除他人会话"
+        - "不做会话搜索"
+    acceptance:
+      - "改名后列表更新"
+      - "删除后本人不可打开"
+      - "删除他人会话被拒绝"
+    risk:
+      level: "L1"
+      side_effect: "conversation-rename-delete"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "改名"
+        - "删除"
+        - "不能删他人"
+      commands:
+        - "pytest tests/ -k conversation -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "CHAT-004"
+    title: "只读成员不能发送（交付 C4）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-16"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "viewer 仍可能发送消息。"
+      facts:
+        - claim: "角色中有 viewer。对话页没有禁用发送。"
+          evidence: "app/core/security.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "viewer 发送被拒绝"
+        - "输入框禁用并说明原因"
+      non_goals:
+        - "不改变 member 的发送权限"
+    acceptance:
+      - "viewer 发送返回 403"
+      - "页面不能发出"
+      - "member 仍可发送"
+    risk:
+      level: "L1"
+      side_effect: "viewer-cannot-send"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "viewer 403"
+        - "输入框禁用"
+        - "member 可发送"
+      commands:
+        - "pytest tests/ -k 'chat or viewer' -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "CHAT-005"
+    title: "会话隔离回归（交付 C4）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-16"
+    depends_on:
+      - "CHAT-003"
+    context:
+      problem: "会话隔离没有按本交付包留下回归证据。"
+      facts:
+        - claim: "列表按用户和租户过滤。系统管理员的知识库列表仍跨租户。"
+          evidence: "app/services/chat_service.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "成员看不到其他租户会话"
+        - "同一租户成员看不到彼此会话"
+        - "用例写明系统管理员的现有范围"
+      non_goals:
+        - "不改资源级 ACL"
+        - "不改变系统管理员的知识库跨租户列表"
+    acceptance:
+      - "隔离用例通过"
+      - "每个身份的可见范围写在用例说明里"
+    risk:
+      level: "L0"
+      side_effect: "conversation-isolation"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "跨租户不可见"
+        - "同租户他人不可见"
+      commands:
+        - "pytest tests/ -k 'conversation or tenant' -v"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "ROUTE-001"
+    title: "按任务类型路由并按兜底链降级（交付 C5）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-22"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "不能按任务类型选择模型，主模型失败时也不能降级。"
+      facts:
+        - claim: "工厂按单个 LLM_PROVIDER 创建客户端。缺密钥时开发环境降为 Mock。"
+          evidence: "app/llm/factory.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/llm/"
+        - "app/core/config.py"
+        - ".env.example"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "至少两个提供商"
+        - "对话和意图可走不同配置"
+        - "主配置失败时按兜底链尝试"
+      non_goals:
+        - "不做控制台录入模型"
+        - "密钥不落库"
+        - "不更换 Embedding"
+    acceptance:
+      - "任务类型命中对应配置"
+      - "失败时走到下一家"
+      - "日志不含密钥"
+    risk:
+      level: "L1"
+      side_effect: "model-route-fallback"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "类型路由"
+        - "兜底降级"
+        - "日志无密钥"
+      commands:
+        - "pytest tests/ -k 'llm or route' -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "ROUTE-002"
+    title: "无可用模型时的引导（交付 C5）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-22"
+    depends_on:
+      - "ROUTE-001"
+    context:
+      problem: "没有可用模型时，对话页不说明下一步。"
+      facts:
+        - claim: "开发环境会降到 Mock。页面没有引导。"
+          evidence: "frontend/src/pages/Chat.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "frontend/src/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "无可用真实模型时提示修改环境变量并重启"
+        - "不把 Mock 说成生产模型已接入"
+      non_goals:
+        - "不做管理端模型表单"
+    acceptance:
+      - "无密钥时能看到引导"
+      - "配好并重启后引导消失"
+    risk:
+      level: "L0"
+      side_effect: "missing-model-guide"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "显示引导"
+        - "配置恢复后引导消失"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SAND-001"
+    title: "沙箱文件隔离、资源限制与进程树结束（交付 C5）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-22"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "代码执行仍可能接触沙箱外文件，超时后进程树不一定结束。"
+      facts:
+        - claim: "沙箱已有 AST 白名单、子进程和超时。文件隔离与进程树结束仍是骨架。"
+          evidence: "app/agents/tools/sandbox/sandbox.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/agents/tools/sandbox/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "执行目录与宿主机工作区隔离"
+        - "保留现有资源限制"
+        - "超时或失败时进程树结束"
+      non_goals:
+        - "不引入新的远程沙箱"
+        - "不开放网络访问"
+    acceptance:
+      - "用例读不到沙箱外的指定文件"
+      - "超时后没有残留子进程"
+    risk:
+      level: "L2"
+      side_effect: "sandbox-isolation"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "文件隔离"
+        - "进程树结束"
+      commands:
+        - "pytest tests/ -k sandbox -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SAND-002"
+    title: "代码执行结果展示（交付 C5）"
+    status: "done"
+    priority: "P0"
+    target_date: "2026-12-22"
+    depends_on:
+      - "SAND-001"
+    context:
+      problem: "沙箱的输出、错误和超时原因没有单独展示。"
+      facts:
+        - claim: "流式事件只有工具名。标准输出在模型上下文里。历史消息没有单独字段。"
+          evidence: "app/agents/pipeline.py"
+        - claim: "详细改动文件见实现计划。"
+          evidence: "docs/plans/plan_sand_c5.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_sand_c5.md"
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/agents/tools/builtin.py"
+        - "app/agents/tools/base.py"
+        - "app/agents/pipeline.py"
+        - "app/services/chat_service.py"
+        - "app/api/routes/chat.py"
+        - "app/models/conversation.py"
+        - "app/core/migration.py"
+        - "frontend/src/"
+        - "tests/"
+        - "README.md"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "成功时显示标准输出"
+        - "失败或超时时显示原因"
+        - "不展示宿主机路径"
+      non_goals:
+        - "不做独立代码运行页"
+    acceptance:
+      - "成功能看到输出"
+      - "失败或超时能看到原因"
+    risk:
+      level: "L0"
+      side_effect: "sandbox-result-ui"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "成功输出"
+        - "失败原因"
+      commands:
+        - "pytest tests/test_sandbox.py tests/test_chat.py -k \"sandbox or code_result\" -v"
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SEC-001"
+    title: "上传类型与大小限制（交付 C6）"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "QA-004"
+    context:
+      problem: "不支持的类型和过大文件没有稳定的拒绝结果。"
+      facts:
+        - claim: "解析器按格式注册。上传限制尚未按本交付包核对。"
+          evidence: "app/rag/"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/rag/"
+        - "app/core/config.py"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "类型和大小来自配置"
+        - "超出时返回稳定错误"
+        - "页面显示该错误"
+      non_goals:
+        - "不扩大解析格式范围"
+    acceptance:
+      - "非法类型和大文件被拒绝"
+      - "允许的小文件仍可上传"
+    risk:
+      level: "L1"
+      side_effect: "upload-limits"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "非法类型拒绝"
+        - "超大拒绝"
+        - "小文件通过"
+      commands:
+        - "pytest tests/ -k upload -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SEC-002"
+    title: "日志脱敏与界面错误提示（交付 C6）"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "TEN-003"
+    context:
+      problem: "失败时页面可能露出堆栈，日志里可能出现密钥或令牌。"
+      facts:
+        - claim: "已有日志脱敏工具。界面仍可能直接展示接口原文。"
+          evidence: "app/security/"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/security/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "对话、登录、上传的日志不含密钥、令牌和密码"
+        - "这些失败在页面上不显示堆栈"
+      non_goals:
+        - "不重写全部错误码"
+        - "不把内部异常返回给浏览器"
+    acceptance:
+      - "页面无堆栈"
+      - "日志样本无密钥和令牌"
+    risk:
+      level: "L1"
+      side_effect: "redact-and-ui-errors"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "页面无堆栈"
+        - "日志无密钥"
+      commands:
+        - "pytest tests/ -k 'security or log' -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SEC-003"
+    title: "Milvus 五条门槛核对（交付 C6）"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "INST-002"
+    context:
+      problem: "Milvus 五条门槛没有完整证据，不能判断向量库是否完成。"
+      facts:
+        - claim: "默认向量库仍是 Local。五条未过不得改默认。"
+          evidence: "docs/adr/0002-official-vectorstore.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "逐条记录摄取、重解析、删除、租户过滤、回滚"
+        - "未通过时默认保持 Local"
+      non_goals:
+        - "不把 skip 当成通过"
+        - "不改写已冻结检索基线"
+        - "本任务不提前修改默认向量库"
+    acceptance:
+      - "每条都有命令和结果"
+      - "未通过时默认仍是 Local"
+    risk:
+      level: "L0"
+      side_effect: "milvus-gate-check"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "五条记录齐全"
+        - "默认未提前切换"
+      commands:
+        - "按 ADR-0002 第 5 节逐条执行并记录"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SEC-004"
+    title: "16/20 交付包清点（交付 C6）"
+    status: "ready"
+    priority: "P0"
+    target_date: "2026-12-25"
+    depends_on:
+      - "SEC-001"
+      - "SEC-003"
+      - "CHAT-005"
+      - "ROUTE-002"
+      - "SAND-002"
+    context:
+      problem: "前 16 个交付包没有一份带证据的清点。"
+      facts:
+        - claim: "第 1 到第 5 项已完成。第 6 到第 16 项对应本批任务。"
+          evidence: "docs/plans/plan_delivery_2027-03-25.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "逐项写明完成或未完成"
+        - "缺证据的项不挪出分母"
+      non_goals:
+        - "不实现新功能"
+        - "不把 D1 到 D4 算进 80%"
+    acceptance:
+      - "清点覆盖第 6 节 1 到 16 项"
+      - "每项有证据"
+    risk:
+      level: "L0"
+      side_effect: "mvp-80-checklist"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "16 项都有结论"
+      commands:
+        - "核对 tasks.yaml 状态与对应验证记录"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "FLOW-001"
+    title: "调度在目标环境可启动（交付 D1）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-01-15"
+    depends_on:
+      - "SEC-004"
+    context:
+      problem: "目标环境里工作流调度不能稳定启动和停止。"
+      facts:
+        - claim: "未安装调度依赖时，调度测试不能运行。"
+          evidence: "app/workflow/"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/workflow/"
+        - "pyproject.toml"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "目标环境包含调度依赖"
+        - "启动和停止测试通过"
+      non_goals:
+        - "不做拖拽编排"
+        - "不另做一套运行时"
+    acceptance:
+      - "目标环境中启动和停止测试通过"
+    risk:
+      level: "L1"
+      side_effect: "workflow-scheduler-start"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "可启动"
+        - "可停止"
+      commands:
+        - "pytest tests/test_workflow.py -v"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "MEM-001"
+    title: "超窗压缩回归（交付 D1）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-01-15"
+    depends_on:
+      - "SEC-004"
+    context:
+      problem: "超窗压缩没有本交付包要求的回归记录。"
+      facts:
+        - claim: "已有对话裁剪和压缩。"
+          evidence: "app/memory/"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "tests/"
+        - "app/memory/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "固定长对话证明压缩发生"
+        - "最近消息仍保留"
+      non_goals:
+        - "不做长期记忆"
+        - "不改检索预算实验"
+    acceptance:
+      - "超窗用例通过"
+      - "记录保留了哪些消息"
+    risk:
+      level: "L0"
+      side_effect: "memory-overflow-regression"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "发生压缩"
+        - "最近消息仍在"
+      commands:
+        - "pytest tests/ -k 'memory or context' -v"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "FLOW-002"
+    title: "工作流页失败态与空态（交付 D1）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-01-15"
+    depends_on:
+      - "FLOW-001"
+    context:
+      problem: "工作流页分不清没有数据和执行失败。"
+      facts:
+        - claim: "已有工作流页。失败态和空态未补齐。"
+          evidence: "frontend/src/pages/Workflows.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "frontend/src/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "无工作流时显示空状态"
+        - "执行失败时显示原因"
+      non_goals:
+        - "不做新的工作流类型"
+    acceptance:
+      - "空列表和失败执行可以区分"
+    risk:
+      level: "L0"
+      side_effect: "workflow-empty-failed"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "空态"
+        - "失败态"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SKILL-001"
+    title: "创建技能并在对话中选用（交付 D2）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-02-05"
+    depends_on:
+      - "FLOW-001"
+    context:
+      problem: "用户不能创建技能，对话也不会按条件选用。"
+      facts:
+        - claim: "可以从 YAML 注册技能。选用条件不完整。"
+          evidence: "app/agents/skills/manager.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/agents/skills/"
+        - "app/api/routes/"
+        - "app/services/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "成员可创建本租户技能"
+        - "符合条件时对话选用并留下技能名"
+        - "看不到其他租户技能"
+      non_goals:
+        - "不做技能市场"
+        - "技能不直接访问数据库"
+    acceptance:
+      - "符合条件时选用"
+      - "其他租户不可见"
+      - "不符合条件时不选用"
+    risk:
+      level: "L1"
+      side_effect: "skill-create-select"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "选用成功"
+        - "跨租户不可见"
+        - "条件不符不选用"
+      commands:
+        - "pytest tests/ -k skill -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SKILL-002"
+    title: "技能管理页（交付 D2）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-02-05"
+    depends_on:
+      - "SKILL-001"
+    context:
+      problem: "控制台不能创建和查看技能。"
+      facts:
+        - claim: "没有技能管理页。"
+          evidence: "frontend/src/App.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "frontend/src/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "成员可在页面创建并看到技能"
+        - "失败时显示错误"
+        - "viewer 不能创建"
+      non_goals:
+        - "不做技能市场和版本对比"
+    acceptance:
+      - "创建后列表可见"
+      - "viewer 不能提交"
+    risk:
+      level: "L1"
+      side_effect: "skill-admin-page"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "列表可见"
+        - "viewer 被拒"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SUP-001"
+    title: "Supervisor 分派并返回结果（交付 D2）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-02-05"
+    depends_on:
+      - "SKILL-001"
+    context:
+      problem: "打开 Supervisor 时，不能证明任务分给了子代理并带回结果。"
+      facts:
+        - claim: "Supervisor 是可选编排。默认仍是五阶段管线。"
+          evidence: "app/agents/supervisor.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/agents/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "显式打开时完成一次分派并返回结果"
+        - "默认配置仍走五阶段管线"
+      non_goals:
+        - "不把默认编排改成 Supervisor"
+        - "不重写五阶段管线"
+    acceptance:
+      - "测试能看到分派和汇总"
+      - "默认配置不变"
+    risk:
+      level: "L1"
+      side_effect: "supervisor-delegate"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "分派并返回"
+        - "默认路径不变"
+      commands:
+        - "pytest tests/ -k supervisor -v"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SUP-002"
+    title: "任务过程展示（交付 D2）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-02-05"
+    depends_on:
+      - "SUP-001"
+    context:
+      problem: "用户看不到子任务正在执行。"
+      facts:
+        - claim: "对话有阶段展示，没有子代理过程。"
+          evidence: "frontend/src/components/chat/StageTracker.tsx"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "frontend/src/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "Supervisor 路径展示子任务名称和结果"
+        - "默认管线不显示该区块"
+      non_goals:
+        - "不做图形化编排"
+    acceptance:
+      - "打开 Supervisor 时能看到子任务"
+      - "默认对话不出现该区块"
+    risk:
+      level: "L0"
+      side_effect: "supervisor-progress-ui"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "能看到子任务"
+        - "默认不出现"
+      commands:
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "QUOTA-001"
+    title: "租户配额与超限拒绝（交付 D3）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-05"
+    depends_on:
+      - "SEC-004"
+    context:
+      problem: "租户超出消息或存储额度时，对话和上传仍会继续。"
+      facts:
+        - claim: "没有租户配额。限流只覆盖瞬时速率。"
+          evidence: "app/security/rate_limiter.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/models/"
+        - "app/services/"
+        - "app/api/routes/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "可设置消息数和存储上限"
+        - "对话前检查消息额度"
+        - "上传前检查存储"
+        - "超限不写入半截结果"
+      non_goals:
+        - "不计费"
+        - "不做用户级配额"
+        - "不把 Token 账单作为本任务门槛"
+    acceptance:
+      - "未超限可成功"
+      - "超限被拒绝且没有新增对话或文档"
+    risk:
+      level: "L1"
+      side_effect: "tenant-quota"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "额度内成功"
+        - "超限无写入"
+      commands:
+        - "pytest tests/ -k quota -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "LIMIT-001"
+    title: "限流提示与倒计时（交付 D3）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-05"
+    depends_on:
+      - "SEC-004"
+    context:
+      problem: "被限流时页面不说明要等多久。"
+      facts:
+        - claim: "对话入口已有限流器。页面没有倒计时。"
+          evidence: "app/security/rate_limiter.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/security/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "限流响应含剩余等待时间"
+        - "对话页显示倒计时"
+      non_goals:
+        - "不替换限流算法，除非它给不出剩余时间"
+    acceptance:
+      - "超额后出现倒计时"
+      - "未超限时不出现"
+    risk:
+      level: "L1"
+      side_effect: "rate-limit-countdown"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "有倒计时"
+        - "未超限不出现"
+      commands:
+        - "pytest tests/ -k rate -v"
+        - "cd frontend; npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "EXPORT-001"
+    title: "导出租户对话（交付 D3）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-05"
+    depends_on:
+      - "SEC-004"
+    context:
+      problem: "租户管理员不能导出本租户对话。"
+      facts:
+        - claim: "没有导出接口。"
+          evidence: "app/services/chat_service.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/api/routes/"
+        - "app/services/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "租户管理员导出本租户对话 JSON"
+        - "导出写入审计"
+        - "不能导出其他租户"
+      non_goals:
+        - "不训练模型"
+        - "不导出其他租户"
+    acceptance:
+      - "文件只含本租户"
+      - "其他角色或租户被拒绝"
+      - "审计有记录"
+    risk:
+      level: "L1"
+      side_effect: "export-tenant-chats"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "只含本租户"
+        - "越权拒绝"
+        - "有审计"
+      commands:
+        - "pytest tests/ -k export -v"
+        - "ruff check app/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "CLI-001"
+    title: "migrate 与管理员命令（交付 D3）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-05"
+    depends_on:
+      - "SEC-004"
+    context:
+      problem: "没有迁移命令，也不能用命令创建管理员。"
+      facts:
+        - claim: "管理员目前靠环境变量创建。"
+          evidence: "app/services/auth_service.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "app/"
+        - "README.md"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "迁移命令可在空库执行"
+        - "创建管理员命令幂等且拒绝重复"
+        - "密码不进日志"
+      non_goals:
+        - "不实现 start、stop、logs 全集"
+    acceptance:
+      - "迁移后可启动"
+      - "命令创建的管理员可登录"
+      - "重复创建被拒绝"
+    risk:
+      level: "L1"
+      side_effect: "cli-migrate-admin"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "迁移可启动"
+        - "管理员可登录"
+        - "重复拒绝"
+      commands:
+        - "按命令说明执行 migrate 和创建管理员并记录结果"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "REL-001"
+    title: "Swagger 覆盖现有端点（交付 D4）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-25"
+    depends_on:
+      - "CLI-001"
+    context:
+      problem: "已注册路由没有和 OpenAPI 对过账。"
+      facts:
+        - claim: "框架会生成 OpenAPI。缺少路由覆盖测试。"
+          evidence: "app/main.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "tests/"
+        - "app/api/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "每个业务路由都出现在 OpenAPI 中"
+      non_goals:
+        - "不手写第二份 API 文档"
+    acceptance:
+      - "覆盖测试通过"
+    risk:
+      level: "L0"
+      side_effect: "openapi-coverage"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "路由都在 OpenAPI 中"
+      commands:
+        - "pytest tests/ -k openapi -v"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "REL-002"
+    title: "备份步骤与一次恢复记录（交付 D4）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-25"
+    depends_on:
+      - "CLI-001"
+    context:
+      problem: "没有备份步骤，也没有一次恢复记录。"
+      facts:
+        - claim: "默认数据在 SQLite 文件。"
+          evidence: "app/core/config.py"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/"
+        - "README.md"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "写明默认数据库如何备份"
+        - "在非生产副本上留下一次恢复记录"
+      non_goals:
+        - "不备份生产库"
+        - "不做自动异地容灾"
+    acceptance:
+      - "记录包含命令、结果和回滚方式"
+    risk:
+      level: "L1"
+      side_effect: "backup-restore-record"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "有命令"
+        - "有结果"
+        - "有回滚"
+      commands:
+        - "在副本上执行一次备份和恢复并记录"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "REL-003"
+    title: "测试门禁（交付 D4）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-25"
+    depends_on:
+      - "REL-001"
+    context:
+      problem: "发布前没有一份完整的测试、lint 和前端构建记录。"
+      facts:
+        - claim: "命令分散在各任务中。"
+          evidence: "tasks.yaml"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "记录后端测试、ruff、前端类型检查和构建的退出码"
+      non_goals:
+        - "不把未跑出的覆盖率写成达标"
+        - "不跳过失败项"
+    acceptance:
+      - "记录包含命令、退出码和失败项"
+    risk:
+      level: "L0"
+      side_effect: "release-test-gate"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "命令有退出码"
+      commands:
+        - "pytest"
+        - "ruff check ."
+        - "cd frontend; npm run typecheck"
+        - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "REL-004"
+    title: "一轮检索实验结论（交付 D4）"
+    status: "ready"
+    priority: "P1"
+    target_date: "2027-03-25"
+    depends_on:
+      - "REL-003"
+    context:
+      problem: "独立重排或查询变换还没有一轮有结论的实验。"
+      facts:
+        - claim: "检索基线已冻结。不得同时更换 Embedding、切分和重排。"
+          evidence: "docs/adr/0002-official-vectorstore.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_remaining_delivery.md"
+        - "docs/"
+        - "evals/"
+        - "app/rag/"
+        - "tests/"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "只改一个变量"
+        - "有提升则保留并记录指标"
+        - "无提升则恢复并记录不采纳"
+      non_goals:
+        - "不同时更换 Embedding、切分和重排"
+        - "不用 Mock Embedding 声称质量提升"
+        - "不改写已冻结基线文件"
+    acceptance:
+      - "结论写明变量、命令、指标和是否采纳"
+    risk:
+      level: "L1"
+      side_effect: "one-retrieval-experiment"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "单一变量"
+        - "有指标"
+        - "有采纳结论"
+      commands:
+        - "运行一轮检索评测并写入结论"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AGT-001"
+    title: "意图分流看见上一轮，并只认 YES 或 NO"
+    status: "done"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "意图分流只看最新一句，用户回复上一轮选项时被判成简单问题；回复里任意位置出现 NO 就短路。"
+      facts:
+        - claim: "分流请求只含 state.user_input；结果用 \"NO\" not in 判断。"
+          evidence: "app/agents/pipeline.py _needs_plan"
+        - claim: "拆分与验收见计划。"
+          evidence: "docs/plans/plan_agent_chain_fix.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_agent_chain_fix.md"
+        - "docs/plans/implementation_agt_001.md"
+        - "app/agents/pipeline.py"
+        - "app/agents/prompts.py"
+        - "app/services/chat_service.py"
+        - "tests/"
+        - "evals/README.md"
+        - "evals/schemas/agent_chain_case.schema.json"
+        - "evals/datasets/agent-chain-v0.1/"
+        - "evals/reports/agent-chain-v0.1-*.json"
+        - "scripts/run_agent_chain_eval.py"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "纯函数历史脱敏 helper：无条件执行 InputFilter 与 LogSanitizer，不做限流/注入检测，失败时不得回退原文"
+        - "最近对话截取函数：保护最近一轮，最多 6 条；保留首尾；内容总预算 4000 字"
+        - "分流请求带最近对话"
+        - "只看回复开头一个词，NO 才短路"
+        - "Agent Evaluation Schema、数据集、index、独立运行器和机器可读报告"
+        - "docs/plans/implementation_agt_001.md"
+      non_goals:
+        - "不改路由和兜底链"
+        - "不新增配置项"
+        - "不改理解阶段 Prompt 结构；只脱敏历史内容"
+        - "不改规划、检索的输入结构"
+        - "不改 Supervisor"
+    acceptance:
+      - "历史中的手机号、Token 和密钥哨兵不进入 Memory 压缩、任一 Agent Prompt 或异步反思；正常与回退路径都覆盖"
+      - "上一轮给出选项时，分流请求里能看到选项"
+      - "助手回复超过 2000 字、选项在末尾时，分流请求里仍能看到选项"
+      - "最近一轮两条内容都接近 2000 字时均保留首尾，内容预算不超过 4000 字"
+      - "NOT SURE、NONE、I don't know、空串走完整流程；NO、NO。、no 走短路"
+      - "无历史的你好仍走短路"
+      - "真实模型报告记录数据集、Prompt hash、模型/配置/评测器版本和 temperature=0；follow-up recall=100%，route accuracy>=90%"
+      - "Evaluation 不构建 ChatService，不连接 MCP/RAG/网络/沙箱或业务数据库；报告拒绝覆盖"
+    risk:
+      level: "L1"
+      side_effect: "agent-intent-routing"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "选项续答"
+        - "开头词解析"
+        - "问候短路不变"
+      commands:
+        - "pytest tests/test_agent_chain.py tests/test_supervisor.py tests/test_tools.py tests/test_llm_route.py tests/test_agent.py tests/eval/test_rag006_pipeline.py -v"
+        - "pytest tests/test_chat.py tests/test_chat_controls.py tests/test_workflow.py tests/test_sandbox.py -v"
+        - "pytest"
+        - "pytest tests/eval/test_agent_chain_dataset.py -v"
+        - "ruff check app/agents/pipeline.py app/agents/prompts.py app/services/chat_service.py tests/test_agent_chain.py tests/eval/test_agent_chain_dataset.py scripts/run_agent_chain_eval.py"
+        - "mypy app/"
+        - "python scripts/run_agent_chain_eval.py --mode smoke"
+        - "python scripts/run_agent_chain_eval.py --mode official"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AGT-002"
+    title: "共享工具循环与执行护栏"
+    status: "done"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "AGT-001"
+    context:
+      problem: "工具循环有四份近似副本；重复和格式错误调用缺少护栏；轮次用完时调用指令成为草稿；工具和 LLM Trace 可能记录敏感内容。"
+      facts:
+        - claim: "_run_action_loop、流式行动循环和质量门循环都在轮次用完后保留最后一次输出。"
+          evidence: "app/agents/pipeline.py"
+        - claim: "parse_tool_call 遇到坏 JSON 返回 None，循环把原文当最终草稿。"
+          evidence: "app/agents/tools/base.py"
+        - claim: "Trace 当前保存 LLM Prompt/Response 与工具参数/结果预览。"
+          evidence: "app/debug/trace.py"
+        - claim: "拆分与验收见计划。"
+          evidence: "docs/plans/plan_agent_chain_fix.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_agent_chain_fix.md"
+        - "docs/plans/implementation_agt_002.md"
+        - "app/agents/pipeline.py"
+        - "app/agents/prompts.py"
+        - "app/agents/tools/base.py"
+        - "app/debug/trace.py"
+        - "tests/"
+        - "evals/README.md"
+        - "evals/schemas/agent_chain_case.schema.json"
+        - "evals/datasets/agent-chain-v0.1/"
+        - "evals/reports/agent-chain-v0.1-*.json"
+        - "scripts/run_agent_chain_eval.py"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "_iter_action_loop(state, execution_policy) 产出事件并写 state.draft；_run_action_loop 保留返回字符串契约"
+        - "Prompt 工具清单与执行前硬校验共用显式 allowed_tool_names"
+        - "AgentState 保存请求级工具指纹，覆盖 QualityGate 重跑"
+        - "解析、重复调用、轮次耗尽和 max_tool_rounds<=0 护栏"
+        - "LLM 预览和异常 Trace 统一脱敏并清理主机路径；工具 Trace 不记录参数、指纹或结果"
+        - "docs/plans/implementation_agt_002.md"
+      non_goals:
+        - "本任务不启用短路工具循环"
+        - "不改 AGENT_MAX_TOOL_ROUNDS 默认值"
+        - "不做跨请求熔断"
+        - "不改 Supervisor 的事件接口"
+        - "不给流式接口补 Trace"
+    acceptance:
+      - "重复同一调用时工具只执行 1 次，模型调用不超过首次加一次重复加一次收尾，回答无 <tool_call>"
+      - "初次行动执行过的调用在 QualityGate 重跑时再次出现，整次请求仍只执行 1 次"
+      - "参数各不相同时执行次数等于上限，回答无 <tool_call>"
+      - "坏 JSON、非法名称/参数、缺失闭合标签和多个信封不执行，回答无 <tool_call>"
+      - "max_tool_rounds=0 时工具不执行且草稿非空"
+      - "流式质量门循环里的工具调用发出 tool 事件"
+      - "_run_action_loop 仍返回字符串，Supervisor 现有调用契约不变"
+      - "Trace 的 LLM、工具和异常事件不含手机号、Token、密钥或主机路径哨兵；工具事件没有参数值和结果字段"
+    risk:
+      level: "L1"
+      side_effect: "agent-tool-loop-guard"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "重复调用与 QualityGate 请求级去重"
+        - "格式错误的调用"
+        - "轮次用完与 max_tool_rounds=0"
+        - "正常一次调用"
+        - "共享循环一次性、流式和 Supervisor 契约"
+        - "全 Trace 脱敏"
+      commands:
+        - "pytest tests/test_agent_chain.py tests/test_supervisor.py tests/test_tools.py tests/test_llm_route.py tests/test_agent.py tests/eval/test_rag006_pipeline.py -v"
+        - "pytest tests/test_chat.py tests/test_chat_controls.py tests/test_workflow.py tests/test_sandbox.py -v"
+        - "pytest"
+        - "pytest tests/eval/test_agent_chain_dataset.py -v"
+        - "ruff check app/agents/pipeline.py app/agents/prompts.py app/agents/tools/base.py app/debug/trace.py tests/test_agent_chain.py tests/eval/test_agent_chain_dataset.py scripts/run_agent_chain_eval.py"
+        - "mypy app/"
+        - "python scripts/run_agent_chain_eval.py --mode smoke"
+        - "python scripts/run_agent_chain_eval.py --mode official"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "AGT-003"
+    title: "短路路径带上历史，并执行安全工具"
+    status: "done"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "AGT-002"
+    context:
+      problem: "行动与最终回复的提示不带历史；短路路径只调一次行动，工具调用不执行；直接复用完整注册表会暴露未分级 MCP 工具。"
+      facts:
+        - claim: "_build_act、_build_respond 只含本轮用户消息；短路分支调用 _run_action_once。"
+          evidence: "app/agents/pipeline.py"
+        - claim: "Tool 和 MCP 适配器没有风险、权限、副作用或审批字段。"
+          evidence: "app/agents/tools/base.py；app/mcp/adapter.py"
+        - claim: "reject_untrusted_tool_call 看整段 state.context 与最新用户消息。"
+          evidence: "app/rag/context_merge.py"
+        - claim: "拆分与验收见计划。"
+          evidence: "docs/plans/plan_agent_chain_fix.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/plan_agent_chain_fix.md"
+        - "docs/plans/implementation_agt_003.md"
+        - "app/agents/pipeline.py"
+        - "tests/"
+        - "evals/README.md"
+        - "evals/schemas/agent_chain_case.schema.json"
+        - "evals/datasets/agent-chain-v0.1/"
+        - "evals/reports/agent-chain-v0.1-*.json"
+        - "scripts/run_agent_chain_eval.py"
+        - "tasks.yaml"
+        - "AGENTS.md"
+      forbidden_paths:
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+        - "生产数据"
+        - "生产密钥"
+        - ".env"
+      deliverables:
+        - "行动与最终回复带最近对话一节"
+        - "短路路径使用 AGT-002 共享循环"
+        - "短路 Prompt 与执行层只允许 calculator、code_sandbox、get_current_datetime"
+        - "真实模型工具选择 Evaluation 使用内存 recording fake"
+        - "docs/plans/implementation_agt_003.md"
+      non_goals:
+        - "不把历史写进 state.context"
+        - "不改检索查询和不可信资料拦截规则"
+        - "不改 Supervisor 和前端"
+        - "不建立完整 Tool 风险模型"
+    acceptance:
+      - "上一轮给出选项、用户回 1 时，完整流程与短路都执行 code_sandbox 并有 code_result，结果落库"
+      - "上一轮用户消息含 1500 字代码时，行动提示里的代码完整"
+      - "短路无工具调用时模型调用次数不变"
+      - "短路白名单工具可执行；web_fetch、MCP 和未知工具不展示且执行时被拒绝"
+      - "检索不可信内容点名工具的拦截仍生效"
+      - "官方 Evaluation 只调用真实 LLM；真实沙箱、MCP、网络、RAG 和数据库执行/写入计数均为 0"
+      - "Evaluation 报告使用新文件且拒绝覆盖已有报告"
+    risk:
+      level: "L1"
+      side_effect: "agent-short-path-tools"
+      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+    evaluation:
+      cases:
+        - "选项续答执行工具"
+        - "长代码不截断"
+        - "短路调用次数"
+        - "短路工具白名单与拒绝"
+        - "不可信工具拦截"
+        - "无副作用真实模型 Evaluation"
+      commands:
+        - "pytest tests/test_agent_chain.py tests/test_supervisor.py tests/test_tools.py tests/test_llm_route.py tests/test_agent.py tests/eval/test_rag006_pipeline.py -v"
+        - "pytest tests/test_chat.py tests/test_chat_controls.py tests/test_workflow.py tests/test_sandbox.py -v"
+        - "pytest"
+        - "pytest tests/eval/test_agent_chain_dataset.py -v"
+        - "ruff check app/agents/pipeline.py tests/test_agent_chain.py tests/eval/test_agent_chain_dataset.py scripts/run_agent_chain_eval.py"
+        - "mypy app/"
+        - "python scripts/run_agent_chain_eval.py --mode smoke"
+        - "python scripts/run_agent_chain_eval.py --mode official"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false

@@ -75,11 +75,24 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float = 0.7
     LLM_MAX_TOKENS: int = 2048
     LLM_TIMEOUT: float = 60.0
+    # 第二家。密钥为空表示没有兜底。
+    LLM_FALLBACK_PROVIDER: str = "openai"
+    LLM_FALLBACK_BASE_URL: str = ""
+    LLM_FALLBACK_API_KEY: str = ""
+    LLM_FALLBACK_MODEL: str = ""
+    # 意图分流。密钥为空表示复用对话主配置。
+    LLM_INTENT_PROVIDER: str = ""
+    LLM_INTENT_BASE_URL: str = ""
+    LLM_INTENT_API_KEY: str = ""
+    LLM_INTENT_MODEL: str = ""
+    # 失败后的尝试顺序。只认 chat、intent、fallback。
+    LLM_CHAT_FALLBACK_CHAIN: str = "chat,fallback"
+    LLM_INTENT_FALLBACK_CHAIN: str = "intent,chat,fallback"
 
     # ── 嵌入模型（RAG 检索）──
     # 默认使用阿里通义千问（DashScope 兼容模式）：与 OpenAI 的 /embeddings 协议一致。
     # 因 DeepSeek 不提供嵌入接口，向量模型与对话模型可以是不同厂商。
-    RAG_ENABLED: bool = False  # 是否将检索上下文注入对话管线
+    RAG_ENABLED: bool = True  # 是否将检索上下文注入对话管线
     EMBEDDING_PROVIDER: str = "openai"  # openai | ollama | mock（千问走 openai 兼容模式）
     EMBEDDING_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     EMBEDDING_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock

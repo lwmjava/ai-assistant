@@ -31,9 +31,52 @@ export interface UserInfo {
   is_active: boolean
 }
 
+export interface UserAdminOut extends UserInfo {
+  tenant_name: string
+}
+
+export interface UserPage {
+  items: UserAdminOut[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface SystemStatus {
+  status: string
+  app: string
+  version: string
+  env: string
+  started_at: string
+  checks: {
+    database: { status: string }
+    vector_store: { status: string; backend: string }
+  }
+}
+
 export interface LoginRequest {
   username: string
   password: string
+}
+
+export interface SetupStatus {
+  needs_setup: boolean
+}
+
+export interface MembershipOut {
+  tenant_id: string
+  tenant_name: string
+  role: string
+}
+
+export interface InvitationOut {
+  id: string
+  code: string
+  tenant_id: string
+  role: string
+  expires_at: string
+  max_uses: number
+  use_count: number
 }
 
 // ── 对话 ─────────────────────────────────────────────
@@ -46,12 +89,28 @@ export interface ConversationOut {
   updated_at: string
 }
 
+export interface SourceRef {
+  filename: string
+  page: number | null
+  section: string | null
+}
+
+export interface CodeResult {
+  status: 'ok' | 'error' | 'timeout' | string
+  stdout: string
+  reason: string
+}
+
 export interface MessageOut {
   id: string
   role: string
   content: string
   model: string | null
   created_at: string
+  sources?: SourceRef[]
+  code_results?: CodeResult[]
+  /** complete：正常写完。stopped：生成已停下，不是完整回复。 */
+  status?: 'complete' | 'stopped' | string
 }
 
 export interface ConversationDetail extends ConversationOut {
@@ -67,6 +126,8 @@ export interface ChatResponse {
   conversation_id: string
   reply: string
   model: string | null
+  sources?: SourceRef[]
+  code_results?: CodeResult[]
 }
 
 /**
@@ -76,8 +137,16 @@ export interface ChatResponse {
  */
 export type SendMode = 'stream' | 'once'
 
-/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、done=完成、error=失败。 */
-export type StreamEventType = 'stage' | 'token' | 'tool' | 'done' | 'error'
+/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、sources=检索来源、done=完成、error=失败。 */
+export type StreamEventType =
+  | 'stage'
+  | 'token'
+  | 'tool'
+  | 'sources'
+  | 'code_result'
+  | 'done'
+  | 'error'
+  | 'conversation'
 
 export interface StreamEvent {
   type: StreamEventType
@@ -118,6 +187,13 @@ export interface DocumentOut {
   chunk_count: number
   created_at: string
   updated_at: string
+}
+
+export interface ImportJobOut {
+  id: string
+  status: string
+  document_id: string | null
+  error: string | null
 }
 
 export interface SearchResultOut {
@@ -212,4 +288,7 @@ export interface HealthInfo {
   app: string
   version: string
   env: string
+  checks?: {
+    llm?: { mode: string }
+  }
 }

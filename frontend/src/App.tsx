@@ -1,16 +1,19 @@
 /** 应用根组件：路由表 + 鉴权/权限守卫。 */
 
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactElement, ReactNode } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppLayout } from '@/components/layout/AppLayout'
-import { can, canManageTenants, canViewAudit } from '@/lib/permissions'
+import { api } from '@/lib/http'
+import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
-import type { Role } from '@/types/api'
+import type { Role, SetupStatus } from '@/types/api'
 
 // 登录页随首屏加载；功能页按路由拆分，避免首屏拖入 Markdown 解析器等重依赖
 import LoginPage from '@/pages/Login'
+import RegisterPage from '@/pages/Register'
+import SetupPage from '@/pages/Setup'
 const ChatPage = lazy(() => import('@/pages/Chat'))
 const KnowledgePage = lazy(() => import('@/pages/Knowledge'))
 const ToolsPage = lazy(() => import('@/pages/Tools'))
@@ -18,6 +21,8 @@ const WorkflowsPage = lazy(() => import('@/pages/Workflows'))
 const AuditPage = lazy(() => import('@/pages/Audit'))
 const TenantsPage = lazy(() => import('@/pages/Tenants'))
 const UsersPage = lazy(() => import('@/pages/Users'))
+const StatusPage = lazy(() => import('@/pages/Status'))
+const InvitationsPage = lazy(() => import('@/pages/Invitations'))
 
 /** 路由切换时的降级视图：保持布局稳定，避免白屏。 */
 function PageFallback() {
@@ -67,16 +72,49 @@ function RequirePermission({
   return children
 }
 
-function RequireAudit({ children }: { children: ReactElement }) {
-  const role = useAuthStore((s) => s.user?.role)
-  if (!canViewAudit(role)) return <Navigate to="/chat" replace />
-  return children
-}
+/** 未登录且库中没有系统管理员时，只允许进入一次性向导。 */
+function FirstRunGate() {
+  const token = useAuthStore((s) => s.access_token)
+  const location = useLocation()
+  const [needsSetup, setNeedsSetup] = useState<boolean | null>(token ? false : null)
 
-function RequireSystemAdmin({ children }: { children: ReactElement }) {
-  const role = useAuthStore((s) => s.user?.role)
-  if (!canManageTenants(role)) return <Navigate to="/chat" replace />
-  return children
+  useEffect(() => {
+    if (token) {
+      setNeedsSetup(false)
+      return
+    }
+    let cancelled = false
+    api
+      .get<SetupStatus>('/auth/setup-status', { anonymous: true })
+      .then((body) => {
+        if (!cancelled) setNeedsSetup(body.needs_setup)
+      })
+      .catch(() => {
+        if (!cancelled) setNeedsSetup(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  if (needsSetup === null) {
+    return (
+      <div
+        aria-busy="true"
+        aria-label="正在检查初始化状态"
+        className="grid min-h-screen place-items-center text-sm text-text-muted"
+      >
+        正在检查是否需要初始化…
+      </div>
+    )
+  }
+  if (needsSetup && location.pathname !== '/setup') {
+    return <Navigate to="/setup" replace />
+  }
+  if (!needsSetup && location.pathname === '/setup') {
+    return <Navigate to={token ? '/chat' : '/login'} replace />
+  }
+  return <Outlet />
 }
 
 /** 根路径：按角色落到第一个可访问的功能页。 */
@@ -102,7 +140,10 @@ function NotFound() {
 export default function App() {
   return (
     <Routes>
+      <Route element={<FirstRunGate />}>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/setup" element={<SetupPage />} />
       <Route
         element={
           <RequireAuth>
@@ -154,34 +195,45 @@ export default function App() {
         <Route
           path="/audit"
           element={
-            <RequireAudit>
-              <Lazy>
-                <AuditPage />
-              </Lazy>
-            </RequireAudit>
+            <Lazy>
+              <AuditPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="/invitations"
+          element={
+            <Lazy>
+              <InvitationsPage />
+            </Lazy>
           }
         />
         <Route
           path="/tenants"
           element={
-            <RequireSystemAdmin>
-              <Lazy>
-                <TenantsPage />
-              </Lazy>
-            </RequireSystemAdmin>
+            <Lazy>
+              <TenantsPage />
+            </Lazy>
           }
         />
         <Route
           path="/users"
           element={
-            <RequireSystemAdmin>
-              <Lazy>
-                <UsersPage />
-              </Lazy>
-            </RequireSystemAdmin>
+            <Lazy>
+              <UsersPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="/status"
+          element={
+            <Lazy>
+              <StatusPage />
+            </Lazy>
           }
         />
         <Route path="*" element={<NotFound />} />
+      </Route>
       </Route>
     </Routes>
   )

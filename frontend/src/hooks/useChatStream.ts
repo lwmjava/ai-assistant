@@ -6,8 +6,11 @@
  * - `stage`：管线阶段推进（理解 / 意图分流 / 规划 / 检索 / 行动 / 质量门自纠错 / 反思 / 响应）
  * - `token`：增量文本
  * - `tool`：工具调用提示
+ * - `sources`：检索来源列表，不拼进回复正文
+ * - `code_result`：一次代码执行的标准输出或失败原因，不拼进回复正文
  * - `done`：携带 `state.answer`
  * - `error`：安全拦截或管线异常
+ * - `conversation`：会话编号。新建会话时页面靠它在断线后拉取，不再按更新时间猜测。
  *
  * **关于最终文本取哪个**：后端 `ChatService.chat_stream` 落库用的是
  * `answer = "".join(collected) or state.answer`，即 **token 累积结果**，而不是
@@ -19,7 +22,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { streamPost } from '@/lib/sse'
-import type { StreamEventType } from '@/types/api'
+import type { CodeResult, SourceRef, StreamEventType } from '@/types/api'
 import { getAccessToken } from '@/store/auth'
 
 export interface StreamSnapshot {
@@ -30,7 +33,13 @@ export interface StreamSnapshot {
   /** 流式累积的助手文本。 */
   text: string
   tools: string[]
+  sources: SourceRef[]
+  codeResults: CodeResult[]
   error: string | null
+  /** 用户点击了停止。已看到的文字留下，不按网络错误处理。 */
+  stoppedByUser: boolean
+  /** 连接中断，且不是用户主动停止。 */
+  interrupted: boolean
 }
 
 const EMPTY: StreamSnapshot = {
@@ -39,14 +48,43 @@ const EMPTY: StreamSnapshot = {
   currentStage: null,
   text: '',
   tools: [],
+  sources: [],
+  codeResults: [],
   error: null,
+  stoppedByUser: false,
+  interrupted: false,
 }
 
 export interface SendOptions {
   message: string
   conversationId: string | null
-  /** 后端流式响应不回传 conversation_id，成功后需由调用方刷新列表来定位新会话。 */
+  /** 收到会话编号。新建会话时用来定位，断线后也靠它拉取。 */
+  onConversation?: (conversationId: string) => void
+  /** 后端流式响应在 done 前已落库。成功后由调用方刷新详情。 */
   onFinished?: (text: string) => void
+}
+
+function asCodeResult(data: unknown): CodeResult | null {
+  if (!data || typeof data !== 'object') return null
+  const row = data as { status?: unknown; stdout?: unknown; reason?: unknown }
+  if (row.status !== 'ok' && row.status !== 'error' && row.status !== 'timeout') return null
+  return {
+    status: row.status,
+    stdout: typeof row.stdout === 'string' ? row.stdout : '',
+    reason: typeof row.reason === 'string' ? row.reason : '',
+  }
+}
+
+function asSources(data: unknown): SourceRef[] {
+  if (!Array.isArray(data)) return []
+  return data.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const row = item as { filename?: unknown; page?: unknown; section?: unknown }
+    if (typeof row.filename !== 'string' || !row.filename.trim()) return []
+    const page = typeof row.page === 'number' && row.page >= 1 ? row.page : null
+    const section = typeof row.section === 'string' && row.section.trim() ? row.section : null
+    return [{ filename: row.filename, page, section }]
+  })
 }
 
 export function useChatStream() {
@@ -63,13 +101,19 @@ export function useChatStream() {
   }, [])
 
   const stop = useCallback(() => {
+    setSnapshot((prev) => ({
+      ...prev,
+      streaming: false,
+      stoppedByUser: true,
+      interrupted: false,
+      error: null,
+    }))
     abortRef.current?.abort()
     abortRef.current = null
-    setSnapshot((prev) => ({ ...prev, streaming: false }))
   }, [])
 
   const send = useCallback(
-    async ({ message, conversationId, onFinished }: SendOptions) => {
+    async ({ message, conversationId, onConversation, onFinished }: SendOptions) => {
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
@@ -85,15 +129,34 @@ export function useChatStream() {
           signal: controller.signal,
           onMessage: (msg) => {
             const type = msg.event as StreamEventType
-            let payload: { type?: string; data?: string } = {}
+            let payload: { type?: string; data?: unknown } = {}
             try {
-              payload = JSON.parse(msg.data) as { type?: string; data?: string }
+              payload = JSON.parse(msg.data) as { type?: string; data?: unknown }
             } catch {
               payload = { data: msg.data }
             }
-            const value = payload.data ?? ''
 
             if (!mountedRef.current) return
+
+            const value = typeof payload.data === 'string' ? payload.data : ''
+
+            if (type === 'conversation') {
+              if (value) onConversation?.(value)
+              return
+            }
+
+            if (type === 'sources') {
+              const sources = asSources(payload.data)
+              setSnapshot((prev) => ({ ...prev, sources }))
+              return
+            }
+
+            if (type === 'code_result') {
+              const item = asCodeResult(payload.data)
+              if (!item) return
+              setSnapshot((prev) => ({ ...prev, codeResults: [...prev.codeResults, item] }))
+              return
+            }
 
             switch (type) {
               case 'stage':
@@ -124,11 +187,16 @@ export function useChatStream() {
           },
           onError: (err) => {
             if (!mountedRef.current) return
-            setSnapshot((prev) => ({
-              ...prev,
-              streaming: false,
-              error: err instanceof Error ? err.message : '流式连接中断',
-            }))
+            setSnapshot((prev) => {
+              if (prev.stoppedByUser) return { ...prev, streaming: false }
+              return {
+                ...prev,
+                streaming: false,
+                interrupted: true,
+                error: '连接中断',
+              }
+            })
+            void err
           },
         },
       )

@@ -3,7 +3,7 @@
 import asyncio
 
 from app.agents.pipeline import AgentPipeline, AgentState
-from app.agents.tools.base import Tool, ToolRegistry, parse_tool_call
+from app.agents.tools.base import Tool, ToolRegistry, inspect_tool_call, parse_tool_call
 from app.agents.tools.builtin import default_tools
 from app.llm.mock import MockLLMProvider
 
@@ -20,6 +20,25 @@ def test_parse_tool_call_invalid() -> None:
     assert parse_tool_call("普通回答文本") is None
     assert parse_tool_call("<tool_call>{bad json}</tool_call>") is None
     assert parse_tool_call('<tool_call>{"arguments": {}}</tool_call>') is None
+
+
+def test_inspect_tool_call_distinguishes_format_errors() -> None:
+    assert inspect_tool_call("普通回答文本").status == "none"
+    samples = [
+        "<tool_call>{bad json}</tool_call>",
+        '<tool_call>{"arguments": {}}</tool_call>',
+        '<tool_call>{"name": 1, "arguments": {}}</tool_call>',
+        '<tool_call>{"name": ["echo"], "arguments": {}}</tool_call>',
+        '<tool_call>{"name": "echo", "arguments": [1]}</tool_call>',
+        '<tool_call>{"name": "echo", "arguments": {}}</tool_call',
+        (
+            '<tool_call>{"name": "echo", "arguments": {}}</tool_call>'
+            '<tool_call>{"name": "echo", "arguments": {}}</tool_call>'
+        ),
+    ]
+    for sample in samples:
+        assert inspect_tool_call(sample).status == "invalid"
+        assert parse_tool_call(sample) is None
 
 
 def test_registry_register_and_describe() -> None:

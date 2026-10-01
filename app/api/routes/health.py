@@ -1,6 +1,7 @@
 """健康检查路由。"""
 
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -9,11 +10,15 @@ from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.database import engine
+from app.llm.factory import llm_availability
 from app.models.rag import DocumentChunk
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["system"])
+
+# 本进程加载路由时记下，供管理页展示启动时间。
+STARTED_AT = datetime.now(UTC)
 
 
 def _configured_vector_backend() -> str:
@@ -84,6 +89,7 @@ def health_check() -> JSONResponse:
         "checks": {
             "database": {"status": database},
             "vector_store": {"status": vector_status, "backend": backend},
+            "llm": {"mode": llm_availability()},
         },
     }
     return JSONResponse(status_code=200 if overall == "ok" else 503, content=body)

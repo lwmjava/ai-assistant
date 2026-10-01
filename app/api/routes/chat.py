@@ -9,19 +9,19 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
-from sse_starlette.sse import EventSourceResponse
+from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session
+from sse_starlette.sse import EventSourceResponse
 
+from app.agents.tools.base import ToolRegistry
+from app.agents.tools.builtin import default_tools
 from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
 from app.core.config import settings
-from app.security.types import SecurityRejectedError
 from app.models.conversation import Conversation
 from app.models.user import User
+from app.security.types import SecurityRejectedError
 from app.services.chat_service import ChatService
-from app.agents.tools.base import ToolRegistry
-from app.agents.tools.builtin import default_tools
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,30 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
 
 
+class SourceOut(BaseModel):
+    """一条检索来源。没有页码或段落时对应字段为空。"""
+
+    filename: str
+    page: int | None = None
+    section: str | None = None
+
+
+class CodeResultOut(BaseModel):
+    """一次代码执行给界面的结果。不含宿主机路径。"""
+
+    status: str
+    stdout: str = ""
+    reason: str = ""
+
+
 class ChatResponse(BaseModel):
     """非流式对话响应。"""
 
     conversation_id: str
     reply: str
     model: str | None = None
+    sources: list[SourceOut] = []
+    code_results: list[CodeResultOut] = []
 
 
 class ConversationOut(BaseModel):
@@ -64,12 +82,80 @@ class MessageOut(BaseModel):
     content: str
     model: str | None
     created_at: str
+    sources: list[SourceOut] = []
+    code_results: list[CodeResultOut] = []
+    # complete：正常写完。stopped：生成已停下，正文不是完整回复。
+    status: str = "complete"
 
 
 class ConversationDetail(ConversationOut):
     """会话详情（含消息列表）。"""
 
     messages: list[MessageOut]
+
+
+class ConversationRename(BaseModel):
+    """重命名会话。只接受标题。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+
+
+def _parse_sources(raw: str | None) -> list[SourceOut]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    sources: list[SourceOut] = []
+    for item in parsed:
+        if not isinstance(item, dict) or not item.get("filename"):
+            continue
+        sources.append(SourceOut.model_validate(item))
+    return sources
+
+
+def _parse_code_results(raw: str | None) -> list[CodeResultOut]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    results: list[CodeResultOut] = []
+    for item in parsed:
+        if not isinstance(item, dict) or not item.get("status"):
+            continue
+        results.append(
+            CodeResultOut(
+                status=str(item.get("status")),
+                stdout=str(item.get("stdout") or ""),
+                reason=str(item.get("reason") or ""),
+            )
+        )
+    return results
+
+
+def _latest_assistant_code_results(conv: Conversation) -> list[CodeResultOut]:
+    assistants = [message for message in conv.messages if message.role == "assistant"]
+    if not assistants:
+        return []
+    latest = max(assistants, key=lambda message: message.created_at)
+    return _parse_code_results(latest.code_results)
+
+
+def _latest_assistant_sources(conv: Conversation) -> list[SourceOut]:
+    assistants = [message for message in conv.messages if message.role == "assistant"]
+    if not assistants:
+        return []
+    latest = max(assistants, key=lambda message: message.created_at)
+    return _parse_sources(latest.sources)
 
 
 def _conv_out(conv: Conversation) -> ConversationOut:
@@ -91,6 +177,9 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
             content=m.content,
             model=m.model,
             created_at=m.created_at.isoformat(),
+            sources=_parse_sources(m.sources),
+            code_results=_parse_code_results(m.code_results),
+            status=m.status or "complete",
         )
         for m in sorted(conv.messages, key=lambda x: x.created_at)
     ]
@@ -118,7 +207,11 @@ async def chat(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     return ChatResponse(
-        conversation_id=conv.id, reply=reply, model=getattr(_service.llm, "model", None)
+        conversation_id=conv.id,
+        reply=reply,
+        model=getattr(_service.llm, "model", None),
+        sources=_latest_assistant_sources(conv),
+        code_results=_latest_assistant_code_results(conv),
     )
 
 
@@ -137,10 +230,13 @@ async def chat_stream(
             async for event in _service.chat_stream(
                 session, current_user, req.message, req.conversation_id
             ):
+                data = event.data
+                if event.type in {"sources", "code_result"}:
+                    data = json.loads(event.data) if event.data else []
                 yield {
                     "event": event.type,
                     "data": json.dumps(
-                        {"type": event.type, "data": event.data}, ensure_ascii=False
+                        {"type": event.type, "data": data}, ensure_ascii=False
                     ),
                 }
         except ValueError as exc:
@@ -177,6 +273,39 @@ def get_conversation(
             status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
         )
     return _conv_detail(conv)
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationOut)
+async def rename_conversation(
+    conversation_id: str,
+    req: ConversationRename,
+    request: Request,
+    current_user: User = Depends(require_permission("conversations", "write")),
+    session: Session = Depends(get_db),
+) -> ConversationOut:
+    """修改自己的会话标题。当前租户的系统管理员也可修改该租户内的会话。"""
+    title = req.title.strip()
+    if not title:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="标题不能为空")
+    if len(title) > 80:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="标题不能超过 80 个字",
+        )
+    conv = _service.rename_conversation(session, current_user, conversation_id, title)
+    if conv is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
+        )
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=current_user,
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details={"action": "conversation_rename"},
+    )
+    return _conv_out(conv)
 
 
 @router.delete("/conversations/{conversation_id}")

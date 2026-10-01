@@ -40,13 +40,16 @@ class HybridRetriever:
         self.backend = backend
         self.tenant_id = tenant_id
         self.top_k = top_k
+        self.last_hits: list[ChunkResult] = []
 
     async def retrieve(self, query: str, plan: str) -> str:
         """返回与问题相关的外部上下文文本（无结果时返回空串）。"""
         search_text = f"{query}\n{plan}".strip() if plan else (query or "").strip()
         if not search_text:
+            self.last_hits = []
             return ""
         results = await self.backend.retrieve(
             search_text, tenant_id=self.tenant_id, top_k=self.top_k
         )
+        self.last_hits = list(results)
         return format_context(results)

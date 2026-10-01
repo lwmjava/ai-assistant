@@ -61,6 +61,56 @@ logger = logging.getLogger(__name__)
 Tokenizer = Callable[[str], list[str]]
 
 
+def sources_from_hits(session: Session, hits: list[ChunkResult]) -> list[dict]:
+    """把检索命中转成来源列表。页码和段落只取分块元数据里已有的值。"""
+    seen: set[tuple[str, int | None, str | None]] = set()
+    sources: list[dict] = []
+    for hit in hits:
+        row = session.get(DocumentChunk, hit.id)
+        filename = (hit.source or (row.source if row else None) or "").strip()
+        if not filename and row is not None:
+            document = session.get(Document, row.document_id)
+            filename = (document.title or "").strip() if document else ""
+        if not filename:
+            continue
+        metadata = _chunk_metadata(row)
+        page = _source_page(metadata.get("page"))
+        section = _source_section(metadata.get("section_path"))
+        key = (filename, page, section)
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append({"filename": filename, "page": page, "section": section})
+    return sources
+
+
+def _chunk_metadata(row: DocumentChunk | None) -> dict:
+    if row is None or not row.chunk_metadata:
+        return {}
+    try:
+        parsed = json.loads(row.chunk_metadata)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _source_page(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if value < 1:
+        return None
+    return value
+
+
+def _source_section(value: object) -> str | None:
+    if not isinstance(value, list):
+        return None
+    parts = [str(part).strip() for part in value if str(part).strip()]
+    if not parts:
+        return None
+    return "/".join(parts)
+
+
 class RAGService:
     """检索增强生成服务（会话级，绑定一个数据库会话与租户）。"""
 
@@ -468,6 +518,8 @@ class RAGService:
         content_hash: str,
     ) -> Document:
         """就地替换分块与向量，不改变 is_current 与版本组。"""
+        if document.deleted_at is not None:
+            raise ValueError("已删除的文档不能重建")
         strategy_name = resolve_strategy_name(parsed.text, None)
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
         chunk_objs = await chunking.split(parsed.text, params=self._build_chunk_params(None))

@@ -2,11 +2,13 @@
 
 import { NavLink } from 'react-router-dom'
 import {
+  Activity,
   BookOpen,
   Building2,
   CalendarClock,
   MessagesSquare,
   ShieldCheck,
+  Ticket,
   UserPlus,
   Wrench,
   X,
@@ -33,9 +35,11 @@ const ITEMS: NavItem[] = [
   { to: '/knowledge', label: '知识库', icon: BookOpen, resource: 'knowledge_bases', action: 'read' },
   { to: '/tools', label: '工具与 MCP', icon: Wrench, resource: 'agents', action: 'read' },
   { to: '/workflows', label: '工作流', icon: CalendarClock, resource: 'workflows', action: 'read' },
+  { to: '/invitations', label: '邀请', icon: Ticket, visible: () => true },
   { to: '/tenants', label: '租户', icon: Building2, visible: (role) => canManageTenants(role) },
   { to: '/users', label: '用户', icon: UserPlus, visible: (role) => canManageTenants(role) },
   { to: '/audit', label: '审计日志', icon: ShieldCheck, visible: (role) => canViewAudit(role) },
+  { to: '/status', label: '系统状态', icon: Activity, visible: (role) => canManageTenants(role) },
 ]
 
 export interface SidebarProps {

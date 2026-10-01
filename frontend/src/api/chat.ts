@@ -35,6 +35,10 @@ export function useConversation(id: string | null) {
   })
 }
 
+export function renameConversation(id: string, title: string) {
+  return api.patch<ConversationOut>(`/chat/conversations/${id}`, { title })
+}
+
 export function useDeleteConversation() {
   const qc = useQueryClient()
   return useMutation({

@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { FileText, FileUp, Plus, Search, Trash2 } from 'lucide-react'
+import { FileText, FileUp, Plus, RotateCw, Search, Trash2 } from 'lucide-react'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -13,7 +13,7 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
-import { createConfirmation, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useSearch, useUploadDocument } from '@/api/rag'
+import { createConfirmation, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
 import { ApiError, isSessionExpiredError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
@@ -63,7 +63,8 @@ function IngestModal({ open, onClose }: { open: boolean; onClose: () => void }) 
         text: values.text,
         source: values.source || undefined,
       })
-      toast.success('已摄取', `《${doc.title}》切分为 ${doc.chunk_count} 个分块`)
+      const stateLabel = VERSION_LABELS[doc.version_state] ?? doc.version_state
+      toast.success('已摄取', `《${doc.title}》${stateLabel}，${doc.chunk_count} 个分块`)
       reset()
       onClose()
     } catch (err) {
@@ -197,17 +198,23 @@ function DocumentRow({
   doc,
   canDelete,
   canPublish,
+  canRebuild,
+  rebuilding,
   onDelete,
   onPublish,
+  onRebuild,
 }: {
   doc: DocumentOut
   canDelete: boolean
   canPublish: boolean
+  canRebuild: boolean
+  rebuilding: boolean
   onDelete: (doc: DocumentOut) => void
   onPublish: (doc: DocumentOut) => void
+  onRebuild: (doc: DocumentOut) => void
 }) {
   return (
-    <li className="group/item grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-2/50 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_2.5rem]">
+    <li className="group/item grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-2/50 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_auto]">
       <div className="min-w-0">
         <p className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium text-text">{doc.title}</span>
@@ -216,6 +223,11 @@ function DocumentRow({
           ) : (
             <Badge tone={doc.version_state === 'published' ? 'success' : 'warning'}>
               {VERSION_LABELS[doc.version_state] ?? doc.version_state}
+            </Badge>
+          )}
+          {rebuilding && (
+            <Badge tone="warning" dot pulse>
+              重建中
             </Badge>
           )}
         </p>
@@ -228,7 +240,7 @@ function DocumentRow({
         <Badge tone="neutral">{doc.chunk_count} 分块</Badge>
       </div>
       <p className="hidden text-xs text-text-faint sm:block">{timeAgo(doc.updated_at)}</p>
-      <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && 'invisible')}>
+      <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && !canRebuild && 'invisible')}>
         {canPublish && !doc.deleted_at && ['draft', 'scheduled', 'replaced'].includes(doc.version_state) && (
           <button
             type="button"
@@ -238,14 +250,27 @@ function DocumentRow({
             发布
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onDelete(doc)}
-          aria-label={`删除文档 ${doc.title}`}
-          className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-danger/15 hover:text-danger focus-visible:opacity-100 group-hover/item:opacity-100"
-        >
-          <Trash2 className="size-3.5" aria-hidden />
-        </button>
+        {canRebuild && !doc.deleted_at && (
+          <button
+            type="button"
+            onClick={() => onRebuild(doc)}
+            disabled={rebuilding}
+            aria-label={`重建文档 ${doc.title}`}
+            className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
+          >
+            <RotateCw className={cn('size-3.5', rebuilding && 'animate-spin')} aria-hidden />
+          </button>
+        )}
+        {canDelete && !doc.deleted_at && (
+          <button
+            type="button"
+            onClick={() => onDelete(doc)}
+            aria-label={`删除文档 ${doc.title}`}
+            className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-danger/15 hover:text-danger focus-visible:opacity-100 group-hover/item:opacity-100"
+          >
+            <Trash2 className="size-3.5" aria-hidden />
+          </button>
+        )}
       </div>
     </li>
   )
@@ -261,6 +286,8 @@ export default function KnowledgePage() {
 
   const [ingestOpen, setIngestOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<DocumentOut | null>(null)
+  const [pendingRebuild, setPendingRebuild] = useState<DocumentOut | null>(null)
+  const [rebuildingId, setRebuildingId] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(false)
   const [versionState, setVersionState] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -269,6 +296,7 @@ export default function KnowledgePage() {
   const upload = useUploadDocument()
   const remove = useDeleteDocument()
   const publish = usePublishDocument()
+  const reparse = useReparseDocument()
 
   const docs = useMemo(
     () => [...(documents.data ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)),
@@ -283,7 +311,8 @@ export default function KnowledgePage() {
     }
     try {
       const doc = await upload.mutateAsync(file)
-      toast.success('上传成功', `《${doc.title}》切分为 ${doc.chunk_count} 个分块`)
+      const stateLabel = VERSION_LABELS[doc.version_state] ?? doc.version_state
+      toast.success('上传成功', `《${doc.title}》${stateLabel}，${doc.chunk_count} 个分块`)
     } catch (err) {
       if (isSessionExpiredError(err)) return
       toast.error('上传失败', err instanceof ApiError ? err.detail : undefined)
@@ -308,6 +337,36 @@ export default function KnowledgePage() {
       toast.error('删除失败', err instanceof ApiError ? err.detail : undefined)
     } finally {
       setPendingDelete(null)
+    }
+  }
+
+  async function confirmRebuild() {
+    if (!pendingRebuild || rebuildingId) return
+    const doc = pendingRebuild
+    setPendingRebuild(null)
+    setRebuildingId(doc.id)
+    try {
+      const created = await reparse.mutateAsync({
+        id: doc.id,
+        confirmationId:
+          userTenantId && doc.tenant_id !== userTenantId
+            ? await createConfirmation(doc.id, 'reparse')
+            : undefined,
+      })
+      const finished = await waitForImportJob(created.id)
+      if (finished.status === 'success') {
+        toast.success('重建完成', `《${doc.title}》的分块已按源文件更新`)
+        await documents.refetch()
+      } else if (finished.status === 'failed') {
+        toast.error('重建失败', finished.error ?? undefined)
+      } else {
+        toast.success('重建已提交', '任务仍在处理，稍后刷新列表查看结果')
+      }
+    } catch (err) {
+      if (isSessionExpiredError(err)) return
+      toast.error('重建失败', err instanceof ApiError ? err.detail : undefined)
+    } finally {
+      setRebuildingId(null)
     }
   }
 
@@ -420,8 +479,11 @@ export default function KnowledgePage() {
                 doc={doc}
                 canDelete={canDelete}
                 canPublish={canSeeDeleted}
+                canRebuild={canWrite}
+                rebuilding={rebuildingId === doc.id}
                 onDelete={setPendingDelete}
                 onPublish={(item) => void handlePublish(item)}
+                onRebuild={setPendingRebuild}
               />
             ))}
           </ul>
@@ -434,7 +496,7 @@ export default function KnowledgePage() {
         open={Boolean(pendingDelete)}
         onClose={() => setPendingDelete(null)}
         title="删除文档"
-        description="文档及其全部分块、向量将从知识库中移除，此操作不可撤销。"
+        description="删除后，这份文档会从成员列表和对话检索中消失。管理员仍可在「显示已删除」里看到已删除标记。分块和源文件会保留，不会立刻物理清除。"
         size="sm"
         busy={remove.isPending}
         footer={
@@ -450,6 +512,38 @@ export default function KnowledgePage() {
       >
         <p className="text-sm text-text-muted">{pendingDelete?.title}</p>
       </Modal>
+
+      <Modal
+        open={Boolean(pendingRebuild)}
+        onClose={() => setPendingRebuild(null)}
+        title="重建文档"
+        description="按已保存的源文件重新解析，并替换这份文档的分块。不会改变它是不是当前版，也不能用来恢复已删除的文档。"
+        size="sm"
+        busy={reparse.isPending || Boolean(rebuildingId)}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPendingRebuild(null)}>
+              取消
+            </Button>
+            <Button variant="primary" loading={reparse.isPending || Boolean(rebuildingId)} onClick={() => void confirmRebuild()}>
+              确认重建
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-muted">{pendingRebuild?.title}</p>
+      </Modal>
     </div>
   )
+}
+
+async function waitForImportJob(jobId: string) {
+  const deadline = Date.now() + 20_000
+  let latest = await fetchImportJob(jobId)
+  while (latest.status === 'pending' || latest.status === 'running') {
+    if (Date.now() >= deadline) return latest
+    await new Promise((resolve) => window.setTimeout(resolve, 1000))
+    latest = await fetchImportJob(jobId)
+  }
+  return latest
 }

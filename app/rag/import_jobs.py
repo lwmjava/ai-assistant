@@ -413,6 +413,12 @@ async def _process_job(session: Session, job: ImportJob) -> None:
     session.refresh(job)
 
     try:
+        if job.reparse_document_id:
+            reparse_target = session.get(Document, job.reparse_document_id)
+            if reparse_target is None:
+                raise ValueError("重解析目标文档不存在")
+            if reparse_target.deleted_at is not None:
+                raise ValueError("已删除的文档不能重建")
         if job.source_type == ImportSourceType.URL.value or (
             job.source_type == ImportSourceType.REPARSE.value and job.source_uri
         ):

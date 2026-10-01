@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/http'
-import type { DocumentOut, SearchResultOut } from '@/types/api'
+import type { DocumentOut, ImportJobOut, SearchResultOut } from '@/types/api'
 
 export const documentKeys = {
   all: ['documents'] as const,
@@ -55,6 +55,19 @@ export function useDeleteDocument() {
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: documentKeys.all }),
   })
+}
+
+export function useReparseDocument() {
+  return useMutation({
+    mutationFn: (input: { id: string; confirmationId?: string }) => {
+      const query = input.confirmationId ? `?confirmation_id=${input.confirmationId}` : ''
+      return api.post<ImportJobOut>(`/rag/documents/${input.id}/reparse${query}`)
+    },
+  })
+}
+
+export function fetchImportJob(id: string) {
+  return api.get<ImportJobOut>(`/rag/import-jobs/${id}`)
 }
 
 export function usePublishDocument() {

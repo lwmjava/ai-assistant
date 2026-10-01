@@ -13,6 +13,8 @@ interface AuthState {
   /** 首次挂载时用已有令牌拉取用户信息的状态。 */
   bootstrapped: boolean
   login: (payload: LoginRequest) => Promise<void>
+  /** 注册或初始化向导成功后，用返回的令牌建立会话。 */
+  establish: (token: Token) => Promise<void>
   logout: () => void
   loadMe: () => Promise<void>
   reset: () => void
@@ -28,8 +30,11 @@ export const useAuthStore = create<AuthState>()(
 
       async login(payload) {
         const token = await api.post<Token>('/auth/login', payload, { anonymous: true })
+        await get().establish(token)
+      },
+
+      async establish(token) {
         set({ access_token: token.access_token, refresh_token: token.refresh_token })
-        // 登录成功后立刻补全用户信息，供侧边栏与权限判定使用
         const user = await api.get<UserInfo>('/auth/me')
         set({ user, bootstrapped: true })
       },

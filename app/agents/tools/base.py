@@ -13,8 +13,8 @@ import inspect
 import json
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,17 @@ class ToolCall:
 
     name: str
     arguments: dict
+
+
+@dataclass
+class ToolIntent:
+    """模型输出里的工具调用意图。
+
+    ``status`` 为 ``none``（没有调用）、``ok``（可执行）或 ``invalid``（有调用意图但格式错误）。
+    """
+
+    status: str
+    call: ToolCall | None = None
 
 
 @dataclass
@@ -87,34 +98,61 @@ class ToolRegistry:
         tool = self.get(call.name)
         if tool is None:
             return f"[工具调用失败] 未找到名为「{call.name}」的工具。"
+        arguments = call.arguments or {}
         try:
-            observation = await tool.execute(call.arguments or {})
+            observation = await tool.execute(arguments)
         except Exception as exc:  # noqa: BLE001 — 工具异常不应中断整个管线
             logger.exception("工具执行失败：%s", call.name)
             return f"[工具执行错误] {call.name}：{exc}"
-        return f"[{call.name}] 参数={call.arguments} 结果={observation}"
+        shown = arguments
+        if call.name == "code_sandbox":
+            from app.agents.tools.sandbox.runtime import sanitize_host_paths
+
+            shown = {
+                key: sanitize_host_paths(value) if isinstance(value, str) else value
+                for key, value in arguments.items()
+            }
+        return f"[{call.name}] 参数={shown} 结果={observation}"
+
+
+def inspect_tool_call(text: str) -> ToolIntent:
+    """区分没有调用、有效调用和格式错误。
+
+    缺少闭合标签、多个信封、坏 JSON、名称不是非空字符串、参数不是对象，都算格式错误。
+    """
+    body = text or ""
+    opens = body.count("<tool_call>")
+    closes = body.count("</tool_call>")
+    if opens == 0 and closes == 0:
+        return ToolIntent("none")
+    if opens != 1 or closes != 1:
+        return ToolIntent("invalid")
+    match = _TOOL_CALL_PATTERN.search(body)
+    if not match:
+        return ToolIntent("invalid")
+    try:
+        data = json.loads(match.group(1).strip())
+    except json.JSONDecodeError:
+        return ToolIntent("invalid")
+    if not isinstance(data, dict):
+        return ToolIntent("invalid")
+    name = data.get("name", data.get("tool"))
+    if not isinstance(name, str) or not name.strip():
+        return ToolIntent("invalid")
+    if "arguments" in data:
+        args = data["arguments"]
+    elif "args" in data:
+        args = data["args"]
+    else:
+        args = {}
+    if not isinstance(args, dict):
+        return ToolIntent("invalid")
+    return ToolIntent("ok", ToolCall(name=name.strip(), arguments=args))
 
 
 def parse_tool_call(text: str) -> ToolCall | None:
-    """从模型输出中解析工具调用。
-
-    仅识别 ``<tool_call>`` 信封内的 JSON；若无法解析或无 ``name``，返回 None，
-    表示模型意在直接输出回答。
-    """
-    match = _TOOL_CALL_PATTERN.search(text or "")
-    if not match:
+    """解析有效工具调用。没有调用或格式错误时返回 None。"""
+    intent = inspect_tool_call(text)
+    if intent.status != "ok":
         return None
-    raw = match.group(1).strip()
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    name = data.get("name") or data.get("tool")
-    if not name:
-        return None
-    args = data.get("arguments") or data.get("args") or {}
-    if not isinstance(args, dict):
-        return None
-    return ToolCall(name=name, arguments=args)
+    return intent.call

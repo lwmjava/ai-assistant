@@ -6,6 +6,7 @@
 """
 
 import io
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -432,6 +433,32 @@ def test_document_lifecycle(client: TestClient) -> None:
     detail_after = client.get(f"/api/rag/documents/{doc_id}")
     assert detail_after.status_code == 200
     assert detail_after.json()["deleted_at"] is not None
+
+
+def test_reparse_deleted_document_is_rejected(client: TestClient) -> None:
+    """已删除的文档不能重建，当前版标志保持不变。"""
+    ingest = client.post(
+        "/api/rag/documents/ingest",
+        json={
+            "text": "QA004 删除后不能重建。",
+            "title": "删除后重建",
+            "source": "qa004-reparse",
+        },
+    )
+    assert ingest.status_code == 200
+    doc_id = ingest.json()["id"]
+    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    assert deleted.status_code == 200
+    before = client.get(f"/api/rag/documents/{doc_id}")
+    assert before.status_code == 200
+    reparse = client.post(f"/api/rag/documents/{doc_id}/reparse")
+    assert reparse.status_code == 400
+    after = client.get(f"/api/rag/documents/{doc_id}")
+    assert after.status_code == 200
+    assert after.json()["deleted_at"] is not None
+    assert after.json()["is_current"] == before.json()["is_current"]
+    listing = client.get("/api/rag/documents")
+    assert all(item["id"] != doc_id for item in listing.json())
 
 
 def test_ingest_validation(client: TestClient) -> None:
@@ -980,3 +1007,151 @@ def test_build_retriever_respects_flag(session: Session) -> None:
         assert svc._build_retriever(session, user) is not None
     finally:
         settings.RAG_ENABLED = original
+
+
+def test_rag_enabled_field_defaults_to_on() -> None:
+    from app.core.config import Settings
+
+    assert Settings.model_fields["RAG_ENABLED"].default is True
+
+
+async def test_retriever_context_is_tenant_current_only(tmp_path: Path, monkeypatch) -> None:
+    from sqlmodel import SQLModel, create_engine
+
+    monkeypatch.setattr(settings, "RAG_EFFECTIVE_DATE_FILTER", False)
+    engine = create_engine(
+        f"sqlite:///{(tmp_path / 'retrieval-scope.db').as_posix()}",
+        connect_args={"check_same_thread": False},
+    )
+    SQLModel.metadata.create_all(engine)
+    session = Session(engine)
+    embedding = MockEmbeddingProvider(dim=64)
+    try:
+        own = RAGService(session, "tenant-current", embedding_provider=embedding)
+        other = RAGService(session, "tenant-other", embedding_provider=embedding)
+        await own.ingest_text(
+            "QA001CURRENT 本租户当前版月费 199 元。",
+            "当前版",
+            "current.txt",
+            "member-a",
+        )
+        stale = await own.ingest_text(
+            "QA001STALE 已被替换的旧月费 99 元。",
+            "旧版",
+            "stale.txt",
+            "member-a",
+        )
+        stale.is_current = False
+        session.add(stale)
+        session.commit()
+        deleted = await own.ingest_text(
+            "QA001DELETED 已删除的月费 1 元。",
+            "已删",
+            "deleted.txt",
+            "member-a",
+        )
+        deleted.deleted_at = datetime.now(UTC)
+        session.add(deleted)
+        session.commit()
+        await other.ingest_text(
+            "QA001FOREIGN 其他租户月费 888 元。",
+            "外租户",
+            "foreign.txt",
+            "member-b",
+        )
+
+        context = await own.make_retriever(top_k=8).retrieve("QA001CURRENT 月费", "")
+        assert "QA001CURRENT" in context
+        assert "QA001STALE" not in context
+        assert "QA001DELETED" not in context
+        assert "QA001FOREIGN" not in context
+    finally:
+        session.close()
+
+
+def test_sources_keep_filename_and_existing_location(tmp_path: Path) -> None:
+    from sqlmodel import SQLModel, create_engine
+
+    from app.models.rag import Document, DocumentChunk
+    from app.rag.service import sources_from_hits
+    from app.rag.vectorstore.base import ChunkResult
+
+    engine = create_engine(
+        f"sqlite:///{(tmp_path / 'sources.db').as_posix()}",
+        connect_args={"check_same_thread": False},
+    )
+    SQLModel.metadata.create_all(engine)
+    session = Session(engine)
+    try:
+        located = Document(
+            tenant_id="tenant-src",
+            user_id="member",
+            title="手册",
+            source="handbook.pdf",
+        )
+        plain = Document(
+            tenant_id="tenant-src",
+            user_id="member",
+            title="备忘",
+            source="notes.txt",
+        )
+        titled = Document(
+            tenant_id="tenant-src",
+            user_id="member",
+            title="仅标题",
+            source=None,
+        )
+        session.add(located)
+        session.add(plain)
+        session.add(titled)
+        session.commit()
+        located_chunk = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=located.id,
+            content="第三页",
+            source="handbook.pdf",
+            chunk_metadata='{"page": 3, "section_path": ["费用", "月费"]}',
+        )
+        duplicate = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=located.id,
+            content="第三页重复",
+            source="handbook.pdf",
+            chunk_metadata='{"page": 3, "section_path": ["费用", "月费"]}',
+        )
+        plain_chunk = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=plain.id,
+            content="没有页码",
+            source="notes.txt",
+            chunk_metadata='{"page": 0, "reading_order": 2}',
+        )
+        titled_chunk = DocumentChunk(
+            tenant_id="tenant-src",
+            document_id=titled.id,
+            content="用标题当文件名",
+            source=None,
+        )
+        session.add(located_chunk)
+        session.add(duplicate)
+        session.add(plain_chunk)
+        session.add(titled_chunk)
+        session.commit()
+
+        sources = sources_from_hits(
+            session,
+            [
+                ChunkResult(located_chunk.id, "第三页", "handbook.pdf", located.id, 1.0),
+                ChunkResult(duplicate.id, "第三页重复", "handbook.pdf", located.id, 0.9),
+                ChunkResult(plain_chunk.id, "没有页码", "notes.txt", plain.id, 0.5),
+                ChunkResult(titled_chunk.id, "用标题当文件名", None, titled.id, 0.4),
+                ChunkResult("missing", "无名", None, "missing-doc", 0.1),
+            ],
+        )
+        assert sources == [
+            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费"},
+            {"filename": "notes.txt", "page": None, "section": None},
+            {"filename": "仅标题", "page": None, "section": None},
+        ]
+    finally:
+        session.close()

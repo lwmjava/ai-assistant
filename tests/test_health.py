@@ -26,6 +26,15 @@ def test_health_ok() -> None:
     assert body["checks"]["database"]["status"] == "ok"
     assert body["checks"]["vector_store"]["status"] == "ok"
     assert body["checks"]["vector_store"]["backend"] == "local"
+    assert body["checks"]["llm"]["mode"] in {"real", "mock", "unavailable"}
+
+
+def test_health_llm_mode_does_not_change_status(monkeypatch) -> None:
+    """模型未就绪只是一个字段，不把健康检查打成失败。"""
+    monkeypatch.setattr("app.api.routes.health.llm_availability", lambda: "mock")
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    assert resp.json()["checks"]["llm"]["mode"] == "mock"
 
 
 def test_health_fails_when_database_unreachable(monkeypatch) -> None:

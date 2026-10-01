@@ -15,7 +15,8 @@
 |---|---|---|---|
 | FastAPI 后端 | `Implemented` | `pyproject.toml`；`app/main.py` | — |
 | React + TypeScript + Vite 控制台 | `Implemented` | `frontend/package.json`；2026-09-13 `npm run typecheck` / `npm run build` 通过 | — |
-| JWT + RBAC + 多租户 | `Partial` | `app/core/security.py`；API dependencies；`app/rag/access.py` | 租户读路径已对齐（ADR-0001）；资源级 ACL 仍 `Planned` |
+| JWT + RBAC + 多租户 | `Partial` | `app/models/membership.py`；`app/api/routes/invitations.py`；`frontend/src/pages/Invitations.tsx` | 已注册用户可凭邀请码加入其他租户，并在已加入时切换当前租户。成员角色尚未接入整份权限矩阵。资源级 ACL 仍 `Planned` |
+| 管理后台用户/租户/系统状态 | `Partial` | `app/api/routes/admin_users.py`；`app/api/routes/admin_tenants.py`；`app/api/routes/admin_system.py`；`frontend/src/pages/Users.tsx` | 系统管理员可列出用户并改角色、停用，可改租户名并停用，可看数据库与向量库是否连通。不重新启用。无在线人数或调用量 |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
 
@@ -26,6 +27,7 @@
 | 自研五阶段 `AgentPipeline`（默认） | `Implemented` | `AGENT_ORCHESTRATION=self`；`app/agents/pipeline.py`；`app/services/chat_service.py` | 不是 LangGraph 五阶段主路径 |
 | LangGraph Supervisor | `Partial` | `app/agents/supervisor.py` | 可选编排，不是默认主路径 |
 | ChatService 组装 Memory/RAG/Tools/Skills/安全 | `Partial` | `app/services/chat_service.py` | 同时承担部分 Harness 职责，未独立提取 |
+| 对话停止、断线加载、重命名与只读禁发 | `Partial` | `app/services/chat_service.py`；`frontend/src/pages/Chat.tsx`；`tests/test_chat_controls.py` | 流式可停止并留下已停止标记。断线后可加载已写完的回复，未写完不会显示成完成。可重命名和删除自己的会话。viewer 不能发送。不做自动重连，也不把生成放到请求之外继续跑 |
 | 独立 Agent Harness / Context Builder / State Manager | `Planned` | `docs/governance/agent-harness-engineering.md` | RAG-005 基线已冻结；仍禁止无指标大爆炸重构 |
 | Tool Registry（名称/描述/Schema/函数） | `Partial` | `app/agents/tools/` | 权限、风险、超时、审计、版本未齐 |
 | 独立 Tool Executor | `Planned` | 治理规范 §3 | — |
@@ -36,7 +38,7 @@
 
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
-| 对话默认不注入 RAG | `Implemented` | `RAG_ENABLED=false`；`tests/test_chat.py`；`tests/eval/test_rag006_pipeline.py` | 开启后有脚本化 LLM 集成；真实 LLM / Citation 未测 |
+| 对话默认注入本租户当前版 | `Partial` | `RAG_ENABLED` 代码默认 `true`；`ChatService._build_retriever`；`tests/test_rag.py`；`frontend/src/components/chat/MessageList.tsx` | 无真实 Embedding 时开发环境用 Mock，只能证明链路。回复可带来源文件名及已有页码或段落。对话页在助手正文下展示这些字段，来源为空时不显示来源区。本机 `.env` 仍可将检索关掉。真实 LLM / Citation 未测 |
 | 后端默认 `native` | `Implemented` | `RAG_BACKEND=native` | LangChain/LlamaIndex 为可选适配 |
 | 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 代码默认仍是 Local；正式目标已改为 Milvus，实现未完成 |
 | Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002 | 正式目标；缺摄取/检索/重解析/删除闭环证据；决定已改在 ADR-0002，实现未完成 |
@@ -44,7 +46,7 @@
 | 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 基线已冻结；无指标不新增策略 |
 | Dense + BM25 + RRF | `Implemented` | `app/rag/vectorstore/`；`app/rag/retriever.py` | RRF 是融合，不是独立 Reranker |
 | 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | 迭代指导 §4.4 | 必须由同一 Evaluation 证明价值 |
-| 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs；`tests/eval/test_rag006_pipeline.py` | 当前版本读路径已与检索对齐；生效日期 Flag 默认关；资源 ACL `Planned` |
+| 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs；`frontend/src/pages/Knowledge.tsx`；`tests/test_rag_import_jobs.py` | 知识库页可重建未删除文档，已删除文档不能被重建救回。生效日期 Flag 默认关；资源 ACL `Planned` |
 | 结构化 Citation | `Partial` | 回答目前主要是 source 文本 | 缺 document/chunk/version/page/section |
 | 版本化 Evaluation | `Partial` | `evals/datasets/rag-v0.1/`；`docs/evaluations/rag-v0.1-baseline-report.md` | 未测生成层；语料规模小，不得当生产质量 |
 

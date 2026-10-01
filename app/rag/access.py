@@ -62,11 +62,11 @@ def can_write_document(doc: Document, user: User) -> bool:
 
 
 def can_read_import(owner_user_id: str, owner_tenant_id: str, user: User) -> bool:
+    if user.role_enum == Role.SYSTEM_ADMIN:
+        return True
     if not same_tenant(owner_tenant_id, user):
         return False
     if kb_scope() == "tenant":
-        return True
-    if user.role_enum == Role.SYSTEM_ADMIN:
         return True
     return owner_user_id == user.id
 

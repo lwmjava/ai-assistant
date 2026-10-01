@@ -1,6 +1,6 @@
 # FLOW-001、MEM-001、FLOW-002：调度可启动、超窗压缩回归、工作流页失败态
 
-> 状态：FLOW-001 已实现，见 `docs/plans/implementation_flow_001.md`。MEM-001 已实现，见 `docs/plans/implementation_mem_001.md`。FLOW-002 未实现。2026-09-30 修订：补上到点判定的根因、能力矩阵只改原因、默认 20/30/5 回归、手动运行的 201、实现说明路径、安装说明位置，以及浏览器验收步骤。
+> 状态：FLOW-001、MEM-001、FLOW-002 已实现。说明分别见 `docs/plans/implementation_flow_001.md`、`docs/plans/implementation_mem_001.md`、`docs/plans/implementation_flow_002.md`。2026-09-30 修订：补上到点判定的根因、能力矩阵只改原因、默认 20/30/5 回归、手动运行的 201、实现说明路径、安装说明位置，以及浏览器验收步骤。
 > 来源：`tasks.yaml` 的 FLOW-001、MEM-001、FLOW-002；`docs/plans/plan_remaining_delivery.md` 对应三节；交付排期第 5 节 D1、第 6 节第 17 项。
 > 日期：2026-09-30
 > 截止：2027-01-15

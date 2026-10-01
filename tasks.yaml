@@ -3377,7 +3377,7 @@ tasks:
 
   - id: "FLOW-002"
     title: "工作流页失败态与空态（交付 D1）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-01-15"
     depends_on:
@@ -3387,9 +3387,13 @@ tasks:
       facts:
         - claim: "已有工作流页。失败态和空态未补齐。"
           evidence: "frontend/src/pages/Workflows.tsx"
+        - claim: "空列表、引擎未启用、失败原因可以在页面上区分。失败且没有 error 时显示固定短句。"
+          evidence: "docs/plans/implementation_flow_002.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d1.md"
+        - "docs/plans/implementation_flow_002.md"
         - "frontend/src/"
         - "tasks.yaml"
         - "AGENTS.md"

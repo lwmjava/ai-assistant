@@ -82,6 +82,8 @@ const STATUS_LABEL: Record<string, string> = {
   pending: '等待中',
 }
 
+const FAILED_WITHOUT_REASON = '执行失败，未返回原因'
+
 function WorkflowFormModal({
   open,
   onClose,
@@ -262,9 +264,9 @@ function ExecutionRow({ execution }: { execution: ExecutionOut }) {
         <span className="font-mono text-xs text-text-faint">{execution.duration_ms != null ? formatDuration(execution.duration_ms) : '—'}</span>
         <span className="ml-auto text-xs text-text-faint">{formatDateTime(execution.created_at)}</span>
       </div>
-      {execution.error && (
+      {(execution.status === 'failed' || execution.error) && (
         <p className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-sm text-danger">
-          {execution.error}
+          {execution.status === 'failed' ? execution.error || FAILED_WITHOUT_REASON : execution.error}
         </p>
       )}
       {execution.output && (
@@ -450,10 +452,14 @@ export default function WorkflowsPage() {
     setRunningId(w.id)
     try {
       const execution = await run.mutateAsync(w.id)
-      toast.success(
-        execution.status === 'success' ? '执行完成' : '执行结束',
-        `状态：${STATUS_LABEL[execution.status] ?? execution.status} · 耗时 ${formatDuration(execution.duration_ms)}`,
-      )
+      if (execution.status === 'failed') {
+        toast.error('执行失败', execution.error || FAILED_WITHOUT_REASON)
+      } else {
+        toast.success(
+          execution.status === 'success' ? '执行完成' : '执行结束',
+          `状态：${STATUS_LABEL[execution.status] ?? execution.status} · 耗时 ${formatDuration(execution.duration_ms)}`,
+        )
+      }
     } catch (err) {
       toast.error('执行失败', err instanceof ApiError ? err.detail : undefined)
     } finally {

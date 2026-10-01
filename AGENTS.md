@@ -398,9 +398,9 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004`、`EVD-001`～`EVD-004` 已完成。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1–16 项均已完成，约定范围的 80% 达到。Milvus 五条于 2026-09-29 通过，记录见 `docs/plans/implementation_evd_004_index_params.md`。默认向量库仍是 `local`，Milvus 不标成 `Implemented`。B3 至 D4 其余任务已拆入 `tasks.yaml`。`FLOW-001` 已完成：调度任务能创建和取消，说明见 `docs/plans/implementation_flow_001.md`。到点触发仍没有执行记录，工作流调度保持 `Partial`。`MEM-001` 已完成：默认窗口下 25 条只滑窗、31 条压缩并保留最后 5 条，说明见 `docs/plans/implementation_mem_001.md`。对话入口仍不读取记忆配置。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004`、`EVD-001`～`EVD-004` 已完成。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1–16 项均已完成，约定范围的 80% 达到。Milvus 五条于 2026-09-29 通过，记录见 `docs/plans/implementation_evd_004_index_params.md`。默认向量库仍是 `local`，Milvus 不标成 `Implemented`。B3 至 D4 其余任务已拆入 `tasks.yaml`。`FLOW-001` 已完成：调度任务能创建和取消，说明见 `docs/plans/implementation_flow_001.md`。到点触发仍没有执行记录，工作流调度保持 `Partial`。`MEM-001` 已完成：默认窗口下 25 条只滑窗、31 条压缩并保留最后 5 条，说明见 `docs/plans/implementation_mem_001.md`。对话入口仍不读取记忆配置。`FLOW-002` 已完成：工作流页能区分空列表、引擎未启用和失败原因，说明见 `docs/plans/implementation_flow_002.md`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
 
-按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（57 done / 13 ready / 38 backlog）：
+按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（58 done / 12 ready / 38 backlog）：
 
 | 族 | 任务 | 定位 |
 |---|---|---|

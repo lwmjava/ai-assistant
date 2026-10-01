@@ -1,6 +1,6 @@
 # QUOTA-001、LIMIT-001、CLI-001、EXPORT-001：配额、限流提示、迁移与管理员命令、导出租户对话
 
-> 状态：CLI-001、QUOTA-001 已实现，说明见 `docs/plans/implementation_cli_001.md` 与 `docs/plans/implementation_quota_001.md`。LIMIT-001、EXPORT-001 仍待实现。2026-10-01 两轮评审的处置已写入本文，见 `docs/reviews/2026-10-01-plan_d3评审.md` 与 `docs/reviews/2026-10-01-plan_d3-codex评审处置.md`。做完这四条只完成交付包第 19 项，不是企业上线门禁通过。实现说明在各自完成后另写，不把未做项写成已完成。
+> 状态：CLI-001、QUOTA-001、EXPORT-001 已实现，说明见 `docs/plans/implementation_cli_001.md`、`docs/plans/implementation_quota_001.md` 与 `docs/plans/implementation_export_001.md`。LIMIT-001 仍待实现。2026-10-01 两轮评审的处置已写入本文，见 `docs/reviews/2026-10-01-plan_d3评审.md` 与 `docs/reviews/2026-10-01-plan_d3-codex评审处置.md`。做完这四条只完成交付包第 19 项，不是企业上线门禁通过。实现说明在各自完成后另写，不把未做项写成已完成。
 > 来源：`tasks.yaml` 的 QUOTA-001、LIMIT-001、CLI-001、EXPORT-001；`docs/plans/plan_remaining_delivery.md` 对应四节；交付排期第 5 节 D3、第 6 节第 19 项。
 > 日期：2026-10-01
 > 截止：2027-03-05
@@ -121,6 +121,8 @@
 - 验证：`pytest tests/test_rate_limit_retry.py -v`；`cd frontend; npm run typecheck`。页面行为在实现时用浏览器走一次超限和一次未超限；若当时没有浏览器，用组件测试或渲染脚本代替，并在实现说明里写明未用浏览器的部分。
 
 ## EXPORT-001 导出租户对话
+
+实现说明：`docs/plans/implementation_export_001.md`。
 
 - 目标：当前租户成员关系上的租户管理员下载的 JSON 只含自己令牌所在租户的会话。其他角色得到 403。`export_requested` 成功写入之后才开始返回文件。审计不含消息正文，也不表示客户端已经收完。
 - 现状：见上文「导出」。`switch_tenant` 不修改 `users.role`。`audit_event` 写入失败时只记日志，不向调用方抛错。

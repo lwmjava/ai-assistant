@@ -3836,7 +3836,7 @@ tasks:
 
   - id: "EXPORT-001"
     title: "导出租户对话（交付 D3）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-05"
     depends_on:

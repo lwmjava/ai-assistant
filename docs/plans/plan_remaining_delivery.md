@@ -499,7 +499,7 @@
 
 ## EXPORT-001 导出租户对话
 
-实现计划见 `docs/plans/plan_d3.md`。
+实现计划见 `docs/plans/plan_d3.md`。实现说明见 `docs/plans/implementation_export_001.md`。
 
 - 目标：租户管理员能导出本租户对话。
 - 现状：没有导出接口。

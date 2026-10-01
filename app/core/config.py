@@ -133,6 +133,12 @@ class Settings(BaseSettings):
     RAG_IMPORT_INTERVAL_SECONDS: float = 3.0
     RAG_IMPORT_FETCH_TIMEOUT: float = 30.0
     RAG_IMPORT_MAX_CONCURRENCY: int = 2
+    # 单文件上传上限（字节）。默认 10 MiB。等于上限可以上传，超过则拒绝。
+    RAG_UPLOAD_MAX_BYTES: int = 10 * 1024 * 1024
+    # 允许的扩展名，逗号分隔，不带点。只看文件名的最后一个后缀。
+    RAG_UPLOAD_ALLOWED_EXTENSIONS: str = (
+        "txt,md,json,xml,csv,doc,xls,ppt,docx,xlsx,pptx,pdf"
+    )
     RAG_OCR_ENABLED: bool = False
     RAG_OCR_PROVIDER: str = "tesseract"
     RAG_OCR_LANGUAGES: str = "chi_sim+eng"

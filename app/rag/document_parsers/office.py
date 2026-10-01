@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from typing import Any
 from xml.etree import ElementTree as ET
 
 from app.rag.document_parsers.base import (
@@ -24,7 +25,9 @@ from app.rag.ocr.base import OcrProvider, OcrProviderError
 from app.rag.ocr.factory import get_ocr_provider
 
 try:
-    from pptx import Presentation
+    from pptx import Presentation as _Presentation
+
+    Presentation: Any = _Presentation
 except ImportError:  # pragma: no cover - 依赖缺失时由运行时错误提示
     Presentation = None
 
@@ -137,7 +140,7 @@ def _shape_bbox(shape) -> tuple[float, float, float, float] | None:
     width = getattr(shape, "width", None)
     height = getattr(shape, "height", None)
     try:
-        if None in (left, top, width, height):
+        if left is None or top is None or width is None or height is None:
             return None
         x0 = float(left)
         y0 = float(top)
@@ -417,7 +420,7 @@ def _extract_presentation_pdf_ocr_text(
             exc,
             stage=_presentation_trace_stage(filename, "pdf_ocr"),
         ) from exc
-    metadata = {
+    metadata: dict[str, str | int | bool | None] = {
         "parser_name": f"{source_ext}_ocr",
         "used_ocr": True,
         "ocr_provider": result.provider,

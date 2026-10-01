@@ -15,6 +15,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
+from app.core.config import settings
 from app.core.security import Role
 from app.models.rag import Document, ImportBatch, ImportJob
 from app.models.user import User
@@ -38,12 +39,26 @@ from app.rag.import_jobs import (
     retry_import_job,
 )
 from app.rag.service import RAGService
+from app.rag.upload_limits import UploadLimitError, check_upload_limits, parse_allowed_extensions
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 _service = RAGService  # 仅作类型占位，实际每个请求新建实例以绑定会话
+
+
+def _enforce_upload_limit(filename: str, size: int) -> None:
+    """写盘前拒绝不合规文件。同一文件先看扩展名，再看字节长度。"""
+    try:
+        check_upload_limits(
+            filename,
+            size,
+            allowed_extensions=parse_allowed_extensions(settings.RAG_UPLOAD_ALLOWED_EXTENSIONS),
+            max_bytes=settings.RAG_UPLOAD_MAX_BYTES,
+        )
+    except UploadLimitError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 class IngestRequest(BaseModel):
@@ -291,8 +306,9 @@ async def upload_document(
 ) -> DocumentOut:
     """上传文档并按文件类型自动提取文本后摄取为知识文档。"""
     filename = file.filename or "未命名文档"
+    raw = await file.read()
+    _enforce_upload_limit(filename, len(raw))
     try:
-        raw = await file.read()
         storage_path = save_source_file(current_user.tenant_id, raw, filename)
     except OSError:
         logger.exception("保存源文件失败: filename=%s", filename)
@@ -363,17 +379,21 @@ async def create_upload_jobs(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="至少上传一个文件"
         )
+    prepared: list[tuple[str, bytes, str | None]] = []
+    for file in files:
+        filename = file.filename or "未命名文档"
+        raw = await file.read()
+        _enforce_upload_limit(filename, len(raw))
+        prepared.append((filename, raw, file.content_type))
     batch = create_import_batch(
         session,
         current_user,
-        total_jobs=len(files),
+        total_jobs=len(prepared),
         source_type="file",
     )
     jobs: list[ImportJob] = []
     try:
-        for file in files:
-            filename = file.filename or "未命名文档"
-            raw = await file.read()
+        for filename, raw, content_type in prepared:
             storage_path = save_source_file(current_user.tenant_id, raw, filename)
             jobs.append(
                 create_upload_import_job(
@@ -381,7 +401,7 @@ async def create_upload_jobs(
                     current_user,
                     storage_path=storage_path,
                     filename=filename,
-                    content_type=file.content_type,
+                    content_type=content_type,
                     batch_id=batch.id,
                 )
             )

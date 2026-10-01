@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import io
+from typing import Any
 
 from app.rag.document_parsers.base import (
     DocumentOcrRequiredError,
@@ -21,7 +22,9 @@ from app.rag.ocr.base import OcrProvider, OcrProviderError
 from app.rag.ocr.factory import get_ocr_provider
 
 try:
-    from pypdf import PdfReader
+    from pypdf import PdfReader as _PdfReader
+
+    PdfReader: Any = _PdfReader
 except ImportError:  # pragma: no cover - 依赖缺失时由运行时错误提示
     PdfReader = None
 

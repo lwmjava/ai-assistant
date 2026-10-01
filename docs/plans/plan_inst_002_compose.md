@@ -76,3 +76,23 @@ Postgres 的开发口令、初始管理员口令不在本任务范围。
 L1。回滚时恢复只有应用和 PostgreSQL 的编排，并恢复文档中的原启动命令。已写入外部 `.env` 的密钥留在本机，不提交、不回滚进仓库。
 
 Milvus 单容器的启动参数随镜像标签变化。实施时以所选标签的官方示例为准，避免凭记忆填写存储环境变量。
+
+## 验证结果（2026-09-29，EVD-002）
+
+`docker --version` 为 Docker 客户端 28.5.1。引擎管道 `dockerDesktopLinuxEngine` 不存在，`docker version` 连接引擎的退出码为 1。`docker compose config` 不连接引擎，三条配置检查不受影响。本次没有执行 `docker compose up`。
+
+三次都用 `docker compose --env-file` 指向系统临时目录中的 env 文件，代替项目目录里会被自动读入的 `.env`。临时文件只含当次探针值，跑完已删除。探针值不写入本文。占位口令检查的是字符串 `change-me-in-production-use-a-random-secret` 是否出现。
+
+缺少 `JWT_SECRET_KEY`（另一项为非空探针），退出码 1，输出不含该占位口令：
+
+```text
+error while interpolating services.app.environment.JWT_SECRET_KEY: required variable JWT_SECRET_KEY is missing a value: 必须配置随机 JWT_SECRET_KEY，不能使用仓库内占位口令
+```
+
+缺少 `LLM_API_KEY`（JWT 为非空探针，且不是占位口令），退出码 1，输出不含该占位口令：
+
+```text
+error while interpolating services.app.environment.LLM_API_KEY: required variable LLM_API_KEY is missing a value: 必须配置一个模型密钥
+```
+
+两项都设置为非空、且 JWT 不是占位口令时，`docker compose config` 退出码 0。输出不含该占位口令。服务含 `db`、`milvus`、`app`。应用的 `RAG_VECTOR_STORE` 为 `local`，`MILVUS_URI` 为 `http://milvus:19530`，`SERVE_FRONTEND` 为 `"true"`。这次配置成功只说明编排定义能展开。Milvus 五条门槛未在本次核对，默认向量库仍是 `local`。

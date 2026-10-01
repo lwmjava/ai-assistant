@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { hideStackTrace } from '@/lib/http'
 import { streamPost } from '@/lib/sse'
 import type { CodeResult, SourceRef, StreamEventType } from '@/types/api'
 import { getAccessToken } from '@/store/auth'
@@ -174,7 +175,7 @@ export function useChatStream() {
                 setSnapshot((prev) => ({ ...prev, tools: [...prev.tools, value] }))
                 break
               case 'error':
-                setSnapshot((prev) => ({ ...prev, error: value, streaming: false }))
+                setSnapshot((prev) => ({ ...prev, error: hideStackTrace(value), streaming: false }))
                 break
               case 'done':
                 // 以 token 累积为准：与后端落库口径一致（见文件头说明）

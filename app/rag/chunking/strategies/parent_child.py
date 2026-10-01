@@ -2,8 +2,33 @@
 
 from __future__ import annotations
 
+from dataclasses import fields
+from typing import Any
+
 from app.rag.chunking.base import Chunk, ChunkingStrategy, ChunkParams
 from app.rag.chunking.registry import ChunkingRegistry
+
+
+def _chunk_params_for_child(params: ChunkParams) -> ChunkParams:
+    """用父级尺寸作底，再用 child_params 覆盖已知字段。未知键失败。"""
+    overrides: dict[str, Any] = dict(params.child_params or {})
+    allowed = {item.name for item in fields(ChunkParams)}
+    unknown = sorted(str(key) for key in overrides if key not in allowed)
+    if unknown:
+        raise ValueError("未知的 ChunkParams 字段: " + ", ".join(unknown))
+    return ChunkParams(
+        chunk_size=overrides.get("chunk_size", params.chunk_size),
+        chunk_overlap=overrides.get("chunk_overlap", params.chunk_overlap),
+        window_size=overrides.get("window_size"),
+        step=overrides.get("step"),
+        max_tokens=overrides.get("max_tokens"),
+        overlap_tokens=overrides.get("overlap_tokens"),
+        similarity_threshold=overrides.get("similarity_threshold"),
+        parent_strategy=overrides.get("parent_strategy"),
+        parent_ratio=overrides.get("parent_ratio", 3),
+        child_strategy=overrides.get("child_strategy"),
+        child_params=overrides.get("child_params"),
+    )
 
 
 class ParentChildChunkingStrategy(ChunkingStrategy):
@@ -32,12 +57,7 @@ class ParentChildChunkingStrategy(ChunkingStrategy):
         ratio = params.parent_ratio or 3
 
         child_strategy = self._build_child(child_name)
-        child_merged = {
-            "chunk_size": params.chunk_size,
-            "chunk_overlap": params.chunk_overlap,
-        }
-        child_merged.update(params.child_params or {})
-        child_params = ChunkParams(**child_merged)
+        child_params = _chunk_params_for_child(params)
         children = await child_strategy.split(text, params=child_params)
 
         parent_size = max(1, params.chunk_size * ratio)

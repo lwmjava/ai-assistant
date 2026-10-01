@@ -100,9 +100,11 @@
 
 2026-12-25 的 80% = 上表 1–16 完成。2027-03-25 的 100% = 1–20 完成。
 
+清点见 `docs/plans/record_delivery_16.md`。2026-09-29 起第 1–16 项均已完成，80% 达到。第 17–20 项不计入 80%。这六项的处理计划见 `docs/plans/plan_delivery_16_evidence.md`（`EVD-001`～`EVD-004`）。
+
 ## 7. 风险
 
 - 阶段 A3 若超过 2026-10-23，从 B1 起整表后移，12 月 25 日的 80% 失效。
 - C5 把模型路由和沙箱挤在六个日历日里，是 80% 死线最可能失守的一段。
-- Milvus 正式目标已写入 ADR-0002；默认配置在第 5 节门槛通过前仍是 Local。C6 五条未过则向量库不算进 80%。
-- 本文件的阶段 A 已对应 `RAG-011`～`RAG-013`，均已完成。B1 已拆为 `INST-001`～`INST-003`，均已完成。B2 已拆为 `TEN-001`～`TEN-003`，均已完成。B3 的 `QA-001`～`QA-004`、C1 的 `AUTH-001`～`AUTH-004`、C2 的 `INV-001`～`INV-003`、C3 的 `ADM-001`～`ADM-004` 与 C4 的 `CHAT-001`～`CHAT-005` 已完成。B3 至 D4 其余任务已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`，尚未实现。
+- Milvus 正式目标已写入 ADR-0002。2026-09-29 五条核对通过后，清点表第 13 项计入 80%；默认配置仍是 Local，Milvus 不标成 `Implemented`。
+- 本文件的阶段 A 已对应 `RAG-011`～`RAG-013`，均已完成。B1 已拆为 `INST-001`～`INST-003`，均已完成。B2 已拆为 `TEN-001`～`TEN-003`，均已完成。B3 的 `QA-001`～`QA-004`、C1 的 `AUTH-001`～`AUTH-004`、C2 的 `INV-001`～`INV-003`、C3 的 `ADM-001`～`ADM-004`、C4 的 `CHAT-001`～`CHAT-005` 与 C5 的 `ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002` 已完成。C6 的 `SEC-001`、`SEC-002`、`SEC-003` 已完成。上传限制见 `docs/plans/implementation_sec_001.md`，日志脱敏见 `docs/plans/implementation_sec_002.md`，Milvus 五条核对见 `docs/plans/implementation_sec_003.md`。五条里摄取、重解析、删除和租户过滤未执行，门槛未通过，默认向量库仍是 local。`SEC-004` 已清点，见 `docs/plans/record_delivery_16.md`：第 1、2、3、4、13、15 项未完成，80% 未达到。B3 至 D4 其余任务已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`。

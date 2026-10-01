@@ -23,7 +23,10 @@ from app.channels.registry import registry
 from app.core.config import settings
 from app.core.database import engine, init_db
 from app.core.security import validate_jwt_secret
+from app.security.log_redaction import install_log_redaction
 from app.services.auth_service import ensure_initial_admin
+
+install_log_redaction()
 
 logger = logging.getLogger(__name__)
 

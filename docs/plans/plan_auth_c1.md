@@ -62,3 +62,15 @@
 - 运行中的 API `GET /api/auth/setup-status` 返回 `{"needs_setup":false}`。浏览器打开 `http://localhost:5173/register` 能看到注册表单；打开 `/setup` 后地址变为 `/chat`。已登录会话未退出，因此没有在页面上再走一遍空库向导。
 
 没做的事：邀请码、成员表、关闭自动加入、CLI、首次登录改密、停用用户、用户页上的撤销按钮。空库向导只在测试库验证，没有对当前开发库执行。访问令牌过期前不会因为撤销而立即失效。
+
+## README 首次运行（2026-09-29）
+
+单独 SQLite：`data/readme_walk.db`。没有使用 `data/ai_assistant.db` 或 `data/test_ai_assistant.db`。没有修改 `.env`。口令只记「已提交」。
+
+1. 填写环境。本机已有 `.env`，本次未改。启动进程内设置 `DATABASE_URL=sqlite:///./data/readme_walk.db`，并把 `INITIAL_ADMIN_USERNAME`、`INITIAL_ADMIN_PASSWORD` 设为空。Windows 不会把空环境变量传给子进程，所以这两项是在启动 Python 进程内部设置的，没有使用 README 里的 `--reload`。
+2. 启动。API 在 `http://127.0.0.1:8000`，控制台在 `http://127.0.0.1:5173`。`GET /api/health` 返回 `status` 为 `ok`，数据库与向量库都是 `ok`，向量库后端是 `local`，`checks.llm.mode` 为 `real`。启动前 `GET /api/auth/setup-status` 返回 `needs_setup` 为 true。
+3. 建立管理员。打开 `/setup`，页面标题是「初始化管理员」。用户名 `readme-admin`，口令已提交。提交后地址变为 `/chat`。随后 `needs_setup` 为 false。已登录时再打开 `/setup`，地址变为 `/chat`，向导已关闭。
+4. 注册。打开 `/register`，页面标题是「注册账号」，副标题是注册后成为默认租户的成员并进入对话。用户名 `readme-member`，口令已提交。提交后地址变为 `/chat`，顶栏用户是 `readme-member`。侧栏没有租户、用户、审计和系统状态。
+5. 发送第一条消息。在 `/chat` 输入「你好」并发送。页面出现该条用户消息，以及助手回复。回复末尾标着 `deepseek-chat`。健康检查的 `checks.llm.mode` 是 `real`，这次回复来自已配置的模型。
+
+页面上的 `/setup`、`/register`、`/chat` 与 README 写的路径和结果一致。没有改 README，也没有改页面。

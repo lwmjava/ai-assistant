@@ -246,7 +246,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 对话 | `DELETE` | `/api/chat/conversations/{id}` | 删除会话 |
 | 对话 | `GET` | `/api/chat/tools` | 可用工具列表 |
 | 知识库 | `POST` | `/api/rag/documents/ingest` | 文本摄取（自动分块嵌入） |
-| 知识库 | `POST` | `/api/rag/documents/upload` | 上传 txt/md/json/xml/csv/doc/xls/ppt/docx/xlsx/pptx/pdf 文件（扫描版 PDF 可配合 OCR） |
+| 知识库 | `POST` | `/api/rag/documents/upload` | 上传 txt/md/json/xml/csv/doc/xls/ppt/docx/xlsx/pptx/pdf 文件，默认单文件不超过 10MB（扫描版 PDF 可配合 OCR） |
 | 知识库 | `GET` | `/api/rag/documents` | 文档列表 |
 | 知识库 | `GET` | `/api/rag/documents/{id}` | 文档详情 |
 | 知识库 | `DELETE` | `/api/rag/documents/{id}` | 删除文档 |
@@ -279,6 +279,8 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
+
+`pip install -r requirements.txt` 会安装调度依赖 `croniter`。`pip install -e ".[workflow]"` 也会。`WORKFLOW_ENABLED` 默认是 `false`；打开后，进程启动时创建调度任务。到点是否执行尚未完成。
 
 至少改 `JWT_SECRET_KEY`。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。两项都空着时，不自动建管理员，改由下一步的 `/setup` 创建。
 
@@ -362,6 +364,8 @@ docker compose up -d --build
 | `RAG_CONTEXT_CHARS` | 注入管线的 RAG 字符预算 | `6000` |
 | `RAG_EFFECTIVE_DATE_FILTER` | ADR-0003 生效日期/预告检索 | `false` |
 | `RAG_VECTOR_STORE` | 向量库后端：`local` / `milvus` | `local` |
+| `RAG_UPLOAD_MAX_BYTES` | 知识库单文件上限（字节）。等于上限可以上传，超过返回 413 | `10485760`（10MB） |
+| `RAG_UPLOAD_ALLOWED_EXTENSIONS` | 允许的扩展名，逗号分隔、不带点 | `txt,md,json,xml,csv,doc,xls,ppt,docx,xlsx,pptx,pdf` |
 | `RAG_BACKEND` | 切分/检索策略：`native` / `langchain` / `llamaindex` | `native` |
 | `RAG_CHUNK_STRATEGY` | 文档切分策略（见下方「文档切分策略」） | `structured` |
 | `RAG_LANGCHAIN_SPLITTER` | LangChain 切分器（当前仅 `recursive`） | `recursive` |
@@ -471,7 +475,7 @@ RAG_OCR_TIMEOUT_SECONDS=60
 ## 开发
 
 ```bash
-# 安装开发依赖
+# 安装开发依赖（不含 croniter；调度依赖见快速开始，或 pip install -e ".[workflow]"）
 pip install -e ".[dev]"
 
 # 运行测试

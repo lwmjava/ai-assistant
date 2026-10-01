@@ -15,12 +15,12 @@ import logging
 import sys
 from pathlib import Path
 
-from alembic.config import Config
-from alembic.runtime.migration import MigrationContext
-from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
 from alembic import command
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,10 @@ def get_head_revision() -> str:
     """获取迁移链的最新版本号。"""
     cfg = _get_alembic_config()
     script = ScriptDirectory.from_config(cfg)
-    return script.get_current_head()
+    head = script.get_current_head()
+    if head is None:
+        raise RuntimeError("迁移链没有唯一 head")
+    return head
 
 
 def get_pending_migrations() -> list[str]:
@@ -341,7 +344,17 @@ def auto_migrate() -> bool:
     """
     if not settings.is_production:
         _stamp_legacy_unversioned_schema()
-    _stamp_if_schema_already_at_head()
+    try:
+        _stamp_if_schema_already_at_head()
+    except Exception as exc:
+        logger.error("数据库迁移失败：%s", exc)
+        if settings.is_production:
+            raise RuntimeError(
+                "生产环境数据库迁移失败，应用已拒绝启动。"
+                "请检查数据库连接与迁移脚本，或手动执行 alembic upgrade head。"
+            ) from exc
+        logger.warning("开发环境：迁移失败不阻塞启动，请手动运行 alembic upgrade head。")
+        return False
     pending = get_pending_migrations()
     if not pending:
         _ensure_rag_schema_columns()

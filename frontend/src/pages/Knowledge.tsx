@@ -14,7 +14,7 @@ import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
 import { createConfirmation, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
-import { ApiError, isSessionExpiredError } from '@/lib/http'
+import { ApiError, hideStackTrace, isSessionExpiredError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
@@ -304,18 +304,13 @@ export default function KnowledgePage() {
   )
 
   async function handleFile(file: File) {
-    const ext = file.name.split('.').pop()?.toLowerCase()
-    if (ext !== 'txt' && ext !== 'md') {
-      toast.error('不支持的文件类型', '后端仅支持 .txt 与 .md 的 UTF-8 文本文件')
-      return
-    }
     try {
       const doc = await upload.mutateAsync(file)
       const stateLabel = VERSION_LABELS[doc.version_state] ?? doc.version_state
       toast.success('上传成功', `《${doc.title}》${stateLabel}，${doc.chunk_count} 个分块`)
     } catch (err) {
       if (isSessionExpiredError(err)) return
-      toast.error('上传失败', err instanceof ApiError ? err.detail : undefined)
+      toast.error('上传失败', err instanceof ApiError ? hideStackTrace(err.detail) : undefined)
     } finally {
       if (fileRef.current) fileRef.current.value = ''
     }
@@ -390,14 +385,14 @@ export default function KnowledgePage() {
     <div className="space-y-5">
       <PageHeader
         title="知识库"
-        description="摄取文本或上传文档后，对话会按混合检索（向量 + BM25 + RRF 融合）命中相关内容。"
+        description="摄取文本或上传文档后，对话会按混合检索（向量 + BM25 + RRF 融合）命中相关内容。可上传 txt、md、json、xml、csv、doc、xls、ppt、docx、xlsx、pptx、pdf，单个文件不超过 10MB。"
         actions={
           canWrite ? (
             <>
               <input
                 ref={fileRef}
                 type="file"
-                accept=".txt,.md,text/plain,text/markdown"
+                accept=".txt,.md,.json,.xml,.csv,.doc,.xls,.ppt,.docx,.xlsx,.pptx,.pdf"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0]

@@ -126,4 +126,12 @@ mypy app/rag/access.py app/rag/service.py app/models/rag.py
 cd frontend; npm run typecheck
 ```
 
+### 验证结果（2026-09-29，EVD-001）
+
+命令文本与 RAG-012 第 8 节相同，只跑一次。当时输出与退出码见 `docs/plans/plan_rag_012_soft_delete.md` 第 8 节：pytest 退出码 1（3 failed, 66 passed），ruff 退出码 1，mypy 退出码 0，前端类型检查引用 RAG-011 同一次退出码 0 的运行。清点表第 3 行当时保持未完成。
+
+### 验证通过（2026-09-29，EVD-001 收口）
+
+命令文本与 RAG-012 第 8 节相同，只跑一次。输出与退出码与 `docs/plans/plan_rag_012_soft_delete.md`「验证通过」一节相同：pytest 退出码 0（69 passed, 1 warning in 64.93s），ruff 退出码 0（`All checks passed!`），mypy 退出码 0（`Success: no issues found in 3 source files`）。`cd frontend; npm run typecheck` 引用 RAG-011「验证通过」同一次退出码 0 的运行（`tsc --noEmit`，无输出），没有重跑。清点表第 3 行改为完成。
+
 未验证：真实 LLM、Milvus 闭环、生产库上的加列与确认表迁移、知识库页浏览器点击。前端以类型检查为证。浏览器走查留到改该页时再做。

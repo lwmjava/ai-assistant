@@ -15,7 +15,7 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, col, delete
 
 from app.audit.models import AuditAction, AuditLog
 from app.core.database import engine
@@ -148,8 +148,8 @@ class AuditLogger:
         cutoff = datetime.now(UTC) - timedelta(days=self._retention_days)
         try:
             with Session(engine) as session:
-                stmt = delete(AuditLog).where(AuditLog.created_at < cutoff)
-                result = session.exec(stmt)  # type: ignore[arg-type]
+                stmt = delete(AuditLog).where(col(AuditLog.created_at) < cutoff)
+                result = session.execute(stmt)
                 session.commit()
                 deleted = getattr(result, "rowcount", 0) or 0
                 if deleted > 0:

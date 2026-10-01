@@ -6,6 +6,7 @@
 """
 
 import io
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -485,6 +486,13 @@ def test_member_can_delete_own_document(member_client: TestClient) -> None:
     assert missing.status_code == 404
 
 
+def _stored_upload_files(tmp_path: Path) -> list[Path]:
+    root = tmp_path / "data" / "knowledge"
+    if not root.exists():
+        return []
+    return [path for path in root.rglob("*") if path.is_file()]
+
+
 def test_upload_rejects_non_text(
     client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -492,6 +500,36 @@ def test_upload_rejects_non_text(
     files = {"file": ("data.bin", io.BytesIO(b"\x00\x01\x02"), "application/octet-stream")}
     resp = client.post("/api/rag/documents/upload", files=files)
     assert resp.status_code == 400
+    assert "当前允许" in resp.json()["detail"]
+    assert _stored_upload_files(tmp_path) == []
+
+
+def test_upload_rejects_oversize_before_save(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_storage_root(monkeypatch, tmp_path)
+    monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", 4)
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("note.txt", io.BytesIO(b"hello"), "text/plain")},
+    )
+    assert resp.status_code == 413
+    assert "上限" in resp.json()["detail"]
+    assert _stored_upload_files(tmp_path) == []
+
+
+def test_upload_accepts_file_at_configured_size_limit(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_storage_root(monkeypatch, tmp_path)
+    raw = "不超过上限。".encode()
+    monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", len(raw))
+    resp = client.post(
+        "/api/rag/documents/upload",
+        files={"file": ("note.txt", io.BytesIO(raw), "text/plain")},
+    )
+    assert resp.status_code == 200
+    assert _stored_upload_files(tmp_path)
 
 
 def test_upload_accepts_supported_text_types(
@@ -832,7 +870,7 @@ async def test_hybrid_search_bm25_all_zero_preserves_dense_order(
 
     from app.rag.vectorstore.local import LocalVectorStore
 
-    tenant_id = "bm25-zero-tenant"
+    tenant_id = f"bm25-zero-{uuid.uuid4().hex}"
     # 插入顺序与余弦降序相反：最差 → 中等 → 最佳。
     _seed_hybrid_chunks(
         session,
@@ -878,7 +916,7 @@ async def test_hybrid_search_bm25_positive_keeps_rrf_and_skips_diag(
 
     from app.rag.vectorstore.local import LocalVectorStore, _rrf
 
-    tenant_id = "bm25-pos-tenant"
+    tenant_id = f"bm25-pos-{uuid.uuid4().hex}"
     # 插入：最差稠密且无词重合 → 中等稠密且词重合 → 最佳稠密无词重合。
     # 稀疏路会抬高「中等」块，融合结果与纯稠密不同。
     _seed_hybrid_chunks(
@@ -919,7 +957,7 @@ async def test_hybrid_search_bm25_all_zero_reason_empty_query_tokens(
 
     from app.rag.vectorstore.local import LocalVectorStore
 
-    tenant_id = "bm25-empty-q"
+    tenant_id = f"bm25-empty-q-{uuid.uuid4().hex}"
     doc_id = _seed_hybrid_chunks(
         session,
         tenant_id=tenant_id,
@@ -955,7 +993,7 @@ async def test_hybrid_search_bm25_all_zero_reason_empty_doc_tokens(
 
     from app.rag.vectorstore.local import LocalVectorStore
 
-    tenant_id = "bm25-empty-doc"
+    tenant_id = f"bm25-empty-doc-{uuid.uuid4().hex}"
     _seed_hybrid_chunks(
         session,
         tenant_id=tenant_id,

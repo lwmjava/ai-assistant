@@ -209,12 +209,14 @@ class TesseractOcrProvider(OcrProvider):
                             )
                         )
         except subprocess.TimeoutExpired as exc:
+            stdout = exc.stdout.decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else exc.stdout
+            stderr = exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
             raise OcrProviderError(
                 "OCR 执行失败，请检查服务器 OCR 环境或稍后重试",
                 error_code="ocr_tesseract_timeout",
                 command=" ".join(str(part) for part in (exc.cmd or [])),
-                stdout=exc.stdout,
-                stderr=exc.stderr,
+                stdout=stdout,
+                stderr=stderr,
             ) from exc
 
         text = "\n".join(part for part in texts if part).strip()

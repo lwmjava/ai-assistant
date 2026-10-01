@@ -20,7 +20,7 @@ import {
   useDeleteConversation,
 } from '@/api/chat'
 import { useChatStream } from '@/hooks/useChatStream'
-import { api, ApiError } from '@/lib/http'
+import { api, ApiError, hideStackTrace } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
 import type { ConversationDetail, ConversationOut, HealthInfo, MessageOut, SendMode } from '@/types/api'
@@ -154,7 +154,7 @@ export default function ChatPage() {
       lastSentRef.current = ''
     }
     setPending([])
-    toast.error('生成失败', snapshot.error)
+    toast.error('生成失败', hideStackTrace(snapshot.error))
     reset()
   }, [snapshot.error, snapshot.interrupted, snapshot.stoppedByUser, toast, reset])
 
@@ -252,7 +252,7 @@ export default function ChatPage() {
         lastSentRef.current = ''
       }
       setPending([])
-      toast.error('生成失败', err instanceof ApiError ? err.detail : undefined)
+      toast.error('生成失败', err instanceof ApiError ? hideStackTrace(err.detail) : undefined)
     } finally {
       onceAbortRef.current = null
       setAwaiting(false)

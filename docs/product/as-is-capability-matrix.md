@@ -32,7 +32,7 @@
 | Tool Registry（名称/描述/Schema/函数） | `Partial` | `app/agents/tools/` | 权限、风险、超时、审计、版本未齐 |
 | 独立 Tool Executor | `Planned` | 治理规范 §3 | — |
 | YAML Skill 加载 | `Partial` | `app/agents/skills/` | Preconditions/Escalation/Evaluation 未齐 |
-| Workflow 调度 | `Partial` | `app/workflow/`；`pyproject.toml` extra `workflow` | 未安装 `croniter` 时调度器不可运行；`tests/test_workflow.py::test_scheduler_runnable_and_start_stop` 在本环境失败 |
+| Workflow 调度 | `Partial` | `app/workflow/`；`requirements.txt` 的 `croniter`；`pyproject.toml` extra `workflow` | 开关打开且已安装 `croniter` 时，调度任务能创建和取消。到点触发仍没有执行记录 |
 
 ## 3. RAG
 
@@ -91,4 +91,4 @@
 | `cd frontend && npm run typecheck` / `npm run build` | 通过 | 2026-09-13；本轮未重跑 |
 | `git diff --check` | 以当次工作区为准 | 文档任务 |
 
-该 workflow 失败是环境缺少可选依赖，不是本次文档改动引入。不在本任务安装依赖或降低门禁。
+该行是 2026-09-13 的跑次：当时失败是环境缺少 `croniter`。此后 `requirements.txt` 已列入该依赖，启停用例在装有该包的环境通过。到点触发仍没有执行记录。工作流调度保持 `Partial`。

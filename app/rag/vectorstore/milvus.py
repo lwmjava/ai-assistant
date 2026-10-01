@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 
 import numpy as np
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
@@ -114,13 +114,15 @@ class MilvusVectorStore(VectorStore):
             indexed = set()
         if "embedding" in indexed:
             return
+        index_params: dict = {
+            "index_type": settings.MILVUS_INDEX_TYPE,
+            "metric_type": "COSINE",
+        }
+        if "IVF" in settings.MILVUS_INDEX_TYPE.upper():
+            index_params["params"] = {"nlist": 128}
         collection.create_index(
             field_name="embedding",
-            params={
-                "index_type": settings.MILVUS_INDEX_TYPE,
-                "metric_type": "COSINE",
-                "params": {"nlist": 128},
-            },
+            index_params=index_params,
         )
         logger.info("Milvus 集合 %s 已创建向量索引", settings.MILVUS_COLLECTION)
 
@@ -210,12 +212,12 @@ class MilvusVectorStore(VectorStore):
 
         stmt = (
             select(DocumentChunk)
-            .join(Document, Document.id == DocumentChunk.document_id)
+            .join(Document, col(Document.id) == col(DocumentChunk.document_id))
             .where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
         )
-        stmt = stmt.where(Document.deleted_at.is_(None))
+        stmt = stmt.where(col(Document.deleted_at).is_(None))
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
-            stmt = stmt.where(Document.is_current.is_(True))
+            stmt = stmt.where(col(Document.is_current).is_(True))
         rows = self.session.exec(stmt).all()
         rows, version_by_chunk = visible_chunks_with_status(
             self.session, rows, as_of, schedule_at

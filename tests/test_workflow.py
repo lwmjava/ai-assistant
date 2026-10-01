@@ -262,17 +262,19 @@ def test_disabled_returns_503(client: TestClient) -> None:
 
 # ── 调度器 ──────────────────────────────────
 @pytest.mark.asyncio
-async def test_scheduler_runnable_and_start_stop():
-    settings.WORKFLOW_ENABLED = True
-    assert _is_scheduler_runnable() is True
+async def test_scheduler_runnable_and_start_stop(monkeypatch):
+    monkeypatch.setattr(settings, "WORKFLOW_ENABLED", True)
+    try:
+        assert _is_scheduler_runnable() is True
 
-    await start_scheduler()
-    from app.workflow.scheduler import _task
+        await start_scheduler()
+        from app.workflow.scheduler import _task
 
-    assert _task is not None and not _task.done()
+        assert _task is not None and not _task.done()
 
-    await stop_scheduler()
-    from app.workflow.scheduler import _task as t2
+        await stop_scheduler()
+        from app.workflow.scheduler import _task as t2
 
-    assert t2 is None or t2.done()
-    settings.WORKFLOW_ENABLED = False
+        assert t2 is None or t2.done()
+    finally:
+        await stop_scheduler()

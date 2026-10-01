@@ -16,11 +16,12 @@
 | FastAPI 后端 | `Implemented` | `pyproject.toml`；`app/main.py` | — |
 | React + TypeScript + Vite 控制台 | `Implemented` | `frontend/package.json`；2026-09-13 `npm run typecheck` / `npm run build` 通过 | — |
 | JWT + RBAC + 多租户 | `Partial` | `app/models/membership.py`；`app/api/routes/invitations.py`；`frontend/src/pages/Invitations.tsx` | 已注册用户可凭邀请码加入其他租户，并在已加入时切换当前租户。成员角色尚未接入整份权限矩阵。资源级 ACL 仍 `Planned` |
-| 管理后台用户/租户/系统状态 | `Partial` | `app/api/routes/admin_users.py`；`app/api/routes/admin_tenants.py`；`app/api/routes/admin_system.py`；`frontend/src/pages/Users.tsx` | 系统管理员可列出用户并改角色、停用，可改租户名并停用，可看数据库与向量库是否连通。不重新启用。无在线人数或调用量 |
+| 管理后台用户/租户/系统状态 | `Partial` | `app/api/routes/admin_users.py`；`app/api/routes/admin_tenants.py`；`app/api/routes/admin_system.py`；`frontend/src/pages/Users.tsx`；`frontend/src/pages/Tenants.tsx` | 系统管理员可筛选、分页列出用户和租户，从新增页创建，在行末查看详情、修改、停用或重新启用。可看数据库与向量库是否连通。无在线人数或调用量 |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
 | 命令行迁移与创建系统管理员 | `Implemented` | `app/cli.py`；`pyproject.toml` 的 `ai-assistant` 脚本；`tests/test_cli.py` | 空库可迁移到当前版本，并创建可登录的系统管理员。已有系统管理员、密码短于 8 位或两次重叠创建时拒绝，日志不含密码。没有 start、stop、logs。环境变量引导和 `/setup` 仍可用。管理接口仍可创建多名系统管理员。PostgreSQL 未在本能力中演练 |
-| 租户消息条数与源文件配额 | `Implemented` | `app/services/quota.py`；`app/api/routes/admin_tenants.py`；`tests/test_quota.py` | 系统管理员可设置可空上限。空值不限制，0 表示不能再新增。超限的对话和源文件写入返回 429，且不留下新的用户消息或新文件。软删除不恢复源文件额度。同一 SQLite 上的并发写入不超过上限。不计费，不按月重置，不改租户页，纯文本摄取不设闸。多副本锁未做。 |
+| 租户消息条数与源文件配额 | `Implemented` | `app/services/quota.py`；`app/api/routes/admin_tenants.py`；`tests/test_quota.py`；`frontend/src/pages/Tenants.tsx` | 系统管理员可在租户列表的配额弹窗设置可空上限。空值不限制，0 表示不能再新增。超限的对话和源文件写入返回 429，且不留下新的用户消息或新文件。软删除不恢复源文件额度。同一 SQLite 上的并发写入不超过上限。页面不展示已用量。不计费，不按月重置，纯文本摄取不设闸。多副本锁未做。 |
+| 导出租户对话 | `Implemented` | `app/services/export_service.py`；`app/api/routes/export.py`；`tests/test_export_conversations.py` | 当前租户成员关系上的租户管理员可 POST 下载本租户对话原文 JSON。其他角色，以及切到另一租户后只是成员的人，得到 403。审计 `export_requested` 写入成功后才开始返回文件。超过 5000 条或 32 MiB 返回 413，不返回半份文件。不做训练格式、筛选、脱敏或导出页面。 |
 
 ## 2. Agent 编排
 

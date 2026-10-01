@@ -12,9 +12,11 @@ from app.services.admin_users import (
     AdminUserNotFoundError,
     CannotChangeSelfError,
     CannotDisableSelfError,
+    UserAlreadyActiveError,
     UserAlreadyInactiveError,
     change_role,
     disable_user,
+    enable_user,
     list_users,
 )
 
@@ -38,11 +40,13 @@ def list_users_route(
     username: str | None = Query(default=None),
     role: Role | None = Query(default=None),
     is_active: bool | None = Query(default=None),
+    tenant_id: str | None = Query(default=None),
     session: Session = Depends(get_db),
     _: User = Depends(_require_system_admin),
 ) -> UserPage:
     """分页列出用户，含已停用。"""
     needle = username.strip() if username else None
+    tenant_needle = tenant_id.strip() if tenant_id else None
     rows, total = list_users(
         session,
         page=page,
@@ -50,6 +54,7 @@ def list_users_route(
         username=needle or None,
         role=role.value if role else None,
         is_active=is_active,
+        tenant_id=tenant_needle or None,
     )
     items = [
         UserAdminOut(
@@ -122,6 +127,40 @@ async def disable_user_route(
     await audit_event(
         request,
         AuditAction.USER_DISABLE,
+        user=current_user,
+        resource_type="user",
+        resource_id=user.id,
+        details={"username": user.username},
+    )
+    tenant_name = user.tenant.name if user.tenant is not None else ""
+    return UserAdminOut(
+        id=user.id,
+        tenant_id=user.tenant_id,
+        tenant_name=tenant_name,
+        username=user.username,
+        email=user.email,
+        role=Role(user.role),
+        is_active=user.is_active,
+    )
+
+
+@router.post("/{user_id}/enable", response_model=UserAdminOut)
+async def enable_user_route(
+    user_id: str,
+    request: Request,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(_require_system_admin),
+) -> UserAdminOut:
+    """重新启用用户。旧令牌仍然无效，需要重新登录。"""
+    try:
+        user = enable_user(session, user_id=user_id)
+    except AdminUserNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    except UserAlreadyActiveError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户已启用")
+    await audit_event(
+        request,
+        AuditAction.USER_ENABLE,
         user=current_user,
         resource_type="user",
         resource_id=user.id,

@@ -21,7 +21,9 @@ const WorkflowsPage = lazy(() => import('@/pages/Workflows'))
 const SkillsPage = lazy(() => import('@/pages/Skills'))
 const AuditPage = lazy(() => import('@/pages/Audit'))
 const TenantsPage = lazy(() => import('@/pages/Tenants'))
+const TenantCreatePage = lazy(() => import('@/pages/TenantCreate'))
 const UsersPage = lazy(() => import('@/pages/Users'))
+const UserCreatePage = lazy(() => import('@/pages/UserCreate'))
 const StatusPage = lazy(() => import('@/pages/Status'))
 const InvitationsPage = lazy(() => import('@/pages/Invitations'))
 
@@ -220,10 +222,26 @@ export default function App() {
           }
         />
         <Route
+          path="/tenants/new"
+          element={
+            <Lazy>
+              <TenantCreatePage />
+            </Lazy>
+          }
+        />
+        <Route
           path="/tenants"
           element={
             <Lazy>
               <TenantsPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="/users/new"
+          element={
+            <Lazy>
+              <UserCreatePage />
             </Lazy>
           }
         />

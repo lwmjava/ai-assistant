@@ -26,6 +26,10 @@ class UserAlreadyInactiveError(Exception):
     """用户已经停用。"""
 
 
+class UserAlreadyActiveError(Exception):
+    """用户已经启用。"""
+
+
 def list_users(
     session: Session,
     *,
@@ -34,6 +38,7 @@ def list_users(
     username: str | None = None,
     role: str | None = None,
     is_active: bool | None = None,
+    tenant_id: str | None = None,
 ) -> tuple[list[tuple[User, str]], int]:
     """按用户名排序分页。返回用户、租户名称和总数。"""
     filters = []
@@ -43,6 +48,8 @@ def list_users(
         filters.append(User.role == role)
     if is_active is not None:
         filters.append(User.is_active.is_(is_active))
+    if tenant_id:
+        filters.append(User.tenant_id == tenant_id)
 
     count_stmt = select(func.count()).select_from(User)
     if filters:
@@ -86,6 +93,20 @@ def disable_user(session: Session, *, actor_id: str, user_id: str) -> User:
         raise UserAlreadyInactiveError(user_id)
     user.is_active = False
     user.token_version += 1
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def enable_user(session: Session, *, user_id: str) -> User:
+    """重新启用用户。不恢复停用时作废的令牌，需要重新登录。"""
+    user = session.get(User, user_id)
+    if user is None:
+        raise AdminUserNotFoundError(user_id)
+    if user.is_active:
+        raise UserAlreadyActiveError(user_id)
+    user.is_active = True
     session.add(user)
     session.commit()
     session.refresh(user)

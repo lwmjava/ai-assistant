@@ -17,10 +17,12 @@ from app.schemas.tenant import MemberCreate, TenantCreate, TenantOut
 from app.services.quota import QuotaAuditError, QuotaNotFoundError, update_tenant_quota
 from app.services.tenant_admin import (
     EmailTakenError,
+    TenantAlreadyActiveError,
     TenantInactiveError,
     TenantNameTakenError,
     TenantNotFoundError,
     UsernameTakenError,
+    activate_tenant,
     create_member,
     create_tenant,
     deactivate_tenant,
@@ -169,6 +171,33 @@ async def deactivate_tenant_route(
     await audit_event(
         request,
         AuditAction.TENANT_DEACTIVATE,
+        user=current_user,
+        resource_type="tenant",
+        resource_id=tenant.id,
+        details={"name": tenant.name},
+    )
+    return TenantOut.model_validate(tenant)
+
+
+@router.post("/{tenant_id}/activate", response_model=TenantOut)
+async def activate_tenant_route(
+    tenant_id: str,
+    request: Request,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(_require_system_admin),
+) -> TenantOut:
+    """重新启用租户。同名未停用租户已存在时不改状态。"""
+    try:
+        tenant = activate_tenant(session, tenant_id)
+    except TenantNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    except TenantAlreadyActiveError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户已启用")
+    except TenantNameTakenError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户名称已存在")
+    await audit_event(
+        request,
+        AuditAction.TENANT_ACTIVATE,
         user=current_user,
         resource_type="tenant",
         resource_id=tenant.id,

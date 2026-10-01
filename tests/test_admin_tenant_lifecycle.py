@@ -130,3 +130,46 @@ def test_deactivate_blocks_member_and_stays_visible_to_admin() -> None:
         json={"name": "Renamed"},
     )
     assert again.status_code == 409
+
+
+def test_activate_rejects_duplicate_name_then_restores_login() -> None:
+    client = _client()
+    headers = _admin(client)
+    created = client.post("/api/admin/tenants", headers=headers, json={"name": "Acme"})
+    tenant_id = created.json()["id"]
+    member = client.post(
+        f"/api/admin/tenants/{tenant_id}/users",
+        headers=headers,
+        json={"username": "ada", "password": PASSWORD},
+    )
+    assert member.status_code == 201
+    login = client.post("/api/auth/login", json={"username": "ada", "password": PASSWORD})
+    refresh = login.json()["refresh_token"]
+
+    stopped = client.post(f"/api/admin/tenants/{tenant_id}/deactivate", headers=headers)
+    assert stopped.status_code == 200
+    duplicate = client.post("/api/admin/tenants", headers=headers, json={"name": "Acme"})
+    assert duplicate.status_code == 201
+
+    clash = client.post(f"/api/admin/tenants/{tenant_id}/activate", headers=headers)
+    assert clash.status_code == 409
+    assert clash.json()["detail"] == "租户名称已存在"
+    still = client.get("/api/admin/tenants?include_inactive=true", headers=headers)
+    row = next(item for item in still.json() if item["id"] == tenant_id)
+    assert row["is_active"] is False
+
+    parked = client.post(
+        f"/api/admin/tenants/{duplicate.json()['id']}/deactivate",
+        headers=headers,
+    )
+    assert parked.status_code == 200
+    restored = client.post(f"/api/admin/tenants/{tenant_id}/activate", headers=headers)
+    assert restored.status_code == 200
+    assert restored.json()["is_active"] is True
+    again = client.post(f"/api/admin/tenants/{tenant_id}/activate", headers=headers)
+    assert again.status_code == 409
+
+    stale = client.post("/api/auth/refresh", json={"refresh_token": refresh})
+    assert stale.status_code == 401
+    fresh = client.post("/api/auth/login", json={"username": "ada", "password": PASSWORD})
+    assert fresh.status_code == 200

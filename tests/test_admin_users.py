@@ -137,3 +137,40 @@ def test_disable_rejects_self_and_blocks_old_tokens() -> None:
 
     again = client.post(f"/api/admin/users/{user_id}/disable", headers=headers)
     assert again.status_code == 409
+
+
+def test_enable_requires_new_login_and_filters_by_tenant() -> None:
+    client = _client()
+    headers, _ = _admin(client)
+    user_id, member_headers, refresh = _member(client, headers)
+    listed = client.get("/api/admin/users", headers=headers)
+    ada = next(item for item in listed.json()["items"] if item["id"] == user_id)
+    tenant_id = ada["tenant_id"]
+
+    denied = client.post(f"/api/admin/users/{user_id}/enable", headers=member_headers)
+    assert denied.status_code == 403
+
+    disabled = client.post(f"/api/admin/users/{user_id}/disable", headers=headers)
+    assert disabled.status_code == 200
+    enabled = client.post(f"/api/admin/users/{user_id}/enable", headers=headers)
+    assert enabled.status_code == 200
+    assert enabled.json()["is_active"] is True
+    repeat = client.post(f"/api/admin/users/{user_id}/enable", headers=headers)
+    assert repeat.status_code == 409
+
+    assert client.post("/api/auth/refresh", json={"refresh_token": refresh}).status_code == 401
+    fresh = client.post("/api/auth/login", json={"username": "ada", "password": PASSWORD})
+    assert fresh.status_code == 200
+
+    other = client.post("/api/admin/tenants", headers=headers, json={"name": "Other"})
+    assert other.status_code == 201
+    scoped = client.get(f"/api/admin/users?tenant_id={tenant_id}", headers=headers)
+    assert scoped.status_code == 200
+    assert scoped.json()["total"] >= 1
+    assert all(item["tenant_id"] == tenant_id for item in scoped.json()["items"])
+
+    with Session(engine) as session:
+        log = session.exec(
+            select(AuditLog).where(AuditLog.action == AuditAction.USER_ENABLE.value)
+        ).one()
+        assert user_id in (log.details or "") or log.resource_id == user_id

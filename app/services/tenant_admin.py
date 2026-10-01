@@ -27,6 +27,10 @@ class TenantInactiveError(Exception):
     """租户已停用。"""
 
 
+class TenantAlreadyActiveError(Exception):
+    """租户已启用。"""
+
+
 def create_tenant(session: Session, *, name: str) -> Tenant:
     """创建未停用租户。同名且仍启用的租户已存在时拒绝。"""
     existing = session.exec(
@@ -121,6 +125,29 @@ def deactivate_tenant(session: Session, tenant_id: str) -> Tenant:
     for user in users:
         user.token_version += 1
         session.add(user)
+    session.commit()
+    session.refresh(tenant)
+    return tenant
+
+
+def activate_tenant(session: Session, tenant_id: str) -> Tenant:
+    """重新启用已停用租户。与其他未停用租户重名时拒绝，不恢复已作废的令牌。"""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        raise TenantNotFoundError(tenant_id)
+    if tenant.is_active:
+        raise TenantAlreadyActiveError(tenant_id)
+    taken = session.exec(
+        select(Tenant).where(
+            Tenant.name == tenant.name,
+            Tenant.is_active.is_(True),
+            Tenant.id != tenant.id,
+        )
+    ).first()
+    if taken is not None:
+        raise TenantNameTakenError(tenant.name)
+    tenant.is_active = True
+    session.add(tenant)
     session.commit()
     session.refresh(tenant)
     return tenant

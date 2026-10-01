@@ -31,7 +31,7 @@
 | 独立 Agent Harness / Context Builder / State Manager | `Planned` | `docs/governance/agent-harness-engineering.md` | RAG-005 基线已冻结；仍禁止无指标大爆炸重构 |
 | Tool Registry（名称/描述/Schema/函数） | `Partial` | `app/agents/tools/` | 权限、风险、超时、审计、版本未齐 |
 | 独立 Tool Executor | `Planned` | 治理规范 §3 | — |
-| YAML Skill 加载 | `Partial` | `app/agents/skills/` | Preconditions/Escalation/Evaluation 未齐 |
+| YAML Skill 加载 | `Partial` | `app/agents/skills/`、`app/services/skill_service.py` | 成员可创建私有关键词技能并在对话中选用；系统管理员可跨租户管理并新增系统全局技能；工具、检索和升级由服务端固定；版本史和技能市场仍未做 |
 | Workflow 调度 | `Partial` | `app/workflow/`；`requirements.txt` 的 `croniter`；`pyproject.toml` extra `workflow` | 开关打开且已安装 `croniter` 时，调度任务能创建和取消。到点触发仍没有执行记录 |
 
 ## 3. RAG

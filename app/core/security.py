@@ -198,6 +198,21 @@ ROLE_PERMISSIONS: dict[str, dict[str, list[str]]] = {
         "write": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value],
         "delete": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value],
     },
+    "skills": {
+        "read": [
+            Role.SYSTEM_ADMIN.value,
+            Role.SYSTEM_VIEWER.value,
+            Role.TENANT_ADMIN.value,
+            Role.MEMBER.value,
+            Role.VIEWER.value,
+        ],
+        "write": [
+            Role.SYSTEM_ADMIN.value,
+            Role.TENANT_ADMIN.value,
+            Role.MEMBER.value,
+        ],
+        "delete": [Role.SYSTEM_ADMIN.value, Role.MEMBER.value],
+    },
     "workflows": {
         "read": [
             Role.SYSTEM_ADMIN.value,

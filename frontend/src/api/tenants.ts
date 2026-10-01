@@ -16,13 +16,14 @@ export const tenantKeys = {
   list: () => [...tenantKeys.all, 'list'] as const,
 }
 
-export function useTenants(includeInactive = false) {
+export function useTenants(includeInactive = false, enabled = true) {
   return useQuery({
     queryKey: [...tenantKeys.list(), includeInactive],
     queryFn: () =>
       api.get<TenantOut[]>(
         includeInactive ? '/admin/tenants?include_inactive=true' : '/admin/tenants',
       ),
+    enabled,
   })
 }
 

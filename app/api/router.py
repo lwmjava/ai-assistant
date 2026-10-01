@@ -13,6 +13,7 @@ from app.api.routes import (
     invitations,
     mcp,
     rag,
+    skills,
     workflow,
 )
 
@@ -22,6 +23,7 @@ api_router.include_router(auth.router)
 api_router.include_router(chat.router)
 api_router.include_router(rag.router)
 api_router.include_router(mcp.router)
+api_router.include_router(skills.router)
 api_router.include_router(workflow.router)
 api_router.include_router(audit.router)
 api_router.include_router(admin_tenants.router)

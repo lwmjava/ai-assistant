@@ -155,7 +155,7 @@ def _stamp_legacy_unversioned_schema() -> None:
 
 
 def _ensure_message_columns() -> None:
-    """历史库被直接标到 head 时，补上消息来源列和停止状态列。"""
+    """历史库被直接标到 head 时，补上消息来源列、停止状态列和技能名列。"""
     from app.core.database import engine
 
     with engine.begin() as conn:
@@ -176,6 +176,9 @@ def _ensure_message_columns() -> None:
         if "code_results" not in columns:
             logger.warning("补齐缺失的代码结果列")
             conn.execute(text("ALTER TABLE messages ADD COLUMN code_results VARCHAR"))
+        if "skill_names" not in columns:
+            logger.warning("补齐缺失的消息技能名列")
+            conn.execute(text("ALTER TABLE messages ADD COLUMN skill_names TEXT"))
 
 
 def _ensure_rag_schema_columns() -> None:

@@ -61,6 +61,7 @@ class ChatResponse(BaseModel):
     model: str | None = None
     sources: list[SourceOut] = []
     code_results: list[CodeResultOut] = []
+    skill_names: list[str] = []
 
 
 class ConversationOut(BaseModel):
@@ -84,6 +85,7 @@ class MessageOut(BaseModel):
     created_at: str
     sources: list[SourceOut] = []
     code_results: list[CodeResultOut] = []
+    skill_names: list[str] = []
     # complete：正常写完。stopped：生成已停下，正文不是完整回复。
     status: str = "complete"
 
@@ -150,6 +152,27 @@ def _latest_assistant_code_results(conv: Conversation) -> list[CodeResultOut]:
     return _parse_code_results(latest.code_results)
 
 
+def _parse_skill_names(raw: str | None) -> list[str]:
+    """NULL、空串和空数组都读成空列表。"""
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed if isinstance(item, str)]
+
+
+def _latest_assistant_skill_names(conv: Conversation) -> list[str]:
+    assistants = [message for message in conv.messages if message.role == "assistant"]
+    if not assistants:
+        return []
+    latest = max(assistants, key=lambda message: message.created_at)
+    return _parse_skill_names(latest.skill_names)
+
+
 def _latest_assistant_sources(conv: Conversation) -> list[SourceOut]:
     assistants = [message for message in conv.messages if message.role == "assistant"]
     if not assistants:
@@ -179,6 +202,7 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
             created_at=m.created_at.isoformat(),
             sources=_parse_sources(m.sources),
             code_results=_parse_code_results(m.code_results),
+            skill_names=_parse_skill_names(m.skill_names),
             status=m.status or "complete",
         )
         for m in sorted(conv.messages, key=lambda x: x.created_at)
@@ -212,6 +236,7 @@ async def chat(
         model=getattr(_service.llm, "model", None),
         sources=_latest_assistant_sources(conv),
         code_results=_latest_assistant_code_results(conv),
+        skill_names=_latest_assistant_skill_names(conv),
     )
 
 

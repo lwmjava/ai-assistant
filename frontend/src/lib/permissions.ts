@@ -46,6 +46,11 @@ const ROLE_PERMISSIONS: Record<string, Partial<Record<Action, Role[]>>> = {
     write: ['system_admin', 'tenant_admin', 'member'],
     delete: ['system_admin', 'tenant_admin'],
   },
+  skills: {
+    read: ['system_admin', 'system_viewer', 'tenant_admin', 'member', 'viewer'],
+    write: ['system_admin', 'tenant_admin', 'member'],
+    delete: ['system_admin', 'member'],
+  },
 }
 
 /** 判断角色是否具备某资源的某操作权限。 */

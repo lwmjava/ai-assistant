@@ -44,6 +44,7 @@ def init_db(*, auto_migrate: bool = True) -> None:
     from app.models import (
         conversation,  # noqa: F401
         rag,  # noqa: F401
+        skill,  # noqa: F401
         user,  # noqa: F401
         workflow,  # noqa: F401
     )

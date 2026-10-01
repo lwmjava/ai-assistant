@@ -28,6 +28,20 @@ from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.rag.service import RAGService, sources_from_hits
 
+
+def _skill_name_list(ctx: SkillContext | None) -> list[str]:
+    """把激活上下文里的技能名收成列表。未命中时为空。"""
+    if ctx is None or not ctx.skill_name:
+        return []
+    return [part.strip() for part in ctx.skill_name.split(",") if part.strip()]
+
+
+def _skill_names_payload(names: list[str] | None) -> str | None:
+    """未选用时不写 JSON，读路径把空值当成空列表。"""
+    if not names:
+        return None
+    return json.dumps(names, ensure_ascii=False)
+
 logger = logging.getLogger(__name__)
 
 # 送入管线的历史轮次上限，避免上下文过长。
@@ -255,7 +269,7 @@ class ChatService:
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
         # 4. 技能匹配与激活
-        skill_ctx = self._match_skills(message)
+        skill_ctx = self._match_skills(session, user, message)
         # 5. 调试追踪
         trace = self._create_trace()
         # 6. 按配置构造编排器
@@ -278,6 +292,7 @@ class ChatService:
             sources,
             status="complete",
             code_results=result.code_results,
+            skill_names=_skill_name_list(skill_ctx),
         )
         session.refresh(conv)
         session.expire(conv, ["messages"])
@@ -303,7 +318,7 @@ class ChatService:
             state.context = memory.memory_context
 
         # 技能匹配与激活
-        skill_ctx = self._match_skills(message)
+        skill_ctx = self._match_skills(session, user, message)
 
         retriever = self._build_retriever(session, user)
         pipeline = self._build_pipeline(
@@ -337,6 +352,7 @@ class ChatService:
                         sources,
                         status="complete",
                         code_results=state.code_results,
+                        skill_names=_skill_name_list(skill_ctx),
                     )
                     assistant_saved = True
                     session.refresh(conv)
@@ -365,6 +381,7 @@ class ChatService:
                     sources,
                     status="stopped",
                     code_results=state.code_results,
+                    skill_names=_skill_name_list(skill_ctx),
                 )
 
     # ── 内部辅助 ──────────────────────────────────
@@ -398,6 +415,7 @@ class ChatService:
         sources: list[dict] | None = None,
         status: str = "complete",
         code_results: list[dict] | None = None,
+        skill_names: list[str] | None = None,
     ) -> None:
         payload = json.dumps(sources, ensure_ascii=False) if sources else None
         code_payload = json.dumps(code_results, ensure_ascii=False) if code_results else None
@@ -410,6 +428,7 @@ class ChatService:
                 sources=payload,
                 status=status,
                 code_results=code_payload,
+                skill_names=_skill_names_payload(skill_names),
             )
         )
         session.commit()
@@ -422,6 +441,7 @@ class ChatService:
         sources: list[dict] | None,
         status: str,
         code_results: list[dict] | None = None,
+        skill_names: list[str] | None = None,
     ) -> None:
         """在独立会话里写入助手消息。用于生成器被关闭、原请求会话已不可用时。"""
         from app.core.database import engine
@@ -438,6 +458,7 @@ class ChatService:
                     sources=payload,
                     status=status,
                     code_results=code_payload,
+                    skill_names=_skill_names_payload(skill_names),
                 )
             )
             extra.commit()
@@ -453,22 +474,26 @@ class ChatService:
 
     # ── 技能系统 ──────────────────────────────────
 
-    @staticmethod
-    def _match_skills(message: str) -> SkillContext | None:
-        """匹配用户输入到技能，返回激活上下文。
-
-        SKELETON：当前仅做关键词匹配；可按需扩展 LLM 语义匹配。
-        """
+    def _match_skills(self, session: Session, user: User, message: str) -> SkillContext | None:
+        """在内置、系统全局和该用户自己的私有技能里最多选用一条。"""
         if not settings.SKILL_ENABLED:
             return None
         try:
-            from app.agents.skills import get_skill_manager
+            from app.agents.skills.manager import SkillManager
+            from app.services.skill_service import fence_untrusted_skill, manifests_for_chat
 
-            mgr = get_skill_manager()
-            matches = mgr.match(message)
+            mgr = SkillManager()
+            for manifest in manifests_for_chat(session, user):
+                mgr.register(manifest)
+            matches = mgr.match(message, max_results=1)
             if not matches:
                 return None
-            return mgr.activate(matches)
+            ctx = mgr.activate(matches)
+            chosen = matches[0].skill
+            ctx.origin = chosen.origin
+            if chosen.origin != "builtin" and ctx.prompt_injection:
+                ctx.prompt_injection = fence_untrusted_skill(ctx.prompt_injection, chosen.origin)
+            return ctx
         except Exception:  # noqa: BLE001 — 技能匹配失败不应影响对话
             logger.exception("技能匹配失败")
             return None

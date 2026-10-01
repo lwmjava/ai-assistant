@@ -3431,7 +3431,7 @@ tasks:
 
   - id: "SKILL-001"
     title: "创建技能并在对话中选用（交付 D2）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-02-05"
     depends_on:
@@ -3439,14 +3439,29 @@ tasks:
     context:
       problem: "用户不能创建技能，对话也不会按条件选用。"
       facts:
-        - claim: "可以从 YAML 注册技能。选用条件不完整。"
+        - claim: "可以从 YAML 注册技能。选用不区分创建者，响应和消息也不留下技能名。"
           evidence: "app/agents/skills/manager.py"
+        - claim: "流式取消走另一条助手消息写入，只改正常落库会丢掉技能名。"
+          evidence: "app/services/chat_service.py"
+        - claim: "实施边界见计划：私有技能只对创建者生效，系统管理员可跨租户管理并新增系统全局技能，列表不返回正文。"
+          evidence: "docs/plans/plan_d2.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d2.md"
+        - "docs/plans/implementation_skill_001.md"
+        - "docs/adr/"
+        - "docs/reviews/2026-10-01-plan_d2评审.md"
+        - "docs/product/as-is-capability-matrix.md"
         - "app/agents/skills/"
         - "app/api/routes/"
         - "app/services/"
+        - "app/models/"
+        - "app/core/database.py"
+        - "app/core/security.py"
+        - "app/audit/models.py"
+        - "alembic/env.py"
+        - "alembic/versions/"
         - "tests/"
         - "tasks.yaml"
         - "AGENTS.md"
@@ -3456,25 +3471,43 @@ tasks:
         - "生产密钥"
         - ".env"
       deliverables:
-        - "成员可创建本租户技能"
-        - "符合条件时对话选用并留下技能名"
-        - "看不到其他租户技能"
+        - "成员可创建只对自己对话生效的私有技能"
+        - "系统管理员可列出全部用户和租户的技能，并修改、启用、停用、删除"
+        - "系统管理员可新增对所有人生效的系统全局技能"
+        - "符合条件时选用，并在完成和已停止的助手消息上留下技能名"
+        - "他人的私有技能看不到，也不会选中"
+        - "列表和创建响应不返回技能正文，详情接口返回正文"
+        - "同名并发冲突返回 409"
+        - "创建、修改、启用、停用和删除写入审计，详情不含提示词正文"
       non_goals:
-        - "不做技能市场"
+        - "不做技能市场页面、定价、安装和审批"
+        - "私有技能不对其他成员生效"
         - "技能不直接访问数据库"
+        - "不接工具模式"
     acceptance:
       - "符合条件时选用"
-      - "其他租户不可见"
-      - "不符合条件时不选用"
+      - "他人的私有技能不可见"
+      - "已启用的系统全局技能可被其他用户选用"
+      - "系统管理员可按租户列出并修改、启用、停用、删除"
+      - "不符合条件、已停用或注入检测拒绝时不选用"
+      - "重复停用返回 200 且不重复记审计"
+      - "审计含操作者、租户和资源 ID，详情不含正文"
     risk:
       level: "L1"
       side_effect: "skill-create-select"
-      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+      rollback: "回退本任务提交，并降级本任务的 Alembic 修订。不改动已冻结的检索基线。"
     evaluation:
       cases:
         - "选用成功"
-        - "跨租户不可见"
+        - "私有技能对其他人不可见"
+        - "系统全局技能可被选用"
+        - "系统管理员跨租户管理"
         - "条件不符不选用"
+        - "注入拒绝"
+        - "并发同名 409"
+        - "列表不含正文"
+        - "详情含正文"
+        - "审计不含正文"
       commands:
         - "pytest tests/ -k skill -v"
         - "ruff check app/"
@@ -3489,7 +3522,7 @@ tasks:
 
   - id: "SKILL-002"
     title: "技能管理页（交付 D2）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-02-05"
     depends_on:
@@ -3499,9 +3532,13 @@ tasks:
       facts:
         - claim: "没有技能管理页。"
           evidence: "frontend/src/App.tsx"
+        - claim: "技能页是表格。新增在表格上方，操作在每行最后一列。不沿用用户页和租户页的排版。"
+          evidence: "docs/plans/plan_d2.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d2.md"
+        - "docs/plans/implementation_skill_002.md"
         - "frontend/src/"
         - "tasks.yaml"
         - "AGENTS.md"
@@ -3511,13 +3548,19 @@ tasks:
         - "生产密钥"
         - ".env"
       deliverables:
-        - "成员可在页面创建并看到技能"
+        - "表格上方可以筛选，新增按钮在表格上方"
+        - "详情、修改、启用、停用、删除在每行最后的操作列"
+        - "列表不展示技能正文，详情弹窗展示正文"
+        - "系统管理员可按租户筛选并新增系统全局技能"
         - "失败时显示错误"
-        - "viewer 不能创建"
+        - "viewer 不能创建或修改"
       non_goals:
         - "不做技能市场和版本对比"
+        - "不重排用户管理和租户管理"
     acceptance:
-      - "创建后列表可见"
+      - "新增按钮在列表上方，操作在每行最后"
+      - "创建后列表可见且表格没有正文"
+      - "停用后显示已停用"
       - "viewer 不能提交"
     risk:
       level: "L1"
@@ -3526,7 +3569,9 @@ tasks:
     evaluation:
       cases:
         - "列表可见"
+        - "页面无正文"
         - "viewer 被拒"
+        - "停用成功"
       commands:
         - "cd frontend; npm run typecheck"
         - "cd frontend; npm run build"
@@ -3551,9 +3596,17 @@ tasks:
       facts:
         - claim: "Supervisor 是可选编排。默认仍是五阶段管线。"
           evidence: "app/agents/supervisor.py"
+        - claim: "pyproject.toml 还没有 langgraph extra。分派记录必须整表写回，避免后一轮覆盖前一轮。"
+          evidence: "docs/plans/plan_d2.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d2.md"
+        - "docs/plans/implementation_sup_001.md"
+        - "docs/product/as-is-capability-matrix.md"
+        - "pyproject.toml"
+        - "requirements.txt"
+        - "README.md"
         - "app/agents/"
         - "tests/"
         - "tasks.yaml"
@@ -3564,23 +3617,33 @@ tasks:
         - "生产密钥"
         - ".env"
       deliverables:
-        - "显式打开时完成一次分派并返回结果"
+        - "显式打开且已安装 extra 时完成分派，并在结束后给出脱敏摘要"
+        - "连续两次调研的记录都保留"
         - "默认配置仍走五阶段管线"
+        - "未安装 langgraph 时对话回退五阶段管线"
       non_goals:
         - "不把默认编排改成 Supervisor"
+        - "不把 langgraph 放进默认安装清单"
         - "不重写五阶段管线"
+        - "不改成节点进行中的实时流"
     acceptance:
-      - "测试能看到分派和汇总"
+      - "测试能看到分派、两次调研都在，以及汇总结果"
+      - "对外摘要经过脱敏且不超过 500 字"
       - "默认配置不变"
+      - "导入失败时回退自研管线"
     risk:
       level: "L1"
       side_effect: "supervisor-delegate"
-      rollback: "回退本任务提交，不改动已冻结的检索基线。"
+      rollback: "回退本任务提交，并卸掉该环境用 extra 安装的 langgraph。不改动已冻结的检索基线。"
     evaluation:
       cases:
         - "分派并返回"
+        - "两次调研都保留"
+        - "摘要脱敏截断"
         - "默认路径不变"
+        - "缺依赖时回退"
       commands:
+        - "python -m pip install -e \".[langgraph]\""
         - "pytest tests/ -k supervisor -v"
     execution:
       owner: "个人开发者"
@@ -3599,13 +3662,17 @@ tasks:
     depends_on:
       - "SUP-001"
     context:
-      problem: "用户看不到子任务正在执行。"
+      problem: "用户看不到这次分派完成后的子任务摘要。"
       facts:
-        - claim: "对话有阶段展示，没有子代理过程。"
+        - claim: "对话有阶段展示。流式事件里没有子任务摘要。"
           evidence: "frontend/src/components/chat/StageTracker.tsx"
+        - claim: "展示的是执行完成后的摘要，不是进行中的实时进度。"
+          evidence: "docs/plans/plan_d2.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d2.md"
+        - "docs/plans/implementation_sup_002.md"
         - "frontend/src/"
         - "tasks.yaml"
         - "AGENTS.md"
@@ -3615,12 +3682,13 @@ tasks:
         - "生产密钥"
         - ".env"
       deliverables:
-        - "Supervisor 路径展示子任务名称和结果"
+        - "Supervisor 路径展示子任务摘要的名称、状态和摘要"
         - "默认管线不显示该区块"
       non_goals:
         - "不做图形化编排"
+        - "不把摘要显示成正在执行"
     acceptance:
-      - "打开 Supervisor 时能看到子任务"
+      - "打开 Supervisor 时能看到完成后的子任务摘要"
       - "默认对话不出现该区块"
     risk:
       level: "L0"
@@ -3628,7 +3696,7 @@ tasks:
       rollback: "回退本任务提交，不改动已冻结的检索基线。"
     evaluation:
       cases:
-        - "能看到子任务"
+        - "能看到子任务摘要"
         - "默认不出现"
       commands:
         - "cd frontend; npm run typecheck"
@@ -6141,6 +6209,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+  
   - id: "QA-005"
     title: "既有测试失败修复：SSE 对话、文档删除清向量、混合检索与调度器"
     status: "backlog"

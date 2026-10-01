@@ -109,6 +109,7 @@ export interface MessageOut {
   created_at: string
   sources?: SourceRef[]
   code_results?: CodeResult[]
+  skill_names?: string[]
   /** complete：正常写完。stopped：生成已停下，不是完整回复。 */
   status?: 'complete' | 'stopped' | string
 }
@@ -128,6 +129,7 @@ export interface ChatResponse {
   model: string | null
   sources?: SourceRef[]
   code_results?: CodeResult[]
+  skill_names?: string[]
 }
 
 /**
@@ -281,6 +283,37 @@ export interface AuditLogPage {
   total: number
   page: number
   page_size: number
+}
+
+export interface SkillListOut {
+  id: string
+  tenant_id: string
+  owner_id: string
+  owner_username: string | null
+  tenant_name: string | null
+  name: string
+  description: string
+  keywords: string[]
+  source: 'builtin' | 'private' | 'global' | string
+  scope: 'builtin' | 'private' | 'global' | string
+  enabled: boolean
+}
+
+export interface SkillDetailOut extends SkillListOut {
+  constraints: string
+  system_prompt: string
+  example: string
+  version: string
+}
+
+export interface SkillWrite {
+  name: string
+  description: string
+  keywords: string[]
+  constraints: string
+  system_prompt: string
+  example: string
+  scope?: 'private' | 'global'
 }
 
 export interface HealthInfo {

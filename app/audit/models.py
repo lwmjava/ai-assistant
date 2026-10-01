@@ -65,6 +65,13 @@ class AuditAction(str, Enum):
     WORKFLOW_DELETE = "workflow_delete"
     WORKFLOW_EXECUTE = "workflow_execute"
 
+    # ── 技能 ──
+    SKILL_CREATE = "skill_create"
+    SKILL_UPDATE = "skill_update"
+    SKILL_DISABLE = "skill_disable"
+    SKILL_ENABLE = "skill_enable"
+    SKILL_DELETE = "skill_delete"
+
     # ── 系统配置 ──
     SYSTEM_CONFIG_UPDATE = "system_config_update"
     FEATURE_FLAG_TOGGLE = "feature_flag_toggle"

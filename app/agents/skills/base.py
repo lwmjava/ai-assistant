@@ -106,6 +106,8 @@ class SkillManifest:
     enabled: bool = True
     # 来源文件路径（由 SkillManager 加载时自动填充）
     source_path: str = ""
+    # builtin：内置 YAML。private：创建者私有。global：系统全局。
+    origin: str = "builtin"
 
 
 @dataclass
@@ -139,3 +141,5 @@ class SkillContext:
     skill_name: str = ""
     # 匹配置信度
     confidence: float = 0.0
+    # 选中技能的来源：builtin、private 或 global。围栏只套后两种。
+    origin: str = "builtin"

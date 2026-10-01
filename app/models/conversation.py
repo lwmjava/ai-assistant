@@ -49,5 +49,7 @@ class Message(SQLModel, TimestampMixin, table=True):
     code_results: str | None = Field(default=None)
     # complete：正常写完。stopped：生成被停下，正文只保留已经产出的文字。
     status: str = Field(default="complete")
+    # 本轮选用的技能名，JSON 数组文本。未选用时为空，读成空列表。
+    skill_names: str | None = Field(default=None)
 
     conversation: Conversation | None = Relationship(back_populates="messages")

@@ -35,6 +35,7 @@ config.set_main_option("sqlalchemy.url", _db_url)
 from app.models import user  # noqa: F401, E402
 from app.models import conversation  # noqa: F401, E402
 from app.models import rag  # noqa: F401, E402
+from app.models import skill  # noqa: F401, E402
 from app.models import workflow  # noqa: F401, E402
 
 # SQLModel.metadata 包含所有已注册的 SQLModel 表（table=True）

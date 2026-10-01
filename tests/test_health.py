@@ -17,12 +17,55 @@ def test_root_ok() -> None:
 
 
 def test_health_ok() -> None:
-    """健康检查返回 ok 状态。"""
+    """数据库与本地向量库都可用时，健康检查返回连通结果。"""
     resp = client.get("/api/health")
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "ok"
     assert body["version"] == "0.1.0"
+    assert body["checks"]["database"]["status"] == "ok"
+    assert body["checks"]["vector_store"]["status"] == "ok"
+    assert body["checks"]["vector_store"]["backend"] == "local"
+
+
+def test_health_fails_when_database_unreachable(monkeypatch) -> None:
+    """数据库不可达时，健康检查整体不是 ok。"""
+
+    class _Closed:
+        def __enter__(self):
+            raise ConnectionError("unreachable")
+
+        def __exit__(self, *_args: object) -> bool:
+            return False
+
+    monkeypatch.setattr("app.api.routes.health.Session", lambda *_a, **_k: _Closed())
+    resp = client.get("/api/health")
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["status"] != "ok"
+    assert body["checks"]["database"]["status"] == "error"
+    assert "unreachable" not in resp.text
+
+
+def test_health_fails_when_vector_store_unreachable(monkeypatch) -> None:
+    """当前向量库不可达时，健康检查整体不是 ok，数据库结果仍可单独成功。"""
+    monkeypatch.setattr(
+        "app.api.routes.health.settings.RAG_VECTOR_STORE",
+        "milvus",
+    )
+
+    def _down() -> None:
+        raise ConnectionError("milvus down")
+
+    monkeypatch.setattr("app.api.routes.health._probe_milvus", _down)
+    resp = client.get("/api/health")
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["status"] != "ok"
+    assert body["checks"]["database"]["status"] == "ok"
+    assert body["checks"]["vector_store"]["status"] == "error"
+    assert body["checks"]["vector_store"]["backend"] == "milvus"
+    assert "milvus down" not in resp.text
 
 
 def test_auth_me_requires_token() -> None:

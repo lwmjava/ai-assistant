@@ -40,6 +40,7 @@ from app.rag.embeddings.mock import tokenize
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.factory import get_vector_store
+from app.services.quota import source_file_size
 
 
 def demote_other_current_versions(session: Session, version_group_id: str, *, keep_id: str) -> None:
@@ -191,12 +192,14 @@ class RAGService:
         # 也避免「文档已提交、分块/向量失败」留下 chunk_count=0 的孤儿记录。
         try:
             embeddings = await self._embed_texts([chunk.text for chunk in chunk_objs])
+            source_bytes = source_file_size(storage_path) if storage_path else None
             document = Document(
                 tenant_id=self.tenant_id,
                 user_id=user_id,
                 title=title,
                 source=source,
                 storage_path=storage_path,
+                source_bytes=source_bytes,
                 source_kind=source_kind or "file",
                 source_uri=source_uri,
                 content_hash=content_hash,

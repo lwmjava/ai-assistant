@@ -10,7 +10,6 @@
 """
 
 import uuid
-from datetime import UTC, datetime
 from enum import Enum
 
 from sqlmodel import JSON, Column, Field, SQLModel
@@ -49,6 +48,7 @@ class AuditAction(str, Enum):
     TENANT_DELETE = "tenant_delete"
     TENANT_ACTIVATE = "tenant_activate"
     TENANT_DEACTIVATE = "tenant_deactivate"
+    QUOTA_UPDATE = "quota_update"
 
     # ── 对话 ──
     CONVERSATION_CREATE = "conversation_create"

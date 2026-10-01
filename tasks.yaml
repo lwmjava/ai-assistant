@@ -3712,7 +3712,7 @@ tasks:
 
   - id: "QUOTA-001"
     title: "租户配额与超限拒绝（交付 D3）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-05"
     depends_on:

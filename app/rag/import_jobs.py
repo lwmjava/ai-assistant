@@ -33,9 +33,10 @@ from app.rag.document_parsers import (
     UnsupportedDocumentTypeError,
     parse_uploaded_document,
 )
-from app.rag.document_storage import read_source_file, save_source_file
+from app.rag.document_storage import delete_source_file, read_source_file, save_source_file
 from app.rag.import_trace import ImportTraceError
 from app.rag.service import RAGService
+from app.services.quota import QuotaExceededError, SourceFileUnreadableError, begin_source_quota
 
 logger = logging.getLogger(__name__)
 _IMPORT_JOB_ERROR_MAX_CHARS = 500
@@ -223,8 +224,9 @@ def create_import_batch(
     *,
     total_jobs: int,
     source_type: str,
+    commit: bool = True,
 ) -> ImportBatch:
-    """创建导入批次。"""
+    """创建导入批次。commit 为假时只 flush，留给调用方和配额锁一起提交。"""
     batch = ImportBatch(
         tenant_id=user.tenant_id,
         user_id=user.id,
@@ -233,8 +235,10 @@ def create_import_batch(
         status=ImportBatchStatus.PENDING.value,
     )
     session.add(batch)
-    session.commit()
-    session.refresh(batch)
+    session.flush()
+    if commit:
+        session.commit()
+        session.refresh(batch)
     return batch
 
 
@@ -246,8 +250,9 @@ def create_upload_import_job(
     filename: str,
     content_type: str | None,
     batch_id: str | None = None,
+    commit: bool = True,
 ) -> ImportJob:
-    """创建文件导入任务。"""
+    """创建文件导入任务。commit 为假时不提交，便于整批和配额锁一起提交。"""
     job = ImportJob(
         tenant_id=user.tenant_id,
         user_id=user.id,
@@ -259,13 +264,14 @@ def create_upload_import_job(
         content_type=content_type,
     )
     session.add(job)
-    session.commit()
-    session.refresh(job)
+    session.flush()
     if batch_id:
         batch = session.get(ImportBatch, batch_id)
         if batch is not None:
             _recompute_batch(session, batch)
-            session.commit()
+    if commit:
+        session.commit()
+        session.refresh(job)
     return job
 
 
@@ -413,6 +419,14 @@ def _dedupe_or_version_existing(
     }
 
 
+def _drop_attempt_source(job: ImportJob, relative_path: str | None) -> None:
+    """删除这一次新拉取的源文件。删不掉时任务不能记成成功。"""
+    if not relative_path:
+        return
+    delete_source_file(relative_path)
+    job.storage_path = None
+
+
 async def _process_job(session: Session, job: ImportJob) -> None:
     """执行单个导入任务。"""
     job.status = ImportJobStatus.RUNNING.value
@@ -422,6 +436,7 @@ async def _process_job(session: Session, job: ImportJob) -> None:
     session.commit()
     session.refresh(job)
 
+    new_source_path: str | None = None
     try:
         if job.reparse_document_id:
             reparse_target = session.get(Document, job.reparse_document_id)
@@ -437,7 +452,9 @@ async def _process_job(session: Session, job: ImportJob) -> None:
                 raise ValueError("URL 导入任务缺少 source_uri")
             raw, content_type = await _fetch_remote_content(job.source_uri)
             filename = _url_filename(job.source_uri, content_type)
-            job.storage_path = save_source_file(job.tenant_id, raw, filename)
+            begin_source_quota(session, job.tenant_id, len(raw))
+            new_source_path = save_source_file(job.tenant_id, raw, filename)
+            job.storage_path = new_source_path
             job.content_type = content_type
             parsed = _parse_url_payload(raw, job.source_uri, content_type)
             source_kind = ImportSourceType.URL.value
@@ -513,18 +530,25 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         DocumentTextEmptyError,
         DocumentOcrRequiredError,
         ImportTraceError,
+        QuotaExceededError,
+        SourceFileUnreadableError,
         httpx.HTTPError,
         OSError,
         ValueError,
     ) as exc:
         job.status = ImportJobStatus.FAILED.value
-        job.error = _build_job_error_message(exc)
+        if isinstance(exc, QuotaExceededError):
+            job.error = "源文件配额已用尽"
+        else:
+            job.error = _build_job_error_message(exc)
         _record_job_trace(session, job, exc)
+        _drop_attempt_source(job, new_source_path)
     except Exception as exc:  # noqa: BLE001
         logger.exception("导入任务执行失败: job=%s", job.id)
         job.status = ImportJobStatus.FAILED.value
         job.error = _build_job_error_message(exc)
         _record_job_trace(session, job, exc)
+        _drop_attempt_source(job, new_source_path)
     finally:
         session.add(job)
         session.commit()

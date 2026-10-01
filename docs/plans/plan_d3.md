@@ -1,6 +1,6 @@
 # QUOTA-001、LIMIT-001、CLI-001、EXPORT-001：配额、限流提示、迁移与管理员命令、导出租户对话
 
-> 状态：CLI-001 已实现，说明见 `docs/plans/implementation_cli_001.md`。QUOTA-001、LIMIT-001、EXPORT-001 仍待实现。2026-10-01 两轮评审的处置已写入本文，见 `docs/reviews/2026-10-01-plan_d3评审.md` 与 `docs/reviews/2026-10-01-plan_d3-codex评审处置.md`。做完这四条只完成交付包第 19 项，不是企业上线门禁通过。实现说明在各自完成后另写，不把未做项写成已完成。
+> 状态：CLI-001、QUOTA-001 已实现，说明见 `docs/plans/implementation_cli_001.md` 与 `docs/plans/implementation_quota_001.md`。LIMIT-001、EXPORT-001 仍待实现。2026-10-01 两轮评审的处置已写入本文，见 `docs/reviews/2026-10-01-plan_d3评审.md` 与 `docs/reviews/2026-10-01-plan_d3-codex评审处置.md`。做完这四条只完成交付包第 19 项，不是企业上线门禁通过。实现说明在各自完成后另写，不把未做项写成已完成。
 > 来源：`tasks.yaml` 的 QUOTA-001、LIMIT-001、CLI-001、EXPORT-001；`docs/plans/plan_remaining_delivery.md` 对应四节；交付排期第 5 节 D3、第 6 节第 19 项。
 > 日期：2026-10-01
 > 截止：2027-03-05
@@ -99,6 +99,8 @@
 - 验证：`pytest tests/test_cli.py -v`；`ruff check app/cli.py`。命令测试用子进程，工作目录和 `DATABASE_URL` 指向临时文件。
 
 ## QUOTA-001 租户配额与超限拒绝
+
+实现说明：`docs/plans/implementation_quota_001.md`。
 
 - 目标：系统管理员设置某租户的消息上限和源文件字节上限后，额度内的对话和源文件写入成功；超出后对话不新增会话或用户消息，新的源文件不落盘、不新增文档。同一数据库上并发请求不能把用量写成超过上限。
 - 现状：见上文「配额」。

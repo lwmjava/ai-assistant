@@ -29,6 +29,7 @@ from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.rag.service import RAGService, sources_from_hits
+from app.services.quota import accept_user_message
 
 
 def _skill_name_list(ctx: SkillContext | None) -> list[str]:
@@ -288,16 +289,13 @@ class ChatService:
         sec_ctx, safe_message = self._apply_input_security(message, user)
         if sec_ctx and sec_ctx.blocked:
             raise self._rejection_error(sec_ctx)
-        conv = self._resolve_conversation(session, user, conversation_id, message)
+        conv = self._accept_user_message(session, user, conversation_id, message)
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
         state = AgentState(user_input=safe_message, history=memory.recent_messages)
         # 2. 注入记忆上下文到管线
         if memory.memory_context:
             state.context = memory.memory_context
-        # 问题先落库。生成失败或用户放弃等待时，提问仍在。
-        self._persist_user(session, conv, message)
-        # 3. 构建检索器（通过 RAGService）/ 工具箱
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
         # 4. 技能匹配与激活
@@ -347,7 +345,7 @@ class ChatService:
         if sec_ctx and sec_ctx.blocked:
             yield AgentEvent("error", str(self._rejection_error(sec_ctx)))
             return
-        conv = self._resolve_conversation(session, user, conversation_id, message)
+        conv = self._accept_user_message(session, user, conversation_id, message)
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
         state = AgentState(user_input=safe_message, history=memory.recent_messages)
@@ -368,9 +366,7 @@ class ChatService:
         )
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
-        # 先记住问题，再把会话编号交给页面，断线后才知道向哪一条拉取。
         # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。
-        self._persist_user(session, conv, message)
         conversation_id = conv.id
         yield AgentEvent("conversation", conversation_id)
 
@@ -432,26 +428,17 @@ class ChatService:
                 )
 
     # ── 内部辅助 ──────────────────────────────────
-    def _resolve_conversation(
+    def _accept_user_message(
         self, session: Session, user: User, conversation_id: str | None, message: str
     ) -> Conversation:
-        if conversation_id:
-            conv = session.get(Conversation, conversation_id)
-            if conv is None or not self._can_access(conv, user):
-                raise ValueError("会话不存在或无权访问")
-            return conv
-        title = (message or "新会话")[:40]
-        conv = Conversation(tenant_id=user.tenant_id, user_id=user.id, title=title)
-        session.add(conv)
-        session.commit()
-        session.refresh(conv)
-        return conv
-
-    def _persist_user(self, session: Session, conv: Conversation, message: str) -> None:
-        session.add(
-            Message(conversation_id=conv.id, role="user", content=message)
+        return accept_user_message(
+            session,
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            role=user.role,
+            conversation_id=conversation_id,
+            message=message,
         )
-        session.commit()
 
     def _persist_assistant(
         self,

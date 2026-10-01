@@ -21,6 +21,9 @@ class Tenant(SQLModel, TimestampMixin, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(index=True)
     is_active: bool = Field(default=True)
+    # 空值表示不限制。0 表示该维度不允许新增。
+    message_limit: int | None = Field(default=None)
+    storage_limit_bytes: int | None = Field(default=None)
 
     users: list["User"] = Relationship(back_populates="tenant")
 

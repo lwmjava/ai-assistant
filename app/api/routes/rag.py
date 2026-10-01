@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -28,6 +28,7 @@ from app.rag.document_parsers import (
     parse_uploaded_document,
 )
 from app.rag.document_storage import (
+    delete_source_file,
     resolve_source_file_path,
     save_source_file,
 )
@@ -40,6 +41,7 @@ from app.rag.import_jobs import (
 )
 from app.rag.service import RAGService
 from app.rag.upload_limits import UploadLimitError, check_upload_limits, parse_allowed_extensions
+from app.services.quota import QuotaExceededError, SourceFileUnreadableError, begin_source_quota
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,18 @@ def _enforce_upload_limit(filename: str, size: int) -> None:
         )
     except UploadLimitError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _discard_new_source(relative_path: str) -> None:
+    """删掉这一次新写的源文件。文件已经不在则返回。删除失败则请求失败。"""
+    try:
+        delete_source_file(relative_path)
+    except OSError:
+        logger.exception("未能删除本次新写的源文件")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="源文件未能删除，请稍后重试或联系管理员",
+        ) from None
 
 
 class IngestRequest(BaseModel):
@@ -309,9 +323,21 @@ async def upload_document(
     raw = await file.read()
     _enforce_upload_limit(filename, len(raw))
     try:
+        held = begin_source_quota(session, current_user.tenant_id, len(raw))
+    except QuotaExceededError as exc:
+        return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
+    except SourceFileUnreadableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="无法读取已有源文件，已拒绝本次上传",
+        )
+    storage_path: str | None = None
+    try:
         storage_path = save_source_file(current_user.tenant_id, raw, filename)
     except OSError:
         logger.exception("保存源文件失败: filename=%s", filename)
+        if held:
+            session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="保存源文件失败，请稍后重试或联系管理员",
@@ -324,10 +350,11 @@ async def upload_document(
         DocumentTextEmptyError,
         DocumentOcrRequiredError,
     ) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        )
+        assert storage_path is not None
+        _discard_new_source(storage_path)
+        if held:
+            session.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     rag = RAGService(session, current_user.tenant_id)
     try:
         doc = await rag.ingest_parsed_document(
@@ -336,9 +363,13 @@ async def upload_document(
             storage_path=storage_path,
         )
     except ValueError as exc:
+        assert storage_path is not None
+        _discard_new_source(storage_path)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception:  # noqa: BLE001 - 上传文件已解析成功，后续失败视为系统问题
         logger.exception("上传文档解析成功，但知识库摄取失败: filename=%s", filename)
+        assert storage_path is not None
+        _discard_new_source(storage_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="文档已解析，但知识库摄取失败，请稍后重试或联系管理员",
@@ -385,16 +416,29 @@ async def create_upload_jobs(
         raw = await file.read()
         _enforce_upload_limit(filename, len(raw))
         prepared.append((filename, raw, file.content_type))
-    batch = create_import_batch(
-        session,
-        current_user,
-        total_jobs=len(prepared),
-        source_type="file",
-    )
-    jobs: list[ImportJob] = []
+    additional = sum(len(raw) for _, raw, _ in prepared)
     try:
+        held = begin_source_quota(session, current_user.tenant_id, additional)
+    except QuotaExceededError as exc:
+        return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
+    except SourceFileUnreadableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="无法读取已有源文件，已拒绝本次上传",
+        )
+    saved: list[str] = []
+    try:
+        batch = create_import_batch(
+            session,
+            current_user,
+            total_jobs=len(prepared),
+            source_type="file",
+            commit=not held,
+        )
+        jobs: list[ImportJob] = []
         for filename, raw, content_type in prepared:
             storage_path = save_source_file(current_user.tenant_id, raw, filename)
+            saved.append(storage_path)
             jobs.append(
                 create_upload_import_job(
                     session,
@@ -403,10 +447,16 @@ async def create_upload_jobs(
                     filename=filename,
                     content_type=content_type,
                     batch_id=batch.id,
+                    commit=not held,
                 )
             )
+        if held:
+            session.commit()
     except OSError:
         logger.exception("创建上传导入任务时保存源文件失败")
+        for relative_path in saved:
+            _discard_new_source(relative_path)
+        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="保存源文件失败，请稍后重试或联系管理员",

@@ -477,7 +477,7 @@
 
 ## QUOTA-001 租户配额与超限拒绝
 
-实现计划见 `docs/plans/plan_d3.md`。一次只实现一条，顺序是 CLI-001、QUOTA-001、LIMIT-001、EXPORT-001。
+实现计划见 `docs/plans/plan_d3.md`。实现说明见 `docs/plans/implementation_quota_001.md`。一次只实现一条，顺序是 CLI-001、QUOTA-001、LIMIT-001、EXPORT-001。
 
 - 目标：租户超出消息或存储额度时，新的对话或上传被拒绝。
 - 现状：没有租户配额。

@@ -180,6 +180,27 @@ def _ensure_message_columns() -> None:
             conn.execute(text("ALTER TABLE messages ADD COLUMN skill_names TEXT"))
 
 
+def _ensure_quota_columns() -> None:
+    """版本已被标到 head、但配额列还没写上时，把可空整数列补上。"""
+    from app.core.database import engine
+
+    with engine.begin() as conn:
+        tables = set(inspect(conn).get_table_names())
+        if "tenants" in tables:
+            columns = {column["name"] for column in inspect(conn).get_columns("tenants")}
+            if "message_limit" not in columns:
+                logger.warning("补齐缺失的租户消息上限列")
+                conn.execute(text("ALTER TABLE tenants ADD COLUMN message_limit INTEGER"))
+            if "storage_limit_bytes" not in columns:
+                logger.warning("补齐缺失的租户源文件上限列")
+                conn.execute(text("ALTER TABLE tenants ADD COLUMN storage_limit_bytes INTEGER"))
+        if "rag_documents" in tables:
+            columns = {column["name"] for column in inspect(conn).get_columns("rag_documents")}
+            if "source_bytes" not in columns:
+                logger.warning("补齐缺失的文档源文件字节列")
+                conn.execute(text("ALTER TABLE rag_documents ADD COLUMN source_bytes INTEGER"))
+
+
 def _ensure_rag_schema_columns() -> None:
     """为历史数据库补齐 RAG 版本化与导入平台所需列。
 
@@ -318,13 +339,38 @@ def _later_rag_tables_exist() -> bool:
     return _HEAD_RAG_TABLES.issubset(tables)
 
 
+def _quota_columns_present() -> bool:
+    """三列都在时，才可以把版本直接标到当前 head。"""
+    from app.core.database import engine
+
+    with engine.connect() as conn:
+        tables = set(inspect(conn).get_table_names())
+        if "tenants" not in tables or "rag_documents" not in tables:
+            return False
+        tenant_columns = {column["name"] for column in inspect(conn).get_columns("tenants")}
+        document_columns = {column["name"] for column in inspect(conn).get_columns("rag_documents")}
+    return {"message_limit", "storage_limit_bytes"}.issubset(tenant_columns) and "source_bytes" in document_columns
+
+
 def _stamp_if_schema_already_at_head() -> bool:
-    """若库结构已达到 head 对应对象，则只标记版本、不重跑 DDL。"""
+    """若库结构已达到 head 对应对象，则只标记版本、不重跑 DDL。
+
+    导入平台表已由 create_all 建出、但配额列还不在时，不能把版本标过加列迁移。
+    这种库先标到加列迁移的父修订，后面的 upgrade 再补列。
+    """
     current = get_current_revision()
     head = get_head_revision()
     if current == head:
         return False
     if not _later_rag_tables_exist():
+        return False
+    if not _quota_columns_present():
+        if current != "d7c2a91e4b18":
+            logger.warning(
+                "导入平台表已在，但配额列还没有。版本先标到 d7c2a91e4b18，再执行加列: current=%s",
+                current,
+            )
+            stamp("d7c2a91e4b18")
         return False
     logger.warning(
         "检测到 RAG 导入平台表已存在但 Alembic 修订落后，改为标记到 head: current=%s head=%s",
@@ -361,6 +407,7 @@ def auto_migrate() -> bool:
     if not pending:
         _ensure_rag_schema_columns()
         _ensure_message_columns()
+        _ensure_quota_columns()
         logger.info("数据库 schema 已是最新版本，无需迁移。")
         return True
 
@@ -372,6 +419,7 @@ def auto_migrate() -> bool:
         upgrade("head")
         _ensure_rag_schema_columns()
         _ensure_message_columns()
+        _ensure_quota_columns()
         logger.info("数据库迁移完成（%d 个版本）。", len(pending))
         return True
     except Exception as exc:

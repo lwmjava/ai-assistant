@@ -20,6 +20,7 @@
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
 | 命令行迁移与创建系统管理员 | `Implemented` | `app/cli.py`；`pyproject.toml` 的 `ai-assistant` 脚本；`tests/test_cli.py` | 空库可迁移到当前版本，并创建可登录的系统管理员。已有系统管理员、密码短于 8 位或两次重叠创建时拒绝，日志不含密码。没有 start、stop、logs。环境变量引导和 `/setup` 仍可用。管理接口仍可创建多名系统管理员。PostgreSQL 未在本能力中演练 |
+| 租户消息条数与源文件配额 | `Implemented` | `app/services/quota.py`；`app/api/routes/admin_tenants.py`；`tests/test_quota.py` | 系统管理员可设置可空上限。空值不限制，0 表示不能再新增。超限的对话和源文件写入返回 429，且不留下新的用户消息或新文件。软删除不恢复源文件额度。同一 SQLite 上的并发写入不超过上限。不计费，不按月重置，不改租户页，纯文本摄取不设闸。多副本锁未做。 |
 
 ## 2. Agent 编排
 

@@ -9,10 +9,12 @@ from sqlmodel import Session
 from app.api.deps import audit_event, get_current_user, get_db
 from app.audit.models import AuditAction
 from app.core.security import Role
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.schemas.admin import TenantUpdate
 from app.schemas.auth import UserInfo
+from app.schemas.quota import QuotaOut, QuotaUpdate
 from app.schemas.tenant import MemberCreate, TenantCreate, TenantOut
+from app.services.quota import QuotaAuditError, QuotaNotFoundError, update_tenant_quota
 from app.services.tenant_admin import (
     EmailTakenError,
     TenantInactiveError,
@@ -173,3 +175,52 @@ async def deactivate_tenant_route(
         details={"name": tenant.name},
     )
     return TenantOut.model_validate(tenant)
+
+
+def _quota_out(tenant: Tenant) -> QuotaOut:
+    return QuotaOut(
+        tenant_id=tenant.id,
+        message_limit=tenant.message_limit,
+        storage_limit_bytes=tenant.storage_limit_bytes,
+    )
+
+
+@router.get("/{tenant_id}/quota", response_model=QuotaOut)
+def get_tenant_quota(
+    tenant_id: str,
+    session: Session = Depends(get_db),
+    _: User = Depends(_require_system_admin),
+) -> QuotaOut:
+    """读取一个租户的消息条数上限和源文件字节上限。"""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    return _quota_out(tenant)
+
+
+@router.patch("/{tenant_id}/quota", response_model=QuotaOut)
+def update_tenant_quota_route(
+    tenant_id: str,
+    body: QuotaUpdate,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(_require_system_admin),
+) -> QuotaOut:
+    """修改上限。审计没有写上时，上限保持原值。"""
+    try:
+        tenant = update_tenant_quota(
+            session,
+            actor_id=current_user.id,
+            actor_tenant_id=current_user.tenant_id,
+            tenant_id=tenant_id,
+            message_limit=body.message_limit,
+            storage_limit_bytes=body.storage_limit_bytes,
+            reason=body.reason,
+        )
+    except QuotaNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    except QuotaAuditError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="配额变更未能写入审计，上限未修改",
+        )
+    return _quota_out(tenant)

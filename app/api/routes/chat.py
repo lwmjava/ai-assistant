@@ -9,6 +9,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session
 from sse_starlette.sse import EventSourceResponse
@@ -22,6 +23,7 @@ from app.models.conversation import Conversation
 from app.models.user import User
 from app.security.types import SecurityRejectedError
 from app.services.chat_service import ChatService
+from app.services.quota import QuotaExceededError
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +227,8 @@ async def chat(
         conv, reply = await _service.chat(
             session, current_user, req.message, req.conversation_id
         )
+    except QuotaExceededError as exc:
+        return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
     except SecurityRejectedError as exc:
         # 安全拒绝（限流 / 注入阻断）不是「资源不存在」，需回真实状态码。
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
@@ -250,36 +254,45 @@ async def chat_stream(
     if not req.message.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="message 不能为空")
 
+    def _sse(event_type: str, data: object) -> dict[str, str]:
+        return {
+            "event": event_type,
+            "data": json.dumps({"type": event_type, "data": data}, ensure_ascii=False),
+        }
+
+    def _event_payload(event_type: str, raw: str) -> object:
+        if event_type in {"sources", "code_result"}:
+            return json.loads(raw) if raw else []
+        return raw
+
+    stream = _service.chat_stream(session, current_user, req.message, req.conversation_id)
+    try:
+        first = await stream.__anext__()
+    except StopAsyncIteration:
+        await stream.aclose()
+        return EventSourceResponse(iter(()))
+    except QuotaExceededError as exc:
+        await stream.aclose()
+        return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
+    except ValueError as exc:
+        await stream.aclose()
+        missing = str(exc)
+
+        async def missing_conversation():
+            yield _sse("error", missing)
+
+        return EventSourceResponse(missing_conversation())
+
     async def event_generator():
         try:
-            async for event in _service.chat_stream(
-                session, current_user, req.message, req.conversation_id
-            ):
-                data = event.data
-                if event.type in {"sources", "code_result"}:
-                    data = json.loads(event.data) if event.data else []
-                yield {
-                    "event": event.type,
-                    "data": json.dumps(
-                        {"type": event.type, "data": data}, ensure_ascii=False
-                    ),
-                }
+            yield _sse(first.type, _event_payload(first.type, first.data))
+            async for event in stream:
+                yield _sse(event.type, _event_payload(event.type, event.data))
         except ValueError as exc:
-            yield {
-                "event": "error",
-                "data": json.dumps(
-                    {"type": "error", "data": str(exc)}, ensure_ascii=False
-                ),
-            }
+            yield _sse("error", str(exc))
         except Exception:
             logger.exception("流式对话失败")
-            yield {
-                "event": "error",
-                "data": json.dumps(
-                    {"type": "error", "data": "生成失败，请稍后重试"},
-                    ensure_ascii=False,
-                ),
-            }
+            yield _sse("error", "生成失败，请稍后重试")
 
     return EventSourceResponse(event_generator())
 

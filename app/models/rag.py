@@ -68,6 +68,7 @@ class Document(SQLModel, TimestampMixin, table=True):
     title: str
     source: str | None = Field(default=None)  # 来源文件名 / 标识
     storage_path: str | None = Field(default=None)  # 源文件相对路径（data/knowledge/...）
+    source_bytes: int | None = Field(default=None)  # 文档提交成功时写下的源文件字节数
     source_kind: str = Field(default=ImportSourceType.FILE.value, index=True)
     source_uri: str | None = Field(default=None)  # URL 等逻辑来源标识
     content_hash: str | None = Field(default=None, index=True)

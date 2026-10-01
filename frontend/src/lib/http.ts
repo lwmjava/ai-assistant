@@ -1,6 +1,7 @@
 /** HTTP 客户端：统一注入鉴权头、过期前主动刷新、401 兜底重试、把后端错误归一为 ApiError。 */
 
 import { shouldRefreshAccessToken } from '@/lib/access-token'
+import { quotaExceededMessage } from '@/lib/quota-message'
 
 /** 归一化后的 API 错误：保留状态码与后端 detail / 字段级校验信息。 */
 export class ApiError extends Error {
@@ -199,7 +200,9 @@ async function parseError(res: Response): Promise<ApiError> {
   try {
     const data = (await res.json()) as { detail?: unknown }
     payload = data
-    if (typeof data?.detail === 'string') detail = data.detail
+    const quota = quotaExceededMessage(data)
+    if (quota) detail = quota
+    else if (typeof data?.detail === 'string') detail = data.detail
     else if (Array.isArray(data?.detail)) {
       // Pydantic 字段校验错误：[{loc, msg, type}]
       detail = data.detail

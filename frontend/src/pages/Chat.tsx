@@ -21,6 +21,7 @@ import {
 } from '@/api/chat'
 import { useChatStream } from '@/hooks/useChatStream'
 import { api, ApiError, hideStackTrace } from '@/lib/http'
+import { isQuotaNotice } from '@/lib/quota-message'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
 import type { ConversationDetail, ConversationOut, HealthInfo, MessageOut, SendMode } from '@/types/api'
@@ -99,6 +100,7 @@ export default function ChatPage() {
   const [renameError, setRenameError] = useState<string | null>(null)
   const [onceInterrupted, setOnceInterrupted] = useState(false)
   const [loadReplyNote, setLoadReplyNote] = useState<string | null>(null)
+  const [sendNotice, setSendNotice] = useState<string | null>(null)
 
   // 最近一次发送的内容，失败时回填输入框
   const lastSentRef = useRef('')
@@ -154,7 +156,10 @@ export default function ChatPage() {
       lastSentRef.current = ''
     }
     setPending([])
-    toast.error('生成失败', hideStackTrace(snapshot.error))
+    const message = hideStackTrace(snapshot.error)
+    setSendNotice(message)
+    if (isQuotaNotice(message)) toast.warning('已达配额上限', message)
+    else toast.error('生成失败', message)
     reset()
   }, [snapshot.error, snapshot.interrupted, snapshot.stoppedByUser, toast, reset])
 
@@ -196,6 +201,7 @@ export default function ChatPage() {
 
     setOnceInterrupted(false)
     setLoadReplyNote(null)
+    setSendNotice(null)
     setInput('')
     lastSentRef.current = text
     reset()
@@ -252,7 +258,10 @@ export default function ChatPage() {
         lastSentRef.current = ''
       }
       setPending([])
-      toast.error('生成失败', err instanceof ApiError ? hideStackTrace(err.detail) : undefined)
+      const message = err instanceof ApiError ? hideStackTrace(err.detail) : '生成失败，请稍后重试'
+      setSendNotice(message)
+      if (isQuotaNotice(message)) toast.warning('已达配额上限', message)
+      else toast.error('生成失败', message)
     } finally {
       onceAbortRef.current = null
       setAwaiting(false)
@@ -533,6 +542,11 @@ export default function ChatPage() {
 
         <div className="shrink-0 border-t border-border/60 bg-bg/60 p-3 backdrop-blur sm:p-4">
           <div className="mx-auto max-w-4xl">
+            {sendNotice && (
+              <p role="alert" className="mb-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                {sendNotice}
+              </p>
+            )}
             <Composer
               value={input}
               onChange={setInput}

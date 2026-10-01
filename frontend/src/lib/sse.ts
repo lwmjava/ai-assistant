@@ -7,6 +7,7 @@
  */
 
 import { notifySessionExpired, refreshTokens } from '@/lib/http'
+import { quotaExceededMessage } from '@/lib/quota-message'
 
 export interface SSEMessage {
   event: string
@@ -62,6 +63,8 @@ function parseErrorDetail(res: Response, payloadText: string): string {
   if (!res.ok) {
     try {
       const parsed = JSON.parse(payloadText) as { detail?: unknown }
+      const quota = quotaExceededMessage(parsed)
+      if (quota) return quota
       if (typeof parsed.detail === 'string') return parsed.detail
     } catch {
       /* 非 JSON 错误体，回退到状态码文本 */

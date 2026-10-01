@@ -221,16 +221,19 @@ export function useChatStream() {
           },
           onError: (err) => {
             if (!mountedRef.current) return
+            const message = err instanceof Error ? hideStackTrace(err.message) : ''
+            const dropped =
+              !message ||
+              message === 'Failed to fetch' ||
+              message === 'Load failed' ||
+              message === 'NetworkError when attempting to fetch resource.'
             setSnapshot((prev) => {
               if (prev.stoppedByUser) return { ...prev, streaming: false }
-              return {
-                ...prev,
-                streaming: false,
-                interrupted: true,
-                error: '连接中断',
+              if (dropped) {
+                return { ...prev, streaming: false, interrupted: true, error: '连接中断' }
               }
+              return { ...prev, streaming: false, interrupted: false, error: message }
             })
-            void err
           },
         },
       )

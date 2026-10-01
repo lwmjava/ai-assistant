@@ -286,6 +286,27 @@ Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[lang
 
 至少改 `JWT_SECRET_KEY`。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。两项都空着时，不自动建管理员，改由下一步的 `/setup` 创建。
 
+也可以用命令迁移数据库并创建系统管理员。在仓库根目录执行 `pip install -e .` 之后：
+
+```bash
+ai-assistant migrate --yes
+```
+
+没有待执行的迁移时，这条命令成功退出，并说明数据库已是最新。`--yes` 跳过确认。未安装控制台脚本时，用 `python -m app.cli migrate --yes`，效果相同。`python -m app.core.migration migrate` 仍然可用。
+
+创建时密码放在环境变量 `INITIAL_ADMIN_PASSWORD`，不要写进命令参数。密码至少 8 位。库里已经有系统管理员时，命令会拒绝：
+
+```bash
+# Windows PowerShell
+$env:INITIAL_ADMIN_PASSWORD = "至少 8 位的密码"
+ai-assistant admin create-superuser --username admin
+
+# bash
+INITIAL_ADMIN_PASSWORD="至少 8 位的密码" ai-assistant admin create-superuser --username admin
+```
+
+命令的输出和日志只包含用户名。环境变量引导和页面 `/setup` 仍然可用。
+
 失败时看：`.env` 没被读到，多半是进程还停在改文件之前，重新启动后端。生产环境若 `JWT_SECRET_KEY` 仍是占位值，进程会拒绝启动，终端里有安全校验失败的报错。
 
 ### 2. 启动
@@ -308,10 +329,11 @@ npm run dev
 
 ### 3. 建立管理员
 
-二选一。
+三选一。
 
 - 第 1 步已经填了 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`：不要打开 `/setup`。用这两个值到 `/login` 登录。启动日志里会有已创建初始 `system_admin` 的提示。
 - 两项都没填，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后进入 `/chat`，这个向导随即关闭。
+- 或者先执行 `ai-assistant migrate --yes`，再按第 1 步里的 `ai-assistant admin create-superuser` 创建系统管理员，然后到 `/login` 登录。
 
 失败时看：`/setup` 一打开就回到 `/login`，说明已经有系统管理员，用已有账号登录。向导提交后提示「初始化向导已关闭」，同样改为登录。页面一直停在「正在检查是否需要初始化」，说明后端没起来，先看第 2 步的健康检查。
 

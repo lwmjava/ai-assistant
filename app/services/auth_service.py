@@ -4,13 +4,22 @@
 """
 
 import logging
+from pathlib import Path
 
-from sqlmodel import Session, select
+from sqlalchemy import event, text
+from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.pool import NullPool
+from sqlmodel import Session, col, create_engine, func, select
 
 from app.core.config import settings
 from app.core.security import Role, hash_password, verify_password
+from app.models.membership import Membership
 from app.models.user import Tenant, User
-from app.services.membership import backfill_memberships, ensure_membership
+from app.services.membership import (
+    backfill_memberships,
+    ensure_membership,
+    membership_role_for_user,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +48,18 @@ class DefaultTenantInactiveError(Exception):
 
 class SetupClosedError(Exception):
     """已经存在系统管理员，初始化向导不再接受创建。"""
+
+
+class PasswordTooShortError(Exception):
+    """密码短于 8 位，未写入用户。"""
+
+
+class DatabaseNotMigratedError(Exception):
+    """用户表还不存在，不能创建系统管理员。"""
+
+
+MIN_CLI_PASSWORD_LENGTH = 8
+_CLI_ADMIN_LOCK_KEY = 872001
 
 
 class UserNotFoundError(Exception):
@@ -143,6 +164,121 @@ def setup_system_admin(
         email=email,
         role=Role.SYSTEM_ADMIN,
     )
+
+
+def _ensure_sqlite_parent(database_url: str) -> None:
+    """相对或绝对的 SQLite 文件路径，父目录不存在时创建。"""
+    if not database_url.startswith("sqlite") or ":memory:" in database_url:
+        return
+    raw = database_url.split("///", 1)[-1]
+    parent = Path(raw).parent
+    if str(parent) not in ("", "."):
+        parent.mkdir(parents=True, exist_ok=True)
+
+
+def _engine_for_admin_create(database_url: str):
+    """命令行创建管理员用的引擎。
+
+    SQLite 在事务开始时发出 BEGIN IMMEDIATE，让重叠的两次创建串行执行。
+    不给系统管理员角色加唯一约束，管理接口仍可创建多名管理员。
+    """
+    _ensure_sqlite_parent(database_url)
+    connect_args: dict[str, object] = {}
+    if database_url.startswith("sqlite"):
+        connect_args["check_same_thread"] = False
+        connect_args["timeout"] = 30
+    engine = create_engine(database_url, connect_args=connect_args, poolclass=NullPool)
+    if database_url.startswith("sqlite"):
+
+        @event.listens_for(engine, "connect")
+        def _disable_pysqlite_begin(dbapi_connection, _connection_record) -> None:
+            dbapi_connection.isolation_level = None
+
+        @event.listens_for(engine, "begin")
+        def _begin_immediate(connection) -> None:
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
+
+    return engine
+
+
+def _lock_admin_create(session: Session) -> None:
+    """PostgreSQL 用事务级咨询锁串行创建。SQLite 由 BEGIN IMMEDIATE 负责。"""
+    if session.get_bind().dialect.name != "postgresql":
+        return
+    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _CLI_ADMIN_LOCK_KEY})
+
+
+def _default_tenant_for_admin(session: Session) -> Tenant:
+    """在当前事务里取得仍启用的 default 租户，没有就创建。"""
+    tenant = session.exec(select(Tenant).where(col(Tenant.name) == DEFAULT_TENANT_NAME)).first()
+    if tenant is None:
+        tenant = Tenant(name=DEFAULT_TENANT_NAME)
+        session.add(tenant)
+        session.flush()
+        return tenant
+    if not tenant.is_active:
+        raise DefaultTenantInactiveError(tenant.id)
+    return tenant
+
+
+def create_cli_superuser(*, username: str, password: str) -> User:
+    """在一个事务里创建系统管理员。
+
+    写入前统计已有 system_admin，人数大于 0 则拒绝。用户名冲突拒绝。
+    密码短于 8 位时不写用户。日志只记录用户名。
+    """
+    if len(password) < MIN_CLI_PASSWORD_LENGTH:
+        raise PasswordTooShortError()
+    hashed = hash_password(password)
+    engine = _engine_for_admin_create(settings.DATABASE_URL)
+    try:
+        # 成员表由启动时的建表补上，迁移脚本里没有。这里补齐后再写入同一事务。
+        Membership.__table__.create(engine, checkfirst=True)
+        try:
+            with Session(engine) as session:
+                _lock_admin_create(session)
+                admin_count = int(
+                    session.exec(
+                        select(func.count())
+                        .select_from(User)
+                        .where(col(User.role) == Role.SYSTEM_ADMIN.value)
+                    ).one()
+                )
+                if admin_count > 0:
+                    raise SetupClosedError()
+                tenant = _default_tenant_for_admin(session)
+                taken = session.exec(select(User).where(col(User.username) == username)).first()
+                if taken is not None:
+                    raise UsernameTakenError(username)
+                user = User(
+                    tenant_id=tenant.id,
+                    username=username,
+                    email=None,
+                    hashed_password=hashed,
+                    role=Role.SYSTEM_ADMIN.value,
+                )
+                session.add(user)
+                try:
+                    session.flush()
+                    session.add(
+                        Membership(
+                            user_id=user.id,
+                            tenant_id=tenant.id,
+                            role=membership_role_for_user(user),
+                        )
+                    )
+                    session.commit()
+                except IntegrityError as exc:
+                    session.rollback()
+                    raise UsernameTakenError(username) from exc
+                logger.info("已创建系统管理员 '%s'", username)
+                return user
+        except OperationalError as exc:
+            if "no such table" not in str(exc).lower():
+                raise
+            raise DatabaseNotMigratedError() from exc
+    finally:
+        engine.dispose()
 
 
 def revoke_refresh_tokens(session: Session, user_id: str) -> User:

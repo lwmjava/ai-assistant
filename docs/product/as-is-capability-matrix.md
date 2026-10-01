@@ -19,6 +19,7 @@
 | 管理后台用户/租户/系统状态 | `Partial` | `app/api/routes/admin_users.py`；`app/api/routes/admin_tenants.py`；`app/api/routes/admin_system.py`；`frontend/src/pages/Users.tsx` | 系统管理员可列出用户并改角色、停用，可改租户名并停用，可看数据库与向量库是否连通。不重新启用。无在线人数或调用量 |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
+| 命令行迁移与创建系统管理员 | `Implemented` | `app/cli.py`；`pyproject.toml` 的 `ai-assistant` 脚本；`tests/test_cli.py` | 空库可迁移到当前版本，并创建可登录的系统管理员。已有系统管理员、密码短于 8 位或两次重叠创建时拒绝，日志不含密码。没有 start、stop、logs。环境变量引导和 `/setup` 仍可用。管理接口仍可创建多名系统管理员。PostgreSQL 未在本能力中演练 |
 
 ## 2. Agent 编排
 

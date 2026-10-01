@@ -3725,9 +3725,16 @@ tasks:
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d3.md"
+        - "docs/plans/implementation_quota_001.md"
+        - "docs/product/as-is-capability-matrix.md"
+        - "alembic/versions/"
         - "app/models/"
+        - "app/schemas/"
         - "app/services/"
         - "app/api/routes/"
+        - "app/rag/import_jobs.py"
+        - "app/audit/models.py"
         - "tests/"
         - "tasks.yaml"
         - "AGENTS.md"
@@ -3783,8 +3790,14 @@ tasks:
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d3.md"
+        - "docs/plans/implementation_limit_001.md"
+        - "docs/product/as-is-capability-matrix.md"
         - "app/security/"
+        - "app/services/chat_service.py"
+        - "app/api/routes/chat.py"
         - "frontend/src/"
+        - "README.md"
         - "tests/"
         - "tasks.yaml"
         - "AGENTS.md"
@@ -3836,8 +3849,14 @@ tasks:
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d3.md"
+        - "docs/plans/implementation_export_001.md"
+        - "docs/product/as-is-capability-matrix.md"
         - "app/api/routes/"
+        - "app/api/router.py"
+        - "app/schemas/"
         - "app/services/"
+        - "app/audit/models.py"
         - "tests/"
         - "tasks.yaml"
         - "AGENTS.md"
@@ -3880,7 +3899,7 @@ tasks:
 
   - id: "CLI-001"
     title: "migrate 与管理员命令（交付 D3）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-05"
     depends_on:
@@ -3893,7 +3912,11 @@ tasks:
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d3.md"
+        - "docs/plans/implementation_cli_001.md"
+        - "docs/product/as-is-capability-matrix.md"
         - "app/"
+        - "pyproject.toml"
         - "README.md"
         - "tests/"
         - "tasks.yaml"

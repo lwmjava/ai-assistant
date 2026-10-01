@@ -33,13 +33,12 @@ def _get_alembic_config() -> Config:
     """获取 Alembic 配置对象。
 
     每次调用创建新实例，确保线程安全。
+    脚本目录按 alembic.ini 所在位置解析，不随当前工作目录变化。
     """
     if not _ALEMBIC_INI.exists():
-        raise FileNotFoundError(
-            f"alembic.ini 未找到：{_ALEMBIC_INI}。"
-            f"请确认从项目根目录运行，或设置 ALEMBIC_CONFIG 环境变量。"
-        )
+        raise FileNotFoundError(f"alembic.ini 未找到：{_ALEMBIC_INI}。")
     cfg = Config(str(_ALEMBIC_INI))
+    cfg.set_main_option("script_location", (_ALEMBIC_INI.parent / "alembic").as_posix())
     # 从应用配置注入数据库 URL（覆盖 alembic.ini 中的占位符）
     cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
     return cfg
@@ -386,13 +385,10 @@ def auto_migrate() -> bool:
         return False
 
 
-# ── CLI 入口（当前通过 python -m 调用，后续可迁移到 click/typer CLI）──
-# SKELETON：CLI 完整实现 — 当前为最简骨架，可按需补充：
-#   - click/typer 命令行框架
-#   - `ai-assistant migrate` 入口
-#   - 彩色输出（rich 库）
-#   - 交互式确认（--yes / --check）
-#   - 审计日志写入
+# 迁移命令有两个入口，行为相同：
+# - python -m app.core.migration migrate
+# - ai-assistant migrate（app.cli，内部调用这里的 _cli_migrate）
+# 创建系统管理员不在本模块。
 
 
 def _cli_check() -> None:
@@ -445,8 +441,7 @@ def _cli_history() -> None:
 
 
 if __name__ == "__main__":
-    # 最简 CLI：python -m app.core.migration [check|migrate|history]
-    # 后续可迁移到成熟的命令行框架（click/typer）。
+    # python -m app.core.migration [check|migrate|history]
     args = sys.argv[1:]
     cmd = args[0] if args else "check"
 

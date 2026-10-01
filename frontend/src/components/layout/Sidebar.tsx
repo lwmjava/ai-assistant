@@ -3,15 +3,17 @@
 import { NavLink } from 'react-router-dom'
 import {
   BookOpen,
+  Building2,
   CalendarClock,
   MessagesSquare,
   ShieldCheck,
+  UserPlus,
   Wrench,
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-import { can, canViewAudit } from '@/lib/permissions'
+import { can, canManageTenants, canViewAudit } from '@/lib/permissions'
 import { cn } from '@/lib/cn'
 import type { Role } from '@/types/api'
 
@@ -31,6 +33,8 @@ const ITEMS: NavItem[] = [
   { to: '/knowledge', label: '知识库', icon: BookOpen, resource: 'knowledge_bases', action: 'read' },
   { to: '/tools', label: '工具与 MCP', icon: Wrench, resource: 'agents', action: 'read' },
   { to: '/workflows', label: '工作流', icon: CalendarClock, resource: 'workflows', action: 'read' },
+  { to: '/tenants', label: '租户', icon: Building2, visible: (role) => canManageTenants(role) },
+  { to: '/users', label: '用户', icon: UserPlus, visible: (role) => canManageTenants(role) },
   { to: '/audit', label: '审计日志', icon: ShieldCheck, visible: (role) => canViewAudit(role) },
 ]
 

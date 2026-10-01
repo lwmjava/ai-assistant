@@ -60,3 +60,8 @@ export function can(role: Role | undefined, resource: string, action: Action): b
 export function canViewAudit(role: Role | undefined): boolean {
   return role === 'system_admin' || role === 'system_viewer'
 }
+
+/** 租户页与用户页：后端这两个接口只允许 system_admin。 */
+export function canManageTenants(role: Role | undefined): boolean {
+  return role === 'system_admin'
+}

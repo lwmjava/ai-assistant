@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppLayout } from '@/components/layout/AppLayout'
-import { can, canViewAudit } from '@/lib/permissions'
+import { can, canManageTenants, canViewAudit } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
 import type { Role } from '@/types/api'
 
@@ -16,6 +16,8 @@ const KnowledgePage = lazy(() => import('@/pages/Knowledge'))
 const ToolsPage = lazy(() => import('@/pages/Tools'))
 const WorkflowsPage = lazy(() => import('@/pages/Workflows'))
 const AuditPage = lazy(() => import('@/pages/Audit'))
+const TenantsPage = lazy(() => import('@/pages/Tenants'))
+const UsersPage = lazy(() => import('@/pages/Users'))
 
 /** 路由切换时的降级视图：保持布局稳定，避免白屏。 */
 function PageFallback() {
@@ -68,6 +70,12 @@ function RequirePermission({
 function RequireAudit({ children }: { children: ReactElement }) {
   const role = useAuthStore((s) => s.user?.role)
   if (!canViewAudit(role)) return <Navigate to="/chat" replace />
+  return children
+}
+
+function RequireSystemAdmin({ children }: { children: ReactElement }) {
+  const role = useAuthStore((s) => s.user?.role)
+  if (!canManageTenants(role)) return <Navigate to="/chat" replace />
   return children
 }
 
@@ -151,6 +159,26 @@ export default function App() {
                 <AuditPage />
               </Lazy>
             </RequireAudit>
+          }
+        />
+        <Route
+          path="/tenants"
+          element={
+            <RequireSystemAdmin>
+              <Lazy>
+                <TenantsPage />
+              </Lazy>
+            </RequireSystemAdmin>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <RequireSystemAdmin>
+              <Lazy>
+                <UsersPage />
+              </Lazy>
+            </RequireSystemAdmin>
           }
         />
         <Route path="*" element={<NotFound />} />

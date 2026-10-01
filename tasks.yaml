@@ -3262,7 +3262,7 @@ tasks:
 
   - id: "FLOW-001"
     title: "调度在目标环境可启动（交付 D1）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-01-15"
     depends_on:
@@ -3272,9 +3272,16 @@ tasks:
       facts:
         - claim: "未安装调度依赖时，调度测试不能运行。"
           evidence: "app/workflow/"
+        - claim: "requirements.txt 列入 croniter 后，启停用例可以通过。到点触发仍不会调用执行。"
+          evidence: "docs/plans/implementation_flow_001.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d1.md"
+        - "docs/plans/implementation_flow_001.md"
+        - "docs/product/as-is-capability-matrix.md"
+        - "requirements.txt"
+        - "README.md"
         - "app/workflow/"
         - "pyproject.toml"
         - "tests/"

@@ -280,6 +280,8 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+`pip install -r requirements.txt` 会安装调度依赖 `croniter`。`pip install -e ".[workflow]"` 也会。`WORKFLOW_ENABLED` 默认是 `false`；打开后，进程启动时创建调度任务。到点是否执行尚未完成。
+
 至少改 `JWT_SECRET_KEY`。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。两项都空着时，不自动建管理员，改由下一步的 `/setup` 创建。
 
 失败时看：`.env` 没被读到，多半是进程还停在改文件之前，重新启动后端。生产环境若 `JWT_SECRET_KEY` 仍是占位值，进程会拒绝启动，终端里有安全校验失败的报错。
@@ -473,7 +475,7 @@ RAG_OCR_TIMEOUT_SECONDS=60
 ## 开发
 
 ```bash
-# 安装开发依赖
+# 安装开发依赖（不含 croniter；调度依赖见快速开始，或 pip install -e ".[workflow]"）
 pip install -e ".[dev]"
 
 # 运行测试

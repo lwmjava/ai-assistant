@@ -36,8 +36,8 @@ xlrd==2.0.2
 # 可选：启用 MCP 客户端时安装（MCP_ENABLED=true，打通 AI↔企业系统）
 # mcp>=1.2.0
 
-# 可选：启用 Workflow 工作流引擎的 cron 调度时安装（WORKFLOW_ENABLED=true）
-# croniter>=2.0.0
+# 默认安装清单包含 cron 调度依赖。WORKFLOW_ENABLED 仍默认关闭，未打开时调度器不启动。
+croniter>=2.0.0
 
 # 可选：RAG_BACKEND=langchain 时安装（中文 RecursiveCharacterTextSplitter + LC 检索适配）
 # langchain-core>=1.0,<2.0

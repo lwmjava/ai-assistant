@@ -364,11 +364,7 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-012` 已完成。下一任务：`RAG-013`（交付 A3 / 评审阶段 4，`backlog`，依赖已满足）。同阶段已拆、未开工：
-
-```text
-RAG-013 版本状态机、跨租户二次确认与发布历史版（A3，backlog，依赖 RAG-012）
-```
+`tasks.yaml` 中 `GOV-001`～`RAG-013` 已完成。阶段 A 知识库治理已落地。下一步按交付排期进入阶段 B，阶段 B 尚未拆进 `tasks.yaml`。
 
 A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 

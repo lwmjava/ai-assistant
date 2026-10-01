@@ -7,14 +7,18 @@ import type { DocumentOut, SearchResultOut } from '@/types/api'
 
 export const documentKeys = {
   all: ['documents'] as const,
-  list: (includeDeleted = false) => [...documentKeys.all, 'list', includeDeleted] as const,
+  list: (includeDeleted = false, versionState = '') =>
+    [...documentKeys.all, 'list', includeDeleted, versionState] as const,
 }
 
-export function useDocuments(includeDeleted = false) {
-  const query = includeDeleted ? '?include_deleted=true' : ''
+export function useDocuments(includeDeleted = false, versionState = '') {
+  const params = new URLSearchParams()
+  if (includeDeleted) params.set('include_deleted', 'true')
+  if (versionState) params.set('version_state', versionState)
+  const query = params.toString()
   return useQuery({
-    queryKey: documentKeys.list(includeDeleted),
-    queryFn: () => api.get<DocumentOut[]>(`/rag/documents${query}`),
+    queryKey: documentKeys.list(includeDeleted, versionState),
+    queryFn: () => api.get<DocumentOut[]>(`/rag/documents${query ? `?${query}` : ''}`),
     staleTime: 15_000,
   })
 }
@@ -45,9 +49,31 @@ export function useUploadDocument() {
 export function useDeleteDocument() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.delete<{ deleted: boolean }>(`/rag/documents/${id}`),
+    mutationFn: (input: { id: string; confirmationId?: string }) => {
+      const query = input.confirmationId ? `?confirmation_id=${input.confirmationId}` : ''
+      return api.delete<{ deleted: boolean }>(`/rag/documents/${input.id}${query}`)
+    },
     onSuccess: () => void qc.invalidateQueries({ queryKey: documentKeys.all }),
   })
+}
+
+export function usePublishDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { id: string; confirmationId?: string }) => {
+      const query = input.confirmationId ? `?confirmation_id=${input.confirmationId}` : ''
+      return api.post<DocumentOut>(`/rag/documents/${input.id}/publish${query}`)
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: documentKeys.all }),
+  })
+}
+
+export async function createConfirmation(documentId: string, action: string) {
+  const row = await api.post<{ id: string }>('/rag/operation-confirmations', {
+    document_id: documentId,
+    action,
+  })
+  return row.id
 }
 
 /** 混合检索（向量 + BM25 + RRF 融合）。查询为手动触发，不自动执行。 */

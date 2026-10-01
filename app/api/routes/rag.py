@@ -5,6 +5,7 @@
 """
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
@@ -17,7 +18,7 @@ from app.audit.models import AuditAction
 from app.core.security import Role
 from app.models.rag import Document, ImportBatch, ImportJob
 from app.models.user import User
-from app.rag.access import can_read_import, can_write_document, restrict_list_to_uploader
+from app.rag.access import can_control_document, can_read_import, can_write_document, restrict_list_to_uploader
 from app.rag.document_parsers import (
     DocumentOcrRequiredError,
     DocumentParseError,
@@ -51,7 +52,8 @@ class IngestRequest(BaseModel):
     text: str
     title: str
     source: str | None = None
-    backend: str | None = None  # 可选：native | langchain | llamaindex，覆盖 RAG_BACKEND
+    backend: str | None = None
+    version_state: str | None = None
 
     model_config = {
         "json_schema_extra": {
@@ -104,6 +106,7 @@ class DocumentOut(BaseModel):
     title: str
     source: str | None
     is_current: bool
+    version_state: str
     deleted_at: str | None
     chunk_count: int
     created_at: str
@@ -165,6 +168,7 @@ def _doc_out(doc: Document) -> DocumentOut:
         title=doc.title,
         source=doc.source,
         is_current=doc.is_current,
+        version_state=doc.version_state,
         deleted_at=doc.deleted_at.isoformat() if doc.deleted_at else None,
         chunk_count=doc.chunk_count,
         created_at=doc.created_at.isoformat(),
@@ -245,12 +249,22 @@ async def ingest_document(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="text 与 title 不能为空"
         )
+    if req.version_state not in {None, "draft", "published"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="version_state 只能是 draft 或 published"
+        )
     # 按当前用户租户创建 RAG 服务，保证多租户数据隔离
     rag = RAGService(session, current_user.tenant_id)
     try:
         # 分块、嵌入并落库；backend 可覆盖默认 RAG 后端
         doc = await rag.ingest_text(
-            req.text, req.title, req.source, current_user.id, backend=req.backend
+            req.text,
+            req.title,
+            req.source,
+            current_user.id,
+            backend=req.backend,
+            is_current=req.version_state != "draft",
+            version_state="draft" if req.version_state == "draft" else None,
         )
     except ValueError as exc:
         # 服务层业务错误（如无法切块）统一映射为 400
@@ -502,14 +516,19 @@ def download_import_job_source(
 @router.get("/documents", response_model=list[DocumentOut])
 def list_documents(
     include_deleted: bool = False,
+    version_state: str | None = None,
     current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> list[DocumentOut]:
-    """列出当前用户可见的文档。成员即使传入 include_deleted 也看不到已软删行。"""
+    """列出当前用户可见的文档。成员忽略已删除和状态筛选。"""
     rag = RAGService(session, current_user.tenant_id)
     return [
         _doc_out(d)
-        for d in rag.list_documents(current_user, include_deleted=include_deleted)
+        for d in rag.list_documents(
+            current_user,
+            include_deleted=include_deleted,
+            version_state=version_state,
+        )
     ]
 
 
@@ -537,11 +556,19 @@ def get_document(
 async def reparse_document(
     document_id: str,
     request: Request,
+    confirmation_id: str | None = None,
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
 ) -> ImportJobOut:
-    """为既有文档创建重解析任务。跨租户仅系统管理员，并在受理时审计。"""
+    """为既有文档创建重解析任务。跨租户须带一次性确认。"""
+    from app.rag.confirmations import consume_confirmation
+
     doc = session.get(Document, document_id)
+    if doc is not None:
+        try:
+            consume_confirmation(session, current_user, doc, "reparse", confirmation_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     try:
         job = create_reparse_job(session, current_user, document_id)
     except ValueError as exc:
@@ -600,15 +627,22 @@ def download_document(
 async def delete_document(
     document_id: str,
     request: Request,
+    confirmation_id: str | None = None,
     current_user: User = Depends(require_permission("knowledge_bases", "delete")),
     session: Session = Depends(get_db),
 ) -> dict:
-    """删除文档及其分块。"""
+    """软删除文档。跨租户须带一次性确认。"""
+    from app.rag.confirmations import consume_confirmation
+
     doc = session.get(Document, document_id)
     if doc is None or not can_write_document(doc, current_user):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
         )
+    try:
+        consume_confirmation(session, current_user, doc, "delete", confirmation_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     owner_tenant_id = doc.tenant_id
     rag = RAGService(session, owner_tenant_id)
     ok = await rag.delete_document(document_id, current_user)
@@ -630,6 +664,141 @@ async def delete_document(
         details=details,
     )
     return {"deleted": True}
+
+
+@router.post("/documents/{document_id}/publish", response_model=DocumentOut)
+async def publish_document(
+    document_id: str,
+    confirmation_id: str | None = None,
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
+    session: Session = Depends(get_db),
+) -> DocumentOut:
+    """把历史版本发布为当前版。跨租户须带一次性确认。"""
+    from app.rag.confirmations import consume_confirmation
+
+    doc = session.get(Document, document_id)
+    if doc is None or not can_write_document(doc, current_user) or doc.version_state == "archived":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
+    try:
+        consume_confirmation(session, current_user, doc, "publish", confirmation_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    rag = RAGService(session, doc.tenant_id)
+    published = rag.publish_document(document_id, current_user)
+    if published is None:
+        session.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
+    return _doc_out(published)
+
+
+class ScheduleRequest(BaseModel):
+    """把文档标为待生效。"""
+
+    effective_at: datetime
+
+
+@router.post("/documents/{document_id}/schedule", response_model=DocumentOut)
+def schedule_document(
+    document_id: str,
+    req: ScheduleRequest,
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
+    session: Session = Depends(get_db),
+) -> DocumentOut:
+    """标为待生效，不改变检索用的当前发布指针以外的已发布版本之外。"""
+    rag = RAGService(session, current_user.tenant_id)
+    try:
+        doc = rag.schedule_document(document_id, current_user, req.effective_at)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
+    return _doc_out(doc)
+
+
+@router.post("/documents/{document_id}/archive", response_model=DocumentOut)
+def archive_document(
+    document_id: str,
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
+    session: Session = Depends(get_db),
+) -> DocumentOut:
+    """归档文档并退出当前版。"""
+    rag = RAGService(session, current_user.tenant_id)
+    doc = rag.archive_document(document_id, current_user)
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
+    return _doc_out(doc)
+
+
+class ConfirmationIn(BaseModel):
+    """创建跨租户确认。"""
+
+    document_id: str
+    action: str
+
+
+class ConfirmationOut(BaseModel):
+    """确认记录。"""
+
+    id: str
+    document_id: str
+    tenant_id: str
+    action: str
+    consumed_at: str | None
+
+
+@router.post("/operation-confirmations", response_model=ConfirmationOut)
+def create_operation_confirmation(
+    req: ConfirmationIn,
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
+    session: Session = Depends(get_db),
+) -> ConfirmationOut:
+    """为跨租户删除、重解析或发布创建一次性确认。"""
+    from app.rag.confirmations import create_confirmation
+
+    doc = session.get(Document, req.document_id)
+    if doc is None or not can_control_document(doc, current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
+    try:
+        row = create_confirmation(session, current_user, doc, req.action)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return ConfirmationOut(
+        id=row.id,
+        document_id=row.document_id,
+        tenant_id=row.tenant_id,
+        action=row.action,
+        consumed_at=None,
+    )
+
+
+@router.get("/operation-confirmations", response_model=list[ConfirmationOut])
+def list_operation_confirmations(
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
+    session: Session = Depends(get_db),
+) -> list[ConfirmationOut]:
+    """系统管理员查看自己的确认记录。"""
+    from sqlmodel import select
+
+    from app.core.security import Role
+    from app.models.rag import OperationConfirmation
+
+    if current_user.role_enum != Role.SYSTEM_ADMIN:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="确认记录不存在")
+    rows = session.exec(
+        select(OperationConfirmation)
+        .where(OperationConfirmation.actor_user_id == current_user.id)
+        .order_by(OperationConfirmation.created_at.desc())
+    ).all()
+    return [
+        ConfirmationOut(
+            id=row.id,
+            document_id=row.document_id,
+            tenant_id=row.tenant_id,
+            action=row.action,
+            consumed_at=row.consumed_at.isoformat() if row.consumed_at else None,
+        )
+        for row in rows
+    ]
 
 
 @router.post("/search", response_model=list[SearchResultOut])

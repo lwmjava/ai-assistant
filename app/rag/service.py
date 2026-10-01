@@ -53,6 +53,7 @@ def demote_other_current_versions(session: Session, version_group_id: str, *, ke
     ).all()
     for row in rows:
         row.is_current = False
+        row.version_state = "replaced"
         session.add(row)
 
 logger = logging.getLogger(__name__)
@@ -128,6 +129,7 @@ class RAGService:
         previous_document_id: str | None = None,
         import_job_id: str | None = None,
         is_current: bool = True,
+        version_state: str | None = None,
         effective_at: datetime | None = None,
         expires_at: datetime | None = None,
     ) -> Document:
@@ -153,6 +155,7 @@ class RAGService:
                 previous_document_id=previous_document_id,
                 import_job_id=import_job_id,
                 is_current=is_current,
+                version_state=version_state or ("published" if is_current else "replaced"),
                 effective_at=effective_at,
                 expires_at=expires_at,
                 chunk_count=len(chunk_objs),
@@ -217,6 +220,7 @@ class RAGService:
         previous_document_id: str | None = None,
         import_job_id: str | None = None,
         is_current: bool = True,
+        version_state: str | None = None,
         effective_at: datetime | None = None,
         expires_at: datetime | None = None,
         strategy: str | None = None,
@@ -247,6 +251,7 @@ class RAGService:
             previous_document_id=previous_document_id,
             import_job_id=import_job_id,
             is_current=is_current,
+            version_state=version_state,
             effective_at=effective_at,
             expires_at=expires_at,
         )
@@ -373,7 +378,13 @@ class RAGService:
         """读权限。保留此名以兼容旧调用，语义见 ``can_read_document``。"""
         return can_read_document(doc, user)
 
-    def list_documents(self, user: User, *, include_deleted: bool = False) -> list[Document]:
+    def list_documents(
+        self,
+        user: User,
+        *,
+        include_deleted: bool = False,
+        version_state: str | None = None,
+    ) -> list[Document]:
         """控制面列表。成员只看自己的未删当前版；管理员可看历史版。"""
         from app.core.security import Role
 
@@ -391,6 +402,8 @@ class RAGService:
                 stmt = stmt.where(Document.user_id == user.id)
         if not (include_deleted and is_kb_admin(user)):
             stmt = stmt.where(Document.deleted_at.is_(None))
+        if version_state and is_kb_admin(user):
+            stmt = stmt.where(Document.version_state == version_state)
         stmt = stmt.order_by(Document.updated_at.desc())
         return list(self.session.exec(stmt).all())
 
@@ -401,6 +414,50 @@ class RAGService:
             return None
         if doc.deleted_at is not None and not is_kb_admin(user):
             return None
+        return doc
+
+    def publish_document(self, document_id: str, user: User) -> Document | None:
+        """把目标版本设为当前发布版，并在同一事务里替换同组旧当前版。"""
+        doc = self.session.get(Document, document_id)
+        if doc is None or not can_control_document(doc, user):
+            return None
+        if doc.deleted_at is not None or doc.version_state == "archived":
+            return None
+        if doc.is_current and doc.version_state == "published":
+            return doc
+        demote_other_current_versions(self.session, doc.version_group_id, keep_id=doc.id)
+        doc.is_current = True
+        doc.version_state = "published"
+        self.session.add(doc)
+        self.session.commit()
+        self.session.refresh(doc)
+        return doc
+
+    def schedule_document(self, document_id: str, user: User, effective_at: datetime) -> Document | None:
+        """标为待生效。不自动变成当前版。"""
+        doc = self.session.get(Document, document_id)
+        if doc is None or not can_control_document(doc, user) or doc.deleted_at is not None:
+            return None
+        if effective_at <= datetime.now(UTC):
+            raise ValueError("待生效时间必须在未来")
+        doc.is_current = False
+        doc.version_state = "scheduled"
+        doc.effective_at = effective_at
+        self.session.add(doc)
+        self.session.commit()
+        self.session.refresh(doc)
+        return doc
+
+    def archive_document(self, document_id: str, user: User) -> Document | None:
+        """归档并退出当前版。"""
+        doc = self.session.get(Document, document_id)
+        if doc is None or not can_control_document(doc, user) or doc.deleted_at is not None:
+            return None
+        doc.is_current = False
+        doc.version_state = "archived"
+        self.session.add(doc)
+        self.session.commit()
+        self.session.refresh(doc)
         return doc
 
     async def reindex_document_in_place(

@@ -127,6 +127,81 @@ async def test_purge_waits_for_retention_then_removes_and_audits(session: Sessio
     assert any('"action": "purge"' in (log.details or "") for log in logs)
 
 
+async def test_publish_historical_replaces_the_previous_current(session: Session, monkeypatch):
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", "tenant")
+    tenant = "kb-publish"
+    owner = _user("kb-pub-owner", tenant)
+    admin = _user("kb-pub-admin", tenant, Role.TENANT_ADMIN)
+    rag = RAGService(session, tenant)
+    current = await rag.ingest_text("当前版 PUBLISH-OLD。", "当前", "cur", owner.id)
+    historical = await rag.ingest_text(
+        "历史版 PUBLISH-NEW。",
+        "历史",
+        "hist",
+        owner.id,
+        version_group_id=current.version_group_id,
+        is_current=False,
+    )
+    published = rag.publish_document(historical.id, admin)
+    assert published is not None
+    assert published.id == historical.id
+    session.refresh(current)
+    assert published.is_current is True
+    assert published.version_state == "published"
+    assert current.is_current is False
+    assert current.version_state == "replaced"
+    currents = [
+        row
+        for row in rag.list_documents(admin)
+        if row.version_group_id == current.version_group_id and row.is_current
+    ]
+    assert [row.id for row in currents] == [historical.id]
+    archived = rag.archive_document(historical.id, admin)
+    assert archived is not None and archived.version_state == "archived"
+    assert rag.publish_document(historical.id, admin) is None
+
+
+def test_cross_tenant_delete_requires_confirmation(session: Session):
+    from app.rag.confirmations import consume_confirmation, create_confirmation
+
+    doc = Document(
+        tenant_id="t-doc",
+        user_id="owner",
+        title="跨租户",
+        is_current=True,
+        version_state="published",
+    )
+    session.add(doc)
+    session.commit()
+    admin = _user("sys-confirm", "t-platform", Role.SYSTEM_ADMIN)
+    with pytest.raises(ValueError):
+        consume_confirmation(session, admin, doc, "delete", None)
+    row = create_confirmation(session, admin, doc, "delete")
+    consume_confirmation(session, admin, doc, "delete", row.id)
+    session.commit()
+    session.refresh(row)
+    assert row.consumed_at is not None
+    with pytest.raises(ValueError):
+        consume_confirmation(session, admin, doc, "delete", row.id)
+
+
+def test_member_state_filter_is_ignored(session: Session, monkeypatch):
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", "tenant")
+    tenant = "kb-filter"
+    owner = _user("kb-filter-owner", tenant)
+    doc = Document(
+        tenant_id=tenant,
+        user_id=owner.id,
+        title="草稿",
+        is_current=False,
+        version_state="draft",
+    )
+    session.add(doc)
+    session.commit()
+    rag = RAGService(session, tenant)
+    assert doc.id not in {item.id for item in rag.list_documents(owner, version_state="draft")}
+
+
 def test_uploader_scope_hides_peer_list(monkeypatch):
     monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", "uploader")
     doc = Document(tenant_id="t-u", user_id="owner", title="x", is_current=True)

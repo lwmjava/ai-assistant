@@ -172,6 +172,7 @@ def _ensure_rag_schema_columns() -> None:
         "expires_at": "ALTER TABLE rag_documents ADD COLUMN expires_at DATETIME",
         "import_job_id": "ALTER TABLE rag_documents ADD COLUMN import_job_id VARCHAR",
         "deleted_at": "ALTER TABLE rag_documents ADD COLUMN deleted_at DATETIME",
+        "version_state": "ALTER TABLE rag_documents ADD COLUMN version_state VARCHAR NOT NULL DEFAULT 'published'",
     }
     with engine.begin() as conn:
         table_names = set(inspect(conn).get_table_names())
@@ -189,6 +190,15 @@ def _ensure_rag_schema_columns() -> None:
                     "UPDATE rag_documents "
                     "SET version_group_id = id "
                     "WHERE version_group_id IS NULL OR version_group_id = ''"
+                )
+            )
+        if "version_state" in columns:
+            conn.execute(
+                text(
+                    "UPDATE rag_documents SET version_state = 'replaced' "
+                    "WHERE is_current = 0 AND ("
+                    "version_state IS NULL OR version_state = '' OR version_state = 'published'"
+                    ")"
                 )
             )
         for index_sql in [

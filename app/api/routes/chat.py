@@ -271,6 +271,15 @@ async def chat_stream(
                     {"type": "error", "data": str(exc)}, ensure_ascii=False
                 ),
             }
+        except Exception:
+            logger.exception("流式对话失败")
+            yield {
+                "event": "error",
+                "data": json.dumps(
+                    {"type": "error", "data": "生成失败，请稍后重试"},
+                    ensure_ascii=False,
+                ),
+            }
 
     return EventSourceResponse(event_generator())
 

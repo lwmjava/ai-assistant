@@ -120,6 +120,7 @@ export function useChatStream() {
       abortRef.current = controller
 
       let text = ''
+      let settled = false
       setSnapshot({ ...EMPTY, streaming: true })
 
       await streamPost(
@@ -175,10 +176,12 @@ export function useChatStream() {
                 setSnapshot((prev) => ({ ...prev, tools: [...prev.tools, value] }))
                 break
               case 'error':
+                settled = true
                 setSnapshot((prev) => ({ ...prev, error: hideStackTrace(value), streaming: false }))
                 break
               case 'done':
                 // 以 token 累积为准：与后端落库口径一致（见文件头说明）
+                settled = true
                 onFinished?.(text || value)
                 setSnapshot((prev) => ({ ...prev, streaming: false }))
                 break
@@ -202,8 +205,11 @@ export function useChatStream() {
         },
       )
 
-      // 流结束但既未收到 done 也未收到 error：兜底收尾，避免卡在加载态
-      setSnapshot((prev) => (prev.streaming ? { ...prev, streaming: false } : prev))
+      // 流结束但既未收到 done 也未收到 error：结束等待，并给出失败提示。
+      setSnapshot((prev) => {
+        if (!prev.streaming || prev.stoppedByUser || settled) return prev
+        return { ...prev, streaming: false, error: '生成失败，请稍后重试' }
+      })
       return text
     },
     [],

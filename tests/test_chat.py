@@ -170,6 +170,21 @@ def test_chat_stream_includes_sources_event(client: TestClient, monkeypatch) -> 
         set_embedding_override(None)
 
 
+def test_chat_stream_reports_unexpected_failure(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.routes import chat as chat_route
+
+    async def _boom(*_args, **_kwargs):
+        raise RuntimeError("SECRET_DB_PATH")
+        yield None
+
+    monkeypatch.setattr(chat_route._service, "chat_stream", _boom)
+    with client.stream("POST", "/api/chat/stream", json={"message": "流式测试"}) as resp:
+        assert resp.status_code == 200
+        body = "".join(resp.iter_text())
+    assert "生成失败，请稍后重试" in body
+    assert "SECRET_DB_PATH" not in body
+
+
 def test_chat_stream_returns_sse(client: TestClient) -> None:
     with client.stream("POST", "/api/chat/stream", json={"message": "流式测试"}) as resp:
         assert resp.status_code == 200

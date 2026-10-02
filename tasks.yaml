@@ -4009,7 +4009,7 @@ tasks:
 
   - id: "REL-002"
     title: "备份步骤与一次恢复记录（交付 D4）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-25"
     depends_on:
@@ -4017,8 +4017,8 @@ tasks:
     context:
       problem: "没有备份步骤，也没有一次恢复记录。"
       facts:
-        - claim: "默认数据在 SQLite 文件。"
-          evidence: "app/core/config.py"
+        - claim: "默认 SQLite 用标准库 backup 备份。临时库恢复后应用可以启动，健康检查为 ok，alembic_version 与源库相同。开发库未被改写。"
+          evidence: "README.md；docs/plans/implementation_rel_002.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"

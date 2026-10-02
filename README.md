@@ -419,6 +419,30 @@ docker compose up -d --build
 
 完整配置项见 [`.env.example`](.env.example)。
 
+## 备份与恢复
+
+默认数据库是仓库里的 SQLite 文件 `data/ai_assistant.db`。备份前先停掉正在使用这个文件的进程。
+
+不要只复制主文件。用 Python 标准库的 `sqlite3.Connection.backup`，把已提交内容写进另一个文件。源文件旁边若有 `-wal` 或 `-shm`，由这次 `backup` 收进目标文件，不要单独拷走未合并的日志。
+
+备份文件和数据库一样敏感，可能含有口令哈希和对话。不要提交到仓库，不要写进日志。
+
+源文件在 `data/knowledge`，不在这个 SQLite 里，上面的步骤不包含它们。`RAG_VECTOR_STORE` 保持 `local` 时，向量在同一个 SQLite 里。改成 Milvus 之后，向量不在这个文件里，只恢复 SQLite 不会带回 Milvus 中的数据。
+
+在仓库根目录、服务已停止时：
+
+```python
+import sqlite3
+from pathlib import Path
+
+source = sqlite3.connect("data/ai_assistant.db")
+target = sqlite3.connect("备份放在仓库外的路径.db")
+with source, target:
+    source.backup(target)
+```
+
+恢复时把目标文件设为该进程的 `DATABASE_URL` 再启动，并请求 `GET /api/health`。确认 `status` 为 `ok`，且目标文件的 `alembic_version` 与源文件相同。自动备份脚本、PostgreSQL、Milvus 和上传目录的备份这里不提供。
+
 ## 文档切分策略
 
 文档摄取时按 `RAG_CHUNK_STRATEGY` 选择切分方式，也可在调用 `ingest_text` 时用 `strategy` 参数按请求覆盖。支持六种模式：

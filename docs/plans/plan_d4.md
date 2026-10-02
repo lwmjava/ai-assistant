@@ -1,6 +1,6 @@
 # REL-001、REL-002、REL-003、REL-004：Swagger、备份记录、测试门禁、一轮检索实验
 
-> 状态：REL-001 已实现，说明见 `docs/plans/implementation_rel_001.md`。REL-002、REL-003、REL-004 尚未实现。`docs/reviews/2026-10-02-plan_d4评审.md` 的 6 条已写入本文。实现说明在各自完成后另写，不把未做项写成已完成。
+> 状态：REL-001、REL-002 已实现，说明见 `docs/plans/implementation_rel_001.md` 与 `docs/plans/implementation_rel_002.md`。REL-003、REL-004 尚未实现。`docs/reviews/2026-10-02-plan_d4评审.md` 的 6 条已写入本文。实现说明在各自完成后另写，不把未做项写成已完成。
 > 来源：`tasks.yaml` 的 REL-001～REL-004；`docs/plans/plan_remaining_delivery.md` 对应四节；交付排期第 5 节 D4、第 6 节第 20 项。
 > 日期：2026-10-02
 > 截止：2027-03-25

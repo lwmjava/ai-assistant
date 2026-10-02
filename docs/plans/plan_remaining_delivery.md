@@ -532,7 +532,7 @@
 
 ## REL-002 备份步骤与一次恢复记录
 
-实现计划见 `docs/plans/plan_d4.md`。下面保留拆分时的边界。
+实现计划见 `docs/plans/plan_d4.md`。已实现，说明见 `docs/plans/implementation_rel_002.md`。下面保留拆分时的边界。
 
 - 目标：写出备份步骤，并留下一次恢复记录。
 - 现状：默认数据在 SQLite 文件，没有本交付包的恢复记录。

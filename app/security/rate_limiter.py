@@ -8,8 +8,9 @@
 - 熔断器（LLM 错误率过高时自动降级）
 """
 
+import math
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from threading import Lock
 
 from app.security.types import SecurityContext
@@ -84,11 +85,18 @@ class RateLimiter:
                     ctx.rate_limit_remaining = remaining
                 return True, remaining
 
-            # 拒绝
+            # 拒绝。等待秒数只在补充速率大于 0 时计算，避免速率为 0 时除零。
             remaining = int(bucket.tokens)
+            wait_seconds: int | None = None
+            if self._config.rate > 0:
+                deficit = cost - bucket.tokens
+                if deficit < 0:
+                    deficit = 0.0
+                wait_seconds = max(1, math.ceil(deficit / self._config.rate))
             if ctx is not None:
                 ctx.rate_limited = True
                 ctx.rate_limit_remaining = remaining
+                ctx.retry_after_seconds = wait_seconds
             return False, remaining
 
     def reset(self, key: str) -> None:

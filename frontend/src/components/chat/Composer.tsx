@@ -20,6 +20,8 @@ export interface ComposerProps {
   mode: SendMode
   onModeChange: (mode: SendMode) => void
   disabled?: boolean
+  /** 限流倒计时未结束：只禁用发送，输入框仍可编辑。 */
+  sendLocked?: boolean
   placeholder?: string
 }
 
@@ -44,6 +46,7 @@ export function Composer({
   mode,
   onModeChange,
   disabled = false,
+  sendLocked = false,
   placeholder = '输入消息，Enter 发送，Shift+Enter 换行',
 }: ComposerProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -60,11 +63,11 @@ export function Composer({
     // 输入法组合期间不拦截 Enter，避免打断中文/日文选词
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
-      if (value.trim() && !streaming && !busy && !disabled) onSubmit()
+      if (value.trim() && !streaming && !busy && !disabled && !sendLocked) onSubmit()
     }
   }
 
-  const canSend = Boolean(value.trim()) && !streaming && !busy && !disabled
+  const canSend = Boolean(value.trim()) && !streaming && !busy && !disabled && !sendLocked
   const meta = MODE_META[mode]
 
   return (

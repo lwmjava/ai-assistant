@@ -19,9 +19,11 @@ import {
   useConversations,
   useDeleteConversation,
 } from '@/api/chat'
+import { downloadTenantConversations } from '@/api/export'
 import { useChatStream } from '@/hooks/useChatStream'
 import { api, ApiError, hideStackTrace } from '@/lib/http'
 import { isQuotaNotice } from '@/lib/quota-message'
+import { isRateLimitNotice, retryAfterSeconds } from '@/lib/rate-limit'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
 import type { ConversationDetail, ConversationOut, HealthInfo, MessageOut, SendMode } from '@/types/api'
@@ -101,9 +103,13 @@ export default function ChatPage() {
   const [onceInterrupted, setOnceInterrupted] = useState(false)
   const [loadReplyNote, setLoadReplyNote] = useState<string | null>(null)
   const [sendNotice, setSendNotice] = useState<string | null>(null)
+  const [retryLeft, setRetryLeft] = useState<number | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportNotice, setExportNotice] = useState<string | null>(null)
 
   // 最近一次发送的内容，失败时回填输入框
   const lastSentRef = useRef('')
+  const retryUntilRef = useRef<number | null>(null)
   const activeIdRef = useRef<string | null>(null)
   // 一次性模式的中断控制器；fetch 被 abort 会抛 AbortError，需与真实错误区分
   const onceAbortRef = useRef<AbortController | null>(null)
@@ -131,8 +137,40 @@ export default function ChatPage() {
     }
   }, [])
 
+  const applyRetry = useCallback((seconds: number | null) => {
+    if (seconds == null || seconds <= 0) {
+      retryUntilRef.current = null
+      setRetryLeft(null)
+      return
+    }
+    retryUntilRef.current = Date.now() + seconds * 1000
+    setRetryLeft(Math.ceil(seconds))
+  }, [])
+
+  useEffect(() => {
+    if (retryLeft == null) return
+    const timer = window.setInterval(() => {
+      const until = retryUntilRef.current
+      if (until == null) {
+        setRetryLeft(null)
+        return
+      }
+      const left = Math.ceil((until - Date.now()) / 1000)
+      if (left <= 0) {
+        retryUntilRef.current = null
+        setRetryLeft(null)
+        setSendNotice((current) => (current && isRateLimitNotice(current) ? null : current))
+        return
+      }
+      setRetryLeft(left)
+    }, 250)
+    return () => window.clearInterval(timer)
+  }, [retryLeft])
+
   const busy = snapshot.streaming || awaiting
+  const sendLocked = retryLeft != null && retryLeft > 0
   const cannotSend = Boolean(role) && !can(role, 'conversations', 'write')
+  const canExport = role === 'tenant_admin' || role === 'system_admin'
   const readOnlyText =
     role === 'viewer' ? '只读成员不可发送消息' : '当前角色不能发送消息'
 
@@ -159,6 +197,7 @@ export default function ChatPage() {
     const message = hideStackTrace(snapshot.error)
     setSendNotice(message)
     if (isQuotaNotice(message)) toast.warning('已达配额上限', message)
+    else if (isRateLimitNotice(message)) toast.warning('发送过于频繁', message)
     else toast.error('生成失败', message)
     reset()
   }, [snapshot.error, snapshot.interrupted, snapshot.stoppedByUser, toast, reset])
@@ -197,7 +236,7 @@ export default function ChatPage() {
 
   const handleSend = useCallback(async () => {
     const text = input.trim()
-    if (!text || busy || cannotSend) return
+    if (!text || busy || cannotSend || sendLocked) return
 
     setOnceInterrupted(false)
     setLoadReplyNote(null)
@@ -230,6 +269,7 @@ export default function ChatPage() {
           setPending([])
           reset()
         },
+        onRateLimit: applyRetry,
       })
       return
     }
@@ -258,9 +298,14 @@ export default function ChatPage() {
         lastSentRef.current = ''
       }
       setPending([])
+      if (err instanceof ApiError) {
+        const seconds = retryAfterSeconds(err.payload)
+        if (seconds !== undefined) applyRetry(seconds)
+      }
       const message = err instanceof ApiError ? hideStackTrace(err.detail) : '生成失败，请稍后重试'
       setSendNotice(message)
       if (isQuotaNotice(message)) toast.warning('已达配额上限', message)
+      else if (isRateLimitNotice(message)) toast.warning('发送过于频繁', message)
       else toast.error('生成失败', message)
     } finally {
       onceAbortRef.current = null
@@ -277,6 +322,8 @@ export default function ChatPage() {
     applyOnceResult,
     toast,
     cannotSend,
+    sendLocked,
+    applyRetry,
   ])
 
   /** 中断：流式走 SSE 的 abort，一次性走 fetch 的 abort。 */
@@ -388,6 +435,22 @@ export default function ChatPage() {
     }
   }, [pendingDelete, deleteMutation, activeId, toast, reset])
 
+  const handleExport = useCallback(async () => {
+    if (exporting) return
+    setExporting(true)
+    setExportNotice(null)
+    try {
+      await downloadTenantConversations()
+      toast.success('已开始下载', '文件名为 conversations.json')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '导出失败，请稍后重试'
+      setExportNotice(message)
+      toast.error('导出未完成', message)
+    } finally {
+      setExporting(false)
+    }
+  }, [exporting, toast])
+
   const detailError = detailQuery.error
   const lastServer = serverMessages[serverMessages.length - 1]
   const liveAlreadyStored =
@@ -476,6 +539,16 @@ export default function ChatPage() {
               重命名
             </Button>
           )}
+          {canExport && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void handleExport()}
+              disabled={exporting}
+            >
+              {exporting ? '正在导出' : '导出本租户对话'}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -485,6 +558,11 @@ export default function ChatPage() {
             新建
           </Button>
         </div>
+        {exportNotice && (
+          <p role="alert" className="border-b border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+            {exportNotice}
+          </p>
+        )}
 
         {showModelGuide && (
           <div
@@ -542,10 +620,16 @@ export default function ChatPage() {
 
         <div className="shrink-0 border-t border-border/60 bg-bg/60 p-3 backdrop-blur sm:p-4">
           <div className="mx-auto max-w-4xl">
-            {sendNotice && (
-              <p role="alert" className="mb-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                {sendNotice}
+            {sendLocked ? (
+              <p role="status" className="mb-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                发送过于频繁，请在 {retryLeft} 秒后再试。倒计时结束前不能发送。
               </p>
+            ) : (
+              sendNotice && (
+                <p role="alert" className="mb-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {sendNotice}
+                </p>
+              )
             )}
             <Composer
               value={input}
@@ -557,6 +641,7 @@ export default function ChatPage() {
               mode={mode}
               onModeChange={handleModeChange}
               disabled={cannotSend}
+              sendLocked={sendLocked}
               placeholder={cannotSend ? readOnlyText : undefined}
             />
             {cannotSend && (

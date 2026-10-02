@@ -2,6 +2,7 @@
 
 import { shouldRefreshAccessToken } from '@/lib/access-token'
 import { quotaExceededMessage } from '@/lib/quota-message'
+import { rateLimitedDetail } from '@/lib/rate-limit'
 
 /** 归一化后的 API 错误：保留状态码与后端 detail / 字段级校验信息。 */
 export class ApiError extends Error {
@@ -201,7 +202,9 @@ async function parseError(res: Response): Promise<ApiError> {
     const data = (await res.json()) as { detail?: unknown }
     payload = data
     const quota = quotaExceededMessage(data)
+    const limited = rateLimitedDetail(data)
     if (quota) detail = quota
+    else if (limited) detail = limited
     else if (typeof data?.detail === 'string') detail = data.detail
     else if (Array.isArray(data?.detail)) {
       // Pydantic 字段校验错误：[{loc, msg, type}]

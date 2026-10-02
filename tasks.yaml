@@ -3777,7 +3777,7 @@ tasks:
 
   - id: "LIMIT-001"
     title: "限流提示与倒计时（交付 D3）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-05"
     depends_on:

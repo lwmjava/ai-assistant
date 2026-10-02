@@ -488,7 +488,7 @@
 
 ## LIMIT-001 限流提示与倒计时
 
-实现计划见 `docs/plans/plan_d3.md`。
+实现计划见 `docs/plans/plan_d3.md`。实现说明见 `docs/plans/implementation_limit_001.md`。
 
 - 目标：触发速率限制时，页面告诉用户需要等待多久。
 - 现状：对话入口已有限流器，页面没有等待提示。

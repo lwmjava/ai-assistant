@@ -343,6 +343,14 @@ class ChatService:
         # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
         sec_ctx, safe_message = self._apply_input_security(message, user)
         if sec_ctx and sec_ctx.blocked:
+            if sec_ctx.rate_limited:
+                yield AgentEvent(
+                    "rate_limit",
+                    json.dumps(
+                        {"retry_after_seconds": sec_ctx.retry_after_seconds},
+                        ensure_ascii=False,
+                    ),
+                )
             yield AgentEvent("error", str(self._rejection_error(sec_ctx)))
             return
         conv = self._accept_user_message(session, user, conversation_id, message)
@@ -398,8 +406,9 @@ class ChatService:
                         skill_names=_skill_name_list(skill_ctx),
                     )
                     assistant_saved = True
-                    session.refresh(conv)
-                    self._maybe_reflect(conv, state)
+                    current = ChatService._conversation_after_reply(session, conv, conversation_id)
+                    if current is not None:
+                        self._maybe_reflect(current, state)
                     yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
                 yield event
         except (GeneratorExit, asyncio.CancelledError):
@@ -533,6 +542,23 @@ class ChatService:
             return None
 
     # ── 进化系统（Reflect 反思）───────────────────
+
+    @staticmethod
+    def _conversation_after_reply(
+        session: Session, conv: Conversation, conversation_id: str
+    ) -> Conversation | None:
+        """回复提交后取回仍属于当前 Session 的会话。
+
+        流式路由交出会话编号后，请求依赖会关闭 Session。
+        ``close()`` 会摘掉已加载对象，但 Session 还能写入新消息。
+        已经脱离的对象不能 ``refresh``。
+        """
+        from sqlalchemy.orm import object_session
+
+        if object_session(conv) is session:
+            session.refresh(conv)
+            return conv
+        return session.get(Conversation, conversation_id)
 
     def _maybe_reflect(self, conv: Conversation, state: AgentState) -> None:
         """对话结束后触发异步反思。
@@ -694,7 +720,11 @@ class ChatService:
         from app.security.types import SecurityRejectedError
 
         if ctx.rate_limited:
-            return SecurityRejectedError("请求过于频繁，请稍后再试", status_code=429)
+            return SecurityRejectedError(
+                "请求过于频繁，请稍后再试",
+                status_code=429,
+                retry_after_seconds=ctx.retry_after_seconds,
+            )
         if ctx.injection_detected:
             return SecurityRejectedError("输入被安全策略拒绝（疑似提示词注入）", status_code=403)
         return SecurityRejectedError("输入被安全策略拒绝", status_code=403)

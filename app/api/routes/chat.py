@@ -231,6 +231,16 @@ async def chat(
         return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
     except SecurityRejectedError as exc:
         # 安全拒绝（限流 / 注入阻断）不是「资源不存在」，需回真实状态码。
+        if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            seconds = exc.retry_after_seconds
+            headers: dict[str, str] = {}
+            if seconds is not None:
+                headers["Retry-After"] = str(seconds)
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={"code": "rate_limited", "retry_after_seconds": seconds},
+                headers=headers,
+            )
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
@@ -263,6 +273,13 @@ async def chat_stream(
     def _event_payload(event_type: str, raw: str) -> object:
         if event_type in {"sources", "code_result"}:
             return json.loads(raw) if raw else []
+        if event_type == "rate_limit":
+            if not raw:
+                return {"retry_after_seconds": None}
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+            return {"retry_after_seconds": None}
         return raw
 
     stream = _service.chat_stream(session, current_user, req.message, req.conversation_id)

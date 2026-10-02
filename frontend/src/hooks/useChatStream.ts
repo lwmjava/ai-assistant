@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { hideStackTrace } from '@/lib/http'
+import { retryAfterFromEvent } from '@/lib/rate-limit'
 import { streamPost } from '@/lib/sse'
 import type { CodeResult, SourceRef, StreamEventType, SubtaskSummary } from '@/types/api'
 import { getAccessToken } from '@/store/auth'
@@ -66,6 +67,8 @@ export interface SendOptions {
   onConversation?: (conversationId: string) => void
   /** 后端流式响应在 done 前已落库。成功后由调用方刷新详情。 */
   onFinished?: (text: string) => void
+  /** 限流事件。大于 0 的秒数才倒计时；null 表示拒绝但不倒计时。 */
+  onRateLimit?: (seconds: number | null) => void
 }
 
 function asCodeResult(data: unknown): CodeResult | null {
@@ -137,7 +140,7 @@ export function useChatStream() {
   }, [])
 
   const send = useCallback(
-    async ({ message, conversationId, onConversation, onFinished }: SendOptions) => {
+    async ({ message, conversationId, onConversation, onFinished, onRateLimit }: SendOptions) => {
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
@@ -187,6 +190,11 @@ export function useChatStream() {
               const item = asSubtask(payload.data)
               if (!item) return
               setSnapshot((prev) => ({ ...prev, subtasks: [...prev.subtasks, item] }))
+              return
+            }
+
+            if (type === 'rate_limit') {
+              onRateLimit?.(retryAfterFromEvent(payload.data))
               return
             }
 

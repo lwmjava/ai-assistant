@@ -1,6 +1,6 @@
 # QUOTA-001、LIMIT-001、CLI-001、EXPORT-001：配额、限流提示、迁移与管理员命令、导出租户对话
 
-> 状态：CLI-001、QUOTA-001、EXPORT-001 已实现，说明见 `docs/plans/implementation_cli_001.md`、`docs/plans/implementation_quota_001.md` 与 `docs/plans/implementation_export_001.md`。LIMIT-001 仍待实现。2026-10-01 两轮评审的处置已写入本文，见 `docs/reviews/2026-10-01-plan_d3评审.md` 与 `docs/reviews/2026-10-01-plan_d3-codex评审处置.md`。做完这四条只完成交付包第 19 项，不是企业上线门禁通过。实现说明在各自完成后另写，不把未做项写成已完成。
+> 状态：CLI-001、QUOTA-001、EXPORT-001、LIMIT-001 已实现，说明见 `docs/plans/implementation_cli_001.md`、`docs/plans/implementation_quota_001.md`、`docs/plans/implementation_export_001.md` 与 `docs/plans/implementation_limit_001.md`。2026-10-01 两轮评审的处置已写入本文，见 `docs/reviews/2026-10-01-plan_d3评审.md` 与 `docs/reviews/2026-10-01-plan_d3-codex评审处置.md`。做完这四条只完成交付包第 19 项，不是企业上线门禁通过。实现说明在各自完成后另写，不把未做项写成已完成。
 > 来源：`tasks.yaml` 的 QUOTA-001、LIMIT-001、CLI-001、EXPORT-001；`docs/plans/plan_remaining_delivery.md` 对应四节；交付排期第 5 节 D3、第 6 节第 19 项。
 > 日期：2026-10-01
 > 截止：2027-03-05
@@ -111,6 +111,8 @@
 - 验证：`pytest tests/test_quota.py -v`；`ruff check app/`。测试使用临时库，不碰 `data/ai_assistant.db`。降级用例单独用一块临时 SQLite。
 
 ## LIMIT-001 限流提示与倒计时
+
+实现说明：`docs/plans/implementation_limit_001.md`。
 
 - 目标：连续请求打满当前桶之后，对话页出现倒计时，倒计时结束前发送按钮不可用。未超限时页面上没有倒计时。
 - 现状：见上文「限流」。

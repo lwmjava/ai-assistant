@@ -15,9 +15,15 @@ class SecurityRejectedError(ValueError):
     能区分「限流」与「内容阻断」，而不是一律把安全拒绝报成 404。
     """
 
-    def __init__(self, message: str, status_code: int = 403) -> None:
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 403,
+        retry_after_seconds: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.retry_after_seconds = retry_after_seconds
 
 
 @dataclass
@@ -44,6 +50,8 @@ class SecurityContext:
     # 速率限制
     rate_limited: bool = False
     rate_limit_remaining: int = -1
+    # 拒绝且补充速率大于 0 时为至少 1 的等待秒数；速率小于或等于 0 时留空。
+    retry_after_seconds: int | None = None
 
     @property
     def blocked(self) -> bool:

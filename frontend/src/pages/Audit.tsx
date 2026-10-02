@@ -32,6 +32,7 @@ const ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: 'tenant_activate', label: '启用租户' },
   { value: 'tenant_deactivate', label: '停用租户' },
   { value: 'quota_update', label: '更新配额' },
+  { value: 'export_requested', label: '导出对话' },
   { value: 'conversation_create', label: '创建会话' },
   { value: 'conversation_delete', label: '删除会话' },
   { value: 'knowledge_base_upload', label: '知识库上传' },

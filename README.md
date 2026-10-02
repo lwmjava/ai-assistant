@@ -410,6 +410,9 @@ docker compose up -d --build
 | `MEMORY_ENABLED` | 是否启用对话窗口与压缩 | `true` |
 | `AUDIT_ENABLED` | 是否启用审计日志 | `true` |
 | `SECURITY_ENABLED` | 是否启用内容安全治理 | `true` |
+| `SECURITY_RATE_LIMIT` | 是否按用户和租户限制对话频率。默认关闭，打开后才会计数 | `false` |
+
+对话限流使用本进程内存中的令牌桶。默认每秒补充 60 个、容量 60。补充速率大于 0 且被拒绝时，响应给出等待秒数；速率小于或等于 0 时拒绝，且不计算等待秒数。计数只在本进程有效，重启即清空。完成 `OPS-001` 之前不要水平扩展 API 进程，否则每个进程各计各的。
 | `AGENT_ORCHESTRATION` | 编排实现：`self` / `langgraph`。后者要先装 extra，没装时回退五阶段 | `self` |
 | `SERVE_FRONTEND` | 是否由本进程托管 `frontend/dist`（开启后 `GET /` 返回控制台） | `false` |
 | `CORS_ORIGINS` | 允许的跨域来源（前后端分离部署时必填） | `*` |

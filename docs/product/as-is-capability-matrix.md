@@ -21,7 +21,8 @@
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
 | 命令行迁移与创建系统管理员 | `Implemented` | `app/cli.py`；`pyproject.toml` 的 `ai-assistant` 脚本；`tests/test_cli.py` | 空库可迁移到当前版本，并创建可登录的系统管理员。已有系统管理员、密码短于 8 位或两次重叠创建时拒绝，日志不含密码。没有 start、stop、logs。环境变量引导和 `/setup` 仍可用。管理接口仍可创建多名系统管理员。PostgreSQL 未在本能力中演练 |
 | 租户消息条数与源文件配额 | `Implemented` | `app/services/quota.py`；`app/api/routes/admin_tenants.py`；`tests/test_quota.py`；`frontend/src/pages/Tenants.tsx` | 系统管理员可在租户列表的配额弹窗设置可空上限。空值不限制，0 表示不能再新增。超限的对话和源文件写入返回 429，且不留下新的用户消息或新文件。软删除不恢复源文件额度。同一 SQLite 上的并发写入不超过上限。页面不展示已用量。不计费，不按月重置，纯文本摄取不设闸。多副本锁未做。 |
-| 导出租户对话 | `Implemented` | `app/services/export_service.py`；`app/api/routes/export.py`；`tests/test_export_conversations.py` | 当前租户成员关系上的租户管理员可 POST 下载本租户对话原文 JSON。其他角色，以及切到另一租户后只是成员的人，得到 403。审计 `export_requested` 写入成功后才开始返回文件。超过 5000 条或 32 MiB 返回 413，不返回半份文件。不做训练格式、筛选、脱敏或导出页面。 |
+| 对话限流倒计时 | `Partial` | `app/security/rate_limiter.py`；`app/api/routes/chat.py`；`frontend/src/pages/Chat.tsx`；`tests/test_rate_limit_retry.py` | 默认关闭。打开后，补充速率大于 0 且打满桶时，对话页显示倒计时并禁用发送，到 0 后恢复。速率小于或等于 0 时拒绝且不倒计时。计数只在本进程，重启清空。多实例未做。知识库页没有倒计时。 |
+| 导出租户对话 | `Implemented` | `app/services/export_service.py`；`app/api/routes/export.py`；`frontend/src/pages/Chat.tsx`；`tests/test_export_conversations.py` | 当前租户成员关系上的租户管理员可在对话页下载本租户对话原文 JSON。系统管理员能看到按钮，点击后页面说明无权导出。其他角色得到 403。审计 `export_requested` 写入成功后才开始返回文件。超过 5000 条或 32 MiB 返回 413，不返回半份文件。不做训练格式、筛选或脱敏。 |
 
 ## 2. Agent 编排
 

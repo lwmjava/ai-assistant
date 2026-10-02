@@ -149,6 +149,7 @@ export type StreamEventType =
   | 'subtask'
   | 'done'
   | 'error'
+  | 'rate_limit'
   | 'conversation'
 
 /** 图执行完成后的子任务摘要。只接受版本 1、名称为 research 或 draft、状态为 done。 */

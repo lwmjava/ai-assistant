@@ -226,42 +226,42 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 认证 | `POST` | `/api/auth/register` | 公开注册为 `default` 租户的 member，并返回双令牌 |
 | 认证 | `GET` | `/api/auth/setup-status` | 是否还没有系统管理员 |
 | 认证 | `POST` | `/api/auth/setup` | 没有系统管理员时创建首个管理员；已有时 404 |
-| 认证 | `POST` | `/api/auth/users/{id}/revoke-tokens` | 系统管理员撤销该用户的刷新令牌 |
+| 认证 | `POST` | `/api/auth/users/{user_id}/revoke-tokens` | 系统管理员撤销该用户的刷新令牌 |
 | 认证 | `GET` | `/api/auth/memberships` | 当前用户已加入的租户 |
 | 认证 | `POST` | `/api/auth/switch-tenant` | 换成已加入的租户并换发令牌；非成员 403 |
 | 邀请 | `POST` | `/api/invitations` | 系统管理员或租户管理员生成邀请码 |
 | 邀请 | `GET` | `/api/invitations` | 列出该租户的邀请码 |
 | 邀请 | `POST` | `/api/invitations/accept` | 已登录用户凭码加入租户，不切换当前会话 |
 | 用户 | `GET` | `/api/admin/users` | 系统管理员分页列出用户，含编号和租户名称 |
-| 用户 | `PATCH` | `/api/admin/users/{id}` | 修改角色；不能修改自己 |
-| 用户 | `POST` | `/api/admin/users/{id}/disable` | 停用用户，令牌随后失效；不能停用自己 |
-| 租户 | `PATCH` | `/api/admin/tenants/{id}` | 修改未停用租户的名称 |
-| 租户 | `POST` | `/api/admin/tenants/{id}/deactivate` | 停用租户；当前在该租户中的成员不能继续访问 |
+| 用户 | `PATCH` | `/api/admin/users/{user_id}` | 修改角色；不能修改自己 |
+| 用户 | `POST` | `/api/admin/users/{user_id}/disable` | 停用用户，令牌随后失效；不能停用自己 |
+| 租户 | `PATCH` | `/api/admin/tenants/{tenant_id}` | 修改未停用租户的名称 |
+| 租户 | `POST` | `/api/admin/tenants/{tenant_id}/deactivate` | 停用租户；当前在该租户中的成员不能继续访问 |
 | 系统 | `GET` | `/api/admin/system/status` | 系统管理员查看数据库、向量库、版本和启动时间 |
 | 对话 | `POST` | `/api/chat` | 非流式对话。响应含 `sources` 与 `code_results`（代码执行的 `status`、`stdout`、`reason`，不含宿主机路径） |
 | 对话 | `POST` | `/api/chat/stream` | SSE 流式对话。`code_result` 事件带同结构的单次执行结果 |
 | 对话 | `GET` | `/api/chat/conversations` | 会话列表 |
-| 对话 | `GET` | `/api/chat/conversations/{id}` | 会话详情。助手消息含 `code_results`，刷新后仍在 |
-| 对话 | `PATCH` | `/api/chat/conversations/{id}` | 重命名会话（请求体只有 `title`） |
-| 对话 | `DELETE` | `/api/chat/conversations/{id}` | 删除会话 |
+| 对话 | `GET` | `/api/chat/conversations/{conversation_id}` | 会话详情。助手消息含 `code_results`，刷新后仍在 |
+| 对话 | `PATCH` | `/api/chat/conversations/{conversation_id}` | 重命名会话（请求体只有 `title`） |
+| 对话 | `DELETE` | `/api/chat/conversations/{conversation_id}` | 删除会话 |
 | 对话 | `GET` | `/api/chat/tools` | 可用工具列表 |
 | 知识库 | `POST` | `/api/rag/documents/ingest` | 文本摄取（自动分块嵌入） |
 | 知识库 | `POST` | `/api/rag/documents/upload` | 上传 txt/md/json/xml/csv/doc/xls/ppt/docx/xlsx/pptx/pdf 文件，默认单文件不超过 10MB（扫描版 PDF 可配合 OCR） |
 | 知识库 | `GET` | `/api/rag/documents` | 文档列表 |
-| 知识库 | `GET` | `/api/rag/documents/{id}` | 文档详情 |
-| 知识库 | `DELETE` | `/api/rag/documents/{id}` | 删除文档 |
+| 知识库 | `GET` | `/api/rag/documents/{document_id}` | 文档详情 |
+| 知识库 | `DELETE` | `/api/rag/documents/{document_id}` | 删除文档 |
 | 知识库 | `POST` | `/api/rag/search` | 混合检索 |
 | MCP | `GET` | `/api/mcp/servers` | 已配置的 MCP 服务器 |
 | MCP | `GET` | `/api/mcp/tools` | 已连接 MCP 工具列表 |
 | 工作流 | `GET` / `POST` | `/api/workflows` | 工作流列表 / 创建（需 `WORKFLOW_ENABLED`） |
-| 工作流 | `GET` / `PUT` / `DELETE` | `/api/workflows/{id}` | 工作流详情、更新、删除 |
-| 工作流 | `GET` | `/api/workflows/{id}/executions` | 执行历史 |
-| 工作流 | `POST` | `/api/workflows/{id}/run` | 手动触发 |
-| 工作流 | `POST` | `/api/workflows/{id}/toggle` | 启停开关 |
+| 工作流 | `GET` / `PUT` / `DELETE` | `/api/workflows/{workflow_id}` | 工作流详情、更新、删除 |
+| 工作流 | `GET` | `/api/workflows/{workflow_id}/executions` | 执行历史 |
+| 工作流 | `POST` | `/api/workflows/{workflow_id}/run` | 手动触发 |
+| 工作流 | `POST` | `/api/workflows/{workflow_id}/toggle` | 启停开关 |
 | 审计 | `GET` | `/api/admin/audit-logs` | 审计日志查询（系统管理员） |
 | 租户 | `GET` | `/api/admin/tenants` | 列出未停用租户；`include_inactive=true` 时含已停用（仅系统管理员） |
 | 租户 | `POST` | `/api/admin/tenants` | 创建租户；未停用名称唯一，重名 409（仅系统管理员） |
-| 租户 | `POST` | `/api/admin/tenants/{id}/users` | 在指定未停用租户下创建成员；角色固定为 member（仅系统管理员） |
+| 租户 | `POST` | `/api/admin/tenants/{tenant_id}/users` | 在指定未停用租户下创建成员；角色固定为 member（仅系统管理员） |
 
 > 启动后访问 `http://127.0.0.1:8000/docs` 查看交互式 Swagger API 文档。
 

@@ -3958,7 +3958,7 @@ tasks:
 
   - id: "REL-001"
     title: "Swagger 覆盖现有端点（交付 D4）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-25"
     depends_on:
@@ -3966,11 +3966,14 @@ tasks:
     context:
       problem: "已注册路由没有和 OpenAPI 对过账。"
       facts:
-        - claim: "框架会生成 OpenAPI。缺少路由覆盖测试。"
-          evidence: "app/main.py"
+        - claim: "每个 /api 业务路由都出现在 OpenAPI 中并带有说明。流式对话的响应媒体类型包含 text/event-stream。README 端点表中的路径是 OpenAPI 的子集。"
+          evidence: "tests/test_openapi_coverage.py；docs/plans/implementation_rel_001.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d4.md"
+        - "docs/plans/implementation_rel_001.md"
+        - "README.md"
         - "tests/"
         - "app/api/"
         - "tasks.yaml"
@@ -4123,9 +4126,14 @@ tasks:
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
+        - "docs/plans/plan_d4.md"
+        - "docs/plans/implementation_rel_004.md"
         - "docs/"
         - "evals/"
+        - "scripts/run_rag_baseline.py"
         - "app/rag/"
+        - "app/core/config.py"
+        - ".env.example"
         - "tests/"
         - "tasks.yaml"
         - "AGENTS.md"

@@ -254,7 +254,16 @@ async def chat(
     )
 
 
-@router.post("/stream")
+@router.post(
+    "/stream",
+    response_class=EventSourceResponse,
+    responses={
+        200: {
+            "description": "以 text/event-stream 持续返回对话事件",
+            "content": {"text/event-stream": {"schema": {"type": "string"}}},
+        }
+    },
+)
 async def chat_stream(
     req: ChatRequest,
     current_user: User = Depends(require_permission("conversations", "write")),

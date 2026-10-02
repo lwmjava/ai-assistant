@@ -167,13 +167,33 @@ async def run_case(
     retrieval_depth: int,
 ) -> CaseOutcome:
     """按案例身份的租户跑一次检索，并做确定性打分。"""
-    tenant_id = case["identity"]["tenant_id"]
-    service = RAGService(index.session, tenant_id, embedding_provider=embedding)
+    service = RAGService(
+        index.session,
+        case["identity"]["tenant_id"],
+        embedding_provider=embedding,
+    )
 
     started = time.perf_counter()
     hits = await service.search(case["query"], top_k=retrieval_depth)
     latency_ms = (time.perf_counter() - started) * 1000.0
+    return score_hits(case, index, hits, latency_ms=latency_ms)
 
+
+def score_hits(
+    case: dict[str, Any],
+    index: EvalIndex,
+    hits: list,
+    *,
+    latency_ms: float,
+) -> CaseOutcome:
+    """用现行指标给一份已经排好序的命中列表打分。
+
+    作用：Recall、MRR 和越权命中都按这份列表的顺序计算，不再次检索。
+    入参：case 为案例；index 提供数据库文档号到逻辑文档号的映射；hits 为有序命中；
+    latency_ms 为本次耗时。
+    出参：案例结果。期望文档为空时排序指标为 None。
+    """
+    tenant_id = case["identity"]["tenant_id"]
     logical_ids = [
         index.db_doc_id_to_logical.get(hit.document_id, f"unknown:{hit.document_id}")
         for hit in hits

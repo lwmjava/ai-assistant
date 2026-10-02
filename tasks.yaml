@@ -4113,7 +4113,7 @@ tasks:
 
   - id: "REL-004"
     title: "一轮检索实验结论（交付 D4）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-25"
     depends_on:
@@ -4121,8 +4121,8 @@ tasks:
     context:
       problem: "独立重排或查询变换还没有一轮有结论的实验。"
       facts:
-        - claim: "检索基线已冻结。不得同时更换 Embedding、切分和重排。"
-          evidence: "docs/adr/0002-official-vectorstore.md"
+        - claim: "2026-10-02 正式评测不采纳词面覆盖重排。调参集 Recall@1 对照与处理都是 0.7976，MRR 从 0.9286 降到 0.9167，越权案例都是 0。本地检索顺序未改。语料 13 篇、37 个分块。这不是生产检索质量结论。"
+          evidence: "docs/plans/implementation_rel_004.md；evals/reports/rag-v0.1-lexical-coverage-20261002.json"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"
@@ -5043,7 +5043,7 @@ tasks:
 
   - id: "PRAG-002"
     title: "重排落地：开关、灰度与开销评估"
-    status: "backlog"
+    status: "cancelled"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5052,6 +5052,8 @@ tasks:
     context:
       problem: "重排实验本身由 REL-004 承担，本卡只负责结论采纳后的产品化落地；若 REL-004 记录不采纳，本卡直接关闭。"
       facts:
+        - claim: "2026-10-02 词面覆盖重排未采纳：调参集 Recall@1 持平，MRR 下降，越权案例数仍为 0。本卡关闭，不再做开关、灰度和开销。"
+          evidence: "docs/evaluations/rag-v0.1-lexical-coverage-20261002.md；docs/plans/implementation_rel_004.md"
         - claim: "交付排期 D4 已安排一轮重排或查询变换实验，并明确无提升则记录不采纳并结束。"
           evidence: "docs/plans/plan_delivery_2027-03-25.md：重排序或查询变换只做一轮、最多一周，有指标则保留，无提升则记录不采纳并结束"
         - claim: "REL-004 的交付物即该实验，与独立 Reranker 卡重复，重复跑会破坏单变量归因。"

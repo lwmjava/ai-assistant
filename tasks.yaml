@@ -4061,7 +4061,7 @@ tasks:
 
   - id: "REL-003"
     title: "测试门禁（交付 D4）"
-    status: "ready"
+    status: "done"
     priority: "P1"
     target_date: "2027-03-25"
     depends_on:
@@ -4069,8 +4069,8 @@ tasks:
     context:
       problem: "发布前没有一份完整的测试、lint 和前端构建记录。"
       facts:
-        - claim: "命令分散在各任务中。"
-          evidence: "tasks.yaml"
+        - claim: "2026-10-02 在提交 8f2c453 上跑过 pytest、ruff、mypy 和前端类型检查与构建。ruff 与 mypy 退出码为 1，前端两条为 0。pytest 在汇总前卡住并被停止，进程退出码 4294967295。发布结论是未达到发布合格。没有改测试或业务代码。"
+          evidence: "docs/plans/implementation_rel_003.md"
     scope:
       allowed_paths:
         - "docs/plans/plan_remaining_delivery.md"

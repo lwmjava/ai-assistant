@@ -5054,16 +5054,16 @@ tasks:
 
   - id: "PRAG-002"
     title: "重排落地：开关、灰度与开销评估"
-    status: "cancelled"
-    priority: "P1"
+    status: "backlog"
+    priority: "P2"
     target_date: ""
     depends_on:
       - "REL-004"
       - "NFR-002"
     context:
-      problem: "重排实验本身由 REL-004 承担，本卡只负责结论采纳后的产品化落地；若 REL-004 记录不采纳，本卡直接关闭。"
+      problem: "重排实验由 REL-004 承担；REL-004 已记录当前词面覆盖重排不采纳。用户 2026-10-04 拍板：本卡恢复为待办（backlog）、降为 P2，保留重排落地路径（开关/灰度/开销），不重复已做实验。"
       facts:
-        - claim: "2026-10-02 词面覆盖重排未采纳：调参集 Recall@1 持平，MRR 下降，越权案例数仍为 0。本卡关闭，不再做开关、灰度和开销。"
+        - claim: "2026-10-02 词面覆盖重排未采纳：调参集 Recall@1 持平，MRR 下降，越权案例数仍为 0；REL-004 结论仍为不采纳。2026-10-04 用户拍板将本卡恢复为待办并降 P2，留作未来重排落地路径。"
           evidence: "docs/evaluations/rag-v0.1-lexical-coverage-20261002.md；docs/plans/implementation_rel_004.md"
         - claim: "交付排期 D4 已安排一轮重排或查询变换实验，并明确无提升则记录不采纳并结束。"
           evidence: "docs/plans/plan_delivery_2027-03-25.md：重排序或查询变换只做一轮、最多一周，有指标则保留，无提升则记录不采纳并结束"
@@ -5096,8 +5096,8 @@ tasks:
         - "不用 holdout 调参"
         - "不在本卡内判定是否采纳，采纳结论以 REL-004 为准"
     acceptance:
-      - "REL-004 结论为采纳时：开关可配置且默认关闭可灰度，开销报告含延迟增量"
-      - "REL-004 结论为不采纳时：记录不落地说明，本卡同样判定完成"
+      - "重排开关可配置且默认关闭，可灰度启用"
+      - "落地开销报告含重排引入的延迟与资源占用增量"
       - "关闭开关时行为与基线一致"
     risk:
       level: "L1"
@@ -5228,9 +5228,10 @@ tasks:
   - id: "PMCP-001"
     title: "MCP 连接超时、重连、心跳与优雅降级"
     status: "backlog"
-    priority: "P0"
+    priority: "P1"
     target_date: ""
     depends_on:
+      - "MCP-REQ-001"
       - "CLI-001"
     context:
       problem: "外部工具服务不可用时可能拖垮主链路，缺少超时与降级。"
@@ -5281,9 +5282,10 @@ tasks:
   - id: "PMCP-002"
     title: "MCP 工具权限与风险分级接入"
     status: "backlog"
-    priority: "P0"
+    priority: "P1"
     target_date: ""
     depends_on:
+      - "MCP-REQ-001"
       - "PMCP-001"
       - "PAGT-002"
     context:
@@ -5330,9 +5332,10 @@ tasks:
   - id: "PMCP-003"
     title: "MCP 调用进入审计日志"
     status: "backlog"
-    priority: "P0"
+    priority: "P1"
     target_date: ""
     depends_on:
+      - "MCP-REQ-001"
       - "PMCP-002"
     context:
       problem: "外部工具调用不留痕，出事后无法追溯。"
@@ -5932,7 +5935,7 @@ tasks:
   - id: "NFR-009"
     title: "性能基准与压测：五项指标验证"
     status: "backlog"
-    priority: "P1"
+    priority: "P2"
     target_date: ""
     depends_on:
       - "NFR-005"
@@ -5992,7 +5995,7 @@ tasks:
   - id: "NFR-003"
     title: "生产部署编排与健康检查"
     status: "backlog"
-    priority: "P1"
+    priority: "P2"
     target_date: ""
     depends_on: []
     context:
@@ -6070,6 +6073,7 @@ tasks:
       deliverables:
         - "反向代理配置：关闭缓冲、长超时、与心跳周期对齐"
         - "配置说明与验证步骤"
+        - "反向代理统一设置安全响应头：HSTS / X-Content-Type-Options / CSP"
       non_goals:
         - "不做 TLS 证书签发"
         - "不做多域名路由"
@@ -6078,6 +6082,7 @@ tasks:
       - "心跳周期与代理超时配置一致"
       - "验收写明代理处如何终止 TLS"
       - "验收写明 SSE 关闭缓冲、超时与心跳三者对齐"
+      - "经代理的响应含 HSTS / X-Content-Type-Options / CSP 安全头"
     risk:
       level: "L1"
       side_effect: "proxy-config-added"
@@ -6292,7 +6297,8 @@ tasks:
     status: "backlog"
     priority: "P0"
     target_date: ""
-    depends_on: []
+    depends_on:
+      - "NFR-001"
     context:
       problem: "全量 pytest 未绿会挡住 CI；失败清单必须以本卡开工时的重跑结果为准，不能沿用过期快照。"
       facts:
@@ -6404,7 +6410,9 @@ tasks:
     status: "backlog"
     priority: "P0"
     target_date: ""
-    depends_on: []
+    depends_on:
+      - "NFR-001"
+      - "QA-005"
     context:
       problem: "现在没有可复现的覆盖率报告，不能把 §4.5 的「不低于 70%」写成已经达到。"
       facts:
@@ -6838,19 +6846,21 @@ tasks:
         auto_merge: false
         auto_deploy: false
   - id: "RAG-015"
-    title: "默认向量库切到 Milvus"
+    title: "默认保持 local、可切换 Milvus、写入向量规范化"
     status: "backlog"
     priority: "P0"
     target_date: ""
     depends_on:
       - "RAG-014"
     context:
-      problem: "默认仍是 local。需求写的是 Milvus 存储。"
+      problem: "前期默认 local，后期需切 Milvus，需保留并验证 local↔Milvus 切换路径。不改变 NFR-003 默认 local 时 Milvus 不计入 5 分钟上手的口径。"
       facts:
         - claim: "默认 RAG_VECTOR_STORE 仍是 local。"
           evidence: "app/core/config.py"
         - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
           evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+        - claim: "向量 L2 归一化现仅检索侧现算兜底（local.py:196），写入侧无强制归一化；本卡并入 Milvus/local 写入路径固化。"
+          evidence: "app/rag/vectorstore/local.py"
     scope:
       allowed_paths:
         - "app/rag/"
@@ -6864,13 +6874,19 @@ tasks:
         - ".env"
         - "生产数据"
       deliverables:
-        - "默认存储切到 Milvus，上传会写入"
+        - "保留默认 local 的前期路径，上传写入 local"
+        - "验证切 Milvus 配置后上传可写入并可在 Milvus 中命中"
+        - "验证切回 local 的开发路径不静默丢数据"
+        - "写入侧向量统一 L2 归一化固化，维度与规范化有校验"
       non_goals:
         - "不把 2026-09-29 的五条脚本当作这次切换的证据"
         - "不在本条改检索公式"
+        - "前期不把默认切成 Milvus"
     acceptance:
-        - "默认配置下一次上传能在 Milvus 中查到"
-        - "切回 local 的开发路径要写明，不能静默丢数据"
+        - "默认 local 下启动与写入正常"
+        - "切 Milvus 配置后上传可在 Milvus 中查到"
+        - "切回 local 的路径写明且不静默丢数据"
+        - "写入向量已归一化，检索侧点积=余弦成立"
     risk:
       level: "L2"
       side_effect: "milvus-default"
@@ -6957,12 +6973,14 @@ tasks:
         - "生产密钥"
       deliverables:
         - "按 P0-8 配齐 chat、intent、embedding、rerank 和兜底链"
+        - "至少两个模型提供商可切换，切换后对话走被选中那一家"
       non_goals:
         - "不为五个阶段各自配模型"
     acceptance:
         - "未知任务拒绝"
         - "熔断后走兜底链"
         - "规划、执行、质量门用 chat"
+        - "至少两个模型提供商可切换，切换后对话走被选中那一家"
     risk:
       level: "L2"
       side_effect: "task-model-routing"
@@ -6970,6 +6988,7 @@ tasks:
     evaluation:
       cases:
         - "未知任务拒绝与兜底链"
+        - "切换提供商"
       commands:
         - "pytest -k \"llm or factory or profile\""
     execution:
@@ -7586,18 +7605,20 @@ tasks:
         auto_merge: false
         auto_deploy: false
   - id: "SAND-003"
-    title: "沙箱 Linux 实机限制与两家模型提供商"
+    title: "沙箱 Linux 实机限制验证"
     status: "backlog"
     priority: "P0"
     target_date: ""
     depends_on: []
     context:
-      problem: "沙箱限额没有 Linux 实机记录。模型提供商还不能按 1.0 的标准切换两家。"
+      problem: "沙箱限额没有 Linux 实机记录。"
       facts:
-        - claim: "八项 P0 要求沙箱实机隔离与两家模型可切换。"
+        - claim: "八项 P0 要求沙箱实机隔离。"
           evidence: "docs/product/企业级上线差距-2026-10-02.md"
         - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 6。"
           evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+        - claim: "两家模型提供商的切换验收已并入 LLM-001（P0-8），本卡只保留沙箱实机限额。"
+          evidence: "docs/plans/plan_v1_review_split_20261004.md §2.1"
     scope:
       allowed_paths:
         - "app/"
@@ -7610,22 +7631,20 @@ tasks:
         - "生产密钥"
       deliverables:
         - "Linux 上的资源限制记录"
-        - "至少两个模型提供商可以切换"
       non_goals:
-        - "不把 Mock 提供商算成第二家"
+        - "不做容器级隔离（SAND-004 承接）"
+        - "不承担模型提供商切换验收（LLM-001 承接）"
     acceptance:
-        - "实机记录含限制生效的证据"
-        - "切换后对话走被选中的那一家"
+      - "实机记录含限制生效的证据"
     risk:
       level: "L2"
-      side_effect: "sandbox-two-providers"
-      rollback: "回退沙箱与提供商提交。"
+      side_effect: "sandbox-linux-limits"
+      rollback: "回退沙箱提交。"
     evaluation:
       cases:
         - "Linux 限制生效"
-        - "切换提供商"
       commands:
-        - "pytest -k \"sandbox or provider\""
+        - "pytest -k \"sandbox\""
     execution:
       owner: "个人开发者"
       nightly:
@@ -7681,7 +7700,10 @@ tasks:
     status: "backlog"
     priority: "P0"
     target_date: ""
-    depends_on: []
+    depends_on:
+      - "NFR-001"
+      - "QA-005"
+      - "COV-001"
     context:
       problem: "锁定清单还没有一次同时成立的证据。2026-10-02 的门禁记录不能当作这次的结果。"
       facts:
@@ -8294,6 +8316,662 @@ tasks:
         - "禁用创建者后出现告警；移出租户后出现告警"
       commands:
         - "pytest -k suspended_owner -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "MCP-REQ-001"
+    title: "MCP 产品验收定义（补 PRD §5 章节）"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "PRD 第五章无 MCP 章节，PMCP-001/002/003 在无产品验收下标 P0，存在能力先于验收上线的隐患。"
+      facts:
+        - claim: "PRD 第五章无 MCP 章节。"
+          evidence: "docs/product/项目产品需求方案.md"
+        - claim: "差距表第 3 表明确 MCP 超时、权限、审计没有产品验收。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md"
+        - claim: "本卡来自 9 域评审 §2.8/§3.2，先验收后实现。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.1"
+    scope:
+      allowed_paths:
+        - "docs/product/项目产品需求方案.md"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+        - "app/"
+      deliverables:
+        - "PRD 新增 MCP 章节，含四个可验收口径：调用超时默认值、权限/风险分级、审计字段、凭据存储要求"
+        - "MCP 启用条件与配置口径：MCP_ENABLED 默认关，明确何时启用、启用手册"
+      non_goals:
+        - "不实现 MCP 代码"
+        - "不定技术方案"
+    acceptance:
+      - "PRD 的 MCP 章节存在"
+      - "超时、权限、审计、凭据四项各有一条可判定的验收标准"
+      - "能作为 PMCP-001/002/003/004 的验收依据"
+      - "PRD 写明 MCP 启用条件与 MCP_ENABLED 配置口径"
+    risk:
+      level: "L1"
+      side_effect: "mcp-req-doc"
+      rollback: "回退 PRD 章节提交。"
+    evaluation:
+      cases:
+        - "审阅 PRD MCP 章节完整性"
+      commands:
+        - "grep -n \"MCP\" docs/product/项目产品需求方案.md"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SAND-004"
+    title: "沙箱隔离深度：非特权用户与网络隔离"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "SAND-003"
+    context:
+      problem: "沙箱缺 chroot、非特权用户、网络隔离；_BLOCKED_IMPORTS 注释自认 SKELETON 未覆盖完整，且沿继承链拿到文件能力的绕过未处理。"
+      facts:
+        - claim: "_BLOCKED_IMPORTS 注释明确此列表尚未覆盖完整。"
+          evidence: "app/agents/tools/sandbox/sandbox.py"
+        - claim: "本卡来自 9 域评审 §2.3 企业缺口（隔离深度不足）。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.2"
+    scope:
+      allowed_paths:
+        - "app/agents/tools/sandbox/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "非特权用户运行沙箱"
+        - "网络访问被隔离"
+        - "补全 _BLOCKED_IMPORTS 覆盖并处理继承链绕过"
+        - "Linux 实机记录"
+      non_goals:
+        - "不做容器级隔离（未来）"
+        - "不引入第三方沙箱"
+    acceptance:
+      - "以非特权用户运行被限制"
+      - "网络访问被阻断"
+      - "越权模块被拒"
+      - "有 Linux 实机记录"
+    risk:
+      level: "L2"
+      side_effect: "sandbox-isolation-depth"
+      rollback: "回退隔离深度提交。"
+    evaluation:
+      cases:
+        - "非特权用户限制、网络隔离、越权拒绝"
+      commands:
+        - "pytest -k \"sandbox\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "MEM-002"
+    title: "记忆增量压缩接线（existing_snapshot）"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "chat_service._build_memory 每次从 DB 读全部消息且未传 existing_snapshot，compressor 已写好的增量压缩从未启用，长会话每次请求重算全部历史。"
+      facts:
+        - claim: "compressor 已有增量压缩能力，但调用侧未接 existing_snapshot。"
+          evidence: "app/memory/compressor.py；app/services/chat_service.py"
+        - claim: "本卡来自 9 域评审 §2.9，低成本修正。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.3"
+    scope:
+      allowed_paths:
+        - "app/services/chat_service.py"
+        - "app/memory/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "_build_memory 传入 existing_snapshot，启用增量压缩"
+        - "长会话后续请求复用快照而非全量重算"
+      non_goals:
+        - "不做跨会话记忆（§5.7 排 v1.5）"
+        - "不做记忆检索"
+        - "不改压缩算法"
+    acceptance:
+      - "长会话第二次请求基于快照而非全量重算"
+      - "压缩结果正确保留最近消息（keep_recent）"
+    risk:
+      level: "L1"
+      side_effect: "memory-incremental-wired"
+      rollback: "回退接线提交。"
+    evaluation:
+      cases:
+        - "长会话快照复用与最近消息保留"
+      commands:
+        - "pytest -k \"memory\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "MEM-003"
+    title: "记忆治理：谁能读/存多久/如何删/防串租户"
+    status: "backlog"
+    priority: "P2"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "记忆授权、期限、删除、租户隔离治理完全空白；跨会话记忆排期时若能力先于治理上线，会重蹈 MCP 的坑。"
+      facts:
+        - claim: "记忆治理空白，差距表第 3 表列出谁能读、存多久、如何删、防串租户四项。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md"
+        - claim: "本卡来自 9 域评审 §2.9；排期在 agent/rag/prompt/沙箱/mcp/workflow 之后，但属核心能力，定位为打标后第一批（跨会话记忆排期启动即开）。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.4"
+    scope:
+      allowed_paths:
+        - "docs/"
+        - "app/memory/"
+        - "app/security/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "记忆治理规则：谁能读、存多久、如何删、如何防串租户"
+        - "治理规则落文档并在记忆读写路径上有校验"
+      non_goals:
+        - "不实现跨会话记忆本身（§5.7 v1.5）"
+        - "不重复 MEM-002 的接线工作"
+    acceptance:
+      - "四条治理规则（读权限/期限/删除/租户隔离）各有明确判定"
+      - "规则在记忆读写路径上生效"
+    risk:
+      level: "L2"
+      side_effect: "memory-governance"
+      rollback: "回退治理规则与校验提交。"
+    evaluation:
+      cases:
+        - "读权限、期限、删除、跨租户隔离校验"
+      commands:
+        - "pytest -k \"memory or tenant\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "PROMPT-001"
+    title: "Prompt / 模型版本可追踪（登记）"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "提示词是纯代码常量，改动无版本追踪、无回滚、无 A/B；DoD 要求 Prompt/模型版本可追踪。"
+      facts:
+        - claim: "提示词散在 app/agents/prompts.py 等，无版本登记。"
+          evidence: "app/agents/prompts.py；app/agents/supervisor.py"
+        - claim: "本卡来自 9 域评审 §2.5；用户 2026-10-04 拍板排 P0 并收入 1.0。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_domain_matrix_20261004.md §2.9；docs/plans/plan_v1_review_split_20261004.md"
+    scope:
+      allowed_paths:
+        - "docs/"
+        - "app/core/config.py"
+        - "app/agents/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "Prompt 版本登记：来源、版本、生效时间、回滚方式"
+        - "模型配置版本可追踪、可回滚"
+      non_goals:
+        - "不做 A/B 平台"
+        - "不做模板参数化系统"
+    acceptance:
+      - "每次 Prompt 改动可追溯到版本与来源"
+      - "模型配置有版本且可回滚"
+      - "登记文档到位"
+    risk:
+      level: "L1"
+      side_effect: "prompt-version-registry"
+      rollback: "回退登记提交。"
+    evaluation:
+      cases:
+        - "核对 Prompt 版本登记与回滚路径"
+      commands:
+        - "git log --oneline -- app/agents/prompts.py"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SKILL-003"
+    title: "技能 LLM 语义匹配"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "技能触发仅 keyword/regex/always 粗粒度匹配，无 LLM 语义匹配。"
+      facts:
+        - claim: "manager.py 触发仅 keyword/regex/always。"
+          evidence: "app/agents/skills/manager.py"
+        - claim: "本卡来自 9 域评审 §2.6 企业缺口。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_domain_matrix_20261004.md §2.8"
+    scope:
+      allowed_paths:
+        - "app/agents/skills/"
+        - "app/agents/prompts.py"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "引入 LLM 语义匹配技能触发"
+      non_goals:
+        - "不替代内置安全护栏"
+        - "不改变技能执行"
+    acceptance:
+      - "语义匹配能命中关键词匹配不到的技能"
+    risk:
+      level: "L1"
+      side_effect: "skill-semantic-match"
+      rollback: "回退语义匹配提交。"
+    evaluation:
+      cases:
+        - "语义命中与关键词命中对比"
+      commands:
+        - "pytest -k \"skill\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "SKILL-004"
+    title: "技能效果评估与自动淘汰"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "EVO-001"
+    context:
+      problem: "技能无效果评估与自动淘汰，Reflect 闭环未接通技能治理。"
+      facts:
+        - claim: "Reflect 反思可跑（EVO-001），但结果未用于技能效果评估/淘汰。"
+          evidence: "tasks.yaml EVO-001；app/evolution/"
+        - claim: "本卡来自 9 域评审 §2.6 企业缺口（效果评估/自动淘汰）。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_domain_matrix_20261004.md §2.8"
+    scope:
+      allowed_paths:
+        - "app/agents/skills/"
+        - "app/evolution/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "技能效果评估指标"
+        - "低效技能自动淘汰/下线的判定与执行"
+      non_goals:
+        - "不自动新增技能（EVO-002 承接改技能）"
+        - "淘汰需可回滚、不静默删除"
+    acceptance:
+      - "有技能效果评估记录"
+      - "低效技能可被标记下线且可回滚"
+    risk:
+      level: "L2"
+      side_effect: "skill-auto-retire"
+      rollback: "回退淘汰逻辑提交。"
+    evaluation:
+      cases:
+        - "评估记录与下线/回滚"
+      commands:
+        - "pytest -k \"skill or reflect\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-017"
+    title: "召回率持续测评门禁：基线挂 CI 作 1.0 发布门禁"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "RAG-005"
+    context:
+      problem: "离线基线 rag-v0.1 已冻结（RAG-005），但未挂 CI 做持续门禁；改动切分/Embedding/检索参数时无法自动拦截召回率退化。"
+      facts:
+        - claim: "评审 §2.1：有离线基线但无 1.0 持续测评门禁。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md"
+        - claim: "现有 pytest 覆盖行为，但没有 Recall/MRR/nDCG 门禁拦截检索回归。"
+          evidence: "tasks.yaml RAG-005；evals/datasets/rag-v0.1/cases.json"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "evals/"
+        - "tests/"
+        - ".github/workflows/ci.yml"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "把 rag-v0.1 基线评测接入 CI，作为 1.0 发布门禁之一"
+        - "改动切分/Embedding/检索参数时自动跑基线，拦截 Recall/MRR 退化"
+      non_goals:
+        - "不做重排实验（REL-004 已裁定）"
+        - "不新增数据集（沿用 rag-v0.1）"
+        - "不把 Mock Embedding 的 Recall 当上线证据"
+    acceptance:
+      - "CI 中基线评测可复现且通过"
+      - "人为制造 Recall 退化时 CI 拦截（门禁生效）"
+      - "报告记录所用 Embedding 的 provider/模型/维度且非 Mock"
+    risk:
+      level: "L1"
+      side_effect: "rag-eval-gate"
+      rollback: "回退门禁提交，改回仅手动跑基线。"
+    evaluation:
+      cases:
+        - "CI 跑基线通过 + 注入退化用例被拦截"
+      commands:
+        - "pytest tests/test_rag.py -v；CI 触发基线评测"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "PAGT-006"
+    title: "独立 Tool Executor + State Manager 层（随工具扩展落地）"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "PAGT-002"
+    context:
+      problem: "Agent 主链能跑，是因为 Tool 调用内嵌在 AgentPipeline 工具循环、中间状态散在对话记录/DB；工具即将扩展（PAGT-001 补 web_search/file_ops、PAGT-002 工具契约），若继续内嵌将制造拆债。新项目早期是最便宜的分层窗口。"
+      facts:
+        - claim: "评审 §2.2 点出无独立 Tool Executor / State Manager / Repository 层。"
+          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md"
+        - claim: "AGENTS.md：ChatService/AgentPipeline 已承担部分 Harness 职责；不得一次性重写目录或调用链。"
+          evidence: "AGENTS.md §4 Brownfield 约束"
+        - claim: "工具规模现状：内置 4 工具共 204 行，扩展面小，宜随扩展落地分层。"
+          evidence: "app/agents/tools/builtin.py"
+    scope:
+      allowed_paths:
+        - "app/agents/"
+        - "app/services/"
+        - "app/core/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "Tool Executor：统一工具发现、参数校验、超时/重试、权限与审计挂钩、结果归一化，独立于 AgentPipeline 循环"
+        - "State Manager：编排中间状态（计划、已用工具、预算、续跑）统一管理，支持流式"
+      non_goals:
+        - "不做 Repository 独立层（新代码走 Repository、旧访问渐进迁移）"
+        - "不一次性重写 AgentPipeline 调用链（Brownfield 渐进，随 PAGT-001/002 落地按新分层组织）"
+        - "不改既有 4 个内置工具的对外行为"
+    acceptance:
+      - "工具调用统一经 Tool Executor，含超时/重试/权限/审计"
+      - "编排中间状态由 State Manager 管理，长会话可续"
+      - "现有对话主链行为不回归（回归测试绿）"
+    risk:
+      level: "L2"
+      side_effect: "agent-runtime-layers"
+      rollback: "回退分层提交，恢复原 Pipeline 内嵌调用。"
+    evaluation:
+      cases:
+        - "工具调用经 Executor + 状态恢复 + 主链回归"
+      commands:
+        - "pytest -k "agent or tool or chat""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "PAGT-007"
+    title: "Agent 编排持续测评门禁：基线挂 CI"
+    status: "backlog"
+    priority: "P2"
+    target_date: ""
+    depends_on:
+      - "AGT-003"
+    context:
+      problem: "agent-chain-v0.1 基线有独立运行器（scripts/run_agent_chain_eval.py，AGT-003 建），但未挂 CI 做持续门禁；改动管线/工具契约时无法自动拦截 Agent 行为退化。RAG 侧已建 RAG-017，Agent 侧缺对称卡。"
+      facts:
+        - claim: "基线最新 official 指标：route_accuracy / followup_recall / tool_selection_recall 均 1.0，但仅 10 例、场景集中在短路/完整路由与 code_sandbox 工具选择，语料饱和，当前只能拦硬退化。"
+          evidence: "evals/reports/agent-chain-v0.1-official-20260927T132731Z.json"
+        - claim: "运行器已就绪：scripts/run_agent_chain_eval.py --mode official/smoke；evaluator agent-chain-eval-0.2.0。"
+          evidence: "scripts/run_agent_chain_eval.py；AGT-003"
+    scope:
+      allowed_paths:
+        - "app/agents/"
+        - "evals/"
+        - "tests/"
+        - ".github/workflows/ci.yml"
+        - "scripts/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+        - "生产数据"
+      deliverables:
+        - "把 agent-chain-v0.1 基线评测接入 CI，作为 1.0 发布门禁之一"
+        - "改动 Agent 管线/工具契约时自动跑基线，拦截行为退化"
+      non_goals:
+        - "不在本卡扩充 agent-chain 数据集（语料扩容另议，是本卡判别力的前提）"
+        - "不做重排或 Query Rewrite 实验"
+        - "不把 Mock 模型或假数据当门禁证据"
+    acceptance:
+      - "CI 中 agent-chain 基线可复现且通过"
+      - "人为制造 route/followup/tool 退化时 CI 拦截（门禁生效）"
+      - "报告记录模型、prompt 版本与数据集版本"
+    risk:
+      level: "L1"
+      side_effect: "agent-eval-gate"
+      rollback: "回退门禁提交，改回仅手动跑基线。"
+    evaluation:
+      cases:
+        - "CI 跑基线通过 + 注入退化用例被拦截"
+      commands:
+        - "python scripts/run_agent_chain_eval.py --mode smoke；CI 触发 official"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-018"
+    title: "Query Rewrite（Deferred：进入条件 Recall@5 跌破 0.90）"
+    status: "backlog"
+    priority: "P2"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "查询无改写层：仅 HybridRetriever 运行时拼 query+plan 走混合检索，无查询扩展/纠错/澄清/同义词处理。动静态查询优化缺口（评审确认仅动态构造、无优化层）。"
+      facts:
+        - claim: "AGENTS.md §14：Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。"
+          evidence: "AGENTS.md §14"
+        - claim: "代码无 query_rewrite / rewrite 实现。"
+          evidence: "app/rag/；grep -rn 'rewrite' app --include='*.py' 无输出"
+        - claim: "RAG 基线 Recall@5 当前约 0.971，未跌破进入条件。"
+          evidence: "evals/reports/rag-v0.1-baseline-20260919.json overall.recall"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "evals/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "进入条件满足时：查询改写（扩展/纠错/澄清）提升 Recall@5"
+      non_goals:
+        - "在 Recall@5 未跌破 0.90 前不启动（Deferred）"
+        - "不同时改切分/Embedding/Reranker"
+        - "不用 Mock Embedding 当证据"
+    acceptance:
+      - "进入条件满足后：改写前后 Recall@5 有提升且不破坏越权/安全切片"
+      - "未达进入条件前：不实施（保持现状）"
+    risk:
+      level: "L1"
+      side_effect: "query-rewrite-deferred"
+      rollback: "进入条件未满足前不落地。"
+    evaluation:
+      cases:
+        - "触发改写后 Recall@5 对比"
+      commands:
+        - "python scripts/run_rag_eval.py --mode official"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-019"
+    title: "LLM 响应与检索结果缓存（P2）"
+    status: "backlog"
+    priority: "P2"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "无缓存：相同查询重复打 LLM / 检索，热点场景浪费延迟与成本；全仓无 Redis，仅 config lru_cache 与局部 doc_cache。"
+      facts:
+        - claim: "全仓无 LLM 响应缓存 / 检索结果缓存 / Redis 依赖。"
+          evidence: "app/；grep -rln 'redis' app --include='*.py' 无输出"
+        - claim: "现有缓存仅 config.py lru_cache(1)、HTTP no-cache、local.py 函数内 doc_cache。"
+          evidence: "app/core/config.py:258；app/main.py:129；app/rag/vectorstore/local.py:254"
+    scope:
+      allowed_paths:
+        - "app/"
+        - ".env.example"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "检索结果缓存：相同查询+参数命中缓存，不重复打向量库"
+        - "LLM 响应缓存：确定性请求（temperature=0 等）可命中缓存省成本"
+      non_goals:
+        - "不引入 Redis 依赖（先进程内缓存，评估是否需要外部缓存）"
+        - "不对非确定性请求（temperature>0）强缓存"
+        - "缓存键不含权限/租户隔离信息"
+    acceptance:
+      - "相同检索查询命中缓存，向量库调用次数下降"
+      - "相同确定性 LLM 请求命中缓存，不重复计费"
+      - "缓存不泄露跨租户结果"
+    risk:
+      level: "L2"
+      side_effect: "cache-added"
+      rollback: "回退缓存提交。"
+    evaluation:
+      cases:
+        - "热点查询命中 + 跨租户不串 + 非确定性不命中"
+      commands:
+        - "pytest -k 'cache'"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "MEM-004"
+    title: "跨会话记忆实现（Deferred：v1.5 排期）"
+    status: "backlog"
+    priority: "P2"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "记忆仅对话内（窗口/压缩），无跨会话存储/检索/注入；跨会话记忆实现无卡（MEM-003 只治理不实现，§5.7 排 v1.5）。"
+      facts:
+        - claim: "app/memory/ 仅 base/compressor/manager，无跨会话记忆实现。"
+          evidence: "app/memory/"
+        - claim: "MEM-003 non_goals：不实现跨会话记忆本身（§5.7 v1.5）。"
+          evidence: "tasks.yaml MEM-003"
+    scope:
+      allowed_paths:
+        - "app/memory/"
+        - "app/rag/"
+        - "evals/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "v1.5 排期启动时：跨会话记忆的存储/检索/注入机制"
+      non_goals:
+        - "1.0 不实现（Deferred，v1.5 排期）"
+        - "不与 MEM-003 治理卡合并实现（先治理后能力）"
+        - "不用 Mock 数据当记忆质量证据"
+    acceptance:
+      - "进入 v1.5 排期后：跨会话记忆可存取/检索并在对话注入"
+      - "1.0 阶段不实施（保持现状）"
+    risk:
+      level: "L1"
+      side_effect: "cross-session-memory-deferred"
+      rollback: "进入条件未满足前不落地。"
+    evaluation:
+      cases:
+        - "跨会话记忆写入到检索到注入"
+      commands:
+        - "pytest -k 'memory'"
     execution:
       owner: "个人开发者"
       nightly:

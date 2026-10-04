@@ -23,6 +23,11 @@ os.environ.setdefault("AUTH_ENABLED", "true")
 # 清空初始管理员配置，避免测试库被自动填充。
 os.environ.setdefault("INITIAL_ADMIN_USERNAME", "")
 os.environ.setdefault("INITIAL_ADMIN_PASSWORD", "")
+# 下列两项在本机 .env 里常被临时改作联调用（如 langgraph 编排、密集型限流）。
+# 环境变量优先级高于 .env 文件，这里钉回默认值，否则同一份代码在不同机器上
+# 会跑出不同的用例结果：通不过的那几个往往只是本机调试残留，而非代码缺陷。
+os.environ.setdefault("AGENT_ORCHESTRATION", "self")
+os.environ.setdefault("SECURITY_RATE_LIMIT", "false")
 
 # 在测试导入应用前已设置好环境变量；此处显式建表，
 # 因为 TestClient 非上下文管理器使用时不会触发 lifespan 中的 init_db。

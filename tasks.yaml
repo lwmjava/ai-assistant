@@ -4431,7 +4431,7 @@ tasks:
         auto_deploy: false
 
   - id: "NFR-001"
-    title: "CI 流水线：lint、typecheck、pytest、前端构建"
+    title: "CI 流水线：lint、typecheck、pytest、前端构建、Vitest、ESLint"
     status: "backlog"
     priority: "P0"
     target_date: ""
@@ -4445,12 +4445,15 @@ tasks:
           evidence: "tasks.yaml project.commands"
         - claim: "REL-003 是测试门禁，不是建流水线，二者不能互相替代。"
           evidence: "tasks.yaml REL-003 标题为「测试门禁（交付 D4）」"
+        - claim: "2026-10-02 定为 Vitest 与 ESLint 并入本卡交付；历史「65 个 error」须在开工时重跑核对，仍存在则标为上线前技术债。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C9、C10"
     scope:
       allowed_paths:
         - ".github/"
         - "scripts/"
         - "pyproject.toml"
         - "frontend/package.json"
+        - "frontend/"
         - "docs/AI辅助开发迭代指导.md"
         - "README.md"
         - "tasks.yaml"
@@ -4459,17 +4462,20 @@ tasks:
         - "生产密钥"
         - "evals/reports/rag-v0.1-baseline-20260919.json"
       deliverables:
-        - "GitHub Actions 工作流：ruff、mypy、pytest、前端 typecheck 与 build 串联"
+        - "GitHub Actions 工作流：ruff、mypy、pytest、前端 typecheck、Vitest、ESLint 与 build 串联"
         - "失败即阻断合并，README 展示状态徽标"
       non_goals:
         - "不做自动部署与自动发布"
         - "不引入第三方 CI 服务"
-        - "不在本任务修复既有 65 个测试 error"
+        - "不在本任务修复 QA-005 开工清单中的失败用例"
+        - "不把覆盖率数字写进本卡；覆盖率见阶段 1 独立条"
+        - "历史大批 error 若仍存在，只标记为上线前技术债，不在本卡修完"
     acceptance:
       - "推送一次改动即可看到流水线运行与结果"
       - "任一步骤失败时工作流整体失败"
-      - "本地复现命令与流水线命令一致"
-      - "本卡只保证流水线存在且失败可判定，既有测试失败由 QA-005 负责修复"
+      - "本地复现命令与流水线命令一致，含 Vitest 与 ESLint"
+      - "本卡只保证流水线存在且失败可判定；既有测试失败由 QA-005 按开工时重跑清单修复"
+      - "开工时重跑若仍出现大批 error，须在实现说明中标记为上线前技术债"
     risk:
       level: "L1"
       side_effect: "ci-pipeline-added"
@@ -4482,6 +4488,10 @@ tasks:
         - "ruff check ."
         - "mypy app/"
         - "pytest"
+        - "cd frontend && npm run typecheck"
+        - "cd frontend && npm test"
+        - "cd frontend && npm run lint"
+        - "cd frontend && npm run build"
     execution:
       owner: "个人开发者"
       nightly:
@@ -4896,14 +4906,13 @@ tasks:
     target_date: ""
     depends_on:
       - "PWFL-001"
-      - "OPS-001"
     context:
-      problem: "同一任务重复触发会并发执行，多副本下状态错乱。"
+      problem: "同一应用进程内，同一任务重复触发会并发执行，状态可能错乱。"
       facts:
         - claim: "调度器无并发控制与幂等键。"
           evidence: "app/workflow/scheduler.py"
-        - claim: "限流与 trace 均为内存态，多实例部署状态不共享。"
-          evidence: "app/security/rate_limiter.py；app/debug/trace.py"
+        - claim: "2026-10-02 定为单实例验收：去掉对 OPS-001 的依赖，不验证跨进程锁。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C3"
     scope:
       allowed_paths:
         - "app/workflow/"
@@ -4916,17 +4925,19 @@ tasks:
         - "同一任务同一周期的重复触发只执行一次"
         - "并发上限可配置"
       non_goals:
-        - "不实现跨节点分布式锁（依赖 OPS-001 的外部化存储）"
+        - "不实现跨节点分布式锁"
+        - "不依赖 OPS-001"
+        - "不验证两个应用实例之间的调度锁"
     acceptance:
-      - "重复触发不产生重复执行记录"
-      - "并发达到上限后排队或拒绝"
+      - "同一进程内重复触发不产生重复执行记录"
+      - "同一进程内并发达到上限后排队或拒绝"
     risk:
       level: "L2"
       side_effect: "workflow-concurrency-limited"
       rollback: "回退并发控制提交。"
     evaluation:
       cases:
-        - "并发触发同一任务多次"
+        - "同一进程并发触发同一任务多次"
       commands:
         - "pytest -k 'workflow or idempot'"
     execution:
@@ -4948,8 +4959,8 @@ tasks:
     context:
       problem: "执行失败无人知晓，排查缺少完整轨迹。"
       facts:
-        - claim: "已有执行历史，但无告警通道与结构化执行日志。"
-          evidence: "app/workflow/engine.py；NFR-002 交付后才有 trace 字段"
+        - claim: "2026-10-02 定为 1.0 按本卡验收即可：一次失败产生可查询告警记录；不要求写明外部接收人。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C12"
     scope:
       allowed_paths:
         - "app/workflow/"
@@ -5013,7 +5024,7 @@ tasks:
         - ".env"
       deliverables:
         - "用现行评测器重跑 rag-v0.1 官方集并出具 safety 切片报告"
-        - "若出现新的跨租户命中，单独输出立项说明"
+        - "若 violation_cases 大于 0，须输出跨租户命中的独立立项说明；本卡不得关闭"
       non_goals:
         - "不实现资源级 ACL（ADR-0001 仍为 Planned，需新 ADR）"
         - "不改生成层拒答规则，拒答问题另立卡"
@@ -5021,8 +5032,8 @@ tasks:
         - "不改写已冻结的 v0.1 基线报告文件"
         - "不用 holdout 调参"
     acceptance:
-      - "重跑后 violation_cases 为 0 则本卡关闭并给出结论"
-      - "若 violation_cases 大于 0，输出跨租户命中的独立立项说明，本卡同样判定完成"
+      - "重跑后 violation_cases 必须为 0，本卡才可关闭并给出结论"
+      - "violation_cases 大于 0 时本卡不得判定完成"
       - "报告可复现，含命令与用例清单"
     risk:
       level: "L0"
@@ -5162,7 +5173,7 @@ tasks:
   - id: "PRAG-004"
     title: "检索低分阈值与拒答"
     status: "backlog"
-    priority: "P2"
+    priority: "P0"
     target_date: ""
     depends_on:
       - "NFR-002"
@@ -5171,6 +5182,8 @@ tasks:
       facts:
         - claim: "检索主路径默认 top_k 为 5，未设置低分阈值过滤。"
           evidence: "app/rag/retriever.py retrieve(query, plan)"
+        - claim: "2026-10-02 定为阈值 0.4：可少返回或全不返回；拒答须有提示；低于 0.4 时写日志。"
+          evidence: "docs/product/项目产品需求方案.md §5.2.3；docs/plans/plan_v1_lock_20261002.md"
     scope:
       allowed_paths:
         - "app/rag/"
@@ -5181,14 +5194,17 @@ tasks:
       forbidden_paths:
         - "evals/reports/rag-v0.1-baseline-20260919.json"
       deliverables:
-        - "低于阈值的命中被丢弃"
-        - "全部低于阈值时明确拒答而非硬凑"
+        - "相似度低于 0.4 的命中可少返回或全不返回"
+        - "选择拒答时有明确提示语，不得硬凑回答"
+        - "相似度低于 0.4 时写入日志"
       non_goals:
         - "不做拒答后的兜底生成"
         - "不改 top_k 默认值"
+        - "不强制每一次低于 0.4 都必须拒答"
     acceptance:
-      - "低相关查询返回更少或不返回命中"
-      - "拒答有明确提示语"
+      - "相似度低于 0.4 时返回更少或不返回命中"
+      - "若拒答，有明确提示语"
+      - "相似度低于 0.4 时有可复现的日志记录"
       - "阈值与拒答文案有评测案例覆盖"
       - "阈值不得用 holdout 集调参"
     risk:
@@ -5197,7 +5213,8 @@ tasks:
       rollback: "阈值设为 0 即等同关闭，回退配置提交。"
     evaluation:
       cases:
-        - "构造低相关查询检查是否拒答"
+        - "构造低于 0.4 的查询：命中变少或为零，且有日志"
+        - "选择拒答时返回明确提示语"
       commands:
         - "pytest -k 'retriev'"
     execution:
@@ -5222,6 +5239,8 @@ tasks:
           evidence: "app/mcp/client.py；grep -nE 'timeout|permission|risk|audit|auth' app/mcp/*.py 无输出"
         - claim: "MCP 默认关闭，当前未启用。"
           evidence: "app/core/config.py MCP_ENABLED"
+        - claim: "2026-10-02 定为 PMCP-001～PMCP-005 均不进 1.0；NFR-007 仍留在 1.0。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C11"
     scope:
       allowed_paths:
         - "app/mcp/"
@@ -5238,6 +5257,7 @@ tasks:
       non_goals:
         - "不实现服务发现"
         - "不改传输协议支持范围"
+        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "模拟 server 无响应时请求在超时后返回"
       - "单 server 故障后其他工具仍可用"
@@ -5286,6 +5306,7 @@ tasks:
       non_goals:
         - "不做人工审批界面"
         - "不改 MCP 传输层"
+        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "MCP 工具与内置工具共用同一风险分级口径"
       - "L2 及以上默认不自动执行"
@@ -5331,6 +5352,7 @@ tasks:
       non_goals:
         - "不记录完整请求体中的敏感字段"
         - "不做审计查询界面"
+        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "调用后可查询到对应审计记录"
       - "敏感字段不落入审计"
@@ -5380,6 +5402,7 @@ tasks:
       non_goals:
         - "不引入第三方密钥托管服务"
         - "不改模型密钥之外的配置读取方式"
+        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "配置文件中不含 MCP 明文凭据"
       - "日志样本无凭据"
@@ -5424,6 +5447,7 @@ tasks:
         - "工具声明版本，不兼容时给出明确提示而非静默失败"
       non_goals:
         - "不做版本自动迁移"
+        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "版本不匹配时返回明确错误"
     risk:
@@ -5558,8 +5582,8 @@ tasks:
       facts:
         - claim: "限流使用进程内字典存储桶，trace 为内存环形结构，全仓无 redis 依赖。"
           evidence: "app/security/rate_limiter.py；app/debug/trace.py；grep -rln 'redis' app --include='*.py' 无输出"
-        - claim: "PRD §6.1 只定义单机 4C8G 并发，未定义多实例，但企业部署通常要求多副本。"
-          evidence: "PRD §6.1"
+        - claim: "2026-10-02 定为 1.0 只发单实例，本卡不进 1.0；打 `v1.0.0` 之后再做多副本外部化。"
+          evidence: "docs/plans/plan_v1_lock_20261002.md；docs/plans/plan_v1_task_split_20261002.md C1"
     scope:
       allowed_paths:
         - "app/security/"
@@ -5578,6 +5602,7 @@ tasks:
       non_goals:
         - "不实现分布式事务"
         - "不改限流算法本身"
+        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "两个实例共享同一限流计数"
       - "关闭共享存储时行为与现状一致"
@@ -5603,13 +5628,14 @@ tasks:
     status: "backlog"
     priority: "P0"
     target_date: ""
-    depends_on:
-      - "OPS-001"
+    depends_on: []
     context:
-      problem: "多副本下并发写入缺少保护，配额与导入任务可能重复或错乱。"
+      problem: "同一应用进程内并发写入缺少保护，配额与导入任务可能重复或错乱。"
       facts:
         - claim: "配额、导入任务与租户切换路径未提供幂等键或并发保护。"
           evidence: "app/rag/；app/core/tenants/；tasks.yaml QUOTA-001"
+        - claim: "2026-10-02 定为单实例验收：不依赖 OPS-001，不验证跨进程幂等。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C2"
     scope:
       allowed_paths:
         - "app/rag/"
@@ -5621,21 +5647,23 @@ tasks:
         - ".env"
       deliverables:
         - "关键写路径具备幂等键"
-        - "并发场景下的冲突处理策略明确"
+        - "同一进程内并发场景下的冲突处理策略明确"
       non_goals:
         - "不引入分布式锁框架"
         - "不改业务规则"
+        - "不验证两个应用实例之间的幂等共享"
+        - "不依赖 OPS-001"
     acceptance:
-      - "重复提交同一请求只产生一次结果"
-      - "并发扣减不出现负值与重复扣减"
+      - "同一进程内重复提交同一请求只产生一次结果"
+      - "同一进程内并发扣减不出现负值与重复扣减"
     risk:
       level: "L2"
       side_effect: "idempotency-added"
       rollback: "回退幂等键提交。"
     evaluation:
       cases:
-        - "并发重复提交导入任务"
-        - "并发扣减配额"
+        - "同一进程并发重复提交导入任务"
+        - "同一进程并发扣减配额"
       commands:
         - "pytest -k 'idempot or concurrency'"
     execution:
@@ -5706,6 +5734,8 @@ tasks:
       facts:
         - claim: "密码使用 bcrypt，但模型与接口密钥为明文配置。"
           evidence: "app/core/config.py；.env.example；PRD §6.2 要求 API Key 加密存储"
+        - claim: "2026-10-02 确认本卡留在 1.0 阶段 6；PMCP-001～PMCP-005 移出 1.0，不阻塞本卡。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C11"
     scope:
       allowed_paths:
         - "app/core/config.py"
@@ -5754,8 +5784,8 @@ tasks:
     context:
       problem: "审计有写入有查询，但没有保留期与归档，长期运行会无限增长或被迫清理导致不合规。"
       facts:
-        - claim: "PRD §6.2 要求审计日志保留不少于 90 天，当前无保留策略与归档任务。"
-          evidence: "PRD §6.2；app/audit/"
+        - claim: "PRD §6.2 要求审计日志保留不少于 90 天；2026-10-02 定为超期归档而非直接删除。"
+          evidence: "PRD §6.2；docs/plans/plan_v1_task_split_20261002.md C8；docs/product/项目产品需求方案.md §5.4.3"
     scope:
       allowed_paths:
         - "app/audit/"
@@ -5805,6 +5835,8 @@ tasks:
       facts:
         - claim: "已有租户隔离与导出能力，但无租户级彻底清除的验收路径。"
           evidence: "app/core/tenants/；tasks.yaml EXPORT-001"
+        - claim: "2026-10-02 定为本卡验收即 1.0 合格线，排在阶段 6 末。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C13"
     scope:
       allowed_paths:
         - "app/core/tenants/"
@@ -5861,6 +5893,8 @@ tasks:
       facts:
         - claim: "项目为 Apache 2.0 开源，尚未产出依赖许可证清单。"
           evidence: "仓库根目录 LICENSE 与 pyproject.toml"
+        - claim: "2026-10-02 定为本卡验收即 1.0 合格线，排在阶段 6 末。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C13"
     scope:
       allowed_paths:
         - "docs/"
@@ -5901,7 +5935,6 @@ tasks:
     priority: "P1"
     target_date: ""
     depends_on:
-      - "OPS-001"
       - "NFR-005"
       - "NFR-011"
     context:
@@ -5911,6 +5944,8 @@ tasks:
           evidence: "PRD §6.1"
         - claim: "现有 REL-004 是检索质量实验，不是性能验证。"
           evidence: "tasks.yaml REL-004 标题为「一轮检索实验结论（交付 D4）」"
+        - claim: "2026-10-02 定为单实例验收：去掉对 OPS-001 的依赖，只测单机 4C8G，不做跨副本压测。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C4"
     scope:
       allowed_paths:
         - "scripts/"
@@ -5929,11 +5964,13 @@ tasks:
         - "不为压测改动业务语义"
         - "不使用 Mock Embedding 产出上线性能数字"
         - "不为达标而调整机器规格或压测场景"
+        - "不做多副本或跨实例压测"
+        - "不依赖 OPS-001"
     acceptance:
       - "五项指标均有实测数值"
       - "报告可复现，含环境说明"
       - "检索延迟取自真实 Embedding，报告写明 /health 所见模型与维度且标注非 Mock"
-      - "报告记录机器规格，按需求清单机 4C8G 执行"
+      - "报告记录机器规格，按需求清单机 4C8G、单应用进程执行"
       - "未达标项记录处置结论，不得把 Mock 结果写成达标"
     risk:
       level: "L1"
@@ -5941,7 +5978,7 @@ tasks:
       rollback: "回退压测脚本提交。"
     evaluation:
       cases:
-        - "在标准环境下跑完五项指标"
+        - "在标准单机环境下跑完五项指标"
       commands:
         - "pytest -k 'perf or benchmark'"
     execution:
@@ -5957,14 +5994,14 @@ tasks:
     status: "backlog"
     priority: "P1"
     target_date: ""
-    depends_on:
-      - "NFR-005"
-      - "OPS-001"
+    depends_on: []
     context:
       problem: "只有开发用编排文件，生产缺少服务编排、健康检查与重启策略。"
       facts:
         - claim: "项目设计方案 §4.2 目录结构列出 docker-compose.prod.yml，当前只有 docker-compose.yml。"
           evidence: "项目设计方案 §4.2；ls -1 docker-compose*.yml"
+        - claim: "2026-10-02 定为单实例验收：不依赖 OPS-001 与 NFR-005；默认向量库仍是 local 时，用不到的 Milvus 健康检查不计入 5 分钟启动计时。"
+          evidence: "docs/plans/plan_v1_lock_20261002.md 阶段 2；docs/plans/plan_v1_task_split_20261002.md C5"
     scope:
       allowed_paths:
         - "docker-compose.yml"
@@ -5978,16 +6015,20 @@ tasks:
         - ".env"
         - "生产密钥"
       deliverables:
-        - "生产编排文件：应用、数据库、向量库与共享存储"
+        - "生产编排文件：单应用实例、数据库，以及配置所需的向量库服务"
         - "健康检查、重启策略与资源限制"
-        - "生产编排中的向量库写明 Milvus 2.4+ 服务，Milvus Lite 仅留在开发编排"
-        - "本卡不改 RAG_VECTOR_STORE 默认值，默认值仍等 SEC-003 五条门槛"
+        - "生产编排中的向量库若启用则写明 Milvus 2.4+；Milvus Lite 仅留在开发编排"
+        - "本卡不改 RAG_VECTOR_STORE 默认值"
       non_goals:
         - "不做 Kubernetes 编排"
         - "不做自动扩缩容"
+        - "不引入多实例共享存储"
+        - "不依赖 OPS-001"
+        - "不以 NFR-005 的 PostgreSQL 演练为开工前置"
     acceptance:
-      - "一键启动后各服务健康探针通过"
+      - "一键启动后，本卡声明需要的服务健康探针通过"
       - "应用依赖未就绪时不进入就绪状态"
+      - "默认向量库仍是 local 时，用不到的 Milvus 健康检查不计入 5 分钟启动计时"
     risk:
       level: "L2"
       side_effect: "deployment-orchestration-added"
@@ -6015,8 +6056,8 @@ tasks:
     context:
       problem: "SSE 经过反向代理会被缓冲，长连接被中断，流式输出不可用。"
       facts:
-        - claim: "PRD §5.1.4 定义 heartbeat 事件，但仓库无反向代理配置。"
-          evidence: "PRD §5.1.4；ls 未见 nginx 或代理配置"
+        - claim: "2026-10-02 定为 P2 仍锁进 1.0 阶段 6。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C14"
     scope:
       allowed_paths:
         - "deploy/"
@@ -6084,8 +6125,9 @@ tasks:
         - "不做异地与加密备份"
         - "不做定时调度配置"
     acceptance:
-      - "脚本可生成可恢复的备份产物"
-      - "按文档可完成一次恢复"
+      - "脚本可生成可恢复的备份产物，至少覆盖 PostgreSQL、上传文件目录和向量数据"
+      - "按文档可完成一次恢复，且上述三份数据都有恢复证据"
+      - "不得只用开发用 SQLite 代替上述演练"
     risk:
       level: "L2"
       side_effect: "backup-script-added"
@@ -6208,6 +6250,8 @@ tasks:
       facts:
         - claim: "PRD §6.5 将指标与告警列为 P2，当前无 metrics 端点。"
           evidence: "PRD §6.5；grep -rn 'metrics' app/api/ 无输出"
+        - claim: "2026-10-02 定为本卡验收即 1.0 合格线，排在阶段 6 末。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C13"
     scope:
       allowed_paths:
         - "app/api/routes/"
@@ -6244,22 +6288,20 @@ tasks:
         auto_deploy: false
   
   - id: "QA-005"
-    title: "既有测试失败修复：SSE 对话、文档删除清向量、混合检索与调度器"
+    title: "既有测试失败修复：以开工时重跑清单为准"
     status: "backlog"
     priority: "P0"
     target_date: ""
     depends_on: []
     context:
-      problem: "全量 pytest 有 8 个真实失败，挡住 CI 全绿；不修则 NFR-001 的流水线不能充当回归门禁。"
+      problem: "全量 pytest 未绿会挡住 CI；失败清单必须以本卡开工时的重跑结果为准，不能沿用过期快照。"
       facts:
-        - claim: "2026-09-28 复跑 pytest -q 共收集 445 项，结果为 8 failed / 434 passed / 3 skipped，无 error。"
+        - claim: "2026-09-28 复跑曾记录 8 failed / 434 passed / 3 skipped，无 error；该清单只作历史，不作本卡验收基线。"
           evidence: "conda 环境 ai-assistant 下 python -m pytest -q --tb=no，耗时 772.97s"
-        - claim: "失败集中在四组：test_chat.py 与 test_chat_controls.py 的 SSE 流式对话（3 项，ExceptionGroup）、test_p0_regression.py 的删除文档清向量、test_rag.py 的 BM25 全零混合检索（3 项）、test_workflow.py 的调度器启停。"
-          evidence: "FAILED tests/test_chat.py::test_chat_stream_returns_sse；test_chat.py::test_code_result_persists_on_stream；test_chat_controls.py::test_stream_emits_conversation_id；test_p0_regression.py::test_delete_document_cleans_vectors；test_rag.py::test_hybrid_search_bm25_all_zero_*（3 项）；test_workflow.py::test_scheduler_runnable_and_start_stop"
-        - claim: "早期一次实跑曾出现 65 个 error，集中在 test_rag_import_jobs、test_rag_permission_semantics、test_sandbox；本次复跑未复现，判断为外部依赖或临时目录被清理导致，不属代码缺陷。"
-          evidence: "两次同为 2026-09-28、同一环境，error 数由 65 降为 0，总数同为 445"
-        - claim: "需求 §4.5 要求 CI 全绿且覆盖率不低于 70%。"
-          evidence: "docs/product/项目产品需求方案.md §4.5"
+        - claim: "早期一次实跑曾出现 65 个 error；是否仍存在须在本卡与 NFR-001 开工时重跑核对，仍存在则标为上线前技术债。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C9"
+        - claim: "覆盖率数字已从本卡划出，由阶段 1 覆盖率条单独验收。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4.1"
     scope:
       allowed_paths:
         - "tests/"
@@ -6270,17 +6312,20 @@ tasks:
       forbidden_paths:
         - ".env"
       deliverables:
-        - "8 个失败项逐条归因，区分代码缺陷与测试自身问题"
-        - "确属外部依赖缺失的用例显式跳过并写明原因"
+        - "开工时一次完整 pytest 重跑报告，作为失败清单"
+        - "清单中每一项的归因；属代码缺陷的已修复"
+        - "若重跑仍出现大批 error，写入上线前技术债标记"
       non_goals:
         - "不把失败改成无条件跳过来凑通过率"
         - "不降低断言强度或删断言"
         - "不为凑覆盖率新增无意义测试"
-        - "不修复 test_rag_import_jobs、test_rag_permission_semantics、test_sandbox（本次未复现，复现时另立项）"
+        - "不在本卡产出覆盖率达标结论"
+        - "不沿用 2026-09-28 的 8 个失败作为必须修完的固定清单"
     acceptance:
       - "pytest 可完整收集且退出码可判定"
-      - "8 个失败项均给出归因，属代码缺陷的已修复"
-      - "覆盖率数字在 CI 或 REL-003 中报告"
+      - "失败清单以本卡开工时重跑结果为准，并写入实现说明"
+      - "清单中属代码缺陷的项已修复，命令退出码为 0，或未清项已标为上线前技术债并说明原因"
+      - "覆盖率不在本卡验收"
     risk:
       level: "L1"
       side_effect: "test-suite-green"
@@ -6351,6 +6396,1908 @@ tasks:
       owner: "个人开发者"
       nightly:
         eligible: true
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "COV-001"
+    title: "覆盖率数字：可复现报告"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "现在没有可复现的覆盖率报告，不能把 §4.5 的「不低于 70%」写成已经达到。"
+      facts:
+        - claim: "覆盖率数字已从 QA-005 划出，由本卡单独验收。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md C9、§4.1"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 1。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "scripts/"
+        - "pyproject.toml"
+        - "frontend/package.json"
+        - "docs/"
+        - "tasks.yaml"
+        - ".github/"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "一次可复现的覆盖率数字，并写明命令"
+      non_goals:
+        - "不把没有数字的结果写成达标"
+        - "不为凑数字新增无意义测试"
+        - "不在本条修测试失败"
+    acceptance:
+        - "命令退出后能读到覆盖率数字"
+        - "没有数字则本卡不完成"
+        - "是否达到 70% 另记，不把未达到写成达到"
+    risk:
+      level: "L0"
+      side_effect: "coverage-report"
+      rollback: "删除报告文件即可。"
+    evaluation:
+      cases:
+        - "跑一次覆盖率命令并读出数字"
+      commands:
+        - "pytest --cov=app --cov-report=term-missing"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "ENV-001"
+    title: ".env.example 覆盖全部配置字段"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "app/core/config.py 有 125 个配置字段，.env.example 有 83 个键。"
+      facts:
+        - claim: "字段数与示例键数不一致。"
+          evidence: "app/core/config.py；.env.example"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 2。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - ".env.example"
+        - "app/core/config.py"
+        - "README.md"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "125 个字段都有键，并标明必填或选填"
+      non_goals:
+        - "不新增配置项来凑数"
+        - "不把密钥写进示例"
+    acceptance:
+        - "对照结果是 125/125"
+        - "没有示例里多出来的键"
+    risk:
+      level: "L1"
+      side_effect: "env-example-extended"
+      rollback: "回退 .env.example 提交。"
+    evaluation:
+      cases:
+        - "脚本核对 config 字段与示例键"
+      commands:
+        - "python -c \"from app.core import config; print('ok')\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "ENV-002"
+    title: "示例口令退出仓库"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "ENV-001"
+    context:
+      problem: ".env.example 里有一段可直接登录的管理员口令。"
+      facts:
+        - claim: "§5.3.9 要求初始口令不进仓库。"
+          evidence: "docs/product/项目产品需求方案.md §5.3.9"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 2。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - ".env.example"
+        - "README.md"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "示例只留占位"
+        - "配置默认口令仍为空串"
+      non_goals:
+        - "不把真实口令写进仓库、日志、接口样例和测试夹具"
+    acceptance:
+        - "示例中不再有可直接登录的口令"
+        - "用户名和口令都非空才创建管理员，这条保持"
+    risk:
+      level: "L1"
+      side_effect: "example-password-removed"
+      rollback: "回退示例提交。"
+    evaluation:
+      cases:
+        - "检索示例文件无可用口令"
+      commands:
+        - "rg -n PASSWORD .env.example"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "INST-004"
+    title: "内置账号 admin/system/culture 与首次改密"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "现在只能从环境变量引导名为 admin 的系统管理员。没有 system、culture，也没有首次改密标记与测试用户标记。"
+      facts:
+        - claim: "§5.3.9 要求三人与首次改密；culture 为 member 且 is_test_user=true。"
+          evidence: "docs/product/项目产品需求方案.md §5.3.8、§5.3.9"
+        - claim: "2026-10-04 定为角色与 is_test_user 标记分开，不新增测试角色。"
+          evidence: "docs/plans/plan_v1_test_user_flag_20261004.md"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 2。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/core/"
+        - "app/models/"
+        - "app/services/"
+        - "app/api/"
+        - "alembic/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - ".env.example"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "admin 为超级管理员，system 为默认租户管理员，culture 为 member 且 is_test_user=true"
+        - "用户表落库 is_test_user 字段"
+        - "初始口令只来自环境变量"
+        - "三人首次登录必须先改密"
+      non_goals:
+        - "不把初始口令写进仓库"
+        - "不在前端包和后端放同一把可逆密钥"
+        - "不新增 test_member 角色"
+        - "不在本卡做完全部导出排除产品细则"
+    acceptance:
+        - "未改密不能进入对话和其他业务页"
+        - "库里只存 bcrypt"
+        - "这三人的邮箱可以空"
+        - "culture.is_test_user 为真；不以用户名字符串判定测试用户"
+    risk:
+      level: "L2"
+      side_effect: "builtin-accounts-force-change"
+      rollback: "回退账号与改密标记提交。"
+    evaluation:
+      cases:
+        - "三账号首次登录强制改密"
+      commands:
+        - "pytest -k \"admin or password or setup\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "CLI-002"
+    title: "init 写入 JWT，跳过 init 时拒绝默认密钥"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "CLI-001"
+    context:
+      problem: "跳过 init 时，非开发环境仍可能用默认密钥启动。"
+      facts:
+        - claim: "§5.11 要求 init 写入 JWT。"
+          evidence: "docs/product/项目产品需求方案.md §5.11"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 2。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/"
+        - "scripts/"
+        - "tests/"
+        - "tasks.yaml"
+        - "README.md"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "按 §5.11，init 写入 JWT"
+      non_goals:
+        - "不改已登录会话的业务语义"
+    acceptance:
+        - "跳过 init 时，非开发环境拒绝用默认密钥启动"
+    risk:
+      level: "L2"
+      side_effect: "init-jwt-enforced"
+      rollback: "回退 init 与启动校验提交。"
+    evaluation:
+      cases:
+        - "非开发环境跳过 init 应失败"
+      commands:
+        - "pytest -k \"init or jwt\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "NFR-012"
+    title: "Compose 口令与跨域默认收紧"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "NFR-003"
+    context:
+      problem: "生产编排有可预测的数据库口令，CORS_ORIGINS 默认为 *。"
+      facts:
+        - claim: "差距表要求生产不能用可预测口令，也不能默认放行全部来源。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 2。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "docker-compose.yml"
+        - "docker-compose.prod.yml"
+        - "deploy/"
+        - ".env.example"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "生产编排不使用可预测数据库口令"
+        - "跨域不默认 *"
+      non_goals:
+        - "不放宽 JWT_SECRET_KEY 必填"
+    acceptance:
+        - "JWT_SECRET_KEY 仍强制必填"
+        - "上述两项默认值不再出现在生产编排里"
+    risk:
+      level: "L2"
+      side_effect: "compose-defaults-hardened"
+      rollback: "回退编排默认值提交。"
+    evaluation:
+      cases:
+        - "检查生产编排默认值"
+      commands:
+        - "rg -n \"CORS_ORIGINS|POSTGRES_PASSWORD\" docker-compose*.yml"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "API-001"
+    title: "对外路径改为 /api/v1"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "需求写 /api/v1，app/main.py 把路由挂在 /api。"
+      facts:
+        - claim: "2026-10-02 定为对外路径 /api/v1。"
+          evidence: "docs/plans/plan_v1_lock_20261002.md"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 2。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/main.py"
+        - "app/api/"
+        - "frontend/src/"
+        - "tests/"
+        - "README.md"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "挂载和现有调用方改为 /api/v1"
+        - "OpenAPI 与 README 的路径一致"
+      non_goals:
+        - "不保留 /api 作为另一套对外路径"
+        - "不在本条改业务规则"
+    acceptance:
+        - "已注册的对外路径都在 /api/v1 下"
+        - "README 里的路径能在 OpenAPI 里找到"
+    risk:
+      level: "L2"
+      side_effect: "api-prefix-v1"
+      rollback: "回退前缀提交。"
+    evaluation:
+      cases:
+        - "OpenAPI 路径均以 /api/v1 开头"
+      commands:
+        - "pytest -k \"openapi or api\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "SSE-001"
+    title: "SSE 事件协议对齐 §5.1.4"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "现有事件缺少 run_id、heartbeat、Last-Event-ID 回放等约定。"
+      facts:
+        - claim: "当前事件是 stage/token/tool 等，与 §5.1.4 不完全一致。"
+          evidence: "app/services/chat_service.py；docs/product/项目产品需求方案.md §5.1.4"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/services/"
+        - "app/api/"
+        - "app/agents/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "对齐 §5.1.4 的事件"
+      non_goals:
+        - "不把引用侧栏算进本条，引用由 PRAG-003 锁定"
+    acceptance:
+        - "事件带 run_id"
+        - "含 run 开始与结束、节点进出、intent、plan、分开的 tool.call 与 tool.result、citations、heartbeat、断线按 Last-Event-ID 回放"
+        - "缺一项不锁定"
+    risk:
+      level: "L2"
+      side_effect: "sse-protocol-aligned"
+      rollback: "回退 SSE 事件提交。"
+    evaluation:
+      cases:
+        - "流式对话检查事件字段"
+      commands:
+        - "pytest -k \"stream or sse\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "RAG-014"
+    title: "清洗链与删除向量补偿"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "导入只会压缩空白。删除路径失败后没有补偿队列。"
+      facts:
+        - claim: "§5.2.2 与 §5.2.4 要求清洗与补偿。"
+          evidence: "docs/product/项目产品需求方案.md §5.2"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+        - "上传路径做去重、质量评分、格式规范化、元数据提取"
+        - "向量删除失败进入补偿队列"
+      non_goals:
+        - "不改切分策略来代替清洗"
+        - "不把 2026-09-29 的五条脚本当作本条证据"
+    acceptance:
+        - "四步都在上传路径上"
+        - "有一次删除失败后再成功的记录"
+    risk:
+      level: "L2"
+      side_effect: "rag-clean-compensate"
+      rollback: "回退清洗与补偿提交。"
+    evaluation:
+      cases:
+        - "上传清洗与删除失败补偿"
+      commands:
+        - "pytest -k \"import or delete or clean\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "RAG-015"
+    title: "默认向量库切到 Milvus"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "RAG-014"
+    context:
+      problem: "默认仍是 local。需求写的是 Milvus 存储。"
+      facts:
+        - claim: "默认 RAG_VECTOR_STORE 仍是 local。"
+          evidence: "app/core/config.py"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "app/core/config.py"
+        - ".env.example"
+        - "docker-compose.yml"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "默认存储切到 Milvus，上传会写入"
+      non_goals:
+        - "不把 2026-09-29 的五条脚本当作这次切换的证据"
+        - "不在本条改检索公式"
+    acceptance:
+        - "默认配置下一次上传能在 Milvus 中查到"
+        - "切回 local 的开发路径要写明，不能静默丢数据"
+    risk:
+      level: "L2"
+      side_effect: "milvus-default"
+      rollback: "默认切回 local 并回退提交。"
+    evaluation:
+      cases:
+        - "默认配置上传后检索命中"
+      commands:
+        - "pytest -k \"milvus or vector\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "CHAT-006"
+    title: "助手消息重新生成"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "最后一条助手消息没有重新生成。"
+      facts:
+        - claim: "frontend 无 regenerate。"
+          evidence: "frontend/src"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/services/"
+        - "app/api/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "最后一条助手消息可以重新生成"
+      non_goals:
+        - "不做对话分支"
+    acceptance:
+        - "重新生成后保留可区分的一次新回复"
+        - "失败时原回复仍在"
+    risk:
+      level: "L1"
+      side_effect: "chat-regenerate"
+      rollback: "回退重新生成提交。"
+    evaluation:
+      cases:
+        - "重新生成成功与失败"
+      commands:
+        - "pytest -k \"regenerat or chat\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "LLM-001"
+    title: "模型按 P0-8 任务类型配置"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "只登记 chat、intent、fallback。嵌入另有环境变量，没有重排任务档。"
+      facts:
+        - claim: "2026-10-02 定为按 chat/intent/embedding/rerank 配。"
+          evidence: "docs/plans/plan_v1_lock_20261002.md"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/llm/"
+        - "app/core/config.py"
+        - ".env.example"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "按 P0-8 配齐 chat、intent、embedding、rerank 和兜底链"
+      non_goals:
+        - "不为五个阶段各自配模型"
+    acceptance:
+        - "未知任务拒绝"
+        - "熔断后走兜底链"
+        - "规划、执行、质量门用 chat"
+    risk:
+      level: "L2"
+      side_effect: "task-model-routing"
+      rollback: "回退路由配置提交。"
+    evaluation:
+      cases:
+        - "未知任务拒绝与兜底链"
+      commands:
+        - "pytest -k \"llm or factory or profile\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "CHAT-007"
+    title: "会话附件：粘贴图片与上传文件"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "输入框只有文字，不能粘贴图片，也不能选文件。"
+      facts:
+        - claim: "§5.1.7 已写类型、1MB、图片交模型、文件不进知识库。"
+          evidence: "docs/product/项目产品需求方案.md §5.1.7"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/api/"
+        - "app/services/"
+        - "app/models/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "按 §5.1.7：png/jpg 可粘贴或选择并直接交给模型"
+        - "列出的文档和源码随该条消息交给模型"
+      non_goals:
+        - "不把这些文件写入知识库，不建索引"
+        - "不增加 §5.1.7 列表以外的类型"
+        - "不含 .tsx、.jsx"
+    acceptance:
+        - "单文件超过 1048576 字节或扩展名不在列表内则拒绝，且不进知识库"
+        - "允许的图片到达模型"
+        - "允许的文档和源码到达该条消息，知识库文档数不因此增加"
+    risk:
+      level: "L2"
+      side_effect: "chat-attachments"
+      rollback: "回退附件上传提交。"
+    evaluation:
+      cases:
+        - "超限拒绝、图片交模型、文件不进知识库"
+      commands:
+        - "pytest -k \"attach or upload or chat\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "FLOW-003"
+    title: "工作流到点触发写入执行记录"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "FLOW-001"
+    context:
+      problem: "手动执行会写 WorkflowExecution。到点比较进不了执行。"
+      facts:
+        - claim: "next_run_time 与 scheduler 条件导致 cron 走不到执行。"
+          evidence: "app/workflow/engine.py；app/workflow/scheduler.py"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 4。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/workflow/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "到点时进入执行并写入执行记录"
+      non_goals:
+        - "不用手动执行代替本条"
+        - "不在本条做重试，重试是 PWFL-001"
+    acceptance:
+        - "设定的下一次时间到达后有执行记录"
+        - "只调用手动执行路径不能算通过"
+    risk:
+      level: "L2"
+      side_effect: "workflow-cron-fires"
+      rollback: "回退调度比较逻辑提交。"
+    evaluation:
+      cases:
+        - "到点触发产生执行记录"
+      commands:
+        - "pytest -k \"workflow or schedul\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "EVO-001"
+    title: "Reflect 与夜间蒸馏可锁定运行"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "开关打开时，对话结束后的反思和夜间蒸馏没有可锁定的运行记录。默认关闭被当成了完成。"
+      facts:
+        - claim: "蒸馏调度默认关闭。"
+          evidence: "app/core/config.py；app/evolution/"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 4。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/evolution/"
+        - "app/services/"
+        - "app/core/config.py"
+        - ".env.example"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "开关打开时，对话结束后能反思"
+        - "夜间蒸馏按配置跑完并留下记录"
+      non_goals:
+        - "不把默认关闭算完成"
+        - "不在本条把反思结果直接改成技能"
+    acceptance:
+        - "打开开关的一次对话有反思记录"
+        - "一次按配置跑完的蒸馏有记录"
+    risk:
+      level: "L2"
+      side_effect: "reflect-distill-on"
+      rollback: "关闭开关并回退提交。"
+    evaluation:
+      cases:
+        - "打开开关后反思与蒸馏有记录"
+      commands:
+        - "pytest -k \"reflect or distill or evolution\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "AUTH-005"
+    title: "对话读取权限与矩阵一致"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "conversations.read 允许 system_viewer 和 viewer。§5.3.2 里这两类角色的对话权限是不允许。"
+      facts:
+        - claim: "权限矩阵与实现冲突。"
+          evidence: "app/core/security.py；docs/product/项目产品需求方案.md §5.3.2"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/core/security.py"
+        - "app/api/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "这两类角色的对话读权限与 §5.3.2 一致"
+      non_goals:
+        - "不在本条改矩阵里尚未核对的格子"
+    acceptance:
+        - "与 §5.3.2 不一致的读请求被拒绝"
+        - "若矩阵改写，代码跟改后的矩阵"
+    risk:
+      level: "L2"
+      side_effect: "conversation-read-matrix"
+      rollback: "回退权限表提交。"
+    evaluation:
+      cases:
+        - "viewer 与 system_viewer 读对话被拒"
+      commands:
+        - "pytest -k \"permission or conversation\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "FE-001"
+    title: "非系统角色管理页进入 403 页"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "非系统角色打开管理页时，只有组件能识别 403，没有独立页面。"
+      facts:
+        - claim: "§4.5.2 要求进入 403 页。"
+          evidence: "docs/product/项目产品需求方案.md §4.5.2"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "进入 403 页"
+      non_goals:
+        - "不在本条改权限矩阵"
+    acceptance:
+        - "非系统角色打开管理页看到 403 页，而不是只有一段组件内提示"
+    risk:
+      level: "L1"
+      side_effect: "frontend-403-page"
+      rollback: "回退前端路由提交。"
+    evaluation:
+      cases:
+        - "非系统角色访问管理页"
+      commands:
+        - "cd frontend && npm run typecheck"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "SEC-005"
+    title: "上传按文件头校验魔术数字"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "类型可能只按扩展名放行。"
+      facts:
+        - claim: "知识库存储按扩展名白名单。"
+          evidence: "app/rag/document_storage.py"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "app/api/"
+        - "app/services/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "知识库上传和会话附件都按文件头判断"
+      non_goals:
+        - "不扩大 §5.1.7 的允许类型"
+    acceptance:
+        - "扩展名在列表内但文件头不符的被拒绝"
+        - "扩展名不在列表内的仍拒绝"
+    risk:
+      level: "L2"
+      side_effect: "magic-byte-check"
+      rollback: "回退校验提交。"
+    evaluation:
+      cases:
+        - "伪造扩展名被拒"
+      commands:
+        - "pytest -k \"upload or magic or storage\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "INV-004"
+    title: "邀请码角色有效期次数可配置"
+    status: "backlog"
+    priority: "P2"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "角色、有效期和次数写死为 7 天、1 次、member。"
+      facts:
+        - claim: "2026-10-04 定为 1.0 不做邀请增强，本卡打标后再做。"
+          evidence: "docs/plans/plan_v1_invite_after_1.0_20261004.md"
+        - claim: "§5.3.3 原要求可配置；1.0 锁定不再要求。"
+          evidence: "docs/product/项目产品需求方案.md §5.3.5"
+        - claim: "本卡原排阶段 5；现移出 1.0。"
+          evidence: "docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+        - ".env.example"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "角色、有效期、次数可配置"
+        - "写死值只作为默认"
+      non_goals:
+        - "不在本条把邀请绑到指定的人"
+    acceptance:
+        - "改配置后，新邀请码使用新的角色、有效期和次数"
+    risk:
+      level: "L1"
+      side_effect: "invite-configurable"
+      rollback: "回退邀请配置提交。"
+    evaluation:
+      cases:
+        - "改配置后新邀请码生效"
+      commands:
+        - "pytest -k invite"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "QUOTA-002"
+    title: "Token 配额与自然月重置"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "QUOTA-001"
+    context:
+      problem: "有消息条数和源文件字节上限。没有 Token 配额，也没有自然月重置。"
+      facts:
+        - claim: "§5.3.6 要求 Token 与自然月重置。"
+          evidence: "docs/product/项目产品需求方案.md §5.3.6"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "消息数、Token、存储都有上限"
+        - "自然月重置"
+      non_goals:
+        - "不把空上限改成强制限制"
+    acceptance:
+        - "超限返回用量和重置时间，且不产生部分写入"
+    risk:
+      level: "L2"
+      side_effect: "quota-token-monthly"
+      rollback: "回退配额提交。"
+    evaluation:
+      cases:
+        - "超限返回用量与重置时间"
+      commands:
+        - "pytest -k quota"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "CHAT-008"
+    title: "会话软删除与归档"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "删除是硬删除。会话没有归档字段。"
+      facts:
+        - claim: "delete_conversation 使用 session.delete。"
+          evidence: "app/services/chat_service.py"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/models/"
+        - "app/services/"
+        - "app/api/"
+        - "alembic/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "删除改为软删除"
+        - "可以归档"
+      non_goals:
+        - "不在本条做训练导出"
+    acceptance:
+        - "软删除后默认列表不再出现该会话，数据仍可按删除状态找到"
+        - "归档后进入归档列表"
+    risk:
+      level: "L2"
+      side_effect: "conversation-soft-delete"
+      rollback: "回退软删除与归档提交。"
+    evaluation:
+      cases:
+        - "软删除与归档列表"
+      commands:
+        - "pytest -k \"conversation or archive or delete\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "EXPORT-002"
+    title: "训练格式导出 Alpaca 或 ShareGPT"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "EXPORT-001"
+    context:
+      problem: "租户管理员还不能导出 Alpaca 或 ShareGPT。"
+      facts:
+        - claim: "现有导出是对话原文 JSON。"
+          evidence: "tasks.yaml EXPORT-001"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "导出 Alpaca 或 ShareGPT 其中一种"
+        - "导出前脱敏，并写入审计"
+      non_goals:
+        - "不导出未脱敏原文"
+    acceptance:
+        - "文件可被对应格式解析"
+        - "审计在文件开始返回之前写好"
+    risk:
+      level: "L2"
+      side_effect: "export-training-format"
+      rollback: "回退导出提交。"
+    evaluation:
+      cases:
+        - "导出文件可解析且有审计"
+      commands:
+        - "pytest -k export"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "AUTH-006"
+    title: "公开注册邮箱必填与唯一校验"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "公开注册可以不填邮箱。空白会收成空。"
+      facts:
+        - claim: "2026-10-02 定为邮箱必填、格式与库内唯一，前期不做真实性校验。"
+          evidence: "docs/product/项目产品需求方案.md §5.3.8"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/models/"
+        - "app/schemas/"
+        - "app/services/"
+        - "app/api/"
+        - "alembic/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "自行注册可以打开"
+        - "邮箱必填，做格式校验，并在数据库里唯一"
+      non_goals:
+        - "不做真实性校验，也不做真人核验"
+        - "不写腾讯云发送实现"
+        - "admin/system/culture 可以没有邮箱"
+    acceptance:
+        - "缺邮箱、格式不对、邮箱已被占用时拒绝注册，且不新增用户"
+        - "合法新邮箱可以注册"
+    risk:
+      level: "L2"
+      side_effect: "register-email-required"
+      rollback: "回退注册校验提交。"
+    evaluation:
+      cases:
+        - "缺邮箱与重复邮箱被拒"
+      commands:
+        - "pytest -k \"register or auth\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "ADM-005"
+    title: "系统状态页：健康、在线用户、存储、调用量"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "状态接口没有在线用户数、存储用量、调用量。"
+      facts:
+        - claim: "2026-10-02 定为四项同时展示。"
+          evidence: "docs/plans/plan_v1_lock_20261002.md"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 5。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/api/"
+        - "app/services/"
+        - "frontend/src/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "同一页展示健康、在线用户数、存储用量和 API 调用量"
+      non_goals:
+        - "不把多副本汇总算进本条"
+        - "1.0 只统计本进程"
+    acceptance:
+        - "四项都能在页面上读到"
+        - "只放行 system_admin 的规则保持，除非矩阵另改"
+    risk:
+      level: "L1"
+      side_effect: "admin-status-metrics"
+      rollback: "回退状态页提交。"
+    evaluation:
+      cases:
+        - "system_admin 可见四项"
+      commands:
+        - "pytest -k \"status or admin\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "MIG-001"
+    title: "启动补列并入 Alembic 单轨"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "NFR-005"
+    context:
+      problem: "启动路径上还有手写补列，和生产迁移不是同一条路径。"
+      facts:
+        - claim: "migration.py 存在 Alembic 与手写 ALTER。"
+          evidence: "app/core/migration.py"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 6。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/core/migration.py"
+        - "alembic/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "启动补列并入 Alembic"
+      non_goals:
+        - "不在本条改表的业务含义"
+    acceptance:
+        - "生产库不再有第二条改表路径"
+        - "空的 Alembic head 不能当成成功"
+    risk:
+      level: "L2"
+      side_effect: "alembic-single-track"
+      rollback: "回退迁移路径提交。"
+    evaluation:
+      cases:
+        - "空库迁移到当前 head"
+      commands:
+        - "pytest -k migrat"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "SAND-003"
+    title: "沙箱 Linux 实机限制与两家模型提供商"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "沙箱限额没有 Linux 实机记录。模型提供商还不能按 1.0 的标准切换两家。"
+      facts:
+        - claim: "八项 P0 要求沙箱实机隔离与两家模型可切换。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 6。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+        - ".env.example"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "Linux 上的资源限制记录"
+        - "至少两个模型提供商可以切换"
+      non_goals:
+        - "不把 Mock 提供商算成第二家"
+    acceptance:
+        - "实机记录含限制生效的证据"
+        - "切换后对话走被选中的那一家"
+    risk:
+      level: "L2"
+      side_effect: "sandbox-two-providers"
+      rollback: "回退沙箱与提供商提交。"
+    evaluation:
+      cases:
+        - "Linux 限制生效"
+        - "切换提供商"
+      commands:
+        - "pytest -k \"sandbox or provider\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "SEC-006"
+    title: "日志侧身份证手机号银行卡脱敏"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "SEC-002"
+    context:
+      problem: "输入过滤会替换三类号码。日志脱敏路径还没盖住这三类。"
+      facts:
+        - claim: "日志脱敏有凭据字段，未覆盖身份证/手机号/银行卡。"
+          evidence: "app/security/log_sanitizer.py"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 6。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "app/security/"
+        - "tests/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+      deliverables:
+        - "这三类在日志路径上替换"
+      non_goals:
+        - "不把输入侧已经会替换，写成日志侧已完成"
+    acceptance:
+        - "三类样例进入日志后都不再是原文"
+    risk:
+      level: "L1"
+      side_effect: "log-pii-redaction"
+      rollback: "回退日志脱敏提交。"
+    evaluation:
+      cases:
+        - "三类号码进入日志被替换"
+      commands:
+        - "pytest -k \"sanitiz or log or pii\""
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "REL-005"
+    title: "锁定清单通过后打附注标签 v1.0.0"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "锁定清单还没有一次同时成立的证据。2026-10-02 的门禁记录不能当作这次的结果。"
+      facts:
+        - claim: "打标规则见锁定计划阶段 7。"
+          evidence: "docs/plans/plan_v1_lock_20261002.md"
+        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 7。"
+          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+    scope:
+      allowed_paths:
+        - "docs/plans/"
+        - "tasks.yaml"
+        - "CHANGELOG*"
+        - "README.md"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+        - "app/"
+        - "frontend/src/"
+      deliverables:
+        - "附注标签 v1.0.0"
+        - "说明只写这一版锁定了什么"
+      non_goals:
+        - "不把仍是 Partial 或未定的行写进标签说明"
+        - "不在打标时改验收"
+    acceptance:
+        - "阶段 1 到阶段 6 的锁定标准都有命令输出或演练记录"
+        - "pytest、ruff、mypy、前端类型检查、Vitest、ESLint、前端构建在同一环境的退出码都为 0"
+    risk:
+      level: "L2"
+      side_effect: "v1-tag"
+      rollback: "删除附注标签（需人工确认）。"
+    evaluation:
+      cases:
+        - "核对锁定清单与门禁退出码"
+      commands:
+        - "pytest"
+        - "ruff check ."
+        - "mypy app/"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "CLI-003"
+    title: "CLI：start / stop / status / logs"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "CLI-001"
+    context:
+      problem: "CLI-001 只做 migrate 与创建管理员，明确不做 start、stop、logs 全集。"
+      facts:
+        - claim: "需求 P1-7 要求 init/start/stop/status/logs/migrate/admin。"
+          evidence: "docs/product/项目产品需求方案.md §4.3 P1-7"
+        - claim: "CLI-001 非目标写明不实现 start、stop、logs 全集。"
+          evidence: "tasks.yaml CLI-001"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 2。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - "app/"
+        - "scripts/"
+        - "README.md"
+        - "pyproject.toml"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "start、stop、status、logs 可调用"
+        - "与 README 命令一致"
+      non_goals:
+        - "不重做 migrate 与创建管理员"
+        - "不实现 Kubernetes"
+    acceptance:
+        - "本机用 start/stop/status/logs 能启停并读到状态与日志"
+        - "失败时有可读原因"
+    risk:
+      level: "L1"
+      side_effect: "cli-lifecycle"
+      rollback: "回退 CLI 入口提交。"
+    evaluation:
+      cases:
+        - "启停各一次并读 status/logs"
+      commands:
+        - "python -m ai_assistant --help"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "FLOW-004"
+    title: "工作流开关与 croniter 缺失提示"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "FLOW-002"
+      - "FLOW-003"
+    context:
+      problem: "WORKFLOW_ENABLED 默认关闭；未安装 croniter 时调度不跑，页面未说明只剩手动执行。"
+      facts:
+        - claim: "差距表要求打开后才有定时；缺可选依赖时页面要说明。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md §2"
+        - claim: "FLOW-002 只交付空态与失败原因，不覆盖开关语义。"
+          evidence: "tasks.yaml FLOW-002"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 4。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - "app/workflow/"
+        - "app/api/"
+        - "frontend/src/"
+        - "docs/"
+        - "tasks.yaml"
+        - "tests/"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "打开开关且依赖齐全时定时路径可用"
+        - "未安装 croniter 时页面写明只剩手动执行"
+      non_goals:
+        - "不做重试（属 PWFL-001）"
+        - "不替代 FLOW-003 到点触发"
+    acceptance:
+        - "关闭时不自动跑定时"
+        - "打开且依赖齐全时到点可触发"
+        - "缺 croniter 时页面有只剩手动的说明"
+    risk:
+      level: "L1"
+      side_effect: "workflow-toggle-ux"
+      rollback: "回退开关与文案提交。"
+    evaluation:
+      cases:
+        - "关开各一次；模拟缺 croniter"
+      commands:
+        - "pytest -k workflow -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "EVO-002"
+    title: "Reflect 改技能与待办提取"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "EVO-001"
+    context:
+      problem: "EVO-001 只锁反思与蒸馏记录，明确不把反思结果改成技能；差距表仍缺改技能与待办提取。"
+      facts:
+        - claim: "差距表 v0.5/§2：Reflect 改技能、待办提取没有。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md"
+        - claim: "EVO-001 非目标：不在本条把反思结果直接改成技能。"
+          evidence: "tasks.yaml EVO-001"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 4。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - "app/evolution/"
+        - "app/services/"
+        - "app/api/"
+        - "docs/"
+        - "tasks.yaml"
+        - "tests/"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "开关打开时反思可生成技能候选或待办"
+        - "留下可查记录"
+      non_goals:
+        - "不在默认关闭时算完成"
+        - "不自动无审上线技能"
+    acceptance:
+        - "一次对话后有技能候选或待办记录"
+        - "需人工确认后才生效的路径写清"
+    risk:
+      level: "L2"
+      side_effect: "reflect-to-skill"
+      rollback: "关闭开关并回退提交。"
+    evaluation:
+      cases:
+        - "打开开关跑一次对话，检查候选记录"
+      commands:
+        - "pytest -k evolution -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "ADM-006"
+    title: "租户设置页（ADM-04）"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "前端没有 /app/settings/tenant；ADM-004 非目标写明不做租户设置页。"
+      facts:
+        - claim: "需求 ADM-04：tenant_admin 通过租户设置页管理本租户成员和知识库。"
+          evidence: "docs/product/项目产品需求方案.md §5.4"
+        - claim: "差距表：前端没有该路径。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md §2"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 5。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - "frontend/src/"
+        - "app/api/"
+        - "docs/"
+        - "tasks.yaml"
+        - "tests/"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "租户设置页可管理本租户成员与知识库"
+        - "导航按角色显示"
+      non_goals:
+        - "不重做系统级四页"
+        - "不做多副本汇总"
+    acceptance:
+        - "tenant_admin 可进入并完成成员或知识库管理"
+        - "其他角色按矩阵被拒绝"
+    risk:
+      level: "L1"
+      side_effect: "tenant-settings-page"
+      rollback: "回退前端路由与页面提交。"
+    evaluation:
+      cases:
+        - "tenant_admin 与非授权角色各走一次"
+      commands:
+        - "cd frontend && npm run typecheck"
+        - "cd frontend && npm run build"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "ADM-007"
+    title: "Feature Flag 管理 API（ADM-05）"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "需求 ADM-05 要求可配置 Feature Flag；v1.0 约定只提供 API，尚无对应任务卡。"
+      facts:
+        - claim: "需求：GET/PATCH /api/admin/features；v1.0 仅 API。"
+          evidence: "docs/product/项目产品需求方案.md §5.4"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 5。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - "app/models/"
+        - "app/api/"
+        - "app/services/"
+        - "docs/"
+        - "tasks.yaml"
+        - "tests/"
+        - "alembic/"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "可查看与切换 Feature Flag"
+        - "持久化可覆盖代码默认值"
+      non_goals:
+        - "不做监控大盘可视化"
+        - "不做 EE License 解锁全集"
+    acceptance:
+        - "system_admin 可切换 Flag"
+        - "未授权请求被拒绝"
+        - "重启后状态保持"
+    risk:
+      level: "L2"
+      side_effect: "feature-flag-api"
+      rollback: "回退迁移与路由；Flag 回默认。"
+    evaluation:
+      cases:
+        - "授权切换、未授权拒绝、重启保持"
+      commands:
+        - "pytest -k feature -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "SEC-007"
+    title: "注入检测可阻断"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "SECURITY_BLOCK_ON_INJECTION 默认 false，检测到只告警；打开阻断时缺少锁定验收。"
+      facts:
+        - claim: "需求 §5.8：检测恶意注入 + 可选阻断。"
+          evidence: "docs/product/项目产品需求方案.md §5.8"
+        - claim: "差距表：配置为阻断时要能拦住。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md §2"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 5。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - "app/security/"
+        - "app/services/"
+        - "app/core/config.py"
+        - ".env.example"
+        - "docs/"
+        - "tasks.yaml"
+        - "tests/"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "阻断开关打开时注入请求不进入后续管线"
+        - "返回稳定错误"
+      non_goals:
+        - "不改默认仍可告警不阻断"
+        - "不在本条重做日志脱敏"
+    acceptance:
+        - "打开阻断后，注入样例返回稳定错误且无助手成功落库回复"
+        - "关闭时行为与现网一致"
+    risk:
+      level: "L2"
+      side_effect: "injection-block"
+      rollback: "将开关改回 false 并回退提交。"
+    evaluation:
+      cases:
+        - "开关开/关各测注入样例"
+      commands:
+        - "pytest -k injection -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "NFR-013"
+    title: "硬编码 URL 扫描"
+    status: "backlog"
+    priority: "P0"
+    target_date: ""
+    depends_on:
+      - "NFR-006"
+    context:
+      problem: "§4.5 第 10 条密钥形状半边已核对；硬编码 URL 半边未扫，不能把整条写成通过。"
+      facts:
+        - claim: "差距表：硬编码 URL 这一半还没扫。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md §2"
+        - claim: "NFR-006 交付是密钥与依赖漏洞，不含 URL。"
+          evidence: "tasks.yaml NFR-006"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 6。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - ".pre-commit-config.yaml"
+        - ".github/"
+        - "scripts/"
+        - "docs/"
+        - "tasks.yaml"
+        - "frontend/"
+        - "app/"
+      forbidden_paths:
+        - ".env"
+        - "生产密钥"
+      deliverables:
+        - "硬编码 URL 扫描纳入 CI 或 pre-commit"
+        - "可配置白名单"
+      non_goals:
+        - "不替代 NFR-006 的密钥与依赖漏洞扫描"
+        - "不误杀文档示例域名而不给白名单"
+    acceptance:
+        - "故意放入的硬编码内网或生产 URL 被拦截或报告"
+        - "白名单外命中导致门禁失败"
+    risk:
+      level: "L1"
+      side_effect: "url-scan-gate"
+      rollback: "关闭扫描门禁并回退配置。"
+    evaluation:
+      cases:
+        - "放置违例 URL 应失败；白名单内应通过"
+      commands:
+        - "pre-commit run --all-files"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "DOC-001"
+    title: "CHANGELOG 与 Breaking 区"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "仓库没有 CHANGELOG；§6.7 要求不兼容变更写入 Breaking 区。"
+      facts:
+        - claim: "差距表：仓库没有 CHANGELOG。"
+          evidence: "docs/product/企业级上线差距-2026-10-02.md §2"
+        - claim: "OPS-003 允许改 CHANGELOG，但不替代本卡建立约定。"
+          evidence: "tasks.yaml OPS-003"
+        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 6。"
+          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"
+    scope:
+      allowed_paths:
+        - "CHANGELOG.md"
+        - "README.md"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "app/"
+        - "frontend/src/"
+      deliverables:
+        - "建立 CHANGELOG.md"
+        - "含 Breaking 区约定"
+      non_goals:
+        - "不代替 OPS-003 升级回滚演练本身"
+    acceptance:
+        - "CHANGELOG.md 存在且含 Breaking 区标题"
+        - "OPS-003 演练记录可链到该区"
+    risk:
+      level: "L0"
+      side_effect: "changelog-bootstrap"
+      rollback: "删除或回退 CHANGELOG 提交。"
+    evaluation:
+      cases:
+        - "文件存在且含 Breaking 标题"
+      commands:
+        - "rg -n Breaking CHANGELOG.md"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "FEED-001"
+    title: "对话反馈：接口与表结构"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "用户不能对失败尝试或助手回复提交有用/无用；缺少反馈表与接口。"
+      facts:
+        - claim: "2026-10-03 定为 1.0 要做，接口与表结构必交付。"
+          evidence: "docs/plans/plan_v1_undecided3_20261003.md；docs/product/项目产品需求方案.md §5.12"
+        - claim: "详细契约见 plan_chat_feedback.md。"
+          evidence: "docs/plans/plan_chat_feedback.md"
+    scope:
+      allowed_paths:
+        - "app/models/"
+        - "app/schemas/"
+        - "app/api/"
+        - "app/services/"
+        - "frontend/src/"
+        - "alembic/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "反馈相关表与迁移"
+        - "失败反馈与有用/无用提交、查询、删除 API"
+        - "对话页可提交；保存前脱敏"
+      non_goals:
+        - "不直接修改技能、Prompt 或模型"
+        - "不做跨租户质量排行"
+        - "语料快照运营闭环若超出本卡另开卡"
+    acceptance:
+        - "存在可复现的表结构与 OpenAPI 路径"
+        - "所有者可提交失败反馈与有用/无用，并可删除自己的记录"
+        - "库内评论经脱敏；未授权提交被拒绝"
+    risk:
+      level: "L1"
+      side_effect: "chat-feedback-schema"
+      rollback: "回退迁移与路由；删除反馈表数据需人工确认。"
+    evaluation:
+      cases:
+        - "提交有用/无用与失败反馈各一次"
+        - "非所有者提交返回 404 或不授权"
+      commands:
+        - "pytest -k feedback -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "RAG-016"
+    title: "父块展开：命中子块追加父块（方案 A）"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "差距表曾用「只返回父块」核对父文档能力；2026-10-04 定为展开方案，需锁定验收。"
+      facts:
+        - claim: "命中子块时已追加父块并去重。"
+          evidence: "app/rag/service.py _expand_parent_chunks"
+        - claim: "2026-10-04 定为方案 A，不等于只返回父块。"
+          evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
+        - claim: "本卡阶段 3，来自 2026-10-04 父块/工作流裁决。"
+          evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "锁定展开行为：子块命中后结果含父块"
+        - "回归用例覆盖展开与去重"
+      non_goals:
+        - "不做只返回父块模式"
+        - "不做检索子仅喂模父的配置项"
+    acceptance:
+        - "命中带子 parent_id 的子块时，返回集含对应父块"
+        - "不以「结果仅含父块、不含子块」作为合格线"
+    risk:
+      level: "L1"
+      side_effect: "parent-expand-lock"
+      rollback: "回退测试与文档提交；行为保持展开。"
+    evaluation:
+      cases:
+        - "子块命中后可见父块；重复父块去重"
+      commands:
+        - "pytest -k parent -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+  - id: "FLOW-005"
+    title: "创建者失效：可查询告警通知 tenant_admin"
+    status: "backlog"
+    priority: "P1"
+    target_date: ""
+    depends_on:
+      - "FLOW-002"
+    context:
+      problem: "创建者失效会 suspended_owner 停用任务，但没有本租户可查询告警，tenant_admin 不易发现。"
+      facts:
+        - claim: "需求要求通知 tenant_admin。"
+          evidence: "docs/product/项目产品需求方案.md §5.6"
+        - claim: "2026-10-04 定为可查询告警，不发邮件。"
+          evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
+        - claim: "本卡阶段 4，来自 2026-10-04 父块/工作流裁决。"
+          evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
+    scope:
+      allowed_paths:
+        - "app/workflow/"
+        - "app/api/"
+        - "app/audit/"
+        - "frontend/src/"
+        - "tests/"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "失效停用时写一条本租户可查询告警"
+        - "tenant_admin 能在列表或详情看到工作流、原创建者、原因"
+      non_goals:
+        - "不发邮件"
+        - "不做 Webhook 外发"
+        - "不替代 PWFL-004 执行失败告警"
+    acceptance:
+        - "创建者禁用或移出租户后任务为 suspended_owner 且有可查询告警"
+        - "本租户 tenant_admin 能查到该告警；不要求外部接收人"
+    risk:
+      level: "L1"
+      side_effect: "workflow-owner-alert"
+      rollback: "回退告警写入与展示提交。"
+    evaluation:
+      cases:
+        - "禁用创建者后出现告警；移出租户后出现告警"
+      commands:
+        - "pytest -k suspended_owner -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
         production_access: false
         auto_merge: false
         auto_deploy: false

@@ -1,6 +1,6 @@
 # 交付排期：2026-09-25 → 2027-03-25
 
-> 状态：阶段 A 已完成（`RAG-011`～`RAG-013` `done`）。阶段 B1 已拆入 `tasks.yaml`（`INST-001`～`INST-003` `done`）。阶段 B2 已拆入 `tasks.yaml`（`TEN-001`～`TEN-003` `done`）。B3 至 D4 已拆入 `tasks.yaml`（`QA-001` 起，`ready`），见 `docs/plans/plan_remaining_delivery.md`。
+> 状态：阶段 A 至 D4 对应任务卡均已 `done`（2026-10-02）。第 1–16 项于 2026-09-29 清点完成，80% 达到。第 17–20 项任务卡已完成；第 20 项发布门禁结论是未达到发布合格。37 张企业卡仍为 backlog，`PRAG-002` 已取消。见 `docs/plans/plan_remaining_delivery.md`。
 > 日期：2026-09-25
 > 取代：`AGENTS.md` 原「阶段 4 之后继续切分 / Embedding / Reranker / Query Rewrite」顺序。阶段 2、3、4 对应 RAG-011～013，仍为最高优先级。
 
@@ -100,11 +100,19 @@
 
 2026-12-25 的 80% = 上表 1–16 完成。2027-03-25 的 100% = 1–20 完成。
 
-清点见 `docs/plans/record_delivery_16.md`。2026-09-29 起第 1–16 项均已完成，80% 达到。第 17–20 项不计入 80%。这六项的处理计划见 `docs/plans/plan_delivery_16_evidence.md`（`EVD-001`～`EVD-004`）。
+清点见 `docs/plans/record_delivery_16.md`。2026-09-29 起第 1–16 项均已完成，80% 达到。清点当时未完成的六项（第 1、2、3、4、13、15 项）已由 `EVD-001`～`EVD-004` 补证，计划见 `docs/plans/plan_delivery_16_evidence.md`。
+
+2026-10-02 起第 17–20 项对应任务卡均为 `done`。第 17 项工作流到点仍无执行记录，对话入口仍不读记忆配置。第 20 项测试门禁结论是未达到发布合格，词面覆盖重排不采纳。任务卡完成不等于企业上线合格。38 张企业卡不在这 20 项分母里。
 
 ## 7. 风险
 
-- 阶段 A3 若超过 2026-10-23，从 B1 起整表后移，12 月 25 日的 80% 失效。
-- C5 把模型路由和沙箱挤在六个日历日里，是 80% 死线最可能失守的一段。
-- Milvus 正式目标已写入 ADR-0002。2026-09-29 五条核对通过后，清点表第 13 项计入 80%；默认配置仍是 Local，Milvus 不标成 `Implemented`。
-- 本文件的阶段 A 已对应 `RAG-011`～`RAG-013`，均已完成。B1 已拆为 `INST-001`～`INST-003`，均已完成。B2 已拆为 `TEN-001`～`TEN-003`，均已完成。B3 的 `QA-001`～`QA-004`、C1 的 `AUTH-001`～`AUTH-004`、C2 的 `INV-001`～`INV-003`、C3 的 `ADM-001`～`ADM-004`、C4 的 `CHAT-001`～`CHAT-005` 与 C5 的 `ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002` 已完成。C6 的 `SEC-001`、`SEC-002`、`SEC-003` 已完成。上传限制见 `docs/plans/implementation_sec_001.md`，日志脱敏见 `docs/plans/implementation_sec_002.md`，Milvus 五条核对见 `docs/plans/implementation_sec_003.md`。五条里摄取、重解析、删除和租户过滤未执行，门槛未通过，默认向量库仍是 local。`SEC-004` 已清点，见 `docs/plans/record_delivery_16.md`：第 1、2、3、4、13、15 项未完成，80% 未达到。B3 至 D4 其余任务已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`。
+下列两条是排期当时的风险，对应任务卡已经完成，不再作为当前结论：
+
+- 阶段 A3 若超过 2026-10-23，从 B1 起整表后移。A3 已在该日前完成。
+- C5 把模型路由和沙箱挤在六个日历日里。C5 任务卡已完成。
+
+仍有效：
+
+- Milvus 正式目标已写入 ADR-0002。2026-09-29 五条核对通过，清点表第 13 项计入 80%。默认配置仍是 Local，Milvus 不标成 `Implemented`。证据见 `docs/plans/implementation_evd_004_index_params.md`。`docs/plans/implementation_sec_003.md` 记录的是更早一次「第 1 到第 4 条未执行」，该结论已被这次重跑取代。
+- 2026-10-02 的测试门禁未达到发布合格。见 `docs/plans/implementation_rel_003.md`。词面覆盖重排不采纳，见 `docs/plans/implementation_rel_004.md`。
+- 阶段 A 至 D4 的任务卡均已完成。37 张企业 backlog 与已取消的 `PRAG-002` 不在本排期 20 包内。

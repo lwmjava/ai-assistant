@@ -1,6 +1,6 @@
 # SEC-001～SEC-004：上传限制、日志与界面错误、Milvus 门槛、16/20 清点
 
-> 状态：SEC-001、SEC-002、SEC-003、SEC-004 已实现。SEC-003 的五条门槛未通过，默认向量库仍是 local。SEC-004 清点见 `docs/plans/record_delivery_16.md`。第 1、2、3、4、13、15 项未完成，80% 未达到。
+> 状态：SEC-001、SEC-002、SEC-003、SEC-004 已完成。2026-09-29 五条脚本通过，默认向量库仍是 local，不标 `Implemented`。清点见 `docs/plans/record_delivery_16.md`：16/16，80% 达到。早期 `docs/plans/implementation_sec_003.md` 与 `docs/plans/implementation_sec_004.md` 保留补证前的结果。
 > 来源：`tasks.yaml` 的 SEC-001～SEC-004；`docs/plans/plan_remaining_delivery.md`；交付排期第 6 节第 13 项。
 > 日期：2026-09-27
 > 分支：`feat/sec-c6`
@@ -9,7 +9,9 @@
 
 一次只实现一条。顺序是 SEC-001、SEC-002、SEC-003、SEC-004。SEC-002 与 SEC-001 没有代码依赖，但第 13 项交付包同时包含上传限制和日志脱敏，所以 SEC-004 等 SEC-002 完成后再清点。本文件写全每条的目标、现状、方案、非目标和验收；实现时沿用对应小节，不必再写第二份计划。
 
-## 已核对的现状
+## 计划时核对的现状（2026-09-27）
+
+下列条目是写计划当天的事实。五条门槛与 80% 清点的当前结论见文首状态。
 
 - 单文件上传在 `POST /api/rag/documents/upload`，批量上传在 `POST /api/rag/import-jobs/upload`。两条都先把整个文件读进内存，再 `save_source_file`。控制台只用单文件接口。批量接口在读文件之前就 `create_import_batch` 并提交；每个已成功文件的 `create_upload_import_job` 也会提交。
 - 解析器注册表拒绝未知扩展名，提示支持 txt、md、json、xml、csv、doc、xls、ppt、docx、xlsx、pptx、pdf。`tests/test_rag.py` 的 `test_upload_rejects_non_text` 期望 `.bin` 返回 400。
@@ -101,7 +103,7 @@
 
 ## SEC-004 16/20 交付包清点
 
-清点表见 `docs/plans/record_delivery_16.md`，实现说明见 `docs/plans/implementation_sec_004.md`。完成 10 项，未完成 6 项（第 1、2、3、4、13、15 项）。80% 未达到。下面是实现前的计划，保留不动。
+清点表见 `docs/plans/record_delivery_16.md`。`docs/plans/implementation_sec_004.md` 写于补证之前，当时完成 10 项、未完成 6 项。2026-09-29 补证后清点表改为 16/16，80% 达到。下面是实现前的计划，保留不动。
 
 - 目标：对照 `docs/plans/plan_delivery_2027-03-25.md` 第 6 节，为第 1–16 项各写完成或未完成，并附证据。
 - 风险：L0。只改文档、`tasks.yaml` 和 `AGENTS.md`。

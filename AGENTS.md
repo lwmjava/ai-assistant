@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-10-01
+> 最后更新：2026-10-02
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -398,16 +398,16 @@ GOV-001 治理文件项目化
 → RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
 ```
 
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004`、`EVD-001`～`EVD-004` 已完成。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1–16 项均已完成，约定范围的 80% 达到。Milvus 五条于 2026-09-29 通过，记录见 `docs/plans/implementation_evd_004_index_params.md`。默认向量库仍是 `local`，Milvus 不标成 `Implemented`。B3 至 D4 其余任务已拆入 `tasks.yaml`。`FLOW-001` 已完成：调度任务能创建和取消，说明见 `docs/plans/implementation_flow_001.md`。到点触发仍没有执行记录，工作流调度保持 `Partial`。`MEM-001` 已完成：默认窗口下 25 条只滑窗、31 条压缩并保留最后 5 条，说明见 `docs/plans/implementation_mem_001.md`。对话入口仍不读取记忆配置。`FLOW-002` 已完成：工作流页能区分空列表、引擎未启用和失败原因，说明见 `docs/plans/implementation_flow_002.md`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
+`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004`、`EVD-001`～`EVD-004` 已完成。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1–16 项均已完成，约定范围的 80% 达到。Milvus 五条于 2026-09-29 通过，记录见 `docs/plans/implementation_evd_004_index_params.md`。默认向量库仍是 `local`，Milvus 不标成 `Implemented`。B3 至 D4 任务卡均已完成。`FLOW-001` 已完成：调度任务能创建和取消，说明见 `docs/plans/implementation_flow_001.md`。到点触发仍没有执行记录，工作流调度保持 `Partial`。`MEM-001` 已完成：默认窗口下 25 条只滑窗、31 条压缩并保留最后 5 条，说明见 `docs/plans/implementation_mem_001.md`。对话入口仍不读取记忆配置。`FLOW-002` 已完成：工作流页能区分空列表、引擎未启用和失败原因，说明见 `docs/plans/implementation_flow_002.md`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
 
-按企业上线标准补充的 38 张卡已并入 `tasks.yaml`，当前共 108 条（70 done / 0 ready / 37 backlog / 1 cancelled）。`SKILL-001` 与 `SKILL-002` 已完成：成员可创建私有技能，系统管理员可跨租户管理并新增系统全局技能，技能页是带筛选的表格。说明见 `docs/plans/implementation_skill_001.md` 与 `docs/plans/implementation_skill_002.md`。`SUP-001` 已完成：显式打开且已安装 extra 时，Supervisor 能分派并在完成后给出脱敏摘要；默认编排仍是五阶段管线。说明见 `docs/plans/implementation_sup_001.md`。`SUP-002` 已完成：Supervisor 路径在回复出现时展示完成后的子任务摘要，默认五阶段对话不出现该区块。说明见 `docs/plans/implementation_sup_002.md`。`CLI-001` 已完成：空库可以迁移到当前版本，并用环境变量中的密码创建系统管理员；已有系统管理员、密码短于 8 位或重叠创建时拒绝。说明见 `docs/plans/implementation_cli_001.md`。`QUOTA-001` 已完成：系统管理员可设置租户的消息条数和源文件字节上限；超限时不新增用户消息或源文件。说明见 `docs/plans/implementation_quota_001.md`。`EXPORT-001` 已完成：当前租户的租户管理员可下载本租户对话原文；其他角色被拒绝，审计写入后才开始返回文件。对话页可点选下载。说明见 `docs/plans/implementation_export_001.md` 与 `docs/plans/implementation_export_chat_button.md`。`LIMIT-001` 已完成：打开限流后，打满桶时对话页显示倒计时并禁用发送；默认开关仍关闭，计数只在本进程。说明见 `docs/plans/implementation_limit_001.md`。D4 四条的实现计划见 `docs/plans/plan_d4.md`。`REL-001` 已完成：已注册的 `/api` 路由都出现在 OpenAPI 中并带有说明，流式对话标明 `text/event-stream`，README 端点表里的路径都能在 OpenAPI 里找到。说明见 `docs/plans/implementation_rel_001.md`。`REL-002` 已完成：README 写明用标准库备份默认 SQLite；临时库恢复后健康检查为 ok，修订号与源库相同，开发库未被改写。说明见 `docs/plans/implementation_rel_002.md`。`REL-003` 已完成记录：ruff 与 mypy 退出码为 1，前端类型检查和构建为 0，pytest 在汇总前卡住，进程退出码 4294967295。发布结论是未达到发布合格。说明见 `docs/plans/implementation_rel_003.md`。`REL-004` 已完成：词面覆盖重排在调参集上 Recall@1 持平、MRR 下降、越权案例仍为 0，不采纳。本地检索顺序未改。说明见 `docs/plans/implementation_rel_004.md`。D4 四条已记录。38 张企业卡仍不在本计划里重拆或实现。
+按企业上线标准补充的 38 张卡已并入 `tasks.yaml`。1.0 锁定第 4 节缺口于 2026-10-03 追加 28 张 `backlog` 卡，对照见 `docs/plans/plan_v1_section4_card_ids_20261003.md`。同日又按差距表第 2 表与需求正文追加 8 张，对照见 `docs/plans/plan_v1_other_chapters_card_ids_20261003.md`。同日第 2 表三项未定裁决后追加 `FEED-001`（会话反馈进 1.0；专家团与四种模式打标后），见 `docs/plans/plan_v1_undecided3_20261003.md`。当前共 147 条（70 done / 0 ready / 76 backlog / 1 cancelled）。`SKILL-001` 与 `SKILL-002` 已完成：成员可创建私有技能，系统管理员可跨租户管理并新增系统全局技能，技能页是带筛选的表格。说明见 `docs/plans/implementation_skill_001.md` 与 `docs/plans/implementation_skill_002.md`。`SUP-001` 已完成：显式打开且已安装 extra 时，Supervisor 能分派并在完成后给出脱敏摘要；默认编排仍是五阶段管线。说明见 `docs/plans/implementation_sup_001.md`。`SUP-002` 已完成：Supervisor 路径在回复出现时展示完成后的子任务摘要，默认五阶段对话不出现该区块。说明见 `docs/plans/implementation_sup_002.md`。`CLI-001` 已完成：空库可以迁移到当前版本，并用环境变量中的密码创建系统管理员；已有系统管理员、密码短于 8 位或重叠创建时拒绝。说明见 `docs/plans/implementation_cli_001.md`。`QUOTA-001` 已完成：系统管理员可设置租户的消息条数和源文件字节上限；超限时不新增用户消息或源文件。说明见 `docs/plans/implementation_quota_001.md`。`EXPORT-001` 已完成：当前租户的租户管理员可下载本租户对话原文；其他角色被拒绝，审计写入后才开始返回文件。对话页可点选下载。说明见 `docs/plans/implementation_export_001.md` 与 `docs/plans/implementation_export_chat_button.md`。`LIMIT-001` 已完成：打开限流后，打满桶时对话页显示倒计时并禁用发送；默认开关仍关闭，计数只在本进程。说明见 `docs/plans/implementation_limit_001.md`。D4 四条的实现计划见 `docs/plans/plan_d4.md`。`REL-001` 已完成：已注册的 `/api` 路由都出现在 OpenAPI 中并带有说明，流式对话标明 `text/event-stream`，README 端点表里的路径都能在 OpenAPI 里找到。说明见 `docs/plans/implementation_rel_001.md`。`REL-002` 已完成：README 写明用标准库备份默认 SQLite；临时库恢复后健康检查为 ok，修订号与源库相同，开发库未被改写。说明见 `docs/plans/implementation_rel_002.md`。`REL-003` 已完成记录：ruff 与 mypy 退出码为 1，前端类型检查和构建为 0，pytest 在汇总前卡住，进程退出码 4294967295。发布结论是未达到发布合格。说明见 `docs/plans/implementation_rel_003.md`。`REL-004` 已完成：词面覆盖重排在调参集上 Recall@1 持平、MRR 下降、越权案例仍为 0，不采纳。本地检索顺序未改。说明见 `docs/plans/implementation_rel_004.md`。D4 四条已记录。38 张企业卡仍不在本计划里重拆或实现。
 
 | 族 | 任务 | 定位 |
 |---|---|---|
 | `NFR-001`～`NFR-011` | 非功能需求 | CI、结构化日志、PostgreSQL 生产验证、密钥与依赖扫描、密钥加密存储、审计保留、性能压测、生产编排、反向代理与 SSE、备份脚本、`/health` 暴露 Embedding 状态 |
 | `PAGT-001`～`PAGT-005` | Agent 工具打磨 | web_search 与 file_ops 读能力、工具十要素契约、调用预算、Plan 可编排、Skill 版本回归 |
 | `PWFL-001`～`PWFL-004` | 工作流打磨 | 重试、超时与取消、并发与幂等、失败告警与日志持久化 |
-| `PRAG-001`～`PRAG-004` | RAG 打磨 | 越权核对、重排落地、Citation 产品化、低分阈值与拒答 |
+| `PRAG-001`、`PRAG-003`、`PRAG-004` | RAG 打磨 | 越权核对、Citation 产品化、低分阈值与拒答。`PRAG-002` 重排落地已取消 |
 | `PMCP-001`～`PMCP-005` | MCP 打磨 | 超时重连心跳、权限与风险分级、调用审计、凭据管理、版本兼容 |
 | `ERR-001` | 统一错误码 | 端到端验收 |
 | `OPS-001`～`OPS-007` | 运维与发布 | 多实例外部化、并发幂等、升级回滚演练、RTO/RPO、数据合规删除、依赖许可审计、指标与告警 |
@@ -415,7 +415,7 @@ GOV-001 治理文件项目化
 
 依赖关系见 `docs/plans/新增38卡与现有18任务依赖关系说明.md`，评审结论见 `docs/reviews/`。执行顺序由 `depends_on` 决定，不是文件位置。
 
-A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。独立重排只做一轮，由 `REL-004` 承担；`PRAG-002` 只在其结论采纳后做落地（开关、灰度、开销），不重复跑实验。Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
+A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。独立重排只做一轮，由 `REL-004` 承担；`PRAG-002` 只在其结论采纳后做落地（开关、灰度、开销），不重复跑实验。`REL-004` 已记录不采纳，`PRAG-002` 已取消。Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 
 ```text
 阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）
@@ -427,7 +427,7 @@ A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Re
 
 阶段 E 分三组：E1 运行时与数据（`NFR-005` PostgreSQL 生产验证、`OPS-001` 多实例状态外部化、`OPS-002` 并发与幂等）；E2 安全合规（`NFR-006` 密钥与依赖扫描、`NFR-007` 密钥加密存储、`NFR-008` 审计保留 90 天、`OPS-005` 数据合规删除、`OPS-006` 依赖许可审计）；E3 性能与发布（`NFR-009` 五项性能压测、`NFR-003` 生产编排、`NFR-004` 反向代理与 SSE、`NFR-010` 备份脚本、`OPS-004` RTO/RPO 定义、`OPS-003` 升级回滚演练、`OPS-007` 指标与告警）。
 
-1.0 之后的测评大盘分级见 `docs/reviews/2026-10-01-1.0后测评大盘分级.md`。该页未进入 `tasks.yaml`。交付第 20 项完成前不实现。开工时按该页顺序一次只加一条任务卡。
+1.0 之后的测评大盘分级见 `docs/reviews/2026-10-01-1.0后测评大盘分级.md`。该页未进入 `tasks.yaml`。交付第 20 项任务卡已于 2026-10-02 完成。开工时按该页顺序一次只加一条任务卡。
 
 `OPS-004` 必须先于 `OPS-003`：先有恢复指标，演练才有合格线。`NFR-011` 不改生产缺密钥时的启动失败行为，只在进程已启动时让 `/health` 写出 provider、模型、维度与是否为 Mock。`NFR-009` 的检索延迟必须用真实 Embedding 测，Mock 结果不得写成达标。
 

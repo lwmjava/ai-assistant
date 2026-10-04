@@ -1,15 +1,17 @@
 # B3 至 D4：剩余交付包拆分
 
-> 状态：已拆入 `tasks.yaml`，尚未实现
+> 状态：B3 至 D4 任务卡均已 `done`（2026-10-02）。各节开头的状态句是当前结论；节内「现状」是拆分或实现前的边界。
 > 来源：交付排期第 6 节第 6–20 项
-> 日期：2026-09-26
+> 日期：2026-09-26 拆分；2026-10-02 更正文首，以及 SEC-003、SEC-004 与 D3 四条的过时结论
 > 分支：`docs/split-b3-d4`
 
 阶段 A、B1、B2 已完成。本文只拆 B3、C1–C6、D1–D4。第 14、15、16 项是 B3、C1、C4 里的核对项，不另开交付包。
 
 不在本批实现业务代码。每条任务实现前沿用本文该节，不必再写第二份计划。
 
-## 已核对的现状
+## 拆分时核对的现状（2026-09-26）
+
+下列条目是拆分当天的事实。任务完成后的行为见后文各节开头的状态句和对应实现说明。
 
 - 对话默认不注入检索。`RAG_ENABLED` 默认为 false，`ChatService` 在关闭时跳过检索。
 - 回复没有结构化来源字段，对话页不展示文件名或页码。
@@ -378,7 +380,7 @@
 
 ## SEC-003 Milvus 五条门槛核对
 
-实现计划见 `docs/plans/plan_sec_c6.md`。状态：已核对。记录见 `docs/plans/record_milvus_five_gates.md`。第 1 到第 4 条未执行，总结论未通过，默认仍是 Local。
+实现计划见 `docs/plans/plan_sec_c6.md`。状态：已核对。早期记录 `docs/plans/implementation_sec_003.md` 中第 1 到第 4 条未执行。2026-09-29 重跑五条通过，见 `docs/plans/implementation_evd_004_index_params.md` 与 `docs/plans/record_delivery_16.md` 第 13 行。默认仍是 Local，不标成 `Implemented`。
 
 - 目标：用可重复证据核对 Milvus 是否过门槛。
 - 现状：默认向量库是 Local。Milvus 适配存在，五条门槛没有全部证据。
@@ -389,7 +391,7 @@
 
 ## SEC-004 16/20 交付包清点
 
-实现计划见 `docs/plans/plan_sec_c6.md`。状态：已清点。清点见 `docs/plans/record_delivery_16.md`，说明见 `docs/plans/implementation_sec_004.md`。第 1、2、3、4、13、15 项未完成，80% 未达到。
+实现计划见 `docs/plans/plan_sec_c6.md`。状态：已清点。清点见 `docs/plans/record_delivery_16.md`，当时的说明见 `docs/plans/implementation_sec_004.md`。该说明写于补证之前，当时第 1、2、3、4、13、15 项未完成。2026-09-29 补证后清点表改为 16/16，80% 达到。
 
 - 目标：对照交付排期第 6 节，写出前 16 项是否完成。
 - 现状：1–12 与 14–16 对应的任务已完成。第 13 项是 SEC-001～SEC-003。
@@ -477,7 +479,7 @@
 
 ## QUOTA-001 租户配额与超限拒绝
 
-实现计划见 `docs/plans/plan_d3.md`。实现说明见 `docs/plans/implementation_quota_001.md`。一次只实现一条，顺序是 CLI-001、QUOTA-001、LIMIT-001、EXPORT-001。
+实现计划见 `docs/plans/plan_d3.md`。状态：已实现。说明见 `docs/plans/implementation_quota_001.md`。
 
 - 目标：租户超出消息或存储额度时，新的对话或上传被拒绝。
 - 现状：没有租户配额。
@@ -488,7 +490,7 @@
 
 ## LIMIT-001 限流提示与倒计时
 
-实现计划见 `docs/plans/plan_d3.md`。实现说明见 `docs/plans/implementation_limit_001.md`。
+实现计划见 `docs/plans/plan_d3.md`。状态：已实现。说明见 `docs/plans/implementation_limit_001.md`。
 
 - 目标：触发速率限制时，页面告诉用户需要等待多久。
 - 现状：对话入口已有限流器，页面没有等待提示。
@@ -499,7 +501,7 @@
 
 ## EXPORT-001 导出租户对话
 
-实现计划见 `docs/plans/plan_d3.md`。实现说明见 `docs/plans/implementation_export_001.md`。
+实现计划见 `docs/plans/plan_d3.md`。状态：已实现。说明见 `docs/plans/implementation_export_001.md`。对话页按钮见 `docs/plans/implementation_export_chat_button.md`。
 
 - 目标：租户管理员能导出本租户对话。
 - 现状：没有导出接口。
@@ -510,7 +512,7 @@
 
 ## CLI-001 migrate 与管理员命令
 
-实现计划见 `docs/plans/plan_d3.md`。本条在关键路径上，四条中最先实现。
+实现计划见 `docs/plans/plan_d3.md`。状态：已实现。说明见 `docs/plans/implementation_cli_001.md`。
 
 - 目标：命令行可以做迁移，并创建管理员。
 - 现状：管理员靠环境变量。没有本交付包要求的命令入口。

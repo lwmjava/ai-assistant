@@ -1,7 +1,7 @@
 # ai-assistant As-Is 能力矩阵
 
-> 对账日期：2026-09-22
-> 代码基线：`main`（`GOV-001`～`RAG-006` 已在验收范围内落地）
+> 对账日期：2026-10-02
+> 代码基线：交付排期第 1–20 项对应任务卡均为 `done`。任务卡完成不等于该行标成 `Implemented`。发布门禁见 `docs/plans/implementation_rel_003.md`，结论是未达到发布合格。
 > 状态术语：`Implemented` / `Partial` / `Planned` / `Deferred` / `Deprecated`  
 > 当前事实入口：`AGENTS.md`  
 > TARGET 愿景：`docs/product/项目产品需求方案.md` §3.1  
@@ -14,7 +14,7 @@
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
 | FastAPI 后端 | `Implemented` | `pyproject.toml`；`app/main.py` | — |
-| React + TypeScript + Vite 控制台 | `Implemented` | `frontend/package.json`；2026-09-13 `npm run typecheck` / `npm run build` 通过 | — |
+| React + TypeScript + Vite 控制台 | `Implemented` | `frontend/package.json`；2026-10-02 `npm run typecheck` 与 `npm run build` 退出码 0，见 `docs/plans/implementation_rel_003.md` | — |
 | JWT + RBAC + 多租户 | `Partial` | `app/models/membership.py`；`app/api/routes/invitations.py`；`frontend/src/pages/Invitations.tsx` | 已注册用户可凭邀请码加入其他租户，并在已加入时切换当前租户。成员角色尚未接入整份权限矩阵。资源级 ACL 仍 `Planned` |
 | 管理后台用户/租户/系统状态 | `Partial` | `app/api/routes/admin_users.py`；`app/api/routes/admin_tenants.py`；`app/api/routes/admin_system.py`；`frontend/src/pages/Users.tsx`；`frontend/src/pages/Tenants.tsx` | 系统管理员可筛选、分页列出用户和租户，从新增页创建，在行末查看详情、修改、停用或重新启用。可看数据库与向量库是否连通。无在线人数或调用量 |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
@@ -44,22 +44,22 @@
 |---|---|---|---|
 | 对话默认注入本租户当前版 | `Partial` | `RAG_ENABLED` 代码默认 `true`；`ChatService._build_retriever`；`tests/test_rag.py`；`frontend/src/components/chat/MessageList.tsx` | 无真实 Embedding 时开发环境用 Mock，只能证明链路。回复可带来源文件名及已有页码或段落。对话页在助手正文下展示这些字段，来源为空时不显示来源区。本机 `.env` 仍可将检索关掉。真实 LLM / Citation 未测 |
 | 后端默认 `native` | `Implemented` | `RAG_BACKEND=native` | LangChain/LlamaIndex 为可选适配 |
-| 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 代码默认仍是 Local；正式目标已改为 Milvus，实现未完成 |
-| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002 | 正式目标；缺摄取/检索/重解析/删除闭环证据；决定已改在 ADR-0002，实现未完成 |
+| 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 代码默认仍是 Local。Milvus 五条脚本已通过，产品默认未切换 |
+| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002；`docs/plans/implementation_evd_004_index_params.md` | 2026-09-29 五条脚本通过：`text-embedding-v3`，1024 维，`pymilvus==2.5.11` 对 `milvusdb/milvus:v2.5.11`。默认仍是 local。不标 `Implemented`。产品上传路径未改成自动写入 Milvus |
 | 多格式解析（文本/PDF/Office/OCR） | `Partial` | `app/rag/document_parsers/`；`app/rag/ocr/`；相关 tests | 支持级别以测试为准，禁止写成全格式生产完备 |
 | 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 基线已冻结；无指标不新增策略 |
 | Dense + BM25 + RRF | `Implemented` | `app/rag/vectorstore/`；`app/rag/retriever.py` | RRF 是融合，不是独立 Reranker |
-| 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | 迭代指导 §4.4 | 必须由同一 Evaluation 证明价值 |
+| 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | `docs/plans/implementation_rel_004.md` | 2026-10-02 词面覆盖不采纳，本地检索顺序未改。未留下生产开关。`PRAG-002` 已取消。Cross-encoder 仍未做 |
 | 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs；`frontend/src/pages/Knowledge.tsx`；`tests/test_rag_import_jobs.py` | 知识库页可重建未删除文档，已删除文档不能被重建救回。生效日期 Flag 默认关；资源 ACL `Planned` |
-| 结构化 Citation | `Partial` | 回答目前主要是 source 文本 | 缺 document/chunk/version/page/section |
-| 版本化 Evaluation | `Partial` | `evals/datasets/rag-v0.1/`；`docs/evaluations/rag-v0.1-baseline-report.md` | 未测生成层；语料规模小，不得当生产质量 |
+| 结构化 Citation | `Partial` | 回复 `sources` 含文件名；解析结果已有页码或段落时一并返回；对话页展示这些字段 | 缺 document、chunk、version 的稳定引用标识。生成层引用准确率未测 |
+| 版本化 Evaluation | `Partial` | `evals/datasets/rag-v0.1/`；`docs/evaluations/rag-v0.1-baseline-report.md`；`docs/evaluations/rag-v0.1-lexical-coverage-20261002.md` | 未测生成层。语料 13 篇 / 37 块。词面覆盖不采纳，不得写成质量提升 |
 
 ## 4. 安全、记忆、观测
 
 | 能力 | 状态 | 证据 | 缺口 |
 |---|---|---|---|
 | 输入/输出安全与注入检测 | `Partial` | `app/security/`；`app/rag/retrieval_guard.py`；`format_context` 不可信围栏；`tests/eval/test_rag006_pipeline.py` | 默认仍不阻断用户输入注入；真实 LLM 拒答/答案点未测 |
-| 对话 Memory 裁剪/压缩 | `Partial` | `app/memory/`；`app/rag/context_merge.py`；`tests/test_context_merge.py` | 长期记忆写入与授权未齐 |
+| 对话 Memory 裁剪/压缩 | `Partial` | `app/memory/`；`app/rag/context_merge.py`；`tests/test_context_merge.py`；`docs/plans/implementation_mem_001.md` | 默认窗口下 25 条只滑窗，31 条压缩并保留最后 5 条。对话入口不读取记忆配置。长期记忆写入与授权未齐 |
 | Trace | `Partial` | `app/debug/` | 内存环形缓冲，非持久化生产 Trace |
 | 审计 | `Partial` | `app/audit/` | 企业合规报表为 TARGET/EE |
 | HITL 统一审批闭环 | `Deferred` | 治理规范 §3 | 高风险能力引入前完成 |
@@ -69,7 +69,7 @@
 | ID | 决定 | 代码是否已对齐 | 实现任务 |
 |---|---|---|---|
 | ADR-0001 | 读路径：同租户共享当前版本；写路径：成员仅自己的文档 | `Partial`：`RAG_KB_SCOPE=tenant` 已对齐列表/详情/检索/导入读路径；资源 ACL 仍 Planned | 资源 ACL 另开任务 |
-| ADR-0002 | 正式目标 Milvus（开发 Lite / 生产 2.4+）；Local 为评测与回退；默认在门槛通过前仍为 local | `Partial`：默认仍是 local；Milvus 闭环未证明 | 决定已改在 ADR-0002；实现未完成，门槛见 ADR §5 |
+| ADR-0002 | 正式目标 Milvus（开发 Lite / 生产 2.4+）；Local 为评测与回退；五条通过后才改默认 | `Partial`：2026-09-29 五条脚本通过；默认仍是 local | 不标 `Implemented`。把默认改成 `milvus` 尚未做 |
 | ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后 Local 按 as-of / 查询日期窗口过滤 | 默认现网仍只检索 `is_current`；未做真实嵌入复跑 |
 
 资源级 ACL 仍为 `Planned`。2026-09-19 A1：评测不把同租户当前文档命中记为越权。
@@ -84,15 +84,18 @@
 | 设计方案写 `app/graphs/`、`reranker.py`、Chroma | 真实目录 `app/agents/`、`app/rag/vectorstore/` | 设计方案标为历史稿 |
 | 设计方案写 `src/ai_assistant/` | 真实目录 `app/` | 同上 |
 | 宣称 Recall/MRR/NDCG 已有 | 已有 v0.1 检索基线，语料很小 | 可引用分数但必须带有效性限制 |
+| 交付计划与拆分文首曾写 80% 未达到、五条未执行、B3–D4 尚未实现 | 2026-09-29 起 16/16；五条脚本通过，默认仍 local；2026-10-02 起第 17–20 项任务卡 done | 2026-10-02 已改仍被当作当前事实的段落。点状实现说明保留当时结果 |
 
-## 7. 本轮验证命令
+## 7. 验证命令
+
+最近一次发布门禁是 2026-10-02，见 `docs/plans/implementation_rel_003.md`。本表这次只改文档，没有重跑这些命令。
 
 | 命令 | 结果 | 说明 |
 |---|---|---|
-| `conda run -n ai-assistant pytest`（RAG-004/005/006 相关 10 个文件） | 2026-09-22：56 passed | 权限、注入围栏、生效日期、数据集、基线 harness |
-| `conda run -n ai-assistant pytest tests/test_rag.py tests/test_rag_import_jobs.py tests/test_rag_backend.py tests/test_chunking.py tests/test_chat.py tests/test_security_smoke.py tests/eval/` | 2026-09-22：113 passed，1 skipped | 文档对账当次扫描 |
-| `pytest -q --tb=no`（全量） | 2026-09-13：240 passed，2 skipped，1 failed | 失败项：`tests/test_workflow.py::test_scheduler_runnable_and_start_stop`（缺 `croniter`）；本轮文档修复未重跑全量 |
-| `cd frontend && npm run typecheck` / `npm run build` | 通过 | 2026-09-13；本轮未重跑 |
-| `git diff --check` | 以当次工作区为准 | 文档任务 |
+| `python -m pytest -q --tb=no` | 2026-10-02：退出码 4294967295 | 收集 521 条，打出 164 个标记（17 error、10 failed）后卡住，没有汇总行。发布结论是未达到发布合格 |
+| `ruff check .` | 2026-10-02：退出码 1 | 同上 |
+| `python -m mypy app/` | 2026-10-02：退出码 1 | 同上 |
+| `npm run typecheck` / `npm run build` | 2026-10-02：退出码 0 | 工作目录 `frontend/` |
+| `scripts/milvus_five_gates.py` | 2026-09-29：退出码 0，`all_passed true` | 嵌入 `text-embedding-v3`，1024 维。默认向量库仍是 local |
 
-该行是 2026-09-13 的跑次：当时失败是环境缺少 `croniter`。此后 `requirements.txt` 已列入该依赖，启停用例在装有该包的环境通过。到点触发仍没有执行记录。工作流调度保持 `Partial`。
+更早的全量 pytest（2026-09-13：240 passed，2 skipped，1 failed）失败项是当时环境缺少 `croniter`。此后 `requirements.txt` 已列入该依赖，启停用例在装有该包的环境通过。到点触发仍没有执行记录。工作流调度保持 `Partial`。

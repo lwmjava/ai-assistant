@@ -4,18 +4,18 @@ Revision ID: 6f8d055bdc4a
 Revises: 
 Create Date: 2026-08-25 23:01:39.808588
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 
+from alembic import op
 
 # 修订标识符（Alembic 用于版本追踪）
 revision: str = '6f8d055bdc4a'
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

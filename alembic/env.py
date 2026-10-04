@@ -4,12 +4,12 @@
 数据库 URL 在运行时从应用配置读取，而非硬编码在 alembic.ini 中。
 """
 
-import logging
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
+
+from alembic import context
 
 # Alembic Config 对象，提供 .ini 文件中的配置
 config = context.config
@@ -32,11 +32,13 @@ config.set_main_option("sqlalchemy.url", _db_url)
 
 # ---- 导入所有 SQLModel 表模型 ----
 # 必须在运行 autogenerate 之前导入，确保 SQLModel.metadata 已注册所有表
-from app.models import user  # noqa: F401, E402
-from app.models import conversation  # noqa: F401, E402
-from app.models import rag  # noqa: F401, E402
-from app.models import skill  # noqa: F401, E402
-from app.models import workflow  # noqa: F401, E402
+from app.models import (
+    conversation,  # noqa: F401, E402
+    rag,  # noqa: F401, E402
+    skill,  # noqa: F401, E402
+    user,  # noqa: F401, E402
+    workflow,  # noqa: F401, E402
+)
 
 # SQLModel.metadata 包含所有已注册的 SQLModel 表（table=True）
 target_metadata = SQLModel.metadata

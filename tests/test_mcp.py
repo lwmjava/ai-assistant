@@ -114,8 +114,8 @@ def test_config_parsing() -> None:
 
 mcp = pytest.importorskip("mcp")
 
-import sys  # noqa: E402
 import importlib.metadata as _md  # noqa: E402
+import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
 
 from app.mcp.client import MCPClient  # noqa: E402
@@ -171,9 +171,9 @@ async def test_manager_collect_tools_from_real_server() -> None:
 @pytest.mark.asyncio
 async def test_connect_raises_without_mcp(monkeypatch) -> None:
     """在未安装 mcp 的环境（模拟）下 connect 应给出可读的 MCPNotAvailableError。"""
+    import app.mcp.client as client_mod
     from app.mcp.client import MCPNotAvailableError
     from app.mcp.config import MCPServerConfig
-    import app.mcp.client as client_mod
 
     def _boom():
         raise MCPNotAvailableError("mcp 未安装（模拟）")

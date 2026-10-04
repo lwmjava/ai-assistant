@@ -246,7 +246,6 @@ class SkillManager:
         Returns:
             技能绑定的工具列表。
         """
-        from app.agents.tools.base import ToolRegistry
 
         tools: list[Tool] = []
         if registry is None:

@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.evolution.models import (
     DistillInsight,
@@ -182,10 +182,10 @@ def test_distill_result_empty_insights() -> None:
 def test_scheduler_time_window() -> None:
     """调度器时间窗口判断正确（配置为 UTC 2–5 点，左闭右开）。"""
     # 窗口内
-    assert _is_in_time_window(datetime(2026, 1, 1, 3, 0, 0, tzinfo=timezone.utc)) is True
+    assert _is_in_time_window(datetime(2026, 1, 1, 3, 0, 0, tzinfo=UTC)) is True
     # 窗口外
-    assert _is_in_time_window(datetime(2026, 1, 1, 8, 0, 0, tzinfo=timezone.utc)) is False
+    assert _is_in_time_window(datetime(2026, 1, 1, 8, 0, 0, tzinfo=UTC)) is False
     # 下边界（含）
-    assert _is_in_time_window(datetime(2026, 1, 1, 2, 0, 0, tzinfo=timezone.utc)) is True
+    assert _is_in_time_window(datetime(2026, 1, 1, 2, 0, 0, tzinfo=UTC)) is True
     # 上边界（不含）
-    assert _is_in_time_window(datetime(2026, 1, 1, 5, 0, 0, tzinfo=timezone.utc)) is False
+    assert _is_in_time_window(datetime(2026, 1, 1, 5, 0, 0, tzinfo=UTC)) is False

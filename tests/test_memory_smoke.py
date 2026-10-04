@@ -1,18 +1,18 @@
 """Smoke test for memory system."""
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.llm.base import ChatMessage, ChatRole
 from app.memory import (
-    MemoryManager,
-    MemoryConfig,
     CompressionStrategy,
     ConversationMemory,
+    MemoryConfig,
+    MemoryManager,
     MemorySnapshot,
-    get_memory_manager,
-    reset_memory_manager,
 )
+
 
 # Helper: create test messages
 def msg(role: str, content: str) -> ChatMessage:
@@ -23,6 +23,7 @@ print("Test 1: Window management (10 messages, window=5, threshold=0)")
 mgr = MemoryManager(config=MemoryConfig(window_size=5, compression_threshold=0))
 messages = [msg("user", f"message {i}") for i in range(10)]
 import asyncio
+
 memory = asyncio.run(mgr.manage(messages))
 print(f"  recent={len(memory.recent_messages)}, total={memory.total_messages}, compressed={memory.is_compressed}")
 assert len(memory.recent_messages) == 5, f"Expected 5, got {len(memory.recent_messages)}"

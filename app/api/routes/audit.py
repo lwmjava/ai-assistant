@@ -11,11 +11,11 @@ import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, get_db
-from app.audit.models import AuditAction, AuditLog
+from app.audit.models import AuditLog
 from app.core.security import Role
 
 logger = logging.getLogger(__name__)

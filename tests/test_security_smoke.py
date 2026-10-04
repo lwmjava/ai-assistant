@@ -7,17 +7,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.security import (
     InputFilter,
-    InputFilterResult,
-    OutputFilter,
-    OutputFilterResult,
-    PromptInjectionDetector,
-    InjectionResult,
     LogSanitizer,
-    RateLimiter,
+    OutputFilter,
+    PromptInjectionDetector,
     RateLimitConfig,
+    RateLimiter,
     SecurityContext,
 )
-
 
 # ── Test 1: SecurityContext ──
 print("Test 1: SecurityContext")
@@ -187,6 +183,7 @@ limiter = RateLimiter(RateLimitConfig(rate=10, capacity=10))
 # First request should be allowed (bucket starts empty, needs refill)
 # Let's test with a fresh bucket: allow a burst
 import time
+
 limiter.reset_all()
 time.sleep(0.1)  # small refill
 

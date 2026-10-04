@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.debug.trace import AgentTrace, TraceCollector, TraceEvent
 
-
 # ── Test 1: TraceEvent ──
 print("Test 1: TraceEvent")
 evt = TraceEvent(type="stage_start", name="理解", timestamp=100.0, data={"extra": 1})

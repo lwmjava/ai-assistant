@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """One-shot: append plan §4 cards into tasks.yaml. Not part of runtime."""
 from __future__ import annotations
 

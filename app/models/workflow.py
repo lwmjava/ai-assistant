@@ -6,7 +6,7 @@ Workflow 描述一个「定时任务」：按 cron 表达式周期性触发 Agen
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 
 from sqlmodel import Field, Relationship, SQLModel

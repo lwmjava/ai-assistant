@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 
 import httpx
 
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, LLMOptions, LLMProvider
 
 logger = logging.getLogger(__name__)
 

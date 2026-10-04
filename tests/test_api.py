@@ -18,7 +18,7 @@ from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.database import engine
-from app.core.security import hash_password, Role
+from app.core.security import Role, hash_password
 from app.main import app
 from app.models.user import Tenant, User
 

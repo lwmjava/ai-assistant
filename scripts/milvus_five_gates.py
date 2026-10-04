@@ -281,7 +281,7 @@ def main() -> int:
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
 
-    print(f"pymilvus_import_check begin", flush=True)
+    print("pymilvus_import_check begin", flush=True)
     try:
         import pymilvus
     except ImportError as exc:

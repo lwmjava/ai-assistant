@@ -14,7 +14,7 @@ Supervisor**：由 supervisor 节点决定「先调研」还是「直接撰写�
 
 import json
 import logging
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from app.agents.pipeline import AgentEvent, AgentState
 from app.agents.tools.base import ToolRegistry
@@ -99,9 +99,9 @@ class SupervisorGraph:
     def __init__(
         self,
         llm: LLMProvider,
-        options: Optional[LLMOptions] = None,
+        options: LLMOptions | None = None,
         retriever=None,  # Retriever 协议；为 None 时不注入检索
-        tools: Optional[ToolRegistry] = None,
+        tools: ToolRegistry | None = None,
         max_revisions: int = 2,
     ) -> None:
         self.llm = llm

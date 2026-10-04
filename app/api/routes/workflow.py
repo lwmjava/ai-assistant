@@ -13,13 +13,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, select
 
-from app.api.deps import audit_event, get_current_user, get_db, require_permission
+from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.security import Role
 from app.models.user import User
 from app.models.workflow import (
-    ExecutionStatus,
     TriggerSource,
     Workflow,
     WorkflowExecution,

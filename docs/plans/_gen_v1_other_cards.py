@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Append other-chapter gap cards into tasks.yaml. One-shot."""
 from __future__ import annotations
 

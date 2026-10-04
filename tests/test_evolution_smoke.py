@@ -13,8 +13,8 @@ from app.evolution import (
     ActionItem,
     ImprovementCategory,
     ImprovementPoint,
-    ReflectResult,
     Reflector,
+    ReflectResult,
     Severity,
 )
 from app.llm.base import ChatMessage, LLMOptions, LLMProvider

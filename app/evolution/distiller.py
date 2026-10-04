@@ -12,9 +12,9 @@
 import json
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select
 
 from app.core.database import engine
 from app.evolution.models import (
@@ -26,7 +26,7 @@ from app.evolution.models import (
 )
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.factory import get_llm_provider
-from app.models.conversation import Conversation, Message
+from app.models.conversation import Conversation
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class Distiller:
         result = DistillResult()
 
         # 1. 获取近期对话
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         conversations = self._fetch_recent_conversations(cutoff, max_conversations)
 
         if not conversations:
@@ -245,7 +245,7 @@ class Distiller:
                 ]
 
                 return conversations
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("获取近期对话失败")
             return []
 

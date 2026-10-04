@@ -12,10 +12,11 @@
 复用项目测试基建：独立 test db（conftest 已 init_db）、MockLLMProvider、依赖覆盖。
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
-from unittest.mock import AsyncMock, patch
 
 from app.api.deps import get_current_user
 from app.core.config import settings

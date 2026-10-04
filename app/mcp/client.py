@@ -69,7 +69,7 @@ class MCPClient:
         self._stack: AsyncExitStack | None = None
 
     @classmethod
-    def from_session(cls, name: str, session) -> "MCPClient":
+    def from_session(cls, name: str, session) -> MCPClient:
         """基于已初始化的 ``ClientSession`` 构造（主要用于测试 / 内存传输）。"""
         obj = cls(MCPServerConfig(name=name, transport="stdio"))
         obj._session = session

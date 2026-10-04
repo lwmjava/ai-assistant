@@ -7,15 +7,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
 
+from sqlmodel import Session, select
+
 from app.audit import (
     AuditAction,
     AuditLog,
-    AuditLogger,
     get_audit_logger,
     reset_audit_logger,
 )
 from app.core.database import engine, init_db
-from sqlmodel import Session, select
 
 
 def setup():

@@ -13,19 +13,20 @@
 - 知识库缺口自动发现与补充
 - 改进趋势追踪（时间序列分析）
 """
+from app.evolution.distiller import Distiller
 from app.evolution.models import (
     ActionItem,
+    DistillInsight,
+    DistillResult,
     ImprovementCategory,
     ImprovementPoint,
     ReflectResult,
     Severity,
+    SkillSuggestion,
 )
 from app.evolution.reflector import Reflector
-
-
-from app.evolution.distiller import Distiller
-from app.evolution.models import DistillInsight, DistillResult, SkillSuggestion
 from app.evolution.scheduler import EvolutionScheduler
+
 __all__ = [
     # Reflect（单轮对话反思）
     "Reflector",

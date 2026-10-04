@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlmodel import SQLModel, Field
+from sqlmodel import Field
 
 
 def _utcnow() -> datetime:

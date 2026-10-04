@@ -13,7 +13,6 @@ from zoneinfo import ZoneInfo
 import httpx
 from sqlmodel import Session
 
-from app.core.config import settings
 from app.models.user import User
 from app.models.workflow import (
     ExecutionStatus,

@@ -59,3 +59,53 @@ python -m pytest tests/test_fast_route.py tests/test_llm_route.py  # 25 passed
   临时生成脚本，是否删除待定。
 - **没有处理剩余 7 个真实失败**：`run_rag_baseline.py:712` 的 `args.rerank` 残留
   （2 项）、SSE 多事件循环绑定（4 项，单跑全绿）、删除文档未清理向量（1 项）。
+
+## 后续补充：修掉其中的 args.rerank 两项
+
+上一节的归类有误，先更正：`--rerank` **不是**取消独立 Reranker 后的残留参数，
+它是 10-02 提交 `d984c62` 新增且完全合法的命令行选项，`main()` 第 790-795 行有
+正规的 `add_argument(choices=("lexical",), default=None)`，实测 `--help` 可见，
+命令行路径从未出过问题。
+
+真实成因是两条进同一个函数的路径不同步：
+
+| 路径 | 经过 `parse_args()` | Namespace 含 rerank | 结果 |
+|---|---|---|---|
+| 命令行 | 是 | 是（默认值 None） | 正常 |
+| `test_rrf_k_experiment.py:192 / 217` | 否，手搓 Namespace | 否 | `AttributeError` |
+
+手搓 Namespace 等于在测试里复刻了一份 argparse 契约，加参数时没人会想到同步这边。
+
+### 改动内容
+
+`tests/eval/test_rrf_k_experiment.py`，共 5 行：
+
+1. 两个会报错的 Namespace 各补一个 `rerank=None`
+2. 第三个走 `run_sweep()` 的 Namespace 一并补齐 —— 它当前不报错但描述的是同一份
+   契约，留着不一致只会让下次更难排查
+3. 在第一个 Namespace 上方加注释，写明字段需与 `main()` 的参数保持同步
+
+### 为什么选这个修法
+
+三个候选里选了最小的一个，理由：这次要纠正的是**测试自己少传字段**，
+与上一节「不为迁就测试而扭曲产品语义」是相反的方向 ——补全测试不属于退让。
+
+另外两个候选没选：`getattr(args, "rerank", None)` 会让"字段压根没传"这件事
+被永久掩盖；把 parser 抽成工厂函数复用是正解，但改动面大，
+留到这个脚本第三次加参数时再做，到那时收益不再是猜测。
+
+### 验证
+
+```
+python -m pytest tests/eval/test_rrf_k_experiment.py   # 9 passed
+python -m pytest -q   # 5 failed, 444 passed, 2 skipped（修复前 7 failed / 442 passed）
+```
+
+修复后剩余 5 条与清单完全吻合，无新增失败：
+
+- SSE 多事件循环绑定 4 条（单跑全绿，属测试基建）
+- 删除文档未清理向量 1 条（真回归，待查）
+
+同批另有 76 个 error，已用对照实验证实与本次改动无关：用改动前的 HEAD 版本单独跑
+同一条用例，报同样的错。来源是 `conftest.py` 固定 basetemp 后清理
+`data/pytest-tmp/run` 时的 `PermissionError [WinError 5]`，属本机环境问题。

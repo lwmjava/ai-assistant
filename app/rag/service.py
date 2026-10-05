@@ -13,6 +13,7 @@
 import json
 import logging
 import os
+import re
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -64,7 +65,7 @@ Tokenizer = Callable[[str], list[str]]
 
 def sources_from_hits(session: Session, hits: list[ChunkResult]) -> list[dict]:
     """把检索命中转成来源列表。页码和段落只取分块元数据里已有的值。"""
-    seen: set[tuple[str, int | None, str | None]] = set()
+    seen: set[tuple[str, int | None, str | None, str]] = set()
     sources: list[dict] = []
     for hit in hits:
         row = session.get(DocumentChunk, hit.id)
@@ -77,14 +78,49 @@ def sources_from_hits(session: Session, hits: list[ChunkResult]) -> list[dict]:
         metadata = _chunk_metadata(row)
         page = _source_page(metadata.get("page"))
         section = _source_section(metadata.get("section_path"))
-        key = (filename, page, section)
+        key = (filename, page, section, hit.id)
         if key in seen:
             continue
         seen.add(key)
-        sources.append({"filename": filename, "page": page, "section": section})
+        sources.append(
+            {
+                "filename": filename,
+                "page": page,
+                "section": section,
+                "chunk_id": hit.id,
+                "document_id": hit.document_id,
+                "excerpt": _source_excerpt(hit.content),
+            }
+        )
     return sources
 
 
+def _strip_markdown(content: str) -> str:
+    """把 markdown 源码清洗为可读纯文本：去标题/表格管道/分隔行/引用/列表/粗体/行内代码。"""
+    out: list[str] = []
+    for line in content.splitlines():
+        s = line
+        if re.match(r'^\s*\|?[\s:\-|]+\|?\s*$', s):
+            continue
+        s = re.sub(r'^\s{0,3}#{1,6}\s+', '', s)
+        s = re.sub(r'^\s*>\s?', '', s)
+        s = re.sub(r'^\s*([-*+]|\d+[.)])\s+', '', s)
+        if '|' in s:
+            cells = [c.strip() for c in s.split('|') if c.strip()]
+            cells = [c for c in cells if not re.fullmatch(r'[\s:\-]+', c)]
+            s = ' · '.join(cells)
+        s = re.sub(r'\*\*([^*]+)\*\*', r'\1', s)
+        s = re.sub(r'`([^`]+)`', r'\1', s)
+        if s.strip():
+            out.append(s.strip())
+    text = ' '.join(out)
+    return ' '.join(text.split())
+
+
+def _source_excerpt(content: str, limit: int = 240) -> str:
+    """摘录原文：清洗 markdown 后折叠空白并截断到 limit，供引用原文展示。"""
+    text = _strip_markdown(content)
+    return text[:limit] if len(text) > limit else text
 def _chunk_metadata(row: DocumentChunk | None) -> dict:
     if row is None or not row.chunk_metadata:
         return {}
@@ -469,6 +505,19 @@ class RAGService:
         if doc.deleted_at is not None and not is_kb_admin(user):
             return None
         return doc
+
+    def list_chunks(self, document_id: str, user: User) -> list[DocumentChunk]:
+        """按文档列出分块（控制面权限校验；无权限或不存在返回空）。"""
+        doc = self.get_document(document_id, user)
+        if doc is None:
+            return []
+        stmt = (
+            select(DocumentChunk)
+            .where(DocumentChunk.document_id == document_id)
+            .order_by(col(DocumentChunk.chunk_index).asc())
+        )
+        return list(self.session.exec(stmt).all())
+
 
     def publish_document(self, document_id: str, user: User) -> Document | None:
         """把目标版本设为当前发布版，并在同一事务里替换同组旧当前版。"""

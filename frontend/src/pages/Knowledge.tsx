@@ -1,10 +1,11 @@
 /** 知识库页：文本摄取、文件上传、混合检索与文档管理。 */
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { FileText, FileUp, Plus, RotateCw, Search, Trash2 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -13,7 +14,7 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
-import { createConfirmation, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
+import { createConfirmation, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useDocumentChunks, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
 import { ApiError, hideStackTrace, isSessionExpiredError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
@@ -194,6 +195,29 @@ function SearchResultRow({ result, index }: { result: SearchResultOut; index: nu
   )
 }
 
+function DocumentChunkList({ documentId }: { documentId: string }) {
+  const chunks = useDocumentChunks(documentId)
+  if (chunks.isLoading) return <div className="px-4 py-3 text-xs text-text-faint">加载分块…</div>
+  if (chunks.error) return <div className="px-4 py-3 text-xs text-danger">分块加载失败</div>
+  const rows = chunks.data ?? []
+  if (rows.length === 0) return <div className="px-4 py-3 text-xs text-text-faint">该文档暂无分块</div>
+  return (
+    <ul className="space-y-2">
+      {rows.map((c) => (
+        <li key={c.id} className="rounded border border-border/60 bg-surface-2/30 px-3 py-2">
+          <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-faint">
+            <span className="font-mono font-semibold text-text-muted">#{c.chunk_index + 1}</span>
+            {c.page != null && c.page >= 1 && <span>· 第 {c.page} 页</span>}
+            {c.section && <span>· {c.section}</span>}
+            {c.strategy && <span>· {c.strategy}</span>}
+          </div>
+          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">{c.content}</p>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function DocumentRow({
   doc,
   canDelete,
@@ -203,6 +227,9 @@ function DocumentRow({
   onDelete,
   onPublish,
   onRebuild,
+  expanded = false,
+  onToggle,
+  highlight = false,
 }: {
   doc: DocumentOut
   canDelete: boolean
@@ -212,66 +239,92 @@ function DocumentRow({
   onDelete: (doc: DocumentOut) => void
   onPublish: (doc: DocumentOut) => void
   onRebuild: (doc: DocumentOut) => void
+  expanded?: boolean
+  onToggle: () => void
+  highlight?: boolean
 }) {
   return (
-    <li className="group/item grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-2/50 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_auto]">
-      <div className="min-w-0">
-        <p className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium text-text">{doc.title}</span>
-          {doc.deleted_at ? (
-            <Badge tone="danger">已删除</Badge>
-          ) : (
-            <Badge tone={doc.version_state === 'published' ? 'success' : 'warning'}>
-              {VERSION_LABELS[doc.version_state] ?? doc.version_state}
-            </Badge>
+    <li
+      id={`doc-${doc.id}`}
+      className={cn(
+        'group/item border-b border-border transition-colors last:border-0',
+        highlight && 'bg-surface-2/60 ring-1 ring-accent',
+      )}>
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_auto]">
+        <div className="min-w-0">
+          <p className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex min-w-0 items-center gap-1 text-left text-sm font-medium text-text hover:text-primary"
+              aria-expanded={expanded}
+            >
+              <span className={cn('transition-transform', expanded && 'rotate-90')}>▸</span>
+              <span className="truncate">{doc.title}</span>
+            </button>
+            {doc.deleted_at ? (
+              <Badge tone="danger">已删除</Badge>
+            ) : (
+              <Badge tone={doc.version_state === 'published' ? 'success' : 'warning'}>
+                {VERSION_LABELS[doc.version_state] ?? doc.version_state}
+              </Badge>
+            )}
+            {rebuilding && (
+              <Badge tone="warning" dot pulse>
+                重建中
+              </Badge>
+            )}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-text-faint">
+            {doc.source ? `来源：${doc.source} · ` : ''}
+            {formatDateTime(doc.created_at)}
+          </p>
+        </div>
+        <div className="hidden sm:block">
+          <button type="button" onClick={onToggle} className="cursor-pointer">
+            <Badge tone={expanded ? 'primary' : 'neutral'}>{doc.chunk_count} 分块</Badge>
+          </button>
+        </div>
+        <p className="hidden text-xs text-text-faint sm:block">{timeAgo(doc.updated_at)}</p>
+        <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && !canRebuild && 'invisible')}>
+          {canPublish && !doc.deleted_at && ['draft', 'scheduled', 'replaced'].includes(doc.version_state) && (
+            <button
+              type="button"
+              onClick={() => onPublish(doc)}
+              className="rounded-md px-2 text-xs text-primary hover:bg-primary/10"
+            >
+              发布
+            </button>
           )}
-          {rebuilding && (
-            <Badge tone="warning" dot pulse>
-              重建中
-            </Badge>
+          {canRebuild && !doc.deleted_at && (
+            <button
+              type="button"
+              onClick={() => onRebuild(doc)}
+              disabled={rebuilding}
+              aria-label={`重建文档 ${doc.title}`}
+              className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
+            >
+              <RotateCw className={cn('size-3.5', rebuilding && 'animate-spin')} aria-hidden />
+            </button>
           )}
-        </p>
-        <p className="mt-0.5 truncate text-xs text-text-faint">
-          {doc.source ? `来源：${doc.source} · ` : ''}
-          {formatDateTime(doc.created_at)}
-        </p>
+          {canDelete && !doc.deleted_at && (
+            <button
+              type="button"
+              onClick={() => onDelete(doc)}
+              aria-label={`删除文档 ${doc.title}`}
+              className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-danger/15 hover:text-danger focus-visible:opacity-100 group-hover/item:opacity-100"
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </button>
+          )}
+        </div>
       </div>
-      <div className="hidden sm:block">
-        <Badge tone="neutral">{doc.chunk_count} 分块</Badge>
-      </div>
-      <p className="hidden text-xs text-text-faint sm:block">{timeAgo(doc.updated_at)}</p>
-      <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && !canRebuild && 'invisible')}>
-        {canPublish && !doc.deleted_at && ['draft', 'scheduled', 'replaced'].includes(doc.version_state) && (
-          <button
-            type="button"
-            onClick={() => onPublish(doc)}
-            className="rounded-md px-2 text-xs text-primary hover:bg-primary/10"
-          >
-            发布
-          </button>
-        )}
-        {canRebuild && !doc.deleted_at && (
-          <button
-            type="button"
-            onClick={() => onRebuild(doc)}
-            disabled={rebuilding}
-            aria-label={`重建文档 ${doc.title}`}
-            className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
-          >
-            <RotateCw className={cn('size-3.5', rebuilding && 'animate-spin')} aria-hidden />
-          </button>
-        )}
-        {canDelete && !doc.deleted_at && (
-          <button
-            type="button"
-            onClick={() => onDelete(doc)}
-            aria-label={`删除文档 ${doc.title}`}
-            className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-danger/15 hover:text-danger focus-visible:opacity-100 group-hover/item:opacity-100"
-          >
-            <Trash2 className="size-3.5" aria-hidden />
-          </button>
-        )}
-      </div>
+      {expanded && (
+        <div className="border-t border-border/60 bg-surface-1/40 px-4 pb-4 pt-3">
+          <p className="mb-2 text-xs font-medium text-text-faint">分块详情（按块序展示）</p>
+          <DocumentChunkList documentId={doc.id} />
+        </div>
+      )}
     </li>
   )
 }
@@ -279,6 +332,8 @@ function DocumentRow({
 export default function KnowledgePage() {
   const toast = useToast()
   const role = useAuthStore((s) => s.user?.role)
+  const [searchParams] = useSearchParams()
+  const focusDocId = searchParams.get('doc')
   const userTenantId = useAuthStore((s) => s.user?.tenant_id)
   const canWrite = can(role, 'knowledge_bases', 'write')
   const canDelete = can(role, 'knowledge_bases', 'delete')
@@ -288,6 +343,7 @@ export default function KnowledgePage() {
   const [pendingDelete, setPendingDelete] = useState<DocumentOut | null>(null)
   const [pendingRebuild, setPendingRebuild] = useState<DocumentOut | null>(null)
   const [rebuildingId, setRebuildingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(false)
   const [versionState, setVersionState] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -302,6 +358,12 @@ export default function KnowledgePage() {
     () => [...(documents.data ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [documents.data],
   )
+  useEffect(() => {
+    if (!focusDocId) return
+    const el = document.getElementById(`doc-${focusDocId}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focusDocId, docs])
+
 
   async function handleFile(file: File) {
     try {
@@ -470,6 +532,7 @@ export default function KnowledgePage() {
           <ul>
             {docs.map((doc) => (
               <DocumentRow
+                highlight={focusDocId === doc.id}
                 key={doc.id}
                 doc={doc}
                 canDelete={canDelete}
@@ -477,6 +540,8 @@ export default function KnowledgePage() {
                 canRebuild={canWrite}
                 rebuilding={rebuildingId === doc.id}
                 onDelete={setPendingDelete}
+                expanded={expandedId === doc.id}
+                onToggle={() => setExpandedId(expandedId === doc.id ? null : doc.id)}
                 onPublish={(item) => void handlePublish(item)}
                 onRebuild={setPendingRebuild}
               />

@@ -1,16 +1,12 @@
 /** 知识库（RAG）文档摄取、管理与检索。 */
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-
 import { api } from '@/lib/http'
-import type { DocumentOut, ImportJobOut, SearchResultOut } from '@/types/api'
-
+import type { DocumentChunkOut, DocumentOut, ImportJobOut, SearchResultOut } from '@/types/api'
 export const documentKeys = {
   all: ['documents'] as const,
   list: (includeDeleted = false, versionState = '') =>
     [...documentKeys.all, 'list', includeDeleted, versionState] as const,
 }
-
 export function useDocuments(includeDeleted = false, versionState = '') {
   const params = new URLSearchParams()
   if (includeDeleted) params.set('include_deleted', 'true')
@@ -22,7 +18,6 @@ export function useDocuments(includeDeleted = false, versionState = '') {
     staleTime: 15_000,
   })
 }
-
 /** 摄取纯文本为知识文档。 */
 export function useIngestDocument() {
   const qc = useQueryClient()
@@ -32,7 +27,6 @@ export function useIngestDocument() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: documentKeys.all }),
   })
 }
-
 /** 上传知识文档，后端会按文件类型自动解析文本。 */
 export function useUploadDocument() {
   const qc = useQueryClient()
@@ -45,7 +39,6 @@ export function useUploadDocument() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: documentKeys.all }),
   })
 }
-
 export function useDeleteDocument() {
   const qc = useQueryClient()
   return useMutation({
@@ -56,7 +49,6 @@ export function useDeleteDocument() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: documentKeys.all }),
   })
 }
-
 export function useReparseDocument() {
   return useMutation({
     mutationFn: (input: { id: string; confirmationId?: string }) => {
@@ -65,11 +57,9 @@ export function useReparseDocument() {
     },
   })
 }
-
 export function fetchImportJob(id: string) {
   return api.get<ImportJobOut>(`/rag/import-jobs/${id}`)
 }
-
 export function usePublishDocument() {
   const qc = useQueryClient()
   return useMutation({
@@ -80,7 +70,6 @@ export function usePublishDocument() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: documentKeys.all }),
   })
 }
-
 export async function createConfirmation(documentId: string, action: string) {
   const row = await api.post<{ id: string }>('/rag/operation-confirmations', {
     document_id: documentId,
@@ -88,11 +77,20 @@ export async function createConfirmation(documentId: string, action: string) {
   })
   return row.id
 }
-
 /** 混合检索（向量 + BM25 + RRF 融合）。查询为手动触发，不自动执行。 */
 export function useSearch() {
   return useMutation({
     mutationFn: (payload: { query: string; top_k?: number }) =>
       api.post<SearchResultOut[]>('/rag/search', payload),
+  })
+}
+
+/** 文档分块列表（逐块详情）。 */
+export function useDocumentChunks(documentId: string) {
+  return useQuery({
+    queryKey: ['document-chunks', documentId] as const,
+    queryFn: () => api.get<DocumentChunkOut[]>(`/rag/documents/${documentId}/chunks`),
+    enabled: Boolean(documentId),
+    staleTime: 15_000,
   })
 }

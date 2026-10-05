@@ -93,6 +93,12 @@ export interface SourceRef {
   filename: string
   page: number | null
   section: string | null
+  /** 摘录原文片段，用于展示引用内容。 */
+  excerpt?: string | null
+  /** 分块 id，可定位到具体分块。 */
+  chunk_id?: string | null
+  /** 所属文档 id，可跳转知识库定位。 */
+  document_id?: string | null
 }
 
 export interface CodeResult {
@@ -199,6 +205,18 @@ export interface DocumentOut {
   created_at: string
   updated_at: string
 }
+
+export interface DocumentChunkOut {
+  id: string
+  chunk_index: number
+  content: string
+  source: string | null
+  strategy: string | null
+  page: number | null
+  section: string | null
+  created_at: string
+}
+
 
 export interface ImportJobOut {
   id: string

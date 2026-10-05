@@ -45,6 +45,9 @@ class SourceOut(BaseModel):
     filename: str
     page: int | None = None
     section: str | None = None
+    excerpt: str | None = None  # 拘录原文连段
+    chunk_id: str | None = None  # 分块 id，可定位到具体分块
+    document_id: str | None = None  # 所属文档 id
 
 
 class CodeResultOut(BaseModel):

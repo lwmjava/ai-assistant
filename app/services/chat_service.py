@@ -12,6 +12,7 @@ import json
 import logging
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlmodel import Session, select
 
@@ -30,6 +31,10 @@ from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.rag.service import RAGService, sources_from_hits
 from app.services.quota import accept_user_message
+
+if TYPE_CHECKING:
+    from app.debug.trace import AgentTrace
+    from app.security.types import SecurityContext, SecurityRejectedError
 
 
 def _skill_name_list(ctx: SkillContext | None) -> list[str]:
@@ -410,6 +415,7 @@ class ChatService:
                     if current is not None:
                         self._maybe_reflect(current, state)
                     yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
+                    logger.info("rag_sources_returned sources=%s", json.dumps(sources, ensure_ascii=False))
                 yield event
         except (GeneratorExit, asyncio.CancelledError):
             stopped = True

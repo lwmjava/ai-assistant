@@ -5171,10 +5171,11 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+        progress: "2026-10-05：PRAG-003 Citation 产品化实现完成，引用增加 excerpt/chunk_id/document_id；前端展示摘录并可跳转知识库定位；pytest tests/test_rag_sources.py 4/4，前端 typecheck/build 通过；待人工审查后关闭"
 
   - id: "PRAG-004"
     title: "检索低分阈值与拒答"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -5226,7 +5227,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-        progress: "2026-10-05：PRAG-004 低分阈值与拒答实现完成，阈值0.4过滤加拒答提示加JSON日志；pytest tests/test_rag_threshold.py 4/4 通过；待人工审查后关闭"
+        progress: "2026-10-05：PRAG-004 低分阈值与拒答实现完成，阈值0.4过滤加拒答提示加JSON日志；pytest tests/test_rag_threshold.py 4/4 通过；2026-10-05 用户确认关闭"
 
   - id: "PMCP-001"
     title: "MCP 连接超时、重连、心跳与优雅降级"
@@ -8266,6 +8267,54 @@ tasks:
         - "子块命中后可见父块；重复父块去重"
       commands:
         - "pytest -k parent -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-020"
+    title: "文档分块详情查看（知识库逐块展示）"
+    status: "done"
+    priority: "P2"
+    target_date: ""
+    depends_on: []
+    context:
+      problem: "知识库文档仅有列表与分块数统计，无逐块详情查看。"
+      facts:
+        - claim: "2026-10-05 用户直接需求，已完成实现。
+          evidence: "docs/plans/implementation_rag_chunks_20261005.md"
+        - claim: "后端新增分块接口，前端按块展示。
+          evidence: "app/api/routes/rag.py /documents/{id}/chunks"
+    scope:
+      allowed_paths:
+        - "app/rag/"
+        - "app/api/routes/rag.py"
+        - "frontend/src/"
+        - "tests/test_rag_chunks.py"
+        - "docs/"
+        - "tasks.yaml"
+      forbidden_paths:
+        - ".env"
+        - "生产数据"
+      deliverables:
+        - "文档分块逐块详情接口与前端展示"
+      non_goals:
+        - "分块内容级深链定位"
+    acceptance:
+        - "GET /documents/{id}/chunks 按块序返回全部分块，含 page/section"
+        - "前端点击文档展开逐块展示"
+    risk:
+      level: "L1"
+      side_effect: "kb-chunks-view"
+      rollback: "回退分块接口与前端展开；不影响检索链路。"
+    evaluation:
+      cases:
+        - "块序升序、字段齐全、数量与 chunk_count 一致、未知文档 404、成员可读"
+      commands:
+        - "pytest tests/test_rag_chunks.py -v"
     execution:
       owner: "个人开发者"
       nightly:

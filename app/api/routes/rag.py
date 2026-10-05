@@ -4,6 +4,7 @@
 检索面默认同租户当前版本。控制面：成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
 """
 
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -17,7 +18,7 @@ from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.security import Role
-from app.models.rag import Document, ImportBatch, ImportJob
+from app.models.rag import Document, DocumentChunk, ImportBatch, ImportJob
 from app.models.user import User
 from app.rag.access import can_control_document, can_read_import, can_write_document, restrict_list_to_uploader
 from app.rag.document_parsers import (
@@ -146,6 +147,19 @@ class DocumentDetail(DocumentOut):
     """文档详情（与概要一致，预留扩展字段）。"""
 
 
+class DocumentChunkOut(BaseModel):
+    """文档分块详情。"""
+
+    id: str
+    chunk_index: int
+    content: str
+    source: str | None
+    strategy: str | None
+    page: int | None
+    section: str | None
+    created_at: str
+
+
 class SearchResultOut(BaseModel):
     """检索命中结果。"""
 
@@ -187,6 +201,33 @@ class ImportBatchOut(BaseModel):
     created_at: str
     updated_at: str
     jobs: list[ImportJobOut]
+
+
+def _chunk_out(chunk: DocumentChunk) -> DocumentChunkOut:
+    metadata: dict = {}
+    if chunk.chunk_metadata:
+        try:
+            metadata = json.loads(chunk.chunk_metadata)
+        except json.JSONDecodeError:
+            metadata = {}
+    page_raw = metadata.get("page")
+    page = (
+        page_raw
+        if isinstance(page_raw, int) and not isinstance(page_raw, bool) and page_raw >= 1
+        else None
+    )
+    section_raw = metadata.get("section_path")
+    section = section_raw if isinstance(section_raw, str) and section_raw else None
+    return DocumentChunkOut(
+        id=chunk.id,
+        chunk_index=chunk.chunk_index,
+        content=chunk.content,
+        source=chunk.source,
+        strategy=chunk.strategy,
+        page=page,
+        section=section,
+        created_at=chunk.created_at.isoformat() if chunk.created_at else "",
+    )
 
 
 def _doc_out(doc: Document) -> DocumentOut:
@@ -615,6 +656,25 @@ def get_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
         )
+    return DocumentDetail(**_doc_out(doc).model_dump())
+
+
+@router.get("/documents/{document_id}/chunks", response_model=list[DocumentChunkOut])
+def list_document_chunks(
+    document_id: str,
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
+    session: Session = Depends(get_db),
+) -> list[DocumentChunkOut]:
+    """列出文档的全部分块（按块序），供前端逐块展示。"""
+    rag = RAGService(session, current_user.tenant_id)
+    doc = rag.get_document(document_id, current_user)
+    if doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
+        )
+    return [_chunk_out(c) for c in rag.list_chunks(document_id, current_user)]
+
+
     return DocumentDetail(**_doc_out(doc).model_dump())
 
 

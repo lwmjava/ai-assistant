@@ -111,12 +111,6 @@ function Bubble({
   )
 }
 
-function sourceLabel(source: SourceRef): string {
-  const parts = [source.filename]
-  if (source.page != null && source.page >= 1) parts.push(`第 ${source.page} 页`)
-  if (source.section) parts.push(source.section)
-  return parts.join(' · ')
-}
 
 function hideHostPaths(text: string): string {
   return text
@@ -157,12 +151,43 @@ function CodeResults({ results }: { results?: CodeResult[] }) {
 function SourceNotes({ sources }: { sources?: SourceRef[] }) {
   if (!sources?.length) return null
   return (
-    <ul className="mt-2 space-y-1 text-xs text-text-faint">
-      {sources.map((source, index) => (
-        <li key={`${source.filename}-${source.page ?? ''}-${source.section ?? ''}-${index}`}>
-          {sourceLabel(source)}
-        </li>
-      ))}
+    <ul className="mt-2 space-y-1.5 text-xs">
+      {sources.map((source, index) => {
+        const num = index + 1
+        const page = source.page != null && source.page >= 1 ? `第 ${source.page} 页` : ''
+        const seg = source.section ? source.section : ''
+        const meta = [page, seg].filter(Boolean).join(' · ')
+        const excerpt = source.excerpt && source.excerpt.length > 120
+          ? `${source.excerpt.slice(0, 120)}…`
+          : source.excerpt
+        return (
+          <li
+            key={`${source.filename}-${source.chunk_id ?? ''}-${index}`}
+            className="rounded border border-border/60 bg-surface-2/30 px-2.5 py-2"
+          >
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0 rounded bg-surface-2/60 px-1.5 text-[10px] font-semibold text-text-muted">{num}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="truncate font-medium text-text">{source.filename}</span>
+                  {meta && <span className="text-text-faint">· {meta}</span>}
+                  {source.document_id && (
+                    <a
+                      href={`/knowledge?doc=${encodeURIComponent(source.document_id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 font-medium text-text-muted hover:bg-surface-2/50 hover:text-text"
+                    >
+                      查看来源 ↗
+                    </a>
+                  )}
+                </div>
+                {excerpt && <p className="mt-1 leading-relaxed text-text-muted">{excerpt}</p>}
+              </div>
+            </div>
+          </li>
+        )
+      })}
     </ul>
   )
 }

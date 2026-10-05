@@ -5058,112 +5058,62 @@ tasks:
     title: "重排落地：开关、灰度与开销评估"
     status: "backlog"
     priority: "P2"
-    target_date: ""
+    target_date: ''
     depends_on:
-      - "REL-004"
-      - "NFR-002"
+    - "REL-004"
+    - "NFR-002"
     context:
       problem: "重排实验由 REL-004 承担；REL-004 已记录当前词面覆盖重排不采纳。用户 2026-10-04 拍板：本卡恢复为待办（backlog）、降为 P2，保留重排落地路径（开关/灰度/开销），不重复已做实验。"
       facts:
-        - claim: "2026-10-02 词面覆盖重排未采纳：调参集 Recall@1 持平，MRR 下降，越权案例数仍为 0；REL-004 结论仍为不采纳。2026-10-04 用户拍板将本卡恢复为待办并降 P2，留作未来重排落地路径。"
-          evidence: "docs/evaluations/rag-v0.1-lexical-coverage-20261002.md；docs/plans/implementation_rel_004.md"
-        - claim: "交付排期 D4 已安排一轮重排或查询变换实验，并明确无提升则记录不采纳并结束。"
-          evidence: "docs/plans/plan_delivery_2027-03-25.md：重排序或查询变换只做一轮、最多一周，有指标则保留，无提升则记录不采纳并结束"
-        - claim: "REL-004 的交付物即该实验，与独立 Reranker 卡重复，重复跑会破坏单变量归因。"
-          evidence: "tasks.yaml REL-004 的 problem 为「独立重排或查询变换还没有一轮有结论的实验」"
-        - claim: "基线 Recall@1 为 0.795，Recall@5 与 Recall@10 均为 0.971，瓶颈在排序不在召回。"
-          evidence: "evals/reports/rag-v0.1-baseline-20260919.json overall.recall"
-        - claim: "rrf-k60 报告测的是融合常数 k=60，不是独立重排；其 Recall@1 0.8095、Recall@5 0.9619 不能当作重排已有效的证据。"
-          evidence: "evals/reports/rag-v0.1-rrf-k60-20260924.json run_config.rrf_k = 60"
+      - claim: "2026-10-02 词面覆盖重排未采纳：调参集 Recall@1 持平，MRR 下降，越权案例数仍为 0；REL-004 结论仍为不采纳。2026-10-04 用户拍板将本卡恢复为待办并降 P2，留作未来重排落地路径。"
+        evidence: "docs/evaluations/rag-v0.1-lexical-coverage-20261002.md；docs/plans/implementation_rel_004.md"
+      - claim: "交付排期 D4 已安排一轮重排或查询变换实验，并明确无提升则记录不采纳并结束。"
+        evidence: "docs/plans/plan_delivery_2027-03-25.md：重排序或查询变换只做一轮、最多一周，有指标则保留，无提升则记录不采纳并结束"
+      - claim: "REL-004 的交付物即该实验，与独立 Reranker 卡重复，重复跑会破坏单变量归因。"
+        evidence: "tasks.yaml REL-004 的 problem 为「独立重排或查询变换还没有一轮有结论的实验」"
+      - claim: "基线 Recall@1 为 0.795，Recall@5 与 Recall@10 均为 0.971，瓶颈在排序不在召回。"
+        evidence: "evals/reports/rag-v0.1-baseline-20260919.json overall.recall"
+      - claim: "rrf-k60 报告测的是融合常数 k=60，不是独立重排；其 Recall@1 0.8095、Recall@5 0.9619 不能当作重排已有效的证据。"
+        evidence: "evals/reports/rag-v0.1-rrf-k60-20260924.json run_config.rrf_k = 60"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
-        - "app/rag/"
-        - "app/core/config.py"
-        - ".env.example"
-        - "tests/"
-        - "docs/evaluations/"
-        - "tasks.yaml"
+      - "app/rag/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "tests/"
+      - "docs/evaluations/"
+      - "tasks.yaml"
+      - "docs/"
       forbidden_paths:
-        - "evals/reports/rag-v0.1-baseline-20260919.json"
-        - "app/rag/chunking/"
-        - "app/rag/embeddings/"
-        - ".env"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      - "app/rag/chunking/"
+      - "app/rag/embeddings/"
+      - ".env"
       deliverables:
-        - "重排配置开关，默认关闭，可灰度启用"
-        - "落地后的开销报告：重排引入的延迟与资源占用"
+      - "重排配置开关，默认关闭，可灰度启用"
+      - "落地后的开销报告：重排引入的延迟与资源占用"
       non_goals:
-        - "不重复跑 REL-004 已做的重排实验"
-        - "不同时改切分、Embedding 或 Query Rewrite"
-        - "不改混合检索的 RRF k"
-        - "不用 holdout 调参"
-        - "不在本卡内判定是否采纳，采纳结论以 REL-004 为准"
+      - "不重复跑 REL-004 已做的重排实验"
+      - "不同时改切分、Embedding 或 Query Rewrite"
+      - "不改混合检索的 RRF k"
+      - "不用 holdout 调参"
+      - "不在本卡内判定是否采纳，既有候选以 REL-004 不采纳为准；新候选需另获明确采纳决定"
     acceptance:
-      - "重排开关可配置且默认关闭，可灰度启用"
-      - "落地开销报告含重排引入的延迟与资源占用增量"
-      - "关闭开关时行为与基线一致"
+    - "重排开关可配置且默认关闭，可灰度启用"
+    - "落地开销报告含重排引入的延迟与资源占用增量"
+    - "关闭开关时行为与基线一致"
     risk:
       level: "L1"
       side_effect: "rerank-landing"
       rollback: "关闭配置开关即回到基线行为。"
     evaluation:
       cases:
-        - "官方 goldset 上跑重排开关的回归对照"
-        - "权限与注入切片单独核对"
+      - "官方 goldset 上跑重排开关的回归对照"
+      - "权限与注入切片单独核对"
       commands:
-        - "pytest tests/test_rag.py -v"
-    execution:
-      owner: "个人开发者"
-      nightly:
-        eligible: true
-        production_access: false
-        auto_merge: false
-        auto_deploy: false
-
-  - id: "PRAG-003"
-    title: "Citation 产品化：结构化溯源输出"
-    status: "backlog"
-    priority: "P1"
-    target_date: ""
-    depends_on:
-      - "QA-002"
-    context:
-      problem: "评测层能算出引用覆盖率，但前端拿不到可点击的溯源结构，用户无法验证答案来源。"
-      facts:
-        - claim: "app 目录下不存在 citation 实现，评测侧已有 quote_coverage 与 evidence_hit 计算，当前 quote_coverage 为 0.918。"
-          evidence: "grep -rln 'citation' app --include='*.py' 无输出；tests/eval/harness.py；evals/reports/rag-v0.1-baseline-20260919.json"
-        - claim: "回复携带来源字段的能力已交付，可作为结构化引用的来源基础。"
-          evidence: "tasks.yaml QA-002 回复携带来源字段，状态 done"
-    scope:
-      allowed_paths:
-        - "app/rag/"
-        - "app/api/routes/"
-        - "frontend/src/"
-        - "tests/"
-        - "tasks.yaml"
-      forbidden_paths:
-        - "evals/reports/rag-v0.1-baseline-20260919.json"
-        - ".env"
-      deliverables:
-        - "答案返回结构化引用：文档、页码或分块、摘录"
-        - "前端可展示并跳转来源"
-        - "OpenAPI 响应结构同步更新"
-      non_goals:
-        - "不做引用可信度评分"
-        - "不改检索链路参数"
-        - "不依赖重排实验结论，Citation 改的是响应形状，与有无 Reranker 无关"
-    acceptance:
-      - "接口返回可解析的引用数组"
-      - "前端展示引用并可定位来源"
-      - "本卡在自己的验收里同步更新 OpenAPI，不依赖 REL-001 的 Swagger 定稿"
-    risk:
-      level: "L2"
-      side_effect: "api-response-shape-changed"
-      rollback: "保留旧字段兼容，回退提交。"
-    evaluation:
-      cases:
-        - "检索型问答返回引用并在前端展示"
-      commands:
-        - "pytest -k 'citation or rag'"
+      - "pytest tests/test_rag.py -v"
     execution:
       owner: "个人开发者"
       nightly:
@@ -5171,55 +5121,113 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-        progress: "2026-10-05：PRAG-003 Citation 产品化实现完成，引用增加 excerpt/chunk_id/document_id；前端展示摘录并可跳转知识库定位；pytest tests/test_rag_sources.py 4/4，前端 typecheck/build 通过；待人工审查后关闭"
+      blocked_by: "现无已批准采纳候选；新的采纳证据与负责人决定落盘前不可开工，REL-004 done 不构成准入。"
+
+  - id: "PRAG-003"
+    title: "Citation 产品化：结构化溯源输出"
+    status: "done"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "QA-002"
+    context:
+      problem: "评测层能算出引用覆盖率，但前端拿不到可点击的溯源结构，用户无法验证答案来源。"
+      facts:
+      - claim: "变更前事实：app 目录下不存在 citation 实现，评测侧已有 quote_coverage 与 evidence_hit 计算，当前 quote_coverage 为 0.918。"
+        evidence: "grep -rln 'citation' app --include='*.py' 无输出；tests/eval/harness.py；evals/reports/rag-v0.1-baseline-20260919.json"
+      - claim: "回复携带来源字段的能力已交付，可作为结构化引用的来源基础。"
+        evidence: "tasks.yaml QA-002 回复携带来源字段，状态 done"
+      - claim: "当前已实现对应来源结构或低分过滤；完成状态保持，跨入口质量缺口由后续卡承接。"
+        evidence: "docs/plans/implementation_prag_003_20261005.md；docs/plans/implementation_prag_004_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/api/routes/"
+      - "frontend/src/"
+      - "tests/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      - ".env"
+      deliverables:
+      - "答案返回结构化引用：文档、页码或分块、摘录"
+      - "前端可展示并跳转来源"
+      - "OpenAPI 响应结构同步更新"
+      non_goals:
+      - "不做引用可信度评分"
+      - "不改检索链路参数"
+      - "不依赖重排实验结论，Citation 改的是响应形状，与有无 Reranker 无关"
+    acceptance:
+    - "接口返回可解析的引用数组"
+    - "前端展示引用并可定位来源"
+    - "本卡在自己的验收里同步更新 OpenAPI，不依赖 REL-001 的 Swagger 定稿"
+    risk:
+      level: "L2"
+      side_effect: "api-response-shape-changed"
+      rollback: "保留旧字段兼容，回退提交。"
+    evaluation:
+      cases:
+      - "检索型问答返回引用并在前端展示"
+      commands:
+      - "pytest -k 'citation or rag'"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+        progress: "2026-10-05：PRAG-003 Citation 产品化完成并经用户验收（带编号、页码/段落标签、紧凑卡片+跳转按钮，摘录 markdown 清洗）；用户确认关闭"
 
   - id: "PRAG-004"
     title: "检索低分阈值与拒答"
     status: "done"
     priority: "P0"
-    target_date: ""
+    target_date: ''
     depends_on:
-      - "NFR-002"
+    - "NFR-002"
     context:
       problem: "低相关结果仍会进入上下文，噪声污染答案质量。"
       facts:
-        - claim: "检索主路径默认 top_k 为 5，未设置低分阈值过滤。"
-          evidence: "app/rag/retriever.py retrieve(query, plan)"
-        - claim: "2026-10-02 定为阈值 0.4：可少返回或全不返回；拒答须有提示；低于 0.4 时写日志。"
-          evidence: "docs/product/项目产品需求方案.md §5.2.3；docs/plans/plan_v1_lock_20261002.md"
+      - claim: "变更前事实：检索主路径默认 top_k 为 5，未设置低分阈值过滤。"
+        evidence: "app/rag/retriever.py retrieve(query, plan)"
+      - claim: "2026-10-02 定为阈值 0.4：可少返回或全不返回；拒答须有提示；低于 0.4 时写日志。"
+        evidence: "docs/product/项目产品需求方案.md §5.2.3；docs/plans/plan_v1_lock_20261002.md"
+      - claim: "当前已实现对应来源结构或低分过滤；完成状态保持，跨入口质量缺口由后续卡承接。"
+        evidence: "docs/plans/implementation_prag_003_20261005.md；docs/plans/implementation_prag_004_20261005.md"
     scope:
       allowed_paths:
-        - "app/rag/"
-        - "app/core/config.py"
-        - ".env.example"
-        - "tests/"
-        - "tasks.yaml"
+      - "app/rag/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "tests/"
+      - "tasks.yaml"
       forbidden_paths:
-        - "evals/reports/rag-v0.1-baseline-20260919.json"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
       deliverables:
-        - "相似度低于 0.4 的命中可少返回或全不返回"
-        - "选择拒答时有明确提示语，不得硬凑回答"
-        - "相似度低于 0.4 时写入日志"
+      - "相似度低于 0.4 的命中可少返回或全不返回"
+      - "选择拒答时有明确提示语，不得硬凑回答"
+      - "相似度低于 0.4 时写入日志"
       non_goals:
-        - "不做拒答后的兜底生成"
-        - "不改 top_k 默认值"
-        - "不强制每一次低于 0.4 都必须拒答"
+      - "不做拒答后的兜底生成"
+      - "不改 top_k 默认值"
+      - "不强制每一次低于 0.4 都必须拒答"
     acceptance:
-      - "相似度低于 0.4 时返回更少或不返回命中"
-      - "若拒答，有明确提示语"
-      - "相似度低于 0.4 时有可复现的日志记录"
-      - "阈值与拒答文案有评测案例覆盖"
-      - "阈值不得用 holdout 集调参"
+    - "相似度低于 0.4 时返回更少或不返回命中"
+    - "若拒答，有明确提示语"
+    - "相似度低于 0.4 时有可复现的日志记录"
+    - "阈值与拒答文案有评测案例覆盖"
+    - "阈值不得用 holdout 集调参"
     risk:
       level: "L1"
       side_effect: "retrieval-threshold-added"
       rollback: "阈值设为 0 即等同关闭，回退配置提交。"
     evaluation:
       cases:
-        - "构造低于 0.4 的查询：命中变少或为零，且有日志"
-        - "选择拒答时返回明确提示语"
+      - "构造低于 0.4 的查询：命中变少或为零，且有日志"
+      - "选择拒答时返回明确提示语"
       commands:
-        - "pytest -k 'retriev'"
+      - "pytest -k 'retriev'"
     execution:
       owner: "个人开发者"
       nightly:
@@ -5227,7 +5235,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-        progress: "2026-10-05：PRAG-004 低分阈值与拒答实现完成，阈值0.4过滤加拒答提示加JSON日志；pytest tests/test_rag_threshold.py 4/4 通过；2026-10-05 用户确认关闭"
+        progress: "2026-10-05：PRAG-004 低分阈值与拒答实现完成，阈值0.4过滤加拒答提示加JSON日志；pytest tests/test_rag_threshold.py 4/4 通过；2026-10-05:用户确认关闭"
 
   - id: "PMCP-001"
     title: "MCP 连接超时、重连、心跳与优雅降级"
@@ -6803,103 +6811,117 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "RAG-014"
     title: "清洗链与删除向量补偿"
     status: "backlog"
     priority: "P0"
-    target_date: ""
+    target_date: ''
     depends_on: []
     context:
-      problem: "导入只会压缩空白。删除路径失败后没有补偿队列。"
+      problem: "已有文本 hash 去重与部分归一化；缺完整质量清洗及删除失败持久补偿，不能把已有去重写成不存在。"
       facts:
-        - claim: "§5.2.2 与 §5.2.4 要求清洗与补偿。"
-          evidence: "docs/product/项目产品需求方案.md §5.2"
-        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
-          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+      - claim: "§5.2.2 与 §5.2.4 要求清洗与补偿。"
+        evidence: "docs/product/项目产品需求方案.md §5.2"
+      - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+        evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
-        - "app/rag/"
-        - "tests/"
-        - "tasks.yaml"
+      - "app/rag/"
+      - "tests/"
+      - "tasks.yaml"
+      - "docs/"
+      - "app/models/rag.py"
+      - "alembic/"
       forbidden_paths:
-        - ".env"
-        - "evals/reports/rag-v0.1-baseline-20260919.json"
+      - ".env"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
       deliverables:
-        - "上传路径做去重、质量评分、格式规范化、元数据提取"
-        - "向量删除失败进入补偿队列"
+      - "上传路径做去重、质量评分、格式规范化、元数据提取"
+      - "向量删除失败进入补偿队列"
       non_goals:
-        - "不改切分策略来代替清洗"
-        - "不把 2026-09-29 的五条脚本当作本条证据"
+      - "不改切分策略来代替清洗"
+      - "不把 2026-09-29 的五条脚本当作本条证据"
     acceptance:
-        - "四步都在上传路径上"
-        - "有一次删除失败后再成功的记录"
+    - "四步都在上传路径上"
+    - "有一次删除失败后再成功的记录"
+    - "代码、盒图缩进与原文结构不得被清洗破坏；补偿重启后可恢复且幂等；软删和保留期物理清理均覆盖。"
     risk:
       level: "L2"
       side_effect: "rag-clean-compensate"
       rollback: "回退清洗与补偿提交。"
     evaluation:
       cases:
-        - "上传清洗与删除失败补偿"
+      - "上传清洗与删除失败补偿"
       commands:
-        - "pytest -k \"import or delete or clean\""
+      - 'pytest -k "import or delete or clean"'
     execution:
+      progress: 2026-10-05 已开始事实核对与方案设计；计划见 docs/plans/plan_rag_014_clean_compensation_20261005.md；删除语义待确认，业务代码未修改。
       owner: "个人开发者"
       nightly:
         eligible: false
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "RAG-015"
     title: "默认保持 local、可切换 Milvus、写入向量规范化"
     status: "backlog"
     priority: "P0"
-    target_date: ""
+    target_date: ''
     depends_on:
-      - "RAG-014"
+    - "RAG-014"
+    - "RAG-023"
+    - "RAG-032"
     context:
       problem: "前期默认 local，后期需切 Milvus，需保留并验证 local↔Milvus 切换路径。不改变 NFR-003 默认 local 时 Milvus 不计入 5 分钟上手的口径。"
       facts:
-        - claim: "默认 RAG_VECTOR_STORE 仍是 local。"
-          evidence: "app/core/config.py"
-        - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
-          evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
-        - claim: "向量 L2 归一化现仅检索侧现算兜底（local.py:196），写入侧无强制归一化；本卡并入 Milvus/local 写入路径固化。"
-          evidence: "app/rag/vectorstore/local.py"
+      - claim: "默认 RAG_VECTOR_STORE 仍是 local。"
+        evidence: "app/core/config.py"
+      - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 3。"
+        evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
+      - claim: "向量 L2 归一化现仅检索侧现算兜底（local.py:196），写入侧无强制归一化；本卡并入 Milvus/local 写入路径固化。"
+        evidence: "app/rag/vectorstore/local.py"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
-        - "app/rag/"
-        - "app/core/config.py"
-        - ".env.example"
-        - "docker-compose.yml"
-        - "tests/"
-        - "docs/"
-        - "tasks.yaml"
+      - "app/rag/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "docker-compose.yml"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
       forbidden_paths:
-        - ".env"
-        - "生产数据"
+      - ".env"
+      - "生产数据"
       deliverables:
-        - "保留默认 local 的前期路径，上传写入 local"
-        - "验证切 Milvus 配置后上传可写入并可在 Milvus 中命中"
-        - "验证切回 local 的开发路径不静默丢数据"
-        - "写入侧向量统一 L2 归一化固化，维度与规范化有校验"
+      - "保留默认 local 的前期路径，上传写入 local"
+      - "验证切 Milvus 配置后上传可写入并可在 Milvus 中命中"
+      - "验证切回 local 的开发路径不静默丢数据"
+      - "写入侧向量统一 L2 归一化固化，维度与规范化有校验"
       non_goals:
-        - "不把 2026-09-29 的五条脚本当作这次切换的证据"
-        - "不在本条改检索公式"
-        - "前期不把默认切成 Milvus"
+      - "不把 2026-09-29 的五条脚本当作这次切换的证据"
+      - "不在本条改检索公式"
+      - "前期不把默认切成 Milvus"
     acceptance:
-        - "默认 local 下启动与写入正常"
-        - "切 Milvus 配置后上传可在 Milvus 中查到"
-        - "切回 local 的路径写明且不静默丢数据"
-        - "写入向量已归一化，检索侧点积=余弦成立"
+    - "默认 local 下启动与写入正常"
+    - "切 Milvus 配置后上传可在 Milvus 中查到"
+    - "切回 local 的路径写明且不静默丢数据"
+    - "写入向量已归一化，检索侧点积=余弦成立"
+    - "真实 Milvus 相似度按批准 metric 转换，禁止 similarity=1.0 占位；记录跨库检索差异，质量对照由 RAG-036 承接。"
     risk:
       level: "L2"
       side_effect: "milvus-default"
       rollback: "默认切回 local 并回退提交。"
     evaluation:
       cases:
-        - "默认配置上传后检索命中"
+      - "默认配置上传后检索命中"
       commands:
-        - "pytest -k \"milvus or vector\""
+      - 'pytest -k "milvus or vector"'
     execution:
       owner: "个人开发者"
       nightly:
@@ -6907,6 +6929,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "CHAT-006"
     title: "助手消息重新生成"
     status: "backlog"
@@ -8229,44 +8252,47 @@ tasks:
     title: "父块展开：命中子块追加父块（方案 A）"
     status: "backlog"
     priority: "P1"
-    target_date: ""
+    target_date: ''
     depends_on: []
     context:
       problem: "差距表曾用「只返回父块」核对父文档能力；2026-10-04 定为展开方案，需锁定验收。"
       facts:
-        - claim: "命中子块时已追加父块并去重。"
-          evidence: "app/rag/service.py _expand_parent_chunks"
-        - claim: "2026-10-04 定为方案 A，不等于只返回父块。"
-          evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
-        - claim: "本卡阶段 3，来自 2026-10-04 父块/工作流裁决。"
-          evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
+      - claim: "命中子块时已追加父块并去重。"
+        evidence: "app/rag/service.py _expand_parent_chunks"
+      - claim: "2026-10-04 定为方案 A，不等于只返回父块。"
+        evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
+      - claim: "本卡阶段 3，来自 2026-10-04 父块/工作流裁决。"
+        evidence: "docs/plans/plan_v1_parent_expand_flow_alert_20261004.md"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
-        - "app/rag/"
-        - "tests/"
-        - "docs/"
-        - "tasks.yaml"
+      - "app/rag/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
       forbidden_paths:
-        - ".env"
-        - "生产数据"
+      - ".env"
+      - "生产数据"
       deliverables:
-        - "锁定展开行为：子块命中后结果含父块"
-        - "回归用例覆盖展开与去重"
+      - "锁定展开行为：子块命中后结果含父块"
+      - "回归用例覆盖展开与去重"
       non_goals:
-        - "不做只返回父块模式"
-        - "不做检索子仅喂模父的配置项"
+      - "不做只返回父块模式"
+      - "不做检索子仅喂模父的配置项"
+      - "本卡仅锁定知识库搜索父块展开；对话父块选入与预算由 RAG-030 承接。"
     acceptance:
-        - "命中带子 parent_id 的子块时，返回集含对应父块"
-        - "不以「结果仅含父块、不含子块」作为合格线"
+    - "命中带子 parent_id 的子块时，返回集含对应父块"
+    - "不以「结果仅含父块、不含子块」作为合格线"
     risk:
       level: "L1"
       side_effect: "parent-expand-lock"
       rollback: "回退测试与文档提交；行为保持展开。"
     evaluation:
       cases:
-        - "子块命中后可见父块；重复父块去重"
+      - "子块命中后可见父块；重复父块去重"
       commands:
-        - "pytest -k parent -v"
+      - "pytest -k parent -v"
     execution:
       owner: "个人开发者"
       nightly:
@@ -8274,6 +8300,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+        progress: "2026-10-05：父块展开（方案 A）锁定验收：命中子块保留子块并追加父块、去重、父块继承评分；pytest -k parent 5/5 passed；待人工审查"
 
   - id: "RAG-020"
     title: "文档分块详情查看（知识库逐块展示）"
@@ -8284,9 +8311,9 @@ tasks:
     context:
       problem: "知识库文档仅有列表与分块数统计，无逐块详情查看。"
       facts:
-        - claim: "2026-10-05 用户直接需求，已完成实现。
+        - claim: "2026-10-05 用户直接需求，已完成实现。"
           evidence: "docs/plans/implementation_rag_chunks_20261005.md"
-        - claim: "后端新增分块接口，前端按块展示。
+        - claim: "后端新增分块接口，前端按块展示。"
           evidence: "app/api/routes/rag.py /documents/{id}/chunks"
     scope:
       allowed_paths:
@@ -8727,46 +8754,56 @@ tasks:
     title: "召回率持续测评门禁：基线挂 CI 作 1.0 发布门禁"
     status: "backlog"
     priority: "P1"
-    target_date: ""
+    target_date: ''
     depends_on:
-      - "RAG-005"
+    - "RAG-005"
+    - "NFR-001"
+    - "RAG-034"
     context:
       problem: "离线基线 rag-v0.1 已冻结（RAG-005），但未挂 CI 做持续门禁；改动切分/Embedding/检索参数时无法自动拦截召回率退化。"
       facts:
-        - claim: "评审 §2.1：有离线基线但无 1.0 持续测评门禁。"
-          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md"
-        - claim: "现有 pytest 覆盖行为，但没有 Recall/MRR/nDCG 门禁拦截检索回归。"
-          evidence: "tasks.yaml RAG-005；evals/datasets/rag-v0.1/cases.json"
+      - claim: "评审 §2.1：有离线基线但无 1.0 持续测评门禁。"
+        evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md"
+      - claim: "现有 pytest 覆盖行为，但没有 Recall/MRR/nDCG 门禁拦截检索回归。"
+        evidence: "tasks.yaml RAG-005；evals/datasets/rag-v0.1/cases.json"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
-        - "app/rag/"
-        - "evals/"
-        - "tests/"
-        - ".github/workflows/ci.yml"
-        - "tasks.yaml"
+      - "app/rag/"
+      - "evals/"
+      - "tests/"
+      - ".github/workflows/ci.yml"
+      - "tasks.yaml"
+      - "docs/"
+      - "scripts/"
+      - "README.md"
       forbidden_paths:
-        - ".env"
-        - "生产数据"
+      - ".env"
+      - "生产数据"
       deliverables:
-        - "把 rag-v0.1 基线评测接入 CI，作为 1.0 发布门禁之一"
-        - "改动切分/Embedding/检索参数时自动跑基线，拦截 Recall/MRR 退化"
+      - "把 rag-v0.1 基线评测接入 CI，作为 1.0 发布门禁之一"
+      - "改动切分/Embedding/检索参数时自动跑基线，拦截 Recall/MRR 退化"
       non_goals:
-        - "不做重排实验（REL-004 已裁定）"
-        - "不新增数据集（沿用 rag-v0.1）"
-        - "不把 Mock Embedding 的 Recall 当上线证据"
+      - "不做重排实验（REL-004 已裁定）"
+      - "不新增数据集（沿用 rag-v0.1）"
+      - "不把 Mock Embedding 的 Recall 当上线证据"
     acceptance:
-      - "CI 中基线评测可复现且通过"
-      - "人为制造 Recall 退化时 CI 拦截（门禁生效）"
-      - "报告记录所用 Embedding 的 provider/模型/维度且非 Mock"
+    - "CI 中基线评测可复现且通过"
+    - "人为制造 Recall 退化时 CI 拦截（门禁生效）"
+    - "报告记录所用 Embedding 的 provider/模型/维度且非 Mock"
+    - "实施计划先批准 Recall@1/5/10、MRR、nDCG 与安全切片阈值及容忍量；外部模型失败不得记质量通过；门禁走实际对话过滤契约。"
     risk:
       level: "L1"
       side_effect: "rag-eval-gate"
       rollback: "回退门禁提交，改回仅手动跑基线。"
     evaluation:
       cases:
-        - "CI 跑基线通过 + 注入退化用例被拦截"
+      - "CI 跑基线通过 + 注入退化用例被拦截"
       commands:
-        - "pytest tests/test_rag.py -v；CI 触发基线评测"
+      - "python scripts/run_rag_baseline.py --mode official"
+      - "pytest tests/eval/ -v"
+      - "CI 运行同一评测入口并注入退化验证拦截"
     execution:
       owner: "个人开发者"
       nightly:
@@ -8774,6 +8811,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+      blocked_by: "NFR-001/RAG-034 完成且发布指标阈值获批准后开工。"
 
   - id: "PAGT-006"
     title: "独立 Tool Executor + State Manager 层（随工具扩展落地）"
@@ -8821,7 +8859,7 @@ tasks:
       cases:
         - "工具调用经 Executor + 状态恢复 + 主链回归"
       commands:
-        - "pytest -k "agent or tool or chat""
+        - 'pytest -k "agent or tool or chat"'
     execution:
       owner: "个人开发者"
       nightly:
@@ -8888,45 +8926,48 @@ tasks:
     title: "Query Rewrite（Deferred：进入条件 Recall@5 跌破 0.90）"
     status: "backlog"
     priority: "P2"
-    target_date: ""
+    target_date: ''
     depends_on: []
     context:
       problem: "查询无改写层：仅 HybridRetriever 运行时拼 query+plan 走混合检索，无查询扩展/纠错/澄清/同义词处理。动静态查询优化缺口（评审确认仅动态构造、无优化层）。"
       facts:
-        - claim: "AGENTS.md §14：Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。"
-          evidence: "AGENTS.md §14"
-        - claim: "代码无 query_rewrite / rewrite 实现。"
-          evidence: "app/rag/；grep -rn 'rewrite' app --include='*.py' 无输出"
-        - claim: "RAG 基线 Recall@5 当前约 0.971，未跌破进入条件。"
-          evidence: "evals/reports/rag-v0.1-baseline-20260919.json overall.recall"
+      - claim: "AGENTS.md §14：Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。"
+        evidence: "AGENTS.md §14"
+      - claim: "代码无 query_rewrite / rewrite 实现。"
+        evidence: "app/rag/；grep -rn 'rewrite' app --include='*.py' 无输出"
+      - claim: "RAG 基线 Recall@5 当前约 0.971，未跌破进入条件。"
+        evidence: "evals/reports/rag-v0.1-baseline-20260919.json overall.recall"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
-        - "app/rag/"
-        - "evals/"
-        - "tests/"
-        - "docs/"
-        - "tasks.yaml"
+      - "app/rag/"
+      - "evals/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      - "scripts/"
       forbidden_paths:
-        - ".env"
-        - "生产数据"
+      - ".env"
+      - "生产数据"
       deliverables:
-        - "进入条件满足时：查询改写（扩展/纠错/澄清）提升 Recall@5"
+      - "进入条件满足时：查询改写（扩展/纠错/澄清）提升 Recall@5"
       non_goals:
-        - "在 Recall@5 未跌破 0.90 前不启动（Deferred）"
-        - "不同时改切分/Embedding/Reranker"
-        - "不用 Mock Embedding 当证据"
+      - "在 Recall@5 未跌破 0.90 前不启动（Deferred）"
+      - "不同时改切分/Embedding/Reranker"
+      - "不用 Mock Embedding 当证据"
     acceptance:
-      - "进入条件满足后：改写前后 Recall@5 有提升且不破坏越权/安全切片"
-      - "未达进入条件前：不实施（保持现状）"
+    - "进入条件满足后：改写前后 Recall@5 有提升且不破坏越权/安全切片"
+    - "未达进入条件前：不实施（保持现状）"
     risk:
       level: "L1"
       side_effect: "query-rewrite-deferred"
       rollback: "进入条件未满足前不落地。"
     evaluation:
       cases:
-        - "触发改写后 Recall@5 对比"
+      - "触发改写后 Recall@5 对比"
       commands:
-        - "python scripts/run_rag_eval.py --mode official"
+      - "python scripts/run_rag_baseline.py --mode official"
     execution:
       owner: "个人开发者"
       nightly:
@@ -8934,49 +8975,57 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+      blocked_by: "Deferred：真实、可复现 Recall@5 跌破 0.90 并确认进入条件前不可开工。"
 
   - id: "RAG-019"
     title: "LLM 响应与检索结果缓存（P2）"
     status: "backlog"
     priority: "P2"
-    target_date: ""
-    depends_on: []
+    target_date: ''
+    depends_on:
+    - "RAG-026"
+    - "RAG-032"
     context:
       problem: "无缓存：相同查询重复打 LLM / 检索，热点场景浪费延迟与成本；全仓无 Redis，仅 config lru_cache 与局部 doc_cache。"
       facts:
-        - claim: "全仓无 LLM 响应缓存 / 检索结果缓存 / Redis 依赖。"
-          evidence: "app/；grep -rln 'redis' app --include='*.py' 无输出"
-        - claim: "现有缓存仅 config.py lru_cache(1)、HTTP no-cache、local.py 函数内 doc_cache。"
-          evidence: "app/core/config.py:258；app/main.py:129；app/rag/vectorstore/local.py:254"
+      - claim: "全仓无 LLM 响应缓存 / 检索结果缓存 / Redis 依赖。"
+        evidence: "app/；grep -rln 'redis' app --include='*.py' 无输出"
+      - claim: "现有缓存仅 config.py lru_cache(1)、HTTP no-cache、local.py 函数内 doc_cache。"
+        evidence: "app/core/config.py:258；app/main.py:129；app/rag/vectorstore/local.py:254"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
-        - "app/"
-        - ".env.example"
-        - "tests/"
-        - "tasks.yaml"
+      - "app/"
+      - ".env.example"
+      - "tests/"
+      - "tasks.yaml"
+      - "docs/"
       forbidden_paths:
-        - ".env"
-        - "生产密钥"
+      - ".env"
+      - "生产密钥"
       deliverables:
-        - "检索结果缓存：相同查询+参数命中缓存，不重复打向量库"
-        - "LLM 响应缓存：确定性请求（temperature=0 等）可命中缓存省成本"
+      - "检索结果缓存：相同查询+参数命中缓存，不重复打向量库"
+      - "LLM 响应缓存：确定性请求（temperature=0 等）可命中缓存省成本"
+      - "缓存键包含租户、有效授权域、数据/索引版本；LLM 键包含实际上下文与模型/Prompt 版本；命中再授权。"
       non_goals:
-        - "不引入 Redis 依赖（先进程内缓存，评估是否需要外部缓存）"
-        - "不对非确定性请求（temperature>0）强缓存"
-        - "缓存键不含权限/租户隔离信息"
+      - "不引入 Redis 依赖（先进程内缓存，评估是否需要外部缓存）"
+      - "不对非确定性请求（temperature>0）强缓存"
+      - "不以 temperature=0 单独证明答案可安全复用。"
     acceptance:
-      - "相同检索查询命中缓存，向量库调用次数下降"
-      - "相同确定性 LLM 请求命中缓存，不重复计费"
-      - "缓存不泄露跨租户结果"
+    - "相同检索查询命中缓存，向量库调用次数下降"
+    - "相同确定性 LLM 请求命中缓存，不重复计费"
+    - "缓存不泄露跨租户结果"
+    - "发布、删除、重解析和改权使缓存失效；同查询跨租户/不同权限不复用。"
     risk:
       level: "L2"
       side_effect: "cache-added"
       rollback: "回退缓存提交。"
     evaluation:
       cases:
-        - "热点查询命中 + 跨租户不串 + 非确定性不命中"
+      - "热点查询命中 + 跨租户不串 + 非确定性不命中"
       commands:
-        - "pytest -k 'cache'"
+      - "pytest -k 'cache'"
     execution:
       owner: "个人开发者"
       nightly:
@@ -9029,6 +9078,1106 @@ tasks:
         - "pytest -k 'memory'"
     execution:
       owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-021"
+    title: "分块边界完整性保护与切分质量评估"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "已有标题/解析块/版式感知，仍缺代码围栏、盒图和表格的统一完整性保护，parent_child 长段硬切可切坏结构。"
+      facts:
+      - claim: "parent_child 子块把 ASCII 盒图从行中切断，每块残缺。"
+        evidence: "docs/product/项目设计方案.md 分块详情截图 2026-10-05"
+      - claim: "已有策略具备局部结构识别，但缺完整结构原子性与超长结构处理的统一契约。"
+        evidence: "app/rag/chunking/"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/chunking/"
+      - "app/rag/document_parsers/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      - "app/rag/ingestion.py"
+      - "evals/"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      deliverables:
+      - "共享结构单元保护与来源范围，保留代码/盒图换行缩进、表格行与表头关联。"
+      - "chunk_size 为软目标，硬限来自批准的输入限制；超长结构安全拆分或 oversized，不静默字符切断。"
+      - "原文覆盖、乱序、结构破坏率与长度分布基线；规则层不依赖 LLM。"
+      non_goals:
+      - "不改 embedding/检索/融合（RAG-005 基线）"
+      - "不新增无指标的切分策略"
+    acceptance:
+    - "未超硬限的截图同类盒图与 fenced code 整体完整；超长结构有明确结果。"
+    - "原文无丢失/乱序；来源范围可复算；重复表头/overlap 区分派生上下文。"
+    - "共享保护对各策略的适用/降级有测试，不声称所有结构均能无损强拆。"
+    risk:
+      level: "L1"
+      side_effect: "chunk-boundary-guard"
+      rollback: "回退分块策略改动并重建受影响文档索引（需人工确认）。"
+    evaluation:
+      cases:
+      - "含 ASCII 盒图文档分块后盒图行完整"
+      - "切分质量指标可复算"
+      commands:
+      - "pytest -k 'chunk' -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      blocked_by: "结构软目标/硬限与 oversized 规则获确认；涉及 ADR-0005 边界的改动须 Accepted 后实施。"
+
+  - id: "RAG-022"
+    title: "自动切分策略选择（auto-routing 增强）"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-021"
+    context:
+      problem: "企业上线需按上传文档类型 + 读取内容自动适配切分；现有 _auto_route 仅按文本启发式选 4 种（structured/token_aware/recursive/paragraph），不接收文档类型，路由不到
+        format_aware/layout_aware/semantic/parent_child，无切分质量反馈。"
+      facts:
+      - claim: "_auto_route 只接收 text，不接文档类型/解析器/有无 blocks 与 bbox。"
+        evidence: "app/rag/chunking/factory.py _auto_route"
+      - claim: "auto 路由结果不覆盖 format_aware/layout_aware/semantic/parent_child。"
+        evidence: "app/rag/chunking/factory.py _auto_route 返回值"
+      - claim: "默认策略是 structured，auto 需显式开启。"
+        evidence: "app/core/config.py RAG_CHUNK_STRATEGY"
+      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/models/rag.py"
+      - "alembic/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "README.md"
+      - "tests/"
+      - "evals/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      deliverables:
+      - "按文档类型、blocks/bbox/表格与内容特征的可追溯路由决策表，不强行覆盖十种。"
+      - "上传/重解析复用版本化切分计划并保存策略参数；父块先建，子块在父块内切，按源范围关联。"
+      - "缺结构信息显式保守降级，切分质量可复算。"
+      non_goals:
+      - "不改 embedding/检索/融合（RAG-005 基线）"
+      - "不无指标地把 auto 设为默认（需冻结基线对比后）"
+      - "不与 RAG-021 边界保护合并实现（021 防切坏，022 自动选型）"
+    acceptance:
+    - "同原文同计划上传/重解析保留相同结构与策略；旧数据缺计划有显式兼容路径。"
+    - "带 bbox 与 Markdown 样本路由可解释，无 bbox/blocks 明确降级。"
+    - "父子范围包含关系正确；对照 RAG-021 指标；不无指标切换默认。"
+    risk:
+      level: "L1"
+      side_effect: "auto-routing-enhance"
+      rollback: "回退路由增强与默认策略改动；重建受影响文档索引需人工确认。"
+    evaluation:
+      cases:
+      - "不同文档类型路由到对应策略"
+      - "路由质量指标可复算"
+      commands:
+      - "pytest -k 'route or auto' -v"
+    execution:
+      owner: "个人开发者"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      blocked_by: "RAG-021 验收通过；策略持久化/边界变更所需 ADR 获批准；不自动重建旧文档。"
+
+
+  - id: "RAG-023"
+    title: "检索适配分数契约修复"
+    status: "done"
+    priority: "P0"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "LangChain 适配返回 RRF score 后误赋 similarity。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/backend/"
+      - "app/rag/vectorstore/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "透传真稠密 similarity，保留 score 融合语义。"
+      non_goals:
+      - "不改 RRF/Embedding/阈值。"
+    acceptance:
+    - "融合分低但余弦高的命中不被误滤；缺失/非法 similarity 不伪造。"
+    risk:
+      level: "L1"
+      side_effect: "检索适配分数契约修复"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "融合分低但余弦高的命中不被误滤；缺失/非法 similarity 不伪造。"
+      commands:
+      - "pytest tests/test_rag_langchain_score_contract.py tests/test_rag_threshold.py tests/test_rag_backend.py -q"
+      - "ruff check --no-cache app/rag/backend/langchain_backend.py tests/test_rag_langchain_score_contract.py"
+      - "mypy app/rag/backend/langchain_backend.py"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ""
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: "2026-10-05：用户明确批准关闭。17 项契约/阈值测试通过，Ruff 与目标文件 mypy 通过；豆包独立审查已提供。用户页面检索日志确认 effective=langchain、LangChainRagBackend、fallback=false，接口 200。审查与验收记录见 docs/reviews/2026-10-05-RAG023分数契约复核.md。"
+
+  - id: "RAG-024"
+    title: "导入新版本发布原子性"
+    status: "backlog"
+    priority: "P0"
+    target_date: ''
+    depends_on:
+    - "RAG-013"
+    context:
+      problem: "新版本摄取前旧版退出 current 的独立提交可能在失败后无法恢复。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/models/rag.py"
+      - "alembic/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "准备完成后原子切换；失败保留旧版，重试幂等。"
+      non_goals:
+      - "不改版本产品语义、不自动迁移旧库。"
+    acceptance:
+    - "Embedding/落库失败后旧版仍可检索；成功只一个 current；外部索引补偿有记录。"
+    risk:
+      level: "L2"
+      side_effect: "导入新版本发布原子性"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "Embedding/落库失败后旧版仍可检索；成功只一个 current；外部索引补偿有记录。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "实际故障复现与事务基线隔离后开工；生产重建另获授权。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-025"
+    title: "RAG 日志内容最小化"
+    status: "backlog"
+    priority: "P0"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "问题/计划与 sources 摘录进入日志调用，最终是否脱敏需复核。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/services/chat_service.py"
+      - "app/core/"
+      - "app/security/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "移除正文日志，保留关联 ID、计数、阈值与原因。"
+      non_goals:
+      - "不重写日志平台。"
+    acceptance:
+    - "最终输出无凭据、手机号、敏感问题/文档摘录；故障日志仍可关联。"
+    risk:
+      level: "L1"
+      side_effect: "RAG 日志内容最小化"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "最终输出无凭据、手机号、敏感问题/文档摘录；故障日志仍可关联。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ''
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-026"
+    title: "上传者范围贯穿检索授权"
+    status: "backlog"
+    priority: "P0"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "uploader 判定未贯穿只携 tenant_id 的对话检索。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/services/chat_service.py"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "鉴权主体/有效读范围在检索前过滤，覆盖适配/父块/摘要。"
+      non_goals:
+      - "不新增资源 ACL、不改变默认 tenant。"
+    acceptance:
+    - "uploader A/B 同租户互不可见；tenant 共享保留；跨租户拒绝。"
+    risk:
+      level: "L2"
+      side_effect: "上传者范围贯穿检索授权"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "uploader A/B 同租户互不可见；tenant 共享保留；跨租户拒绝。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "先核对 ADR-0001 uploader 兼容契约；若改变权限语义先修订批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-027"
+    title: "授权引用原文只读核验"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-026"
+    context:
+      problem: "同租户可检索他人文档，但引用详情走控制面权限。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/api/routes/"
+      - "frontend/src/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "先落只读溯源权限 ADR，批准后提供受控原文核验入口及前端定位。"
+      non_goals:
+      - "不放宽删除/重解析控制权。"
+    acceptance:
+    - "A 上传 B 检索核验成功；B 不能删改 A；跨租户和软删拒绝。"
+    risk:
+      level: "L2"
+      side_effect: "授权引用原文只读核验"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "A 上传 B 检索核验成功；B 不能删改 A；跨租户和软删拒绝。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+      - "cd frontend; npm run typecheck"
+      - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "只读溯源权限 ADR Accepted 后才改业务。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-028"
+    title: "模型能力契约与全部调用预算"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "无模型窗口契约，当前 max_tokens 是输出上限。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/llm/"
+      - "app/rag/"
+      - "app/agents/"
+      - "app/services/chat_service.py"
+      - "app/core/config.py"
+      - ".env.example"
+      - "README.md"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "版本化生成/Embedding 能力、计数器；每次实际 payload Guard，包含工具与 critique。"
+      non_goals:
+      - "不向 LLM 自报窗口、不猜未知上限、不换供应商。"
+    acceptance:
+    - "模型切换按对应窗口；未知模型无批准配置拒绝；最终 payload+输出预留+余量不超已验证限制。"
+    risk:
+      level: "L2"
+      side_effect: "模型能力契约与全部调用预算"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "模型切换按对应窗口；未知模型无批准配置拒绝；最终 payload+输出预留+余量不超已验证限制。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "ADR-0005 Accepted；能力来源/计数精度/估算余量获批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-029"
+    title: "按块上下文组装与真实来源"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-028"
+    context:
+      problem: "字符截断可能破坏围栏，last_hits 不等于实际模型证据。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/agents/"
+      - "app/services/chat_service.py"
+      - "app/api/routes/"
+      - "frontend/src/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "纯 Context Builder 按块预算；Memory/RAG 优先级；selected 来源与实际 payload 对齐。"
+      non_goals:
+      - "不把 selected 宣称逐答案点 cited、不新增数据库直连。"
+    acceptance:
+    - "围栏闭合；长历史/工具合并不超预算；未选块不出现在 selected 来源。"
+    risk:
+      level: "L2"
+      side_effect: "按块上下文组装与真实来源"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "围栏闭合；长历史/工具合并不超预算；未选块不出现在 selected 来源。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+      - "cd frontend; npm run typecheck"
+      - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "ADR-0005 Accepted；预算与来源契约获批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-030"
+    title: "对话父块受控组装"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-016"
+    - "RAG-029"
+    - "RAG-026"
+    context:
+      problem: "搜索父块展开不能证明对话选入父块。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/services/chat_service.py"
+      - "app/agents/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "授权/版本/注入复核后按预算选入父块并去重，保留定位元信息。"
+      non_goals:
+      - "不只返回父块、不绕过预算与阈值。"
+    acceptance:
+    - "同步/流式实际上下文有父块；重复去重；他租户/历史/注入父块拒绝。"
+    risk:
+      level: "L2"
+      side_effect: "对话父块受控组装"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "同步/流式实际上下文有父块；重复去重；他租户/历史/注入父块拒绝。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "ADR-0005 Accepted。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-031"
+    title: "LLM 辅助切分边界"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-022"
+    - "RAG-028"
+    context:
+      problem: "规则结构保护之外的主题边界需要单独评测辅助能力。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/llm/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "README.md"
+      - "evals/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "模型仅输出边界 ID；原文由代码切取；校验、有限调用、失败规则降级。"
+      non_goals:
+      - "不改写原文、不替代结构保护、不默认启用。"
+    acceptance:
+    - "无丢失/乱序/越界；注入/坏 JSON/超时回退；真实单变量质量与成本报告。"
+    risk:
+      level: "L2"
+      side_effect: "LLM 辅助切分边界"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "无丢失/乱序/越界；注入/坏 JSON/超时回退；真实单变量质量与成本报告。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "ADR-0005 Accepted，数据处理授权与质量/成本门禁获批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-032"
+    title: "Embedding 索引身份与切换治理"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "维度校验和 health 展示不足以阻止同维度异模型混用。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/models/rag.py"
+      - "alembic/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "README.md"
+      - "scripts/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "绑定 provider/model/dim/index_version；新模型新索引构建、校验再切换。"
+      non_goals:
+      - "不原地改模型、不默认切 Milvus。"
+    acceptance:
+    - "同维度异模型阻断混用；新 collection 全量重建与回滚证据；旧版持续可读。"
+    risk:
+      level: "L2"
+      side_effect: "Embedding 索引身份与切换治理"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "同维度异模型阻断混用；新 collection 全量重建与回滚证据；旧版持续可读。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "索引迁移方案/相关 ADR 批准；实际重建另获授权。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-033"
+    title: "多格式解析与 OCR 质量基线"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "解析代码存在不等于真实格式/扫描件质量已验收。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/document_parsers/"
+      - "app/rag/ocr/"
+      - "evals/"
+      - "scripts/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "各格式、中文 OCR、双栏/表格样本、顺序/覆盖指标与依赖失败行为。"
+      non_goals:
+      - "不新增解析供应商、不以 Mock 证明 OCR 质量。"
+    acceptance:
+    - "真实依赖样本报告含覆盖与阅读顺序、失败清单；质量门禁评审锁定。"
+    risk:
+      level: "L1"
+      side_effect: "多格式解析与 OCR 质量基线"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "真实依赖样本报告含覆盖与阅读顺序、失败清单；质量门禁评审锁定。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "真实依赖与样本数据授权到位。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-034"
+    title: "RAG 评测分级与审核链核对"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-004"
+    context:
+      problem: "需复核现有人工 Gold、split 与来源链，不预设数据均不可信。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "evals/"
+      - "tests/eval/"
+      - "scripts/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "审核链、Gold/Silver/Adversarial/Regression/Smoke、泄漏检查与版本登记。"
+      non_goals:
+      - "不改冻结报告、不把 AI 生成自动升级 Gold。"
+    acceptance:
+    - "每条 Gold 有人工记录与原文证据；缺证据降级或补审；split 无泄漏。"
+    risk:
+      level: "L0"
+      side_effect: "documentation-only"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "每条 Gold 有人工记录与原文证据；缺证据降级或补审；split 无泄漏。"
+      commands:
+      - "git diff --check"
+    execution:
+      owner: "个人开发者"
+      blocked_by: ''
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-035"
+    title: "真实 RAG 生成与引用评测"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-034"
+    - "RAG-023"
+    context:
+      problem: "检索命中和 quote coverage 不能证明最终答案/拒答/引用正确。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "evals/"
+      - "tests/eval/"
+      - "scripts/"
+      - "app/rag/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "真实模型答案点、引用准确、无答案、冲突/过期、注入与工具行为评测。"
+      non_goals:
+      - "不以模型自评替代人工、不用 holdout 调参。"
+    acceptance:
+    - "版本化报告与失败切片；人工确认 Gold；生成发布阈值批准并锁定；Mock 仅链路。"
+    risk:
+      level: "L1"
+      side_effect: "真实 RAG 生成与引用评测"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "版本化报告与失败切片；人工确认 Gold；生成发布阈值批准并锁定；Mock 仅链路。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "真实模型配置与数据授权；生成质量阈值获批准后才用于上线判断。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-036"
+    title: "跨向量库混合语义验收"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-015"
+    context:
+      problem: "Milvus 在稠密候选内算 BM25，与 Local 全候选不等价；全零仍造稀疏排名。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/vectorstore/"
+      - "evals/"
+      - "scripts/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "记录语义/适用边界，修复零分稀疏排名，运行词面与过滤对照。"
+      non_goals:
+      - "不直接改成独立稀疏召回、不改 RRF。"
+    acceptance:
+    - "全零不造排名；纯关键词遗漏报告；真实 Milvus 切片可复现；新增召回架构另 ADR。"
+    risk:
+      level: "L1"
+      side_effect: "跨向量库混合语义验收"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "全零不造排名；纯关键词遗漏报告；真实 Milvus 切片可复现；新增召回架构另 ADR。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "真实 Milvus/Embedding 可用。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-037"
+    title: "检索状态与最终拒答契约"
+    status: "backlog"
+    priority: "P0"
+    target_date: ''
+    depends_on:
+    - "RAG-023"
+    context:
+      problem: "故障、无命中、全低分现有路径未形成最终回复统一契约。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/services/chat_service.py"
+      - "app/agents/"
+      - "app/api/routes/"
+      - "frontend/src/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "ok/no_hit/below_threshold/unavailable 状态；入口/后端矩阵；明确少返回策略。"
+      non_goals:
+      - "不自动补位改变排名、不做无界兜底生成。"
+    acceptance:
+    - "同步/流式故障明确提示不冒充知识回答；低分最终回复验收；补位仅评测不自动采纳。"
+    risk:
+      level: "L2"
+      side_effect: "检索状态与最终拒答契约"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "同步/流式故障明确提示不冒充知识回答；低分最终回复验收；补位仅评测不自动采纳。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+      - "cd frontend; npm run typecheck"
+      - "cd frontend; npm run build"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "错误/拒答契约获批准；涉及 Harness 边界按 ADR-0005 批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-038"
+    title: "检索调用 deadline、重试与取消"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-037"
+    context:
+      problem: "已有 HTTP timeout；总 deadline、慢查询、有限重试与取消需专项核对。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "README.md"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "统一总时限、有限退避、取消传播与成本/错误追踪。"
+      non_goals:
+      - "不自动降级 BM25、不引入新队列依赖。"
+    acceptance:
+    - "429/5xx/慢查询/取消故障注入；重试次数与耗时有界；外部服务失败不伪造空知识。"
+    risk:
+      level: "L2"
+      side_effect: "检索调用 deadline、重试与取消"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "429/5xx/慢查询/取消故障注入；重试次数与耗时有界；外部服务失败不伪造空知识。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "deadline/重试上限在实现计划锁定；若新增降级架构另批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-039"
+    title: "导入任务恢复与多实例幂等"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "OPS-001"
+    - "OPS-002"
+    - "RAG-024"
+    context:
+      problem: "MAX_CONCURRENCY 当前作为批次 limit，逐个 await；需原子抢占与中断恢复。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/models/rag.py"
+      - "alembic/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "README.md"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "区分批次/并发，按批准方案租约抢占、重启恢复与幂等。"
+      non_goals:
+      - "不直接引入新队列、不重拆企业 OPS。"
+    acceptance:
+    - "多 worker 不重复发布；running 重启可恢复；并发与批次有实测。"
+    risk:
+      level: "L2"
+      side_effect: "导入任务恢复与多实例幂等"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "多 worker 不重复发布；running 重启可恢复；并发与批次有实测。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "OPS 外部状态/幂等契约批准；新依赖另批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-040"
+    title: "版本绑定章节摘要"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-022"
+    - "RAG-028"
+    - "RAG-029"
+    - "RAG-035"
+    context:
+      problem: "知识库无大章节派生摘要，Memory 摘要不承接此需求。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "app/rag/"
+      - "app/models/rag.py"
+      - "alembic/"
+      - "app/llm/"
+      - "app/core/config.py"
+      - ".env.example"
+      - "README.md"
+      - "evals/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "独立状态摘要任务、分批合并、支撑原文 ID、版本 hash/Prompt/模型绑定、失效与成本限制。"
+      non_goals:
+      - "不替代原文、不另建摘要向量检索、不默认启用。"
+    acceptance:
+    - "失败不影响原文检索；过期/软删/跨租户摘要拒绝；原文回查与真实保真评价；所有调用受预算。"
+    risk:
+      level: "L2"
+      side_effect: "版本绑定章节摘要"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "失败不影响原文检索；过期/软删/跨租户摘要拒绝；原文回查与真实保真评价；所有调用受预算。"
+      commands:
+      - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
+      - "ruff check app/rag/"
+      - "mypy app/rag/"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "ADR-0005 Accepted；摘要存储/授权/保留与质量门禁批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-041"
+    title: "资源级 ACL 进入条件与权限决策"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on: []
+    context:
+      problem: "资源 ACL 仍 Planned，现同租户当前版本共享不应算 ACL 完成。"
+      facts:
+      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+        evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+    scope:
+      allowed_paths:
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      - "evals/reports/rag-v0.1-baseline-20260919.json"
+      deliverables:
+      - "目标版本纳入时先批准资源权限 ADR与独立拆分方案。"
+      non_goals:
+      - "进入条件未满足不实施 ACL、不改变 tenant 默认。"
+    acceptance:
+    - "决定明确主体/资源/动作、过滤与引用/摘要权限及迁移回滚；实施另卡。"
+    risk:
+      level: "L0"
+      side_effect: "documentation-only"
+      rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
+    evaluation:
+      cases:
+      - "决定明确主体/资源/动作、过滤与引用/摘要权限及迁移回滚；实施另卡。"
+      commands:
+      - "git diff --check"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "Deferred：资源 ACL 明确纳入目标版本且负责人授权决策时启动。"
       nightly:
         eligible: false
         production_access: false

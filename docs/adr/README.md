@@ -17,6 +17,12 @@
 权限过滤与生效日期过滤实现在 `RAG-006`。本阶段不切换默认向量库。  
 `RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后才改变检索候选集。
 
+## 评审中
+
+| 编号 | 文件 | 状态 | 范围 |
+|---|---|---|---|
+| ADR-0005 | [0005-rag-adaptive-chunking-context-budget.md](0005-rag-adaptive-chunking-context-budget.md) | Proposed | RAG 结构切分、LLM 辅助章节摘要与模型上下文预算；尚未批准实施 |
+
 ## 格式
 
 每份 ADR 至少包含：背景、事实、选项、决定、后果、迁移、验证和回滚。模板见 `docs/governance/agent-harness-engineering.md` §17。

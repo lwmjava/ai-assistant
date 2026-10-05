@@ -389,6 +389,106 @@ async def test_search_expands_child_hits_to_parent(
     assert any(r.id == parent.id for r in results)
 
 
+async def test_parent_expand_keeps_child_and_inherits_score(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """父块展开：命中子块时子块保留 + 父块追加，父块继承子块评分与相似度。"""
+    rag = RAGService(session, "pc-lock")
+    doc = await rag.ingest_text(
+        "父块A内容。子块B内容。子块C内容。",
+        title="父子锁定",
+        source="test",
+        user_id="pc-lock-user",
+        strategy="parent_child",
+    )
+    parent = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id.is_(None),
+        )
+    ).first()
+    child = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id == parent.id,
+        )
+    ).first()
+    assert parent is not None and child is not None
+
+    async def fake_hybrid_search(*args, **kwargs):
+        return [
+            ChunkResult(
+                id=child.id,
+                content=child.content,
+                source="test",
+                document_id=doc.id,
+                score=0.8,
+                similarity=0.61,
+            )
+        ]
+
+    monkeypatch.setattr(rag._backend._store, "hybrid_search", fake_hybrid_search)
+    results = await rag.search("父块A")
+    ids = [r.id for r in results]
+    assert child.id in ids, "命中子块应保留，不只返回父块"
+    assert parent.id in ids, "命中子块应追加父块"
+    parent_result = next(r for r in results if r.id == parent.id)
+    assert parent_result.score == pytest.approx(0.8)
+    assert parent_result.similarity == pytest.approx(0.61)
+
+
+async def test_parent_expand_dedupes_when_parent_child_both_hit(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """父子同时命中时，父块只出现一次（去重）。"""
+    rag = RAGService(session, "pc-dedupe")
+    doc = await rag.ingest_text(
+        "父块X内容。子块Y内容。",
+        title="父子去重",
+        source="test",
+        user_id="pc-dedupe-user",
+        strategy="parent_child",
+    )
+    parent = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id.is_(None),
+        )
+    ).first()
+    child = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id == parent.id,
+        )
+    ).first()
+    assert parent is not None and child is not None
+
+    async def fake_hybrid_search(*args, **kwargs):
+        return [
+            ChunkResult(
+                id=child.id,
+                content=child.content,
+                source="test",
+                document_id=doc.id,
+                score=0.7,
+                similarity=0.5,
+            ),
+            ChunkResult(
+                id=parent.id,
+                content=parent.content,
+                source="test",
+                document_id=doc.id,
+                score=0.9,
+                similarity=0.8,
+            ),
+        ]
+
+    monkeypatch.setattr(rag._backend._store, "hybrid_search", fake_hybrid_search)
+    results = await rag.search("父块X")
+    ids = [r.id for r in results]
+    assert ids.count(parent.id) == 1, "父子同时命中时父块去重"
+
+
 async def test_retriever_as_pipeline_hook(session: Session) -> None:
     rag = RAGService(session, "hook-tenant", embedding_provider=MockEmbeddingProvider(dim=256))
     await rag.ingest_text(

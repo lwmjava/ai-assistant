@@ -292,7 +292,7 @@ npm run build
 - 确定性逻辑优先使用单元/契约测试；非确定性行为使用版本化 Evaluation。
 - HTTP 200、模型自评和 Mock 全绿不等于真实业务成功。
 - 性能与检索质量数字必须写明所用 Embedding 的 provider、模型与维度，以及机器规格。Mock Embedding 的结果只能用来证明链路走通，不得写成上线指标或质量提升。
-- 类型检查与 pytest 使用 conda 环境 `ai-assistant` 的解释器（`D:\install\anaconda3\envs\ai-assistant\Scripts`）。默认 PATH 上的 base 解释器缺少项目依赖。那次失败要记下来，不能当成这批业务断言的结论，也不能改去另一个未声明的环境。
+- 类型检查与 pytest 使用 conda 环境 `ai-assistant` 的解释器（`D:\DepTooL\anaconda3\envs\ai-assistant\Scripts`）。默认 PATH 上的 base 解释器缺少项目依赖。那次失败要记下来，不能当成这批业务断言的结论，也不能改去另一个未声明的环境。
 
 ### 类型检查
 
@@ -407,7 +407,7 @@ GOV-001 治理文件项目化
 | `NFR-001`～`NFR-011` | 非功能需求 | CI、结构化日志、PostgreSQL 生产验证、密钥与依赖扫描、密钥加密存储、审计保留、性能压测、生产编排、反向代理与 SSE、备份脚本、`/health` 暴露 Embedding 状态 |
 | `PAGT-001`～`PAGT-005` | Agent 工具打磨 | web_search 与 file_ops 读能力、工具十要素契约、调用预算、Plan 可编排、Skill 版本回归 |
 | `PWFL-001`～`PWFL-004` | 工作流打磨 | 重试、超时与取消、并发与幂等、失败告警与日志持久化 |
-| `PRAG-001`、`PRAG-003`、`PRAG-004` | RAG 打磨 | 越权核对、Citation 产品化、低分阈值与拒答。`PRAG-002` 重排落地已取消 |
+| `PRAG-001`、`PRAG-003`、`PRAG-004` | RAG 打磨 | 越权核对、Citation 产品化、低分阈值与拒答。`PRAG-002` 重排落地保留 backlog，新的采纳证据获批准前不可启动 |
 | `PMCP-001`～`PMCP-005` | MCP 打磨 | 超时重连心跳、权限与风险分级、调用审计、凭据管理、版本兼容 |
 | `ERR-001` | 统一错误码 | 端到端验收 |
 | `OPS-001`～`OPS-007` | 运维与发布 | 多实例外部化、并发幂等、升级回滚演练、RTO/RPO、数据合规删除、依赖许可审计、指标与告警 |
@@ -415,7 +415,7 @@ GOV-001 治理文件项目化
 
 依赖关系见 `docs/plans/新增38卡与现有18任务依赖关系说明.md`，评审结论见 `docs/reviews/`。执行顺序由 `depends_on` 决定，不是文件位置。
 
-A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。独立重排只做一轮，由 `REL-004` 承担；`PRAG-002` 只在其结论采纳后做落地（开关、灰度、开销），不重复跑实验。`REL-004` 已记录不采纳，`PRAG-002` 已取消。Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
+A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。独立重排只做一轮，由 `REL-004` 承担；`PRAG-002` 只在其结论采纳后做落地（开关、灰度、开销），不重复跑实验。`REL-004` 已记录不采纳，`PRAG-002` 于 2026-10-04 恢复 backlog；当前候选不采纳，新的明确采纳决定落盘前不可启动。Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
 
 ```text
 阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）
@@ -432,3 +432,5 @@ A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Re
 `OPS-004` 必须先于 `OPS-003`：先有恢复指标，演练才有合格线。`NFR-011` 不改生产缺密钥时的启动失败行为，只在进程已启动时让 `/health` 写出 provider、模型、维度与是否为 Mock。`NFR-009` 的检索延迟必须用真实 Embedding 测，Mock 结果不得写成达标。
 
 资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）。五条门槛已有 2026-09-29 的核对证据；默认配置仍是 `local`，Milvus 仍为 `Partial`。
+
+运行环境核对（2026-10-05）：实际解释器为 `D:\DepTooL\anaconda3\envs\ai-assistant\python.exe`；此前 `D:\install` 路径不存在。YAML 与 pytest 在此环境验证；mypy 1.14.1 已安装并完成版本验证；安装不等于类型检查通过，检查结论以实际命令输出为准。

@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
+from app.core.json_logging import JsonLogFormatter
 from app.models.rag import Document, DocumentChunk
 from app.models.user import User
 from app.rag.access import (
@@ -422,6 +423,21 @@ class RAGService:
         """对查询做混合检索，命中子块时展开父块上下文并去重。"""
         top_k = top_k or settings.RAG_TOP_K
         rag_backend = self._resolve_backend(backend)
+        requested_backend = (backend or self._default_backend_name or "native").strip().lower()
+        if requested_backend not in ("native", "langchain", "llamaindex"):
+            requested_backend = "unknown"
+        # Uvicorn 的 handler 不挂在根 logger 上；仅 lastResort 时 INFO 不会输出。
+        if not logger.hasHandlers():
+            handler = logging.StreamHandler()
+            handler.setFormatter(JsonLogFormatter())
+            logger.addHandler(handler)
+        logger.info(
+            "rag_search_backend requested=%s effective=%s implementation=%s fallback=%s",
+            requested_backend,
+            rag_backend.name,
+            type(rag_backend).__name__,
+            str(requested_backend != rag_backend.name).lower(),
+        )
         hits = await rag_backend.retrieve(
             query, tenant_id=self.tenant_id, top_k=top_k
         )
@@ -449,7 +465,7 @@ class RAGService:
                             source=parent_row.source,
                             document_id=parent_row.document_id,
                             score=hit.score,
-    similarity=hit.similarity,  # 父块继承子块相似度
+                        similarity=hit.similarity,  # 父块继承子块相似度
                             version_status=hit.version_status,
                         )
                     )

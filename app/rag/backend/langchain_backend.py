@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -87,8 +88,10 @@ class _ProjectVectorStoreAdapter(VectorStore):
 
     def add_texts(
         self,
-        texts: list[str],
+        texts: Iterable[str],
         metadatas: list[dict] | None = None,
+        *,
+        ids: list[str] | None = None,
         **kwargs: object,
     ) -> list[str]:
         raise NotImplementedError("写入统一走 RAGService，避免绕过主库与租户隔离")
@@ -99,8 +102,10 @@ class _ProjectVectorStoreAdapter(VectorStore):
         texts: list[str],
         embedding: Embeddings | None = None,
         metadatas: list[dict] | None = None,
+        *,
+        ids: list[str] | None = None,
         **kwargs: object,
-    ) -> VectorStore:
+    ) -> _ProjectVectorStoreAdapter:
         raise NotImplementedError("写入统一走 RAGService，避免绕过主库与租户隔离")
 
     def similarity_search(
@@ -137,6 +142,7 @@ class _ProjectVectorStoreAdapter(VectorStore):
                         "document_id": h.document_id,
                         "source": h.source,
                         "version_status": h.version_status,
+                        "similarity": h.similarity,
                     },
                 ),
                 h.score,
@@ -208,6 +214,14 @@ class LangChainRagBackend(RagBackend):
         results: list[ChunkResult] = []
         for doc, score in pairs:
             meta = doc.metadata or {}
+            similarity = meta.get("similarity")
+            if (
+                isinstance(similarity, bool)
+                or not isinstance(similarity, int | float)
+                or not math.isfinite(similarity)
+                or not -1 <= similarity <= 1
+            ):
+                raise ValueError("Invalid dense similarity in retrieval metadata")
             results.append(
                 ChunkResult(
                     id=str(meta.get("chunk_id") or ""),
@@ -216,7 +230,7 @@ class LangChainRagBackend(RagBackend):
                     document_id=str(meta.get("document_id") or ""),
                     score=float(score),
                     version_status=str(meta.get("version_status") or "current"),
-    similarity=float(score),  # langchain 相似度检索的 score 即相似度
+                    similarity=float(similarity),
                 )
             )
         return drop_injected_chunks(results, keep=top_k)

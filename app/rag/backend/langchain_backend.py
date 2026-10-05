@@ -216,6 +216,7 @@ class LangChainRagBackend(RagBackend):
                     document_id=str(meta.get("document_id") or ""),
                     score=float(score),
                     version_status=str(meta.get("version_status") or "current"),
+    similarity=float(score),  # langchain 相似度检索的 score 即相似度
                 )
             )
         return drop_injected_chunks(results, keep=top_k)

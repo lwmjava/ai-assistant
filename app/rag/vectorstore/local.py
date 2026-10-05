@@ -235,6 +235,7 @@ class LocalVectorStore(VectorStore):
                     document_id=row.document_id,
                     score=float(score),
                     version_status=version_by_chunk.get(row.id, "current"),
+                    similarity=float(dense[idx]),
                 )
             )
         return results

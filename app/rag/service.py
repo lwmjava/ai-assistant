@@ -413,6 +413,7 @@ class RAGService:
                             source=parent_row.source,
                             document_id=parent_row.document_id,
                             score=hit.score,
+    similarity=hit.similarity,  # 父块继承子块相似度
                             version_status=hit.version_status,
                         )
                     )

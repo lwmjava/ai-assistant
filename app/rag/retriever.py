@@ -6,9 +6,14 @@
 文本拼接属于呈现策略，与用哪套后端无关，抽成 ``format_context`` 供各处复用。
 """
 
+import logging
+
+from app.core.config import settings
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import SCHEDULED_NOTICE
 from app.rag.vectorstore.base import ChunkResult
+
+logger = logging.getLogger(__name__)
 
 _UNTRUSTED_PREAMBLE = (
     "[UNTRUSTED_SOURCE]\n"
@@ -43,7 +48,11 @@ class HybridRetriever:
         self.last_hits: list[ChunkResult] = []
 
     async def retrieve(self, query: str, plan: str) -> str:
-        """返回与问题相关的外部上下文文本（无结果时返回空串）。"""
+        """返回与问题相关的外部上下文文本。
+
+        命中经稠密相似度阈值（``RAG_MIN_SIMILARITY``）过滤；全部被过滤且原本
+        有命中时返回明确拒答提示，不硬凑回答。无结果返回空串。
+        """
         search_text = f"{query}\n{plan}".strip() if plan else (query or "").strip()
         if not search_text:
             self.last_hits = []
@@ -51,5 +60,22 @@ class HybridRetriever:
         results = await self.backend.retrieve(
             search_text, tenant_id=self.tenant_id, top_k=self.top_k
         )
-        self.last_hits = list(results)
-        return format_context(results)
+        threshold = settings.RAG_MIN_SIMILARITY
+        kept = [hit for hit in results if hit.similarity >= threshold]
+        if len(kept) < len(results):
+            logger.info(
+                "rag_low_similarity_filtered kept=%s/%s threshold=%s query=%r",
+                len(kept),
+                len(results),
+                threshold,
+                search_text[:200],
+            )
+        if kept:
+            self.last_hits = list(kept)
+            return format_context(kept)
+        # 全部被低分过滤：拒答，给出明确提示语，不硬凑。
+        if results:
+            self.last_hits = []
+            return settings.RAG_REFUSE_MESSAGE
+        self.last_hits = []
+        return ""

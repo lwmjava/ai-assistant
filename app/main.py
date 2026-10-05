@@ -22,11 +22,14 @@ from app.channels.http_channel import HttpApiChannel
 from app.channels.registry import registry
 from app.core.config import settings
 from app.core.database import engine, init_db
+from app.core.json_logging import setup_logging
 from app.core.security import validate_jwt_secret
+from app.core.trace_middleware import TraceIdMiddleware
 from app.security.log_redaction import install_log_redaction
 from app.services.auth_service import ensure_initial_admin
 
 install_log_redaction()
+setup_logging()
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +100,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Trace ID：为每个请求建立日志上下文（trace_id）并回写 X-Request-ID 头。
+app.add_middleware(TraceIdMiddleware)
 
 # 挂载 API 路由（/api 前缀）。
 app.include_router(api_router, prefix="/api")

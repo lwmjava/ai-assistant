@@ -4502,7 +4502,7 @@ tasks:
 
   - id: "NFR-002"
     title: "结构化日志：JSON 格式与 trace_id、user_id、tenant_id"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -4551,6 +4551,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+        progress: "2026-10-05：NFR-002 结构化日志实现完成，JSON 格式 + trace_id/user_id/tenant_id 贯穿；pytest tests/test_logging.py 6/6 通过；2026-10-05 用户确认关闭"
 
   - id: "PAGT-001"
     title: "补齐 web_search 与 file_ops 读能力"
@@ -4997,7 +4998,7 @@ tasks:
 
   - id: "PRAG-001"
     title: "检索越权核对：重跑官方集确认现状"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -5051,6 +5052,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+        progress: "2026-10-05 第一夜：重跑官方集完成，violation_cases=0/13，报告 evals/reports/rag-v0.1-baseline-20261004.json；2026-10-05 用户确认关闭"
 
   - id: "PRAG-002"
     title: "重排落地：开关、灰度与开销评估"
@@ -5224,6 +5226,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+        progress: "2026-10-05：PRAG-004 低分阈值与拒答实现完成，阈值0.4过滤加拒答提示加JSON日志；pytest tests/test_rag_threshold.py 4/4 通过；待人工审查后关闭"
 
   - id: "PMCP-001"
     title: "MCP 连接超时、重连、心跳与优雅降级"
@@ -8220,6 +8223,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "RAG-016"
     title: "父块展开：命中子块追加父块（方案 A）"
     status: "backlog"
@@ -8269,6 +8273,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "FLOW-005"
     title: "创建者失效：可查询告警通知 tenant_admin"
     status: "backlog"
@@ -8323,6 +8328,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "MCP-REQ-001"
     title: "MCP 产品验收定义（补 PRD §5 章节）"
     status: "backlog"

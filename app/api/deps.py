@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
 from app.audit.models import AuditAction
+from app.core import log_context
 from app.core.config import settings
 from app.core.database import get_session
 from app.core.security import Role, check_permission, decode_token
@@ -44,6 +45,7 @@ def get_current_user(
     认证关闭时返回合成管理员主体（仅限开发/演示环境）。
     """
     if not settings.AUTH_ENABLED:
+        log_context.set_user(None, None)
         return _DISABLED_AUTH_PRINCIPAL
 
     if credentials is None or not credentials.credentials:
@@ -85,6 +87,7 @@ def get_current_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="租户已停用",
             )
+    log_context.set_user(user.id, user.tenant_id)
     return user
 
 

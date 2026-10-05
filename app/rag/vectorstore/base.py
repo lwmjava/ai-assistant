@@ -22,6 +22,7 @@ class ChunkResult:
     document_id: str
     score: float
     version_status: str = "current"
+    similarity: float = 0.0  # 稠密余弦相似度（-1~1），供低分阈值过滤；score 为 RRF 融合分
 
 
 class VectorStore(ABC):

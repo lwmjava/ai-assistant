@@ -245,6 +245,7 @@ class MilvusVectorStore(VectorStore):
                     document_id=row.document_id,
                     score=float(score),
                     version_status=version_by_chunk.get(row.id, "current"),
+    similarity=1.0,  # milvus 为 Partial：RRF 命中即为效激候选，真实余弦待 RAG-015 补齐
                 )
             )
         return results

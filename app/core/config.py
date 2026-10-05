@@ -110,6 +110,12 @@ class Settings(BaseSettings):
     # semantic | parent_child | auto（按文档特征路由）
     RAG_CHUNK_STRATEGY: str = "structured"
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
+    RAG_MIN_SIMILARITY: float = 0.4  # 稠密相似度低于该值可少返回或全不返回（0.4 为 2026-10-02 拍板阈值）
+    # 全被低分过滤时的拒答提示
+    RAG_REFUSE_MESSAGE: str = (
+        "未检索到足够相关的知识库资料，未能给出可靠答案。"
+        "请补充关键词，或确认相关资料已上传至知识库。"
+    )
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
     # 检索过取倍数：先取 top_k * N，再剔除注入块后截断到 top_k。
     RAG_RETRIEVAL_CANDIDATE_MULTIPLIER: int = 3

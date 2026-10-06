@@ -10,7 +10,8 @@ from collections.abc import Sequence
 
 import httpx
 
-from app.rag.embeddings.base import EmbeddingDimensionError, EmbeddingProvider
+from app.rag.embeddings.base import EmbeddingDimensionError, EmbeddingInputPolicy, EmbeddingProvider
+from app.rag.embeddings.input_limits import resolve_input_policy
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
         dim: int = 1024,
         timeout: float = 60.0,
         batch_size: int = 10,
+        input_policy: EmbeddingInputPolicy | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -33,6 +35,9 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
         self.dim = dim
         self.timeout = timeout
         self.batch_size = max(1, batch_size)
+        self.input_policy = input_policy or resolve_input_policy(self.base_url, model)
+        if self.input_policy is not None and self.input_policy.max_batch_size is not None:
+            self.batch_size = min(self.batch_size, self.input_policy.max_batch_size)
 
     def _headers(self) -> dict:
         return {
@@ -44,6 +49,12 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
         payload_texts = list(texts)
         if not payload_texts:
             return []
+        if self.input_policy is None:
+            raise ValueError("embedding_input_limit_unverified")
+        for text in payload_texts:
+            reason = self.input_policy.check(text)
+            if reason:
+                raise ValueError(f"embedding_{reason}")
         vectors: list[list[float]] = []
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             for start in range(0, len(payload_texts), self.batch_size):

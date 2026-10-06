@@ -229,9 +229,13 @@ async def test_ingest_rolls_back_document_when_embedding_fails(session: Session)
     from collections.abc import Sequence
 
     from app.models.rag import Document
-    from app.rag.embeddings.base import EmbeddingProvider
+    from app.rag.embeddings.base import EmbeddingInputPolicy, EmbeddingProvider
 
     class BoomEmbedding(EmbeddingProvider):
+        input_policy = EmbeddingInputPolicy(
+            max_input_tokens=8192, counter=len, counting_method="synthetic-test", source="fixture"
+        )
+
         async def embed(self, texts: Sequence[str]) -> list[list[float]]:
             raise RuntimeError("embedding down")
 

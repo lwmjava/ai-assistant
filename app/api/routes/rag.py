@@ -12,7 +12,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
@@ -41,7 +41,7 @@ from app.rag.import_jobs import (
     create_url_import_job,
     retry_import_job,
 )
-from app.rag.service import RAGService
+from app.rag.service import DocumentVectorizationSummary, RAGService, chunk_vectorization_state
 from app.rag.upload_limits import UploadLimitError, check_upload_limits, parse_allowed_extensions
 from app.services.quota import QuotaExceededError, SourceFileUnreadableError, begin_source_quota
 
@@ -142,6 +142,11 @@ class DocumentOut(BaseModel):
     chunk_count: int
     created_at: str
     updated_at: str
+    vectorization_status: Literal["vectorized", "partial", "not_vectorized", "unknown"] = "unknown"
+    vectorized_chunk_count: int = 0
+    not_vectorized_chunk_count: int = 0
+    unknown_chunk_count: int = 0
+    embedding_skip_reason_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class DocumentDetail(DocumentOut):
@@ -159,6 +164,9 @@ class DocumentChunkOut(BaseModel):
     page: int | None
     section: str | None
     created_at: str
+    embedding_status: Literal["vectorized", "not_vectorized", "unknown"] = "unknown"
+    embedding_skip_reason: str | None = None
+    oversized: bool = False
 
 
 class SearchResultOut(BaseModel):
@@ -214,7 +222,8 @@ def _chunk_out(chunk: DocumentChunk) -> DocumentChunkOut:
     metadata: dict = {}
     if chunk.chunk_metadata:
         try:
-            metadata = json.loads(chunk.chunk_metadata)
+            parsed_metadata = json.loads(chunk.chunk_metadata)
+            metadata = parsed_metadata if isinstance(parsed_metadata, dict) else {}
         except json.JSONDecodeError:
             metadata = {}
     page_raw = metadata.get("page")
@@ -230,11 +239,12 @@ def _chunk_out(chunk: DocumentChunk) -> DocumentChunkOut:
         page=page,
         section=section,
         created_at=chunk.created_at.isoformat() if chunk.created_at else "",
+        **chunk_vectorization_state(bool(chunk.embedding), chunk.chunk_metadata),
     )
 
 
-def _doc_out(doc: Document) -> DocumentOut:
-    return DocumentOut(
+def _doc_out(doc: Document, summary: DocumentVectorizationSummary | None = None) -> DocumentOut:
+    result = DocumentOut(
         id=doc.id,
         tenant_id=doc.tenant_id,
         user_id=doc.user_id,
@@ -247,6 +257,17 @@ def _doc_out(doc: Document) -> DocumentOut:
         created_at=doc.created_at.isoformat(),
         updated_at=doc.updated_at.isoformat(),
     )
+    if summary is not None:
+        result.vectorization_status = summary["vectorization_status"]
+        result.vectorized_chunk_count = summary["vectorized_chunk_count"]
+        result.not_vectorized_chunk_count = summary["not_vectorized_chunk_count"]
+        result.unknown_chunk_count = summary["unknown_chunk_count"]
+        result.embedding_skip_reason_counts = summary["embedding_skip_reason_counts"]
+    return result
+
+
+def _doc_with_vectorization(doc: Document, rag: RAGService, user: User) -> DocumentOut:
+    return _doc_out(doc, rag.summarize_vectorization([doc], user).get(doc.id))
 
 
 def _job_out(job: ImportJob) -> ImportJobOut:
@@ -312,7 +333,9 @@ async def ingest_document(
         session: 数据库会话（依赖注入）
 
     返回:
-        DocumentOut: 新文档概要，包含 id、租户/用户、标题、来源、分块数及时间戳
+        DocumentOut: 新文档概要；chunk_count 是已保存分块数量，不保证全部已向量化。
+        超出输入限制的结构保留原文；vectorization_status 和各状态计数说明向量化结果，
+        embedding_skip_reason_counts 给出允许公开的跳过原因计数。
 
     异常:
         400: text/title 为空，或文本无法切分为任何分块等业务校验失败
@@ -348,7 +371,7 @@ async def ingest_document(
         details={"title": doc.title, "chunk_count": doc.chunk_count, "source": "text"},
     )
     # 将 ORM 文档转为接口响应模型（时间戳格式化为 ISO 字符串）
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
 @router.post("/documents/upload", response_model=DocumentOut)
@@ -358,7 +381,12 @@ async def upload_document(
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
 ) -> DocumentOut | JSONResponse:
-    """上传文档并按文件类型自动提取文本后摄取为知识文档。"""
+    """上传文档并按文件类型自动提取文本后摄取为知识文档。
+
+    成功响应中的 chunk_count 是保存数量，不保证所有分块均已向量化。
+    超出输入限制的结构保留原文，以 vectorization_status、各状态数量和
+    embedding_skip_reason_counts 呈现向量化结果及允许公开的跳过原因。
+    """
     filename = file.filename or "未命名文档"
     raw = await file.read()
     _enforce_upload_limit(filename, len(raw))
@@ -432,7 +460,7 @@ async def upload_document(
             "storage_path": storage_path,
         },
     )
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
 @router.post(
@@ -618,14 +646,13 @@ def list_documents(
 ) -> list[DocumentOut]:
     """列出当前用户可见的文档。成员忽略已删除和状态筛选。"""
     rag = RAGService(session, current_user.tenant_id)
-    return [
-        _doc_out(d)
-        for d in rag.list_documents(
-            current_user,
-            include_deleted=include_deleted,
-            version_state=version_state,
-        )
-    ]
+    documents = rag.list_documents(
+        current_user,
+        include_deleted=include_deleted,
+        version_state=version_state,
+    )
+    summaries = rag.summarize_vectorization(documents, current_user)
+    return [_doc_out(doc, summaries.get(doc.id)) for doc in documents]
 
 
 @router.get("/documents/{document_id}", response_model=DocumentDetail)
@@ -639,7 +666,7 @@ def get_document(
     doc = rag.get_document(document_id, current_user)
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
-    return DocumentDetail(**_doc_out(doc).model_dump())
+    return DocumentDetail(**_doc_with_vectorization(doc, rag, current_user).model_dump())
 
 
 @router.get("/documents/{document_id}/chunks", response_model=list[DocumentChunkOut])
@@ -654,8 +681,6 @@ def list_document_chunks(
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     return [_chunk_out(c) for c in rag.list_chunks(document_id, current_user)]
-
-    return DocumentDetail(**_doc_out(doc).model_dump())
 
 
 @router.post(
@@ -782,7 +807,7 @@ async def publish_document(
     if published is None:
         session.rollback()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
-    return _doc_out(published)
+    return _doc_with_vectorization(published, rag, current_user)
 
 
 class ScheduleRequest(BaseModel):
@@ -806,7 +831,7 @@ def schedule_document(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
 @router.post("/documents/{document_id}/archive", response_model=DocumentOut)
@@ -820,7 +845,7 @@ def archive_document(
     doc = rag.archive_document(document_id, current_user)
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
 class ConfirmationIn(BaseModel):

@@ -13,7 +13,7 @@
 
 平台提供以下核心能力：
 
-- **企业知识问答**：上传文档并自动分块嵌入，基于混合检索（向量 + 关键词 + RRF 融合）生成附带来源文本的回答；结构化 Citation 为 TARGET；
+- **企业知识问答**：上传文档并自动分块处理，通过输入护栏的块生成向量，超限结构保留原文并返回未向量化原因；基于混合检索（向量 + 关键词 + RRF 融合）生成附带来源文本的回答；结构化 Citation 为 TARGET；
 - **Agent 智能编排**：内置五阶段推理管线（理解 → 规划 → 行动 → 反思 → 响应），支持工具调用与 Function Calling；
 - **系统互联互通**：原生支持 MCP 协议，经受控工具接入企业系统与第三方 API；Agent 不得直连业务数据库；
 - **企业级管控**：RBAC 五级角色（系统管理员 / 系统访客 / 租户管理员 / 成员 / 访客）与多租户隔离，保障数据安全；
@@ -562,6 +562,25 @@ mypy app/
 `score_inherited_from_chunk_id` 记录评分继承来源：仅展开的父块继承触发子块的分数；父块本身命中时始终保留自身的融合分数和 similarity，不显示继承来源。结果保留原始命中顺序并穿插展开父块，不表示追加后重新独立排序。
 
 搜索复核命中与父块的租户、所属文档、软删除、当前版本或生效日期，并剔除注入内容。不存在或关联不一致的记录不会返回；安全父块不可用时仍可返回安全子块。该读取路径修复无需重建索引。
+
+### 分块完整性与向量化状态
+
+含 Markdown 围栏代码、保守识别的 ASCII/Unicode 盒图或表格的文档，共享规则保护完整结构，`chunk_size` 为软目标。代码/盒图可以超过软目标；表格按完整行分组并保留派生表头。结构路径明确降级为规则切分，不保证仍执行原语义/滑动窗口算法；普通无结构路径保留原策略。已有文档不会自动重建。
+
+文档摄取、上传、列表与详情响应新增 `vectorization_status`、`vectorized_chunk_count`、`not_vectorized_chunk_count`、`unknown_chunk_count` 和 `embedding_skip_reason_counts`。这些计数包含父块与子块，`chunk_count` 表示已保存块数量，不能当成已向量化数量。
+
+| 文档状态 | 含义 |
+|---|---|
+| `vectorized` | 全部已保存块有向量 |
+| `partial` | 全部状态可判定，部分块有向量、部分明确未向量化 |
+| `not_vectorized` | 全部状态可判定，所有块均明确未向量化 |
+| `unknown` | 存在未知旧块、没有块或存储块数量不一致；已知计数仍返回 |
+
+`GET /api/rag/documents/{document_id}/chunks` 新增 `embedding_status`、`embedding_skip_reason`、`oversized`。原因包括 `input_limit_exceeded`（超过已批准的输入预算）、`input_limit_unverified`（模型/端点限制未核对）、`input_count_unverified`（缺少计数方法），无法识别的历史原因统一为 `unknown_reason`，不回传任意异常正文。旧块有向量时判为已向量化，没有向量又没有明确处理记录时判为未知。状态只说明存储记录，不能证明向量维度、模型或外部索引兼容。字段不改变现有认证、租户或文档权限。
+
+超限且无法安全拆分的结构保留原文、标记 `oversized`，不发出该块的 Embedding 请求、不伪造向量。未向量化不等于未保存，也不保证完全无法被稀疏检索或父块关联取回。异步导入/重解析的任务完成后，查询文档详情和分块核对结果；提交任务不表示已经向量化完成。管理页面尚未新增这些状态的专用展示，当前通过 API/Swagger 查看。
+
+已核对的 DashScope `text-embedding-v3` 每输入上限 8192 tokens、每批 10 条。当前输入护栏使用负责人批准的 UTF-8 字节数加 32 预留作为保守估算，六类合成样本已用实际 API usage 校准；这不是精确 tokenizer 或所有输入的数学保证。未知模型/端点缺少已验证政策时拒绝外发，通用模型能力配置仍待后续治理。此护栏不更换模型或维度。结构评测只证明合成样本中的完整性，不代表真实检索质量提升。详见 [实现说明](docs/plans/implementation_rag_021_structure_integrity_20261006.md) 和 [结构评测](evals/chunk_structure_integrity/README.md)。
 
 ## 贡献
 

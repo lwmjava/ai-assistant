@@ -18,6 +18,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
+from typing import Literal, TypedDict
 
 from sqlalchemy import tuple_
 from sqlmodel import Session, col, select
@@ -35,7 +36,7 @@ from app.rag.access import (
 )
 from app.rag.backend.base import RagBackend
 from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
-from app.rag.chunking.base import ChunkParams
+from app.rag.chunking.base import Chunk, ChunkParams
 from app.rag.chunking.factory import get_chunking_strategy, resolve_strategy_name
 from app.rag.cleaning import CleaningResult, clean_document, text_hash
 from app.rag.document_parsers.base import ParsedDocument
@@ -66,9 +67,50 @@ def demote_other_current_versions(session: Session, version_group_id: str, *, ke
         row.version_state = "replaced"
         session.add(row)
 
+
 logger = logging.getLogger(__name__)
 
 Tokenizer = Callable[[str], list[str]]
+
+
+class ChunkVectorizationState(TypedDict):
+    embedding_status: Literal["vectorized", "not_vectorized", "unknown"]
+    embedding_skip_reason: str | None
+    oversized: bool
+
+
+class DocumentVectorizationSummary(TypedDict):
+    vectorization_status: Literal["vectorized", "partial", "not_vectorized", "unknown"]
+    vectorized_chunk_count: int
+    not_vectorized_chunk_count: int
+    unknown_chunk_count: int
+    embedding_skip_reason_counts: dict[str, int]
+
+
+def chunk_vectorization_state(has_embedding: bool, raw_metadata: str | None) -> ChunkVectorizationState:
+    """Expose stable state and allowlisted reasons, never arbitrary metadata."""
+    metadata: dict = {}
+    if raw_metadata:
+        try:
+            parsed = json.loads(raw_metadata)
+            if isinstance(parsed, dict):
+                metadata = parsed
+        except (TypeError, json.JSONDecodeError):
+            pass
+    oversized = metadata.get("oversized") is True
+    if has_embedding:
+        return {"embedding_status": "vectorized", "embedding_skip_reason": None, "oversized": oversized}
+    reason = metadata.get("embedding_skip_reason")
+    if isinstance(reason, str) and reason:
+        safe_reason = (
+            reason
+            if reason in {"input_limit_exceeded", "input_limit_unverified", "input_count_unverified"}
+            else "unknown_reason"
+        )
+        return {"embedding_status": "not_vectorized", "embedding_skip_reason": safe_reason, "oversized": oversized}
+    if metadata.get("embedding_status") == "not_vectorized":
+        return {"embedding_status": "not_vectorized", "embedding_skip_reason": "unknown_reason", "oversized": oversized}
+    return {"embedding_status": "unknown", "embedding_skip_reason": None, "oversized": oversized}
 
 
 def sources_from_hits(session: Session, hits: list[ChunkResult]) -> list[dict]:
@@ -129,6 +171,8 @@ def _source_excerpt(content: str, limit: int = 240) -> str:
     """摘录原文：清洗 markdown 后折叠空白并截断到 limit，供引用原文展示。"""
     text = _strip_markdown(content)
     return text[:limit] if len(text) > limit else text
+
+
 def _chunk_metadata(row: DocumentChunk | None) -> dict:
     if row is None or not row.chunk_metadata:
         return {}
@@ -201,11 +245,11 @@ class RAGService:
     # ── 摄取 ────────────────────────────────────────
     def _build_chunk_params(self, chunk_params: dict | None = None) -> ChunkParams:
         """构造切分参数，合并全局默认值与请求级覆盖。"""
-        return ChunkParams(
-            chunk_size=settings.RAG_CHUNK_SIZE,
-            chunk_overlap=settings.RAG_CHUNK_OVERLAP,
-            **(chunk_params or {}),
-        )
+        overrides = dict(chunk_params or {})
+        if "input_policy" in overrides:
+            raise ValueError("input_policy is server controlled")
+        values = {"chunk_size": settings.RAG_CHUNK_SIZE, "chunk_overlap": settings.RAG_CHUNK_OVERLAP, **overrides}
+        return ChunkParams(**values, input_policy=self._embedding.input_policy)
 
     async def _persist_document(
         self,
@@ -236,7 +280,7 @@ class RAGService:
         # 先做嵌入再开写事务：避免网络调用期间长时间占用 SQLite 写锁，
         # 也避免「文档已提交、分块/向量失败」留下 chunk_count=0 的孤儿记录。
         try:
-            embeddings = await self._embed_texts([chunk.text for chunk in chunk_objs])
+            embeddings = await self._embed_chunks(chunk_objs)
             source_bytes = source_file_size(storage_path) if storage_path else None
             document = Document(
                 tenant_id=self.tenant_id,
@@ -261,20 +305,20 @@ class RAGService:
             self.session.add(document)
             self.session.flush()
             if cleaning is not None:
-                self.session.add(DocumentIngestionSnapshot(
-                    document_id=document.id,
-                    tenant_id=self.tenant_id,
-                    original_text=cleaning.original.text,
-                    original_blocks=json.dumps(
-                        [asdict(block) for block in cleaning.original.blocks], ensure_ascii=False
-                    ),
-                    cleaning_report=json.dumps(cleaning.report, ensure_ascii=False),
-                ))
+                self.session.add(
+                    DocumentIngestionSnapshot(
+                        document_id=document.id,
+                        tenant_id=self.tenant_id,
+                        original_text=cleaning.original.text,
+                        original_blocks=json.dumps(
+                            [asdict(block) for block in cleaning.original.blocks], ensure_ascii=False
+                        ),
+                        cleaning_report=json.dumps(cleaning.report, ensure_ascii=False),
+                    )
+                )
 
             parent_id_map: dict[str, str] = {}
-            for chunk_index, (chunk, vector) in enumerate(
-                zip(chunk_objs, embeddings, strict=True)
-            ):
+            for chunk_index, (chunk, vector) in enumerate(zip(chunk_objs, embeddings, strict=True)):
                 # 手动生成主键，便于父块落库后直接回填子块的 parent_id，无需逐块 flush。
                 row_id = uuid.uuid4().hex
                 parent_id = None
@@ -290,12 +334,10 @@ class RAGService:
                     chunk_index=chunk_index,
                     content=chunk.text,
                     source=source,
-                    embedding=json.dumps(vector, ensure_ascii=False),
+                    embedding=json.dumps(vector, ensure_ascii=False) if vector is not None else None,
                     tokens=json.dumps(self._tokenizer(chunk.text), ensure_ascii=False),
                     strategy=strategy_name,
-                    chunk_metadata=json.dumps(metadata, ensure_ascii=False)
-                    if metadata
-                    else None,
+                    chunk_metadata=json.dumps(metadata, ensure_ascii=False) if metadata else None,
                     parent_id=parent_id,
                 )
                 if metadata.get("kind") == "parent":
@@ -303,9 +345,7 @@ class RAGService:
                 self.session.add(row)
 
             if document.is_current:
-                demote_other_current_versions(
-                    self.session, document.version_group_id, keep_id=document.id
-                )
+                demote_other_current_versions(self.session, document.version_group_id, keep_id=document.id)
             self.session.commit()
             self.session.refresh(document)
             return document
@@ -483,6 +523,46 @@ class RAGService:
             )
         return vectors
 
+    async def _embed_chunks(self, chunks: list[Chunk]) -> list[list[float] | None]:
+        """Keep excluded source rows, while sending only validated inputs.
+
+        Positions are mapped explicitly: skipped chunks must not shift vectors
+        or parent identifiers. No zero vectors are manufactured for exclusions.
+        """
+        policy = self._embedding.input_policy
+        vectors: list[list[float] | None] = [None] * len(chunks)
+        selected: list[int] = []
+        for index, chunk in enumerate(chunks):
+            reason = policy.check(chunk.text) if policy is not None else "input_limit_unverified"
+            chunk.metadata["embedding_policy"] = (
+                policy.metadata()
+                if policy is not None
+                else {
+                    "version": "input-policy-v1",
+                    "counting_method": "unverified",
+                }
+            )
+            if reason:
+                chunk.metadata["embedding_status"] = "not_vectorized"
+                chunk.metadata["embedding_skip_reason"] = reason
+                if reason == "input_limit_exceeded":
+                    chunk.metadata["oversized"] = True
+            else:
+                selected.append(index)
+        if selected:
+            embedded = await self._embed_texts([chunks[index].text for index in selected])
+            for index, vector in zip(selected, embedded, strict=True):
+                vectors[index] = vector
+                chunks[index].metadata["embedding_status"] = "vectorized"
+                chunks[index].metadata.pop("embedding_skip_reason", None)
+        logger.info(
+            "rag_chunk_vectorization total=%s vectorized=%s not_vectorized=%s",
+            len(chunks),
+            len(selected),
+            len(chunks) - len(selected),
+        )
+        return vectors
+
     # ── 检索 ────────────────────────────────────────
     async def search(
         self, query: str, top_k: int | None = None, *, backend: str | None = None
@@ -655,6 +735,82 @@ class RAGService:
             return None
         return doc
 
+    def summarize_vectorization(self, documents: list[Document], user: User) -> dict[str, DocumentVectorizationSummary]:
+        """Batch summaries for already-authorized documents, rechecking control access.
+
+        Only IDs, vector presence and state metadata are read. Matching the
+        document/tenant pair also excludes inconsistent cross-tenant chunk rows.
+        """
+        allowed = [
+            doc
+            for doc in documents
+            if can_control_document(doc, user) and (doc.deleted_at is None or is_kb_admin(user))
+        ]
+        summaries: dict[str, DocumentVectorizationSummary] = {
+            doc.id: {
+                "vectorization_status": "unknown",
+                "vectorized_chunk_count": 0,
+                "not_vectorized_chunk_count": 0,
+                "unknown_chunk_count": 0,
+                "embedding_skip_reason_counts": {},
+            }
+            for doc in allowed
+        }
+        if not allowed:
+            return summaries
+        rows: list[tuple[str, bool, str | None]] = []
+        # Two parameters per document; bound batches stay below SQLite's older
+        # 999-variable limit while avoiding a separate query per document.
+        for offset in range(0, len(allowed), 200):
+            batch = allowed[offset : offset + 200]
+            rows.extend(
+                self.session.exec(
+                    select(
+                        col(DocumentChunk.document_id),
+                        (col(DocumentChunk.embedding).is_not(None) & (col(DocumentChunk.embedding) != "")).label(
+                            "has_embedding"
+                        ),
+                        col(DocumentChunk.chunk_metadata),
+                    ).where(
+                        tuple_(col(DocumentChunk.document_id), col(DocumentChunk.tenant_id)).in_(
+                            [(doc.id, doc.tenant_id) for doc in batch]
+                        )
+                    )
+                ).all()
+            )
+        for document_id, has_embedding, metadata in rows:
+            summary = summaries[document_id]
+            state = chunk_vectorization_state(bool(has_embedding), metadata)
+            if state["embedding_status"] == "vectorized":
+                summary["vectorized_chunk_count"] += 1
+            elif state["embedding_status"] == "not_vectorized":
+                summary["not_vectorized_chunk_count"] += 1
+                reason = state["embedding_skip_reason"] or "unknown_reason"
+                summary["embedding_skip_reason_counts"][reason] = (
+                    summary["embedding_skip_reason_counts"].get(reason, 0) + 1
+                )
+            else:
+                summary["unknown_chunk_count"] += 1
+        for doc in allowed:
+            summary = summaries[doc.id]
+            observed_count = (
+                summary["vectorized_chunk_count"]
+                + summary["not_vectorized_chunk_count"]
+                + summary["unknown_chunk_count"]
+            )
+            if doc.chunk_count != observed_count or doc.chunk_count < 0:
+                summary["unknown_chunk_count"] += max(0, doc.chunk_count - observed_count)
+                continue
+            if summary["unknown_chunk_count"]:
+                continue
+            if summary["vectorized_chunk_count"] and summary["not_vectorized_chunk_count"]:
+                summary["vectorization_status"] = "partial"
+            elif summary["vectorized_chunk_count"]:
+                summary["vectorization_status"] = "vectorized"
+            elif summary["not_vectorized_chunk_count"]:
+                summary["vectorization_status"] = "not_vectorized"
+        return summaries
+
     def list_chunks(self, document_id: str, user: User) -> list[DocumentChunk]:
         """按文档列出分块（控制面权限校验；无权限或不存在返回空）。"""
         doc = self.get_document(document_id, user)
@@ -662,11 +818,10 @@ class RAGService:
             return []
         stmt = (
             select(DocumentChunk)
-            .where(DocumentChunk.document_id == document_id)
+            .where(col(DocumentChunk.document_id) == document_id, col(DocumentChunk.tenant_id) == doc.tenant_id)
             .order_by(col(DocumentChunk.chunk_index).asc())
         )
         return list(self.session.exec(stmt).all())
-
 
     def publish_document(self, document_id: str, user: User) -> Document | None:
         """把目标版本设为当前发布版，并在同一事务里替换同组旧当前版。"""
@@ -729,7 +884,7 @@ class RAGService:
         chunk_objs = await chunking.split(parsed.text, params=self._build_chunk_params(None))
         if not chunk_objs:
             raise ValueError("文本为空或无法切分为任何分块")
-        embeddings = await self._embed_texts([chunk.text for chunk in chunk_objs])
+        embeddings = await self._embed_chunks(chunk_objs)
         try:
             await self._vector_store.delete_by_document(document.id, document.tenant_id)
         except Exception as exc:  # noqa: BLE001 — 旧向量清理失败不阻断就地重建
@@ -738,9 +893,7 @@ class RAGService:
                 document.id,
                 type(exc).__name__,
             )
-        old_chunks = self.session.exec(
-            select(DocumentChunk).where(DocumentChunk.document_id == document.id)
-        ).all()
+        old_chunks = self.session.exec(select(DocumentChunk).where(DocumentChunk.document_id == document.id)).all()
         for chunk in old_chunks:
             self.session.delete(chunk)
         self.session.flush()
@@ -759,7 +912,7 @@ class RAGService:
                 chunk_index=chunk_index,
                 content=piece.text,
                 source=document.source,
-                embedding=json.dumps(vector, ensure_ascii=False),
+                embedding=json.dumps(vector, ensure_ascii=False) if vector is not None else None,
                 tokens=json.dumps(self._tokenizer(piece.text), ensure_ascii=False),
                 strategy=strategy_name,
                 chunk_metadata=json.dumps(metadata, ensure_ascii=False) if metadata else None,
@@ -773,13 +926,14 @@ class RAGService:
         snapshot = self.session.get(DocumentIngestionSnapshot, document.id)
         if snapshot is None:
             snapshot = DocumentIngestionSnapshot(
-                document_id=document.id, tenant_id=document.tenant_id,
-                original_text="", original_blocks="[]", cleaning_report="{}",
+                document_id=document.id,
+                tenant_id=document.tenant_id,
+                original_text="",
+                original_blocks="[]",
+                cleaning_report="{}",
             )
         snapshot.original_text = cleaning.original.text
-        snapshot.original_blocks = json.dumps(
-            [asdict(block) for block in cleaning.original.blocks], ensure_ascii=False
-        )
+        snapshot.original_blocks = json.dumps([asdict(block) for block in cleaning.original.blocks], ensure_ascii=False)
         snapshot.cleaning_report = json.dumps(cleaning.report, ensure_ascii=False)
         self.session.add(snapshot)
         self.session.add(document)

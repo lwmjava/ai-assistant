@@ -11,7 +11,7 @@ import math
 import re
 from collections.abc import Sequence
 
-from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.embeddings.base import EmbeddingInputPolicy, EmbeddingProvider
 
 # 中英文统一的 token 切分：连续字母数字下划线 + 连续 CJK 单字。
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]")
@@ -29,6 +29,9 @@ class MockEmbeddingProvider(EmbeddingProvider):
         self.model = "mock-embedding"
         self.dim = dim
         self._seed = seed
+        self.input_policy = EmbeddingInputPolicy(
+            max_input_tokens=None, counting_method="offline-unlimited", source="mock-only"
+        )
 
     def _vector_for_text(self, text: str) -> list[float]:
         buckets = [0.0] * self.dim

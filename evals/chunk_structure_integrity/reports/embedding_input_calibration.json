@@ -1,0 +1,55 @@
+{
+  "version": "embedding-input-calibration-v0.1",
+  "model": "text-embedding-v3",
+  "provider": "dashscope",
+  "created_at": "2026-10-06T10:06:55.815290+00:00",
+  "synthetic": true,
+  "data_tier": "Smoke",
+  "policy": {
+    "version": "dashscope-v3-utf8-margin32-20261006",
+    "max_input_tokens": 8192,
+    "counting_method": "utf8-bytes-conservative-estimate",
+    "safety_margin": 32,
+    "source": "https://www.alibabacloud.com/help/en/model-studio/text-embedding-synchronous-api"
+  },
+  "samples": [
+    {
+      "sample": "cjk",
+      "utf8_bytes_plus_margin": 1712,
+      "provider_tokens": 440,
+      "estimate_covers_observed": true
+    },
+    {
+      "sample": "ascii_code",
+      "utf8_bytes_plus_margin": 1092,
+      "provider_tokens": 360,
+      "estimate_covers_observed": true
+    },
+    {
+      "sample": "unicode_box",
+      "utf8_bytes_plus_margin": 1932,
+      "provider_tokens": 420,
+      "estimate_covers_observed": true
+    },
+    {
+      "sample": "markdown_table",
+      "utf8_bytes_plus_margin": 992,
+      "provider_tokens": 580,
+      "estimate_covers_observed": true
+    },
+    {
+      "sample": "emoji_combining",
+      "utf8_bytes_plus_margin": 1112,
+      "provider_tokens": 360,
+      "estimate_covers_observed": true
+    },
+    {
+      "sample": "near_byte_threshold",
+      "utf8_bytes_plus_margin": 8112,
+      "provider_tokens": 7069,
+      "estimate_covers_observed": true
+    }
+  ],
+  "all_samples_covered": true,
+  "limitations": "Finite synthetic calibration; not exact tokenization or a universal bound. No retrieval metrics."
+}

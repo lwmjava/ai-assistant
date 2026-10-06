@@ -9141,7 +9141,7 @@ tasks:
 
   - id: "RAG-021"
     title: "分块边界完整性保护与切分质量评估"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on: []
@@ -9152,8 +9152,8 @@ tasks:
         evidence: "docs/product/项目设计方案.md 分块详情截图 2026-10-05"
       - claim: "已有策略具备局部结构识别，但缺完整结构原子性与超长结构处理的统一契约。"
         evidence: "app/rag/chunking/"
-      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
-        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
+      - claim: "结构保护、Embedding 输入护栏与 API 状态已实现并通过自动验证、独立审查；2026-10-06 负责人明确验收通过。"
+        evidence: "docs/plans/implementation_rag_021_structure_integrity_20261006.md"
     scope:
       allowed_paths:
       - "app/rag/chunking/"
@@ -9163,6 +9163,10 @@ tasks:
       - "tasks.yaml"
       - "app/rag/ingestion.py"
       - "evals/"
+      - "app/rag/service.py"
+      - "app/rag/embeddings/"
+      - "app/api/routes/rag.py"
+      - "README.md"
       forbidden_paths:
       - ".env"
       - "生产数据"
@@ -9171,7 +9175,7 @@ tasks:
       - "chunk_size 为软目标，硬限来自批准的输入限制；超长结构安全拆分或 oversized，不静默字符切断。"
       - "原文覆盖、乱序、结构破坏率与长度分布基线；规则层不依赖 LLM。"
       non_goals:
-      - "不改 embedding/检索/融合（RAG-005 基线）"
+      - "不更换 Embedding 模型，不改检索/融合；仅补已批准的 Embedding 输入限制护栏。"
       - "不新增无指标的切分策略"
     acceptance:
     - "未超硬限的截图同类盒图与 fenced code 整体完整；超长结构有明确结果。"
@@ -9194,7 +9198,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      blocked_by: "结构软目标/硬限与 oversized 规则获确认；涉及 ADR-0005 边界的改动须 Accepted 后实施。"
+      blocked_by: ""
 
   - id: "RAG-022"
     title: "自动切分策略选择（auto-routing 增强）"

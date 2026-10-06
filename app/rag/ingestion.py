@@ -25,6 +25,10 @@ def split_text(text: str, chunk_size: int = 500, chunk_overlap: int = 64) -> lis
     Returns:
         非空分块列表；空输入返回空列表。
     """
+    from app.rag.chunking.structure import protected_split, structure_units
+
+    if structure_units(text or ""):
+        return [chunk.text for chunk in protected_split(text, chunk_size)]
     text = (text or "").strip()
     if not text:
         return []
@@ -79,14 +83,16 @@ def _split_sections(text: str) -> list[tuple[str | None, str]]:
     return sections
 
 
-def split_text_structured(
-    text: str, chunk_size: int = 500, chunk_overlap: int = 64
-) -> list[str]:
+def split_text_structured(text: str, chunk_size: int = 500, chunk_overlap: int = 64) -> list[str]:
     """按 Markdown 结构切分，保留章节标题前缀；无标题时退化为普通切分。
 
     每个标题下的正文先用 ``split_text`` 切分，再给每个子块拼上标题前缀，
     使检索命中块时自带章节上下文。文本不含任何标题时直接退回 ``split_text``。
     """
+    from app.rag.chunking.structure import protected_split, structure_units
+
+    if structure_units(text or ""):
+        return [chunk.text for chunk in protected_split(text, chunk_size)]
     text = (text or "").strip()
     if not text:
         return []

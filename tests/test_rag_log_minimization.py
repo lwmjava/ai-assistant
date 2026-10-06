@@ -19,6 +19,7 @@ from app.core import log_context
 from app.core.config import settings
 from app.core.json_logging import JsonLogFormatter
 from app.rag.backend import factory
+from app.rag.embeddings.base import EmbeddingInputPolicy
 from app.rag.embeddings.openai_compatible import OpenAICompatibleEmbeddingProvider
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult
@@ -112,7 +113,12 @@ async def test_embedding_http_error_logs_metadata_but_preserves_exception(monkey
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=False)
     monkeypatch.setattr(openai_compatible.httpx, "AsyncClient", Mock(return_value=client))
-    provider = OpenAICompatibleEmbeddingProvider(f"https://invalid.example/{CONFIG}", CONFIG, CONFIG)
+    provider = OpenAICompatibleEmbeddingProvider(
+        f"https://invalid.example/{CONFIG}", CONFIG, CONFIG,
+        input_policy=EmbeddingInputPolicy(
+            max_input_tokens=8192, counter=len, counting_method="synthetic-test", source="fixture",
+        ),
+    )
     with pytest.raises(httpx.HTTPStatusError) as raised:
         await provider.embed([QUERY, EXCERPT])
     assert raised.value.response is response
@@ -370,7 +376,10 @@ async def test_real_httpx_embedding_request_log_omits_configured_url(monkeypatch
 
     monkeypatch.setattr(openai_compatible.httpx, "AsyncClient", client_with_transport)
     provider = OpenAICompatibleEmbeddingProvider(
-        f"https://invalid.example/{CONFIG}", "synthetic-key", "synthetic-model", dim=2
+        f"https://invalid.example/{CONFIG}", "synthetic-key", "synthetic-model", dim=2,
+        input_policy=EmbeddingInputPolicy(
+            max_input_tokens=8192, counter=len, counting_method="synthetic-test", source="fixture",
+        ),
     )
     assert await provider.embed([QUERY]) == [[0.1, 0.9]]
     assert len(requests) == 1

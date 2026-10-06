@@ -5,7 +5,54 @@
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class EmbeddingInputPolicy:
+    """Versioned input limit; a missing counter never implies verified capacity.
+
+    Offline fixtures can explicitly declare an unlimited policy. Estimates must
+    identify their method and margin, and are not exact model token counts.
+    """
+
+    max_input_tokens: int | None
+    counter: Callable[[str], int] | None = None
+    counting_method: str = "unverified"
+    source: str = "unconfigured"
+    version: str = "input-policy-v1"
+    safety_margin: int = 0
+    max_batch_size: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.max_input_tokens is not None and self.max_input_tokens <= 0:
+            raise ValueError("max_input_tokens must be positive")
+        if self.safety_margin < 0:
+            raise ValueError("safety_margin must be non-negative")
+        if self.max_batch_size is not None and self.max_batch_size <= 0:
+            raise ValueError("max_batch_size must be positive")
+
+    def check(self, text: str) -> str | None:
+        if self.max_input_tokens is None:
+            return None if self.counting_method == "offline-unlimited" else "input_limit_unverified"
+        if self.counter is None:
+            return "input_count_unverified"
+        count = self.counter(text)
+        if count < 0:
+            raise ValueError("input counter returned a negative count")
+        if count + self.safety_margin > self.max_input_tokens:
+            return "input_limit_exceeded"
+        return None
+
+    def metadata(self) -> dict:
+        return {
+            "version": self.version,
+            "max_input_tokens": self.max_input_tokens,
+            "counting_method": self.counting_method,
+            "safety_margin": self.safety_margin,
+            "source": self.source,
+        }
 
 
 class EmbeddingDimensionError(RuntimeError):
@@ -20,6 +67,7 @@ class EmbeddingProvider(ABC):
 
     model: str = "unknown"
     dim: int = 0
+    input_policy: EmbeddingInputPolicy | None = None
 
     @abstractmethod
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:

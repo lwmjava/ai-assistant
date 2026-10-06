@@ -707,7 +707,7 @@
           "rag"
         ],
         "summary": "Ingest Document",
-        "description": "将一段纯文本摄取为当前租户的知识文档。\n\n调用方提交标题与正文后，本接口会按所选 RAG 后端自动分块、生成嵌入向量并落库。\n文档归属当前登录用户及其租户；需具备 ``knowledge_bases`` 的 write 权限。\n摄取成功后写入审计日志（动作：知识库上传）。\n\n请求参数:\n    req: 文本摄取请求体（``IngestRequest``）\n        text: 待摄取正文，去空白后不能为空\n        title: 文档标题，去空白后不能为空\n        source: 可选来源标识（如「内部知识库」）\n        backend: 可选 RAG 后端，取值 ``native`` / ``langchain`` / ``llamaindex``；\n            未传时沿用配置项 ``RAG_BACKEND``\n    request: FastAPI 请求对象，供审计记录客户端信息\n    current_user: 已认证且具备写入权限的当前用户（依赖注入）\n    session: 数据库会话（依赖注入）\n\n返回:\n    DocumentOut: 新文档概要，包含 id、租户/用户、标题、来源、分块数及时间戳\n\n异常:\n    400: text/title 为空，或文本无法切分为任何分块等业务校验失败",
+        "description": "将一段纯文本摄取为当前租户的知识文档。\n\n调用方提交标题与正文后，本接口会按所选 RAG 后端自动分块、生成嵌入向量并落库。\n文档归属当前登录用户及其租户；需具备 ``knowledge_bases`` 的 write 权限。\n摄取成功后写入审计日志（动作：知识库上传）。\n\n请求参数:\n    req: 文本摄取请求体（``IngestRequest``）\n        text: 待摄取正文，去空白后不能为空\n        title: 文档标题，去空白后不能为空\n        source: 可选来源标识（如「内部知识库」）\n        backend: 可选 RAG 后端，取值 ``native`` / ``langchain`` / ``llamaindex``；\n            未传时沿用配置项 ``RAG_BACKEND``\n    request: FastAPI 请求对象，供审计记录客户端信息\n    current_user: 已认证且具备写入权限的当前用户（依赖注入）\n    session: 数据库会话（依赖注入）\n\n返回:\n    DocumentOut: 新文档概要；chunk_count 是已保存分块数量，不保证全部已向量化。\n    超出输入限制的结构保留原文；vectorization_status 和各状态计数说明向量化结果，\n    embedding_skip_reason_counts 给出允许公开的跳过原因计数。\n\n异常:\n    400: text/title 为空，或文本无法切分为任何分块等业务校验失败",
         "operationId": "ingest_document_api_rag_documents_ingest_post",
         "requestBody": {
           "content": {
@@ -754,7 +754,7 @@
           "rag"
         ],
         "summary": "Upload Document",
-        "description": "上传文档并按文件类型自动提取文本后摄取为知识文档。",
+        "description": "上传文档并按文件类型自动提取文本后摄取为知识文档。\n\n成功响应中的 chunk_count 是保存数量，不保证所有分块均已向量化。\n超出输入限制的结构保留原文，以 vectorization_status、各状态数量和\nembedding_skip_reason_counts 呈现向量化结果及允许公开的跳过原因。",
         "operationId": "upload_document_api_rag_documents_upload_post",
         "requestBody": {
           "content": {
@@ -4202,6 +4202,32 @@
           "created_at": {
             "type": "string",
             "title": "Created At"
+          },
+          "embedding_status": {
+            "type": "string",
+            "enum": [
+              "vectorized",
+              "not_vectorized",
+              "unknown"
+            ],
+            "title": "Embedding Status",
+            "default": "unknown"
+          },
+          "embedding_skip_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Skip Reason"
+          },
+          "oversized": {
+            "type": "boolean",
+            "title": "Oversized",
+            "default": false
           }
         },
         "type": "object",
@@ -4277,6 +4303,39 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "vectorization_status": {
+            "type": "string",
+            "enum": [
+              "vectorized",
+              "partial",
+              "not_vectorized",
+              "unknown"
+            ],
+            "title": "Vectorization Status",
+            "default": "unknown"
+          },
+          "vectorized_chunk_count": {
+            "type": "integer",
+            "title": "Vectorized Chunk Count",
+            "default": 0
+          },
+          "not_vectorized_chunk_count": {
+            "type": "integer",
+            "title": "Not Vectorized Chunk Count",
+            "default": 0
+          },
+          "unknown_chunk_count": {
+            "type": "integer",
+            "title": "Unknown Chunk Count",
+            "default": 0
+          },
+          "embedding_skip_reason_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Embedding Skip Reason Counts"
           }
         },
         "type": "object",
@@ -4355,6 +4414,39 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "vectorization_status": {
+            "type": "string",
+            "enum": [
+              "vectorized",
+              "partial",
+              "not_vectorized",
+              "unknown"
+            ],
+            "title": "Vectorization Status",
+            "default": "unknown"
+          },
+          "vectorized_chunk_count": {
+            "type": "integer",
+            "title": "Vectorized Chunk Count",
+            "default": 0
+          },
+          "not_vectorized_chunk_count": {
+            "type": "integer",
+            "title": "Not Vectorized Chunk Count",
+            "default": 0
+          },
+          "unknown_chunk_count": {
+            "type": "integer",
+            "title": "Unknown Chunk Count",
+            "default": 0
+          },
+          "embedding_skip_reason_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Embedding Skip Reason Counts"
           }
         },
         "type": "object",

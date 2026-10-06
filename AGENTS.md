@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-10-02
+> 最后更新：2026-10-06
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -33,7 +33,7 @@
 - 产品需求：`docs/product/项目产品需求方案.md`
 - 设计方案：`docs/product/项目设计方案.md`（历史稿，先读 As-Is 矩阵）
 - 当前能力矩阵：`docs/product/as-is-capability-matrix.md`
-- ADR：`docs/adr/`（已批准：ADR-0001 权限、ADR-0002 VectorStore、ADR-0003 生效日期；不得把目录存在或 Proposed 草稿当成已决策）
+- ADR：`docs/adr/`（已批准记录以目录 README 为索引；包含权限、VectorStore、生效日期、Skill、RAG 预算、清洗补偿、引用核验与索引身份；Accepted 不等于已实现，不得把目录存在或 Proposed 草稿当成已决策）
 - 已批准计划：`docs/plans/`
 - 评审结论：`docs/reviews/`。评审不要写入 `docs/plans/`
 - AI 提示词：`docs/ai-prompts/`
@@ -380,6 +380,8 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 - 未验证项和风险已明确记录，未伪装为完成。
 
 ## 14. 当前推进顺序
+
+2026-10-06 RAG 裁决补记：用户批准按 `docs/plans/plan_rag_remaining_order_20261006.md` 第8节建议实施，批准范围见第9节；引用核验遵 ADR-0007，索引身份与切换遵 ADR-0008，预算/来源/评测与摘要生命周期遵 ADR-0005 第9节。方向已批准不重复裁决；具体费用/质量数值、未核对模型能力、真实重要数据重建和生产启用仍需对应证据与明确授权。CI/OPS 前置、Query Rewrite/重排/资源 ACL 的进入条件保持。本次同步时 RAG/PRAG 共46卡（23 done / 23 backlog），批准登记不关闭业务卡；下文旧数量为其所标日期的历史清点，不覆盖最新 tasks.yaml。默认 local、Milvus Partial、资源 ACL Planned 不变。
 
 已完成：
 

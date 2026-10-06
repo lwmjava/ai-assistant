@@ -1,6 +1,6 @@
 # RAG 结构识别、自适应切分与模型预算设计
 
-日期：2026-10-05。状态：Draft / Planned，待评审；用户授权先落设计与 ADR，不表示批准实施、迁移或启用。决策草案：[ADR-0005](../adr/0005-rag-adaptive-chunking-context-budget.md)。事实核对：[RAG 任务卡评审](../reviews/2026-10-05-RAG任务卡能力覆盖核对.md)。
+日期：2026-10-05。状态：分阶段设计已批准，能力须按任务验证。初稿仅授权设计；之后 ADR-0005 已 Accepted，2026-10-06 又批准预算/来源/摘要建议。当前决定：[ADR-0005](../adr/0005-rag-adaptive-chunking-context-budget.md)，相关权限/索引见 ADR-0007/0008；[批准范围](plan_rag_remaining_order_20261006.md) 不授权真实迁移或生产启用。以下“当前事实”为初稿历史快照，已完成修复以对应实现说明/tasks.yaml 为准。事实核对：[RAG 任务卡评审](../reviews/2026-10-05-RAG任务卡能力覆盖核对.md)。
 
 ## 1. 目标、现状与范围
 

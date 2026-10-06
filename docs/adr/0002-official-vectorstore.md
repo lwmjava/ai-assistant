@@ -96,3 +96,9 @@ Milvus 闭环（对应第 5 节；未配置则 skip，skip 不算通过）：
 ## 8. 回滚
 
 保持 `RAG_VECTOR_STORE=local` 和现有 Local 索引，直到第 5 节门槛通过并显式切换默认。不删除 Local 或现有 Milvus 适配代码。
+
+## 9. 2026-10-06 索引身份与默认配置补记
+
+用户批准 [ADR-0008](0008-embedding-index-identity-and-switching.md) 的索引身份、新索引准备/验证、显式切换及旧索引回退。由 RAG-032 实现，RAG-015/036 核对规范化、真实 similarity 和混合语义。具体真实重建和生产切换另授权。
+
+2026-09-29 五条核对证据为历史集成证据；RAG-022 最新说明仍登记 SQL/远端索引原子性缺口。因此当前继续保持 local 默认、Milvus Partial，不根据历史脚本自动更改默认或宣称生产可用。未来默认切换必须同时有当前闭环证据和显式批准；本补记不重选 Milvus metric，也不改冻结 Local 评测。

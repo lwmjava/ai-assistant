@@ -1,6 +1,7 @@
 # ai-assistant As-Is 能力矩阵
 
 > 对账日期：2026-10-02
+> 2026-10-06 RAG 决定补记：[推进清单与批准范围](../plans/plan_rag_remaining_order_20261006.md)。引用核验/索引身份/生成预算/摘要已批准设计，仍按实际实现标 Planned/Partial；本次不是全平台重新验收。
 > 代码基线：交付排期第 1–20 项对应任务卡均为 `done`。任务卡完成不等于该行标成 `Implemented`。发布门禁见 `docs/plans/implementation_rel_003.md`，结论是未达到发布合格。
 > 状态术语：`Implemented` / `Partial` / `Planned` / `Deferred` / `Deprecated`  
 > 当前事实入口：`AGENTS.md`  
@@ -49,9 +50,13 @@
 | 多格式解析（文本/PDF/Office/OCR） | `Partial` | `app/rag/document_parsers/`；`app/rag/ocr/`；相关 tests | 支持级别以测试为准，禁止写成全格式生产完备 |
 | 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 基线已冻结；无指标不新增策略 |
 | Dense + BM25 + RRF | `Implemented` | `app/rag/vectorstore/`；`app/rag/retriever.py` | RRF 是融合，不是独立 Reranker |
-| 独立 Reranker（Cross-Encoder/LLM/API） | `Planned` | `docs/plans/implementation_rel_004.md` | 2026-10-02 词面覆盖不采纳，本地检索顺序未改。未留下生产开关。`PRAG-002` 已取消。Cross-encoder 仍未做 |
+| 独立 Reranker（Cross-Encoder/LLM/API） | `Deferred` | `docs/plans/implementation_rel_004.md`；`tasks.yaml` PRAG-002 | 词面覆盖不采纳，本地检索顺序未改。PRAG-002 已恢复 backlog；新候选明确采纳证据和决定落盘前不开工，未有生产重排开关 |
 | 文档版本/去重/重解析 | `Partial` | `app/rag/service.py`；import jobs；`frontend/src/pages/Knowledge.tsx`；`tests/test_rag_import_jobs.py` | 知识库页可重建未删除文档，已删除文档不能被重建救回。生效日期 Flag 默认关；资源 ACL `Planned` |
-| 结构化 Citation | `Partial` | 回复 `sources` 含文件名；解析结果已有页码或段落时一并返回；对话页展示这些字段 | 缺 document、chunk、version 的稳定引用标识。生成层引用准确率未测 |
+| 结构化 Citation | `Partial` | `app/rag/service.py:sources_from_hits` 返回 filename/page/section/document_id/chunk_id/excerpt | 已有文档/块标识，不能再写成两者缺失；来源与实际选入、版本绑定及真实生成引用准确证据仍待 RAG-029/035；有权原文核验由 RAG-027 承接 |
+| 引用原文只读核验 | `Planned` | ADR-0007 Accepted；tasks.yaml RAG-027 | tenant有权块只读核验，uploader隔离；不扩大整文件下载/管理权；批准不等于业务入口完成 |
+| Embedding 索引身份与切换 | `Partial` | ADR-0008 Accepted；tasks.yaml RAG-032 | 已有维度检查；同维异模型混用阻断、新索引准备/切换/回退仍按卡实现；真实重建另授权 |
+| 全部模型调用预算/上下文来源 | `Partial` | ADR-0005 第9节；tasks.yaml RAG-028/029 | 已有特定Embedding护栏和上下文字符预算；版本化生成能力、每次payload Guard及实际selected来源仍待实现 |
+| 版本绑定章节摘要 | `Planned` | ADR-0005 第9节；tasks.yaml RAG-040 | 生命周期/权限继承方向已批准，默认关闭；不是对话Memory摘要，也不宣称已经生成/启用 |
 | 版本化 Evaluation | `Partial` | `evals/datasets/rag-v0.1/`；`docs/evaluations/rag-v0.1-baseline-report.md`；`docs/evaluations/rag-v0.1-lexical-coverage-20261002.md` | 未测生成层。语料 13 篇 / 37 块。词面覆盖不采纳，不得写成质量提升 |
 
 ## 4. 安全、记忆、观测
@@ -68,9 +73,12 @@
 
 | ID | 决定 | 代码是否已对齐 | 实现任务 |
 |---|---|---|---|
-| ADR-0001 | 读路径：同租户共享当前版本；写路径：成员仅自己的文档 | `Partial`：`RAG_KB_SCOPE=tenant` 已对齐列表/详情/检索/导入读路径；资源 ACL 仍 Planned | 资源 ACL 另开任务 |
+| ADR-0001 | 默认tenant共享当前版本；可选uploader检索隔离已批准；控制面按第4节 | `Partial`：检索与控制面分开，不能写列表/详情已与检索全对齐；uploader全链路由RAG-026实现；资源ACL仍Planned | RAG-026；引用核验RAG-027；资源ACL另按进入条件 |
 | ADR-0002 | 正式目标 Milvus（开发 Lite / 生产 2.4+）；Local 为评测与回退；五条通过后才改默认 | `Partial`：2026-09-29 五条脚本通过；默认仍是 local | 不标 `Implemented`。把默认改成 `milvus` 尚未做 |
 | ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后 Local 按 as-of / 查询日期窗口过滤 | 默认现网仍只检索 `is_current`；未做真实嵌入复跑 |
+| ADR-0005 | 模型预算、完整块组装、实际selected来源、摘要生命周期 | `Partial`：已有结构与路由修复，生成预算/来源/摘要仍Planned；不能从Accepted推导完整实现 | RAG-028/029/030/031/040 |
+| ADR-0007 | 受控块级原文只读核验 | `Planned`：未用本次批准关闭业务卡 | RAG-027 |
+| ADR-0008 | 模型与索引身份绑定、新索引受控切换/回退 | `Partial`：已有维度检查，不等于完整索引治理 | RAG-032/015/036 |
 
 资源级 ACL 仍为 `Planned`。2026-09-19 A1：评测不把同租户当前文档命中记为越权。
 

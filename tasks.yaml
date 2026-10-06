@@ -8866,7 +8866,8 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      blocked_by: "NFR-001/RAG-034 完成且发布指标阈值获批准后开工。"
+      blocked_by: "NFR-001/RAG-034 未完成；云端实跑仍受不推送边界约束。质量门槛制定方法已批准，具体发布阈值/容忍量须实测后落盘批准。"
+      progress: "2026-10-06：用户批准按推进清单第8节建议实施；保持CI前置阻塞，不以本地通过替代云端验收。见 docs/plans/plan_rag_remaining_order_20261006.md 第9节。"
 
   - id: "PAGT-006"
     title: "独立 Tool Executor + State Manager 层（随工具扩展落地）"
@@ -9459,7 +9460,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "先核对 ADR-0001 uploader 兼容契约；若改变权限语义先修订批准。"
+      blocked_by: "uploader检索隔离方向已于2026-10-05批准（ADR-0001第10节）；开工复核API/Agent/后端当前事实与权限测试基线，不再重复方向裁决。"
       nightly:
         eligible: false
         production_access: false
@@ -9495,14 +9496,14 @@ tasks:
       non_goals:
       - "不放宽删除/重解析控制权。"
     acceptance:
-    - "A 上传 B 检索核验成功；B 不能删改 A；跨租户和软删拒绝。"
+    - "tenant模式A上传、B核验有权命中块及必要定位信息成功；uploader仅自己的内容；关联父块独立鉴权限范围；B不能删改A或扩大整文件下载；跨租户、旧版和软删拒绝。"
     risk:
       level: "L2"
       side_effect: "授权引用原文只读核验"
       rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
     evaluation:
       cases:
-      - "A 上传 B 检索核验成功；B 不能删改 A；跨租户和软删拒绝。"
+      - "tenant有权命中块核验；uploader隔离；父块独立鉴权；跨租户/旧版/软删/错误关联拒绝；控制面及整文件下载权限不变。"
       commands:
       - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
       - "ruff check app/rag/"
@@ -9511,7 +9512,8 @@ tasks:
       - "cd frontend; npm run build"
     execution:
       owner: "个人开发者"
-      blocked_by: "只读溯源权限 ADR Accepted 后才改业务。"
+      blocked_by: "ADR-0007 Accepted，引用核验范围已批准；RAG-026完成后按单卡计划实施，不开放整章/整文件或管理权限。"
+      progress: "2026-10-06：用户批准受控块级只读核验，权限决定见 docs/adr/0007-rag-source-verification-permission.md；功能仍Planned，未以批准登记关闭卡。"
       nightly:
         eligible: false
         production_access: false
@@ -9564,7 +9566,8 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "ADR-0005 Accepted；能力来源/计数精度/估算余量获批准。"
+      blocked_by: "ADR-0005第9节已批准能力配置/计数方法方向；具体模型能力证据、计数校准与数值余量需在单卡计划锁定，未知模型无批准配置拒绝。"
+      progress: "2026-10-06：用户批准版本化能力、适用官方计数器优先及校准保守估算；沿用已批准Embedding护栏，生成预算未实现。"
       nightly:
         eligible: false
         production_access: false
@@ -9618,7 +9621,8 @@ tasks:
       - "cd frontend; npm run build"
     execution:
       owner: "个人开发者"
-      blocked_by: "ADR-0005 Accepted；预算与来源契约获批准。"
+      blocked_by: "RAG-028未完成；ADR-0005第9节已批准预算取舍与selected来源方向，具体分配/超限契约按有证据的单卡计划细化。"
+      progress: "2026-10-06：用户批准完整证据块、输出预留、无关/较旧历史先缩减，不截坏围栏；selected仅表示实际选入，不宣称答案引用正确。"
       nightly:
         eligible: false
         production_access: false
@@ -9670,7 +9674,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "ADR-0005 Accepted。"
+      blocked_by: "ADR-0005已Accepted；RAG-026/RAG-029未完成，待授权与预算基础就绪后实施，不重复架构方向裁决。"
       nightly:
         eligible: false
         production_access: false
@@ -9724,7 +9728,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "ADR-0005 Accepted，数据处理授权与质量/成本门禁获批准。"
+      blocked_by: "RAG-028未完成；模型/样本/费用及质量门槛制定方法已批准（ADR-0005第9节），具体模型、样本用途、调用/费用额度与实测门槛需落盘；默认关闭。"
       nightly:
         eligible: false
         production_access: false
@@ -9777,7 +9781,8 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "索引迁移方案/相关 ADR 批准；实际重建另获授权。"
+      blocked_by: "ADR-0008 Accepted，新索引准备/验证/切换与旧索引回退方向已批准；先用临时库/测试collection细化验证，真实重要数据重建和生产切换另获授权。"
+      progress: "2026-10-06：用户批准索引身份及新旧索引切换治理；见 docs/adr/0008-embedding-index-identity-and-switching.md。不得原地覆盖或同维异模型混用。"
       nightly:
         eligible: false
         production_access: false
@@ -9827,7 +9832,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "真实依赖与样本数据授权到位。"
+      blocked_by: "真实依赖与公开/合成/确认脱敏样本到位；本地核验可推进。涉及外部OCR时登记既有授权供应商、数据范围和调用/费用额度；质量阈值实测后批准。"
       nightly:
         eligible: false
         production_access: false
@@ -9927,7 +9932,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "真实模型配置与数据授权；生成质量阈值获批准后才用于上线判断。"
+      blocked_by: "RAG-034未完成；真实模型/样本用途及调用/费用额度需具体登记，固定基线后批准生成质量数值。授权与门槛制定方法已由ADR-0005第9节批准，不等于发布质量通过。"
       nightly:
         eligible: false
         production_access: false
@@ -10031,7 +10036,7 @@ tasks:
       - "cd frontend; npm run build"
     execution:
       owner: "个人开发者"
-      blocked_by: "错误/拒答契约获批准；涉及 Harness 边界按 ADR-0005 批准。"
+      blocked_by: "知识问答/普通聊天方向及ADR-0005已批准；按计划锁定ok/no_hit/below_threshold/unavailable错误与最终回复契约，不重复方向裁决。"
       nightly:
         eligible: false
         production_access: false
@@ -10082,7 +10087,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "deadline/重试上限在实现计划锁定；若新增降级架构另批准。"
+      blocked_by: "RAG-037未完成；常规deadline/重试上限由实施计划给出依据并锁定；仅新增降级架构才另提裁决。"
       nightly:
         eligible: false
         production_access: false
@@ -10137,7 +10142,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "OPS 外部状态/幂等契约批准；新依赖另批准。"
+      blocked_by: "用户2026-10-06批准维持阻塞：OPS-001/002及RAG-024未完成，多实例外部状态/幂等方案在生产就绪阶段独立批准；不借RAG范围实施OPS或新增队列。"
       nightly:
         eligible: false
         production_access: false
@@ -10195,7 +10200,8 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "ADR-0005 Accepted；摘要存储/授权/保留与质量门禁批准。"
+      blocked_by: "RAG-028/029/035未完成；摘要版本绑定、授权继承、源版本失效不可读和沿源文档保留政策已批准（ADR-0005第9节）；存储细化、具体费用/质量门槛需落盘，默认关闭。"
+      progress: "2026-10-06：用户批准摘要生命周期方向；源文档失效立即拒绝读取，物理清理按批准保留政策；不授权生产启用或实际重要数据删除。"
       nightly:
         eligible: false
         production_access: false

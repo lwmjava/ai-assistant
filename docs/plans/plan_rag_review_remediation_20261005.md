@@ -1,8 +1,8 @@
 # RAG 评审问题整改映射与实施计划
 
-日期：2026-10-05。状态：文档规划与任务契约调整完成；业务整改未实施。正式 ID、依赖与逐卡实施计划见 [整改任务拆分](plan_rag_remediation_cards_20261005.md)，对应 [tasks.yaml](../../tasks.yaml)。不表示所有 Proposed 架构/权限决定已经批准。
+日期：2026-10-05（整改映射历史时点）。当时完成文档规划与任务契约调整；后来部分业务卡已完成，ADR-0005 已 Accepted。2026-10-06 裁决范围见 [最新推进清单第9节](plan_rag_remaining_order_20261006.md)。正式 ID、依赖与逐卡实施计划见 [整改任务拆分](plan_rag_remediation_cards_20261005.md)，对应 [tasks.yaml](../../tasks.yaml)。批准不代表全部能力已实现。
 
-来源：[能力覆盖核对](../reviews/2026-10-05-RAG任务卡能力覆盖核对.md)、[智能切分设计](design_rag_adaptive_context_20261005.md)、[ADR-0005（Proposed）](../adr/0005-rag-adaptive-chunking-context-budget.md)。任务入口：[tasks.yaml](../../tasks.yaml)。
+来源：[能力覆盖核对](../reviews/2026-10-05-RAG任务卡能力覆盖核对.md)、[智能切分设计](design_rag_adaptive_context_20261005.md)、[ADR-0005（Accepted）](../adr/0005-rag-adaptive-chunking-context-budget.md)。任务入口：[tasks.yaml](../../tasks.yaml)。
 
 ## 1. 范围与执行规则
 
@@ -65,8 +65,8 @@
 
 ## 4. 决策与审批边界
 
-- ADR-0005 尚 Proposed：W4/W5/W6 不开工；结构规则与策略参数持久化按现有架构逐项审查，涉及边界变更同样先决策。
-- D5 的引用只读范围需权限 ADR；B4 ACL 明确 Deferred。D4 先确认已有 uploader 的批准定义，不能用“关闭配置”代替隔离修复验收。
+- ADR-0005 已 Accepted，W4/W5/W6 按逐卡依赖和具体证据准入，不再因历史 Proposed 阻塞。预算/来源/摘要方向已批准，具体未产生数值与真实数据操作授权仍按第9节办理。
+- D5 引用只读范围遵已批准 ADR-0007；B4 ACL 保持 Deferred。D4 uploader 定义已按 ADR-0001 第10节批准，不重复裁决；不能用“关闭配置”代替隔离修复验收。
 - C2 先保留允许少返回；改补位须证据。C3 改独立稀疏召回、E3 失败自动降级 BM25 均是未批准策略，不伪装例行修复。
 - NFR 性能、生产编排、多实例、审计保留由既有 NFR/OPS 卡承接，不在这里重拆整个企业计划。
 - 工作包不等于新任务卡，批准拆分后必须同时写入 tasks.yaml；不得仅在对话或本文留实际执行任务。

@@ -9363,7 +9363,7 @@ tasks:
 
   - id: "RAG-025"
     title: "RAG 日志内容最小化"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ''
     depends_on: []
@@ -9404,7 +9404,8 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "源码、最终验证和独立审查已完成；仅待用户按实现说明核验页面来源保留及日志无正文，确认关闭后独立提交。"
+      blocked_by: ""
+      acceptance_record: "2026-10-06：用户提供会话来源、知识库检索及两类后台日志截图，页面内容保留，展示日志无问题或来源正文；用户明确要求关闭。实现代码已在08a8100提交，本次记录关闭。"
       progress: "2026-10-05：源头及API/Pipeline/httpx边界日志最小化完成；最终全量593passed/2skipped、RAG82passed/1skipped、专项及相关41passed、Ruff/mypy通过。计划与实现说明见docs/plans/plan_rag_025_log_minimization_20261005.md、implementation_rag_025_log_minimization_20261005.md；独立审查见docs/reviews/2026-10-05-RAG025日志最小化独立审查.md，两项P1已修复复审通过。"
       nightly:
         eligible: false

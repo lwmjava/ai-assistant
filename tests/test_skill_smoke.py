@@ -1,6 +1,9 @@
 """Smoke test for skill system."""
+
 import sys
 from pathlib import Path
+
+from app.agents.skills import get_skill_manager, reset_skill_manager
 
 # Ensure project root is on sys.path for direct execution
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -70,7 +73,6 @@ assert mgr.get("test_skill") is None
 print("Test 8: Unregister OK")
 
 # Test 9: Global singleton
-from app.agents.skills import get_skill_manager, reset_skill_manager
 
 reset_skill_manager()
 mgr2 = get_skill_manager()

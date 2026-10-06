@@ -1,11 +1,13 @@
 # ADR 目录
 
-> 状态：四份 Accepted ADR  
-> 更新日期：2026-10-01
+> 状态：六份 Accepted ADR；架构批准不等于能力实现
+> 更新日期：2026-10-05
 
 本目录只存放已批准或评审中的架构决策记录。
 
 ## 已批准
+
+ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-compensation.md)，Accepted，2026-10-05 用户批准按 RAG-014 计划实施；真实数据迁移/删除未授权。
 
 | 编号 | 文件 | 状态 | 决定 | 任务 |
 |---|---|---|---|---|
@@ -17,11 +19,11 @@
 权限过滤与生效日期过滤实现在 `RAG-006`。本阶段不切换默认向量库。  
 `RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后才改变检索候选集。
 
-## 评审中
+## 分阶段实施中
 
 | 编号 | 文件 | 状态 | 范围 |
 |---|---|---|---|
-| ADR-0005 | [0005-rag-adaptive-chunking-context-budget.md](0005-rag-adaptive-chunking-context-budget.md) | Proposed | RAG 结构切分、LLM 辅助章节摘要与模型上下文预算；尚未批准实施 |
+| ADR-0005 | [0005-rag-adaptive-chunking-context-budget.md](0005-rag-adaptive-chunking-context-budget.md) | Accepted | 2026-10-05 用户批准分阶段实施；边界辅助与摘要默认关闭；真实迁移与生产启用另授权 |
 
 ## 格式
 

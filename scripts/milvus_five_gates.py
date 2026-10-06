@@ -21,7 +21,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-class GateBlocked(RuntimeError):
+class GateBlockedError(RuntimeError):
     """环境或版本不匹配，不记成业务断言失败。"""
 
     def __init__(self, reason: str, detail: str) -> None:
@@ -30,7 +30,7 @@ class GateBlocked(RuntimeError):
         self.detail = detail
 
 
-class GateFailed(RuntimeError):
+class GateFailedError(RuntimeError):
     """某条门槛的业务断言失败。"""
 
 
@@ -76,7 +76,7 @@ def _raise_connect_blocked(exc: BaseException) -> None:
     """TCP 已通时的客户端调用失败：记 blocked，不把调用失败写成业务断言失败。"""
     import pymilvus
 
-    raise GateBlocked(
+    raise GateBlockedError(
         "version_mismatch",
         f"pymilvus=={pymilvus.__version__} 与 milvusdb/milvus:v2.5.11 调用失败："
         f"{type(exc).__name__}: {exc}",
@@ -139,7 +139,7 @@ async def _run_gates() -> dict[str, Any]:
         rag = RAGService(session, tenant_a, embedding_provider=embedding)
         store = rag._vector_store
         if not isinstance(store, MilvusVectorStore):
-            raise GateFailed(f"向量库不是 MilvusVectorStore：{type(store).__name__}")
+            raise GateFailedError(f"向量库不是 MilvusVectorStore：{type(store).__name__}")
 
         try:
             collection = store._connect()
@@ -155,18 +155,18 @@ async def _run_gates() -> dict[str, Any]:
                 ).all()
             )
             if not chunks:
-                raise GateFailed("摄取后没有分块")
+                raise GateFailedError("摄取后没有分块")
             await store.add(chunks)
             collection.flush()
             hits = await rag.search(marker_a, top_k=5)
-        except GateFailed:
+        except GateFailedError:
             raise
         except Exception as exc:  # noqa: BLE001
             _raise_connect_blocked(exc)
 
         hit_ids = [hit.document_id for hit in hits]
         if doc.id not in hit_ids:
-            raise GateFailed(f"第 1 条：检索未命中刚写入的文档，命中={hit_ids}")
+            raise GateFailedError(f"第 1 条：检索未命中刚写入的文档，命中={hit_ids}")
         report["gates"]["1"] = {
             "result": "pass" if not mock else "chain_only",
             "document_id": doc.id,
@@ -196,16 +196,16 @@ async def _run_gates() -> dict[str, Any]:
             leftover = _query_ids(collection, old_ids)
             search_old = await rag.search(marker_a, top_k=8)
             search_old_chunk_ids = [hit.id for hit in search_old]
-        except GateFailed:
+        except GateFailedError:
             raise
         except Exception as exc:  # noqa: BLE001
             _raise_connect_blocked(exc)
 
         if leftover:
-            raise GateFailed(f"第 2 条：集合仍含旧主键 {leftover}")
+            raise GateFailedError(f"第 2 条：集合仍含旧主键 {leftover}")
         old_in_search = [item for item in search_old_chunk_ids if item in set(old_ids)]
         if old_in_search:
-            raise GateFailed(f"第 2 条：检索仍返回旧主键 {old_in_search}")
+            raise GateFailedError(f"第 2 条：检索仍返回旧主键 {old_in_search}")
         report["gates"]["2"] = {
             "result": "pass" if not mock else "chain_only",
             "old_ids": old_ids,
@@ -222,7 +222,7 @@ async def _run_gates() -> dict[str, Any]:
             _raise_connect_blocked(exc)
         other_docs = [hit.document_id for hit in other_hits]
         if doc.id in other_docs:
-            raise GateFailed(f"第 4 条：其他租户命中了第一个租户的文档 {doc.id}")
+            raise GateFailedError(f"第 4 条：其他租户命中了第一个租户的文档 {doc.id}")
         report["gates"]["4"] = {
             "result": "pass" if not mock else "chain_only",
             "other_hit_document_ids": other_docs,
@@ -242,9 +242,9 @@ async def _run_gates() -> dict[str, Any]:
         except Exception as exc:  # noqa: BLE001
             _raise_connect_blocked(exc)
         if deleted != before:
-            raise GateFailed(f"第 3 条：delete_by_document 返回 {deleted}，删除前分块数 {before}")
+            raise GateFailedError(f"第 3 条：delete_by_document 返回 {deleted}，删除前分块数 {before}")
         if remaining:
-            raise GateFailed(f"第 3 条：删除后集合仍有 {len(remaining)} 条")
+            raise GateFailedError(f"第 3 条：删除后集合仍有 {len(remaining)} 条")
         report["gates"]["3"] = {
             "result": "pass" if not mock else "chain_only",
             "deleted": deleted,
@@ -311,12 +311,12 @@ def main() -> int:
 
     try:
         report = asyncio.run(_run_gates())
-    except GateBlocked as exc:
+    except GateBlockedError as exc:
         _rollback_env()
         print(json.dumps({"blocked": exc.reason, "detail": exc.detail}, ensure_ascii=False))
         traceback.print_exc()
         return 3
-    except GateFailed as exc:
+    except GateFailedError as exc:
         _rollback_env()
         print(json.dumps({"failed": str(exc)}, ensure_ascii=False))
         traceback.print_exc()

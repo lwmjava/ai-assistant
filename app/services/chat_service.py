@@ -10,11 +10,11 @@
 import asyncio
 import json
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.agents.fast_path import iter_fast_path
 from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
@@ -49,6 +49,7 @@ def _skill_names_payload(names: list[str] | None) -> str | None:
     if not names:
         return None
     return json.dumps(names, ensure_ascii=False)
+
 
 logger = logging.getLogger(__name__)
 
@@ -102,21 +103,17 @@ class ChatService:
         stmt = select(Conversation).where(Conversation.tenant_id == user.tenant_id)
         if user.role_enum.value != "system_admin":
             stmt = stmt.where(Conversation.user_id == user.id)
-        stmt = stmt.order_by(Conversation.updated_at.desc()).limit(limit).offset(offset)
+        stmt = stmt.order_by(col(Conversation.updated_at).desc()).limit(limit).offset(offset)
         return list(session.exec(stmt).all())
 
-    def get_conversation(
-        self, session: Session, user: User, conversation_id: str
-    ) -> Conversation | None:
+    def get_conversation(self, session: Session, user: User, conversation_id: str) -> Conversation | None:
         """按 ID 获取会话，无权限时返回 None。"""
         conv = session.get(Conversation, conversation_id)
         if conv is None or not self._can_access(conv, user):
             return None
         return conv
 
-    def delete_conversation(
-        self, session: Session, user: User, conversation_id: str
-    ) -> bool:
+    def delete_conversation(self, session: Session, user: User, conversation_id: str) -> bool:
         """删除会话（级联删除消息）。无权限或不存在返回 False。"""
         conv = self.get_conversation(session, user, conversation_id)
         if conv is None:
@@ -151,14 +148,9 @@ class ChatService:
         注意：此方法仅做简单窗口裁剪；记忆压缩由 MemoryManager 负责。
         """
         recent = [m for m in conv.messages if m.content][-_HISTORY_LIMIT:]
-        return [
-            ChatMessage(role=ChatRole(m.role), content=sanitize_history_text(m.content))
-            for m in recent
-        ]
+        return [ChatMessage(role=ChatRole(m.role), content=sanitize_history_text(m.content)) for m in recent]
 
-    async def _build_memory(
-        self, conv: Conversation
-    ) -> ConversationMemory:
+    async def _build_memory(self, conv: Conversation) -> ConversationMemory:
         """构建对话记忆：窗口裁剪 + 必要时压缩。
 
         SKELETON：当前使用 MemoryManager 做内存级管理；
@@ -268,13 +260,9 @@ class ChatService:
         try:
             from app.agents.supervisor import SupervisorGraph
 
-            return SupervisorGraph(
-                self.llm, options=self._options, retriever=retriever, tools=tools
-            )
+            return SupervisorGraph(self.llm, options=self._options, retriever=retriever, tools=tools)
         except ImportError as exc:
-            logger.warning(
-                "AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc
-            )
+            logger.warning("AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc)
             pipeline = AgentPipeline(
                 self.llm,
                 options=self._options,
@@ -343,7 +331,7 @@ class ChatService:
 
     async def chat_stream(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
-    ) -> AsyncIterator[AgentEvent]:
+    ) -> AsyncGenerator[AgentEvent, None]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
         # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
         sec_ctx, safe_message = self._apply_input_security(message, user)
@@ -372,11 +360,7 @@ class ChatService:
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
         fast = self._fast_route(safe_message)
-        pipeline = (
-            None
-            if fast is not None
-            else self._build_pipeline(retriever, tools, skill_ctx)
-        )
+        pipeline = None if fast is not None else self._build_pipeline(retriever, tools, skill_ctx)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
         # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。
@@ -415,7 +399,7 @@ class ChatService:
                     if current is not None:
                         self._maybe_reflect(current, state)
                     yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
-                    logger.info("rag_sources_returned sources=%s", json.dumps(sources, ensure_ascii=False))
+                    logger.info("rag_sources_returned source_count=%s", len(sources))
                 yield event
         except (GeneratorExit, asyncio.CancelledError):
             stopped = True
@@ -429,8 +413,8 @@ class ChatService:
                 if not sources:
                     try:
                         sources = self._reply_sources(session, retriever)
-                    except Exception:  # noqa: BLE001 — 停止时请求会话可能已关闭
-                        logger.exception("停止时读取来源失败，仍保存已生成文本")
+                    except Exception as exc:  # noqa: BLE001 — 停止时请求会话可能已关闭
+                        logger.error("rag_sources_read_failed error_type=%s", type(exc).__name__)
                         sources = []
                 self._persist_assistant_standalone(
                     conversation_id,
@@ -550,9 +534,7 @@ class ChatService:
     # ── 进化系统（Reflect 反思）───────────────────
 
     @staticmethod
-    def _conversation_after_reply(
-        session: Session, conv: Conversation, conversation_id: str
-    ) -> Conversation | None:
+    def _conversation_after_reply(session: Session, conv: Conversation, conversation_id: str) -> Conversation | None:
         """回复提交后取回仍属于当前 Session 的会话。
 
         流式路由交出会话编号后，请求依赖会关闭 Session。
@@ -683,9 +665,7 @@ class ChatService:
 
             # 注入检测
             if settings.SECURITY_INJECTION_DETECTION:
-                detector = PromptInjectionDetector(
-                    threshold=settings.SECURITY_INJECTION_THRESHOLD
-                )
+                detector = PromptInjectionDetector(threshold=settings.SECURITY_INJECTION_THRESHOLD)
                 inj_result = detector.detect(message, ctx)
                 if inj_result.detected:
                     logger.warning(
@@ -766,6 +746,7 @@ class ChatService:
             return None
         try:
             from app.debug.trace import AgentTrace
+
             return AgentTrace(debug_mode=True)
         except Exception:  # noqa: BLE001
             return None
@@ -777,9 +758,14 @@ class ChatService:
             return
         try:
             from app.debug.trace import TraceCollector
+
             collector = TraceCollector.get_instance()
             collector.add(trace)
-            logger.debug("Trace 已收集: run_id=%s, duration=%.0fms, events=%d",
-                         trace.run_id, trace.duration_ms, len(trace.events))
+            logger.debug(
+                "Trace 已收集: run_id=%s, duration=%.0fms, events=%d",
+                trace.run_id,
+                trace.duration_ms,
+                len(trace.events),
+            )
         except Exception:  # noqa: BLE001
             pass

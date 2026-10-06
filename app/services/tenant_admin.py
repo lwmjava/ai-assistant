@@ -1,6 +1,6 @@
 """系统管理员的租户创建与列表。"""
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.security import Role
 from app.models.user import Tenant, User
@@ -33,9 +33,7 @@ class TenantAlreadyActiveError(Exception):
 
 def create_tenant(session: Session, *, name: str) -> Tenant:
     """创建未停用租户。同名且仍启用的租户已存在时拒绝。"""
-    existing = session.exec(
-        select(Tenant).where(Tenant.name == name, Tenant.is_active.is_(True))
-    ).first()
+    existing = session.exec(select(Tenant).where(Tenant.name == name, col(Tenant.is_active).is_(True))).first()
     if existing is not None:
         raise TenantNameTakenError(name)
     tenant = Tenant(name=name, is_active=True)
@@ -85,7 +83,7 @@ def list_tenants(session: Session, *, include_inactive: bool) -> list[Tenant]:
     """按名称列出租户。默认不含已停用。"""
     stmt = select(Tenant)
     if not include_inactive:
-        stmt = stmt.where(Tenant.is_active.is_(True))
+        stmt = stmt.where(col(Tenant.is_active).is_(True))
     return list(session.exec(stmt.order_by(Tenant.name)).all())
 
 
@@ -99,7 +97,7 @@ def rename_tenant(session: Session, tenant_id: str, name: str) -> Tenant:
     taken = session.exec(
         select(Tenant).where(
             Tenant.name == name,
-            Tenant.is_active.is_(True),
+            col(Tenant.is_active).is_(True),
             Tenant.id != tenant.id,
         )
     ).first()
@@ -140,7 +138,7 @@ def activate_tenant(session: Session, tenant_id: str) -> Tenant:
     taken = session.exec(
         select(Tenant).where(
             Tenant.name == tenant.name,
-            Tenant.is_active.is_(True),
+            col(Tenant.is_active).is_(True),
             Tenant.id != tenant.id,
         )
     ).first()

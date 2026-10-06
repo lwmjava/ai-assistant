@@ -1,0 +1,6 @@
+[
+  {"id":"code_and_box","text":"```\r\n  ┌────┐\r\n  │ a  │\r\n    code()\r\n```","expected":"```\n  ┌────┐\n  │ a  │\n    code()\n```"},
+  {"id":"table","text":"| 名称 | 值 |\r\n| --- | --- |\r\n| A | 1 |","expected":"| 名称 | 值 |\n| --- | --- |\n| A | 1 |"},
+  {"id":"bom_heading","text":"﻿## 标题\r正文","expected":"## 标题\n正文"},
+  {"id":"tabs_and_blank_lines","text":"\tcode()\n\n  text  \n","expected":"\tcode()\n\n  text  \n"}
+]

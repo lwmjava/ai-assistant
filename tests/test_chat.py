@@ -192,6 +192,29 @@ def test_chat_stream_returns_sse(client: TestClient) -> None:
     assert "data" in body
 
 
+def test_chat_stream_midstream_failure_closes_generator(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.agents.pipeline import AgentEvent
+    from app.api.routes import chat as chat_route
+
+    closed = []
+
+    async def failing_stream(*args, **kwargs):
+        try:
+            yield AgentEvent("token", "first")
+            raise RuntimeError("PRIVATE_MIDSTREAM_DETAILS")
+        finally:
+            closed.append(True)
+
+    monkeypatch.setattr(chat_route._service, "chat_stream", failing_stream)
+    with client.stream("POST", "/api/chat/stream", json={"message": "流式测试"}) as response:
+        assert response.status_code == 200
+        body = "".join(response.iter_text())
+    assert "first" in body
+    assert "生成失败，请稍后重试" in body
+    assert "PRIVATE_MIDSTREAM_DETAILS" not in body
+    assert closed == [True]
+
+
 _PATH_SENTINEL = r"C:\Users\secret-host\note.txt"
 
 

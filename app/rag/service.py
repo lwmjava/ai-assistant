@@ -16,13 +16,15 @@ import os
 import re
 import uuid
 from collections.abc import Callable
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 
+from sqlalchemy import tuple_
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.core.json_logging import JsonLogFormatter
-from app.models.rag import Document, DocumentChunk
+from app.models.rag import Document, DocumentChunk, DocumentIngestionSnapshot, ImportJob
 from app.models.user import User
 from app.rag.access import (
     can_control_document,
@@ -35,13 +37,18 @@ from app.rag.backend.base import RagBackend
 from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
 from app.rag.chunking.base import ChunkParams
 from app.rag.chunking.factory import get_chunking_strategy, resolve_strategy_name
+from app.rag.cleaning import CleaningResult, clean_document, text_hash
 from app.rag.document_parsers.base import ParsedDocument
+from app.rag.document_storage import delete_source_file, resolve_source_file_path
+from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
+from app.rag.retrieval_guard import drop_injected_chunks
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.factory import get_vector_store
+from app.rag.vectorstore.local import visible_chunks_with_status
 from app.services.quota import source_file_size
 
 
@@ -220,6 +227,7 @@ class RAGService:
         version_state: str | None = None,
         effective_at: datetime | None = None,
         expires_at: datetime | None = None,
+        cleaning: CleaningResult | None = None,
     ) -> Document:
         """将切分结果持久化为文档与分块。"""
         if not chunk_objs:
@@ -252,6 +260,16 @@ class RAGService:
             )
             self.session.add(document)
             self.session.flush()
+            if cleaning is not None:
+                self.session.add(DocumentIngestionSnapshot(
+                    document_id=document.id,
+                    tenant_id=self.tenant_id,
+                    original_text=cleaning.original.text,
+                    original_blocks=json.dumps(
+                        [asdict(block) for block in cleaning.original.blocks], ensure_ascii=False
+                    ),
+                    cleaning_report=json.dumps(cleaning.report, ensure_ascii=False),
+                ))
 
             parent_id_map: dict[str, str] = {}
             for chunk_index, (chunk, vector) in enumerate(
@@ -262,7 +280,9 @@ class RAGService:
                 parent_id = None
                 if chunk.parent_id and chunk.parent_id in parent_id_map:
                     parent_id = parent_id_map[chunk.parent_id]
-                metadata = chunk.metadata or {}
+                metadata = dict(chunk.metadata or {})
+                if cleaning is not None:
+                    metadata["cleaning"] = cleaning.report
                 row = DocumentChunk(
                     id=row_id,
                     tenant_id=self.tenant_id,
@@ -322,6 +342,11 @@ class RAGService:
         均可缺省；缺省时由 ``resolve_strategy_name`` 依据配置与文本特征路由。
         ``backend`` 参数为历史兼容保留，切分已统一走策略层，不再受其影响。
         """
+        cleaning = clean_document(ParsedDocument(
+            text=text, title=title, source=source or "text", extension="txt",
+            content_type="text/plain",
+        ))
+        text = cleaning.document.text
         strategy_name = resolve_strategy_name(text, strategy)
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
         params = self._build_chunk_params(chunk_params)
@@ -344,6 +369,7 @@ class RAGService:
             version_state=version_state,
             effective_at=effective_at,
             expires_at=expires_at,
+            cleaning=cleaning,
         )
 
     async def ingest_parsed_document(
@@ -369,8 +395,48 @@ class RAGService:
         chunk_params: dict | None = None,
     ) -> Document:
         """摄取解析结果；结构感知策略可直接消费 parser 保留的 blocks。"""
+        cleaning = clean_document(parsed)
+        original_hash = content_hash or text_hash(parsed.text)
         chosen_title = title or parsed.title
         chosen_source = parsed.source if source is None else source
+        # 异步版本治理已有原始 hash 去重；同步上传补同来源/上传者去重。
+        if (
+            import_job_id is None and is_current and version_group_id is None
+            and strategy is None and chunk_params is None
+            and effective_at is None and expires_at is None
+        ):
+            existing = self.session.exec(select(Document).where(
+                col(Document.tenant_id) == self.tenant_id,
+                col(Document.user_id) == user_id,
+                col(Document.source) == chosen_source,
+                col(Document.content_hash) == original_hash,
+                col(Document.deleted_at).is_(None),
+                col(Document.is_current).is_(True),
+            )).first()
+            if existing is not None:
+                if storage_path and storage_path != existing.storage_path:
+                    if existing.storage_path is None:
+                        existing.storage_path = storage_path
+                        existing.source_bytes = source_file_size(storage_path)
+                        self.session.add(existing)
+                    else:
+                        referenced_doc = self.session.exec(select(Document).where(
+                            col(Document.storage_path) == storage_path
+                        )).first()
+                        referenced_job = self.session.exec(select(ImportJob).where(
+                            col(ImportJob.storage_path) == storage_path
+                        )).first()
+                        new_path = resolve_source_file_path(storage_path)
+                        old_path = resolve_source_file_path(existing.storage_path)
+                        if (
+                            referenced_doc is not None or referenced_job is not None
+                            or new_path.parent != old_path.parent
+                        ):
+                            raise ValueError("重复上传源文件不是本租户未引用的暂存文件")
+                        delete_source_file(storage_path)
+                self.session.commit()
+                return existing
+        parsed = cleaning.document
         strategy_name = resolve_strategy_name(parsed.text, strategy)
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
         params = self._build_chunk_params(chunk_params)
@@ -387,7 +453,7 @@ class RAGService:
             storage_path=storage_path,
             source_kind=source_kind,
             source_uri=source_uri,
-            content_hash=content_hash,
+            content_hash=original_hash,
             version_group_id=version_group_id,
             version_number=version_number,
             previous_document_id=previous_document_id,
@@ -395,6 +461,7 @@ class RAGService:
             is_current=is_current,
             effective_at=effective_at,
             expires_at=expires_at,
+            cleaning=cleaning,
         )
 
     async def ingest_file(self, path: str, title: str | None, user_id: str) -> Document:
@@ -441,22 +508,83 @@ class RAGService:
         hits = await rag_backend.retrieve(
             query, tenant_id=self.tenant_id, top_k=top_k
         )
-        return await self._expand_parent_chunks(hits)
+        return await self._expand_parent_chunks(hits, query=query)
 
     async def _expand_parent_chunks(
-        self, hits: list[ChunkResult]
+        self, hits: list[ChunkResult], *, query: str = ""
     ) -> list[ChunkResult]:
-        """命中子块时，追加其父块并去重，保留原排序与评分。"""
+        """批量校验命中与父块；真实命中优先，扩展父块继承评分。"""
+        if not hits:
+            return []
+        as_of, schedule_at = retrieval_window(query)
+
+        def load_rows(
+            ids: set[str], parent_links: set[tuple[str, str]] | None = None,
+        ) -> tuple[dict[str, DocumentChunk], dict[str, str]]:
+            if not ids:
+                return {}, {}
+            stmt = (
+                select(DocumentChunk, Document)
+                .join(Document, col(Document.id) == col(DocumentChunk.document_id))
+                .where(
+                    col(DocumentChunk.id).in_(ids),
+                    col(DocumentChunk.tenant_id) == self.tenant_id,
+                    col(Document.tenant_id) == self.tenant_id,
+                    col(Document.deleted_at).is_(None),
+                )
+            )
+            if not settings.RAG_EFFECTIVE_DATE_FILTER:
+                stmt = stmt.where(col(Document.is_current).is_(True))
+            if parent_links is not None:
+                stmt = stmt.where(
+                    tuple_(col(DocumentChunk.id), col(DocumentChunk.document_id)).in_(parent_links)
+                )
+            pairs = self.session.exec(stmt.execution_options(populate_existing=True)).all()
+            rows, statuses = visible_chunks_with_status(
+                self.session, [row for row, doc in pairs], as_of, schedule_at,
+                documents={doc.id: doc for row, doc in pairs},
+            )
+            return {row.id: row for row in rows}, statuses
+
+        hit_rows, statuses = load_rows({hit.id for hit in hits})
+        direct: dict[str, ChunkResult] = {}
+        for hit in hits:
+            row = hit_rows.get(hit.id)
+            if row is None or row.document_id != hit.document_id or hit.id in direct:
+                continue
+            kind = _chunk_metadata(row).get("kind")
+            direct[hit.id] = replace(
+                hit, content=row.content, source=row.source, parent_id=row.parent_id,
+                chunk_kind=(
+                    "child" if row.parent_id else "parent" if kind == "parent" else "unknown"
+                ),
+                version_status=statuses[row.id], retrieval_origin="hit",
+                expanded_from_chunk_id=None, score_inherited_from_chunk_id=None,
+            )
+        safe_hits = drop_injected_chunks(list(direct.values()), keep=len(direct))
+        direct = {hit.id: hit for hit in safe_hits}
+        parent_ids = {hit.parent_id for hit in safe_hits if hit.parent_id}
+        parent_links = {
+            (hit.parent_id, hit.document_id) for hit in safe_hits
+            if hit.parent_id and hit.parent_id not in hit_rows
+        }
+        parent_rows, parent_statuses = load_rows(parent_ids - hit_rows.keys(), parent_links)
+        parent_rows.update(hit_rows)
+        statuses.update(parent_statuses)
         expanded: list[ChunkResult] = []
         seen: set[str] = set()
-        for hit in hits:
+        for hit in safe_hits:
             if hit.id not in seen:
                 seen.add(hit.id)
                 expanded.append(hit)
-            row = self.session.get(DocumentChunk, hit.id)
-            if row is not None and row.parent_id:
-                parent_row = self.session.get(DocumentChunk, row.parent_id)
-                if parent_row is not None and parent_row.id not in seen:
+            if hit.parent_id:
+                parent_row = parent_rows.get(hit.parent_id)
+                if (
+                    parent_row is not None
+                    and parent_row.document_id == hit.document_id
+                    and parent_row.id not in seen
+                    and parent_row.id not in direct
+                ):
                     seen.add(parent_row.id)
                     expanded.append(
                         ChunkResult(
@@ -465,11 +593,16 @@ class RAGService:
                             source=parent_row.source,
                             document_id=parent_row.document_id,
                             score=hit.score,
-                        similarity=hit.similarity,  # 父块继承子块相似度
-                            version_status=hit.version_status,
+                            similarity=hit.similarity,  # 父块继承子块相似度
+                            version_status=statuses[parent_row.id],
+                            parent_id=parent_row.parent_id,
+                            chunk_kind="parent",
+                            retrieval_origin="parent_expansion",
+                            expanded_from_chunk_id=hit.id,
+                            score_inherited_from_chunk_id=hit.id,
                         )
                     )
-        return expanded
+        return drop_injected_chunks(expanded, keep=len(expanded))
 
     def make_retriever(self, top_k: int | None = None) -> HybridRetriever:
         """生成可注入 Agent 管线的混合检索器。"""
@@ -589,6 +722,8 @@ class RAGService:
         """就地替换分块与向量，不改变 is_current 与版本组。"""
         if document.deleted_at is not None:
             raise ValueError("已删除的文档不能重建")
+        cleaning = clean_document(parsed)
+        parsed = cleaning.document
         strategy_name = resolve_strategy_name(parsed.text, None)
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
         chunk_objs = await chunking.split(parsed.text, params=self._build_chunk_params(None))
@@ -597,8 +732,12 @@ class RAGService:
         embeddings = await self._embed_texts([chunk.text for chunk in chunk_objs])
         try:
             await self._vector_store.delete_by_document(document.id, document.tenant_id)
-        except Exception:  # noqa: BLE001 — 旧向量清理失败不阻断就地重建
-            logger.exception("重解析前清理向量失败: document=%s", document.id)
+        except Exception as exc:  # noqa: BLE001 — 旧向量清理失败不阻断就地重建
+            logger.error(
+                "rag_reparse_vector_cleanup_failed document=%s exception_type=%s",
+                document.id,
+                type(exc).__name__,
+            )
         old_chunks = self.session.exec(
             select(DocumentChunk).where(DocumentChunk.document_id == document.id)
         ).all()
@@ -611,7 +750,8 @@ class RAGService:
             parent_id = None
             if piece.parent_id and piece.parent_id in parent_id_map:
                 parent_id = parent_id_map[piece.parent_id]
-            metadata: dict = piece.metadata or {}
+            metadata: dict = dict(piece.metadata or {})
+            metadata["cleaning"] = cleaning.report
             row = DocumentChunk(
                 id=row_id,
                 tenant_id=document.tenant_id,
@@ -630,6 +770,18 @@ class RAGService:
             self.session.add(row)
         document.content_hash = content_hash
         document.chunk_count = len(chunk_objs)
+        snapshot = self.session.get(DocumentIngestionSnapshot, document.id)
+        if snapshot is None:
+            snapshot = DocumentIngestionSnapshot(
+                document_id=document.id, tenant_id=document.tenant_id,
+                original_text="", original_blocks="[]", cleaning_report="{}",
+            )
+        snapshot.original_text = cleaning.original.text
+        snapshot.original_blocks = json.dumps(
+            [asdict(block) for block in cleaning.original.blocks], ensure_ascii=False
+        )
+        snapshot.cleaning_report = json.dumps(cleaning.report, ensure_ascii=False)
+        self.session.add(snapshot)
         self.session.add(document)
         self.session.commit()
         self.session.refresh(document)

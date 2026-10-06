@@ -64,11 +64,10 @@ class HybridRetriever:
         kept = [hit for hit in results if hit.similarity >= threshold]
         if len(kept) < len(results):
             logger.info(
-                "rag_low_similarity_filtered kept=%s/%s threshold=%s query=%r",
+                "rag_low_similarity_filtered kept=%s/%s threshold=%s",
                 len(kept),
                 len(results),
                 threshold,
-                search_text[:200],
             )
         if kept:
             self.last_hits = list(kept)

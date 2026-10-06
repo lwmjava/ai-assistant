@@ -124,7 +124,9 @@ def test_admin_manages_every_tenant_and_global_skill_is_visible() -> None:
     filtered = client.get("/api/skills", headers=root, params={"tenant_id": alpha_id, "scope": "private"})
     assert filtered.status_code == 200
     assert {item["name"] for item in filtered.json()} == {"alpha-note"}
-    assert client.get("/api/skills", headers=ada, params={"tenant_id": ben_skill.json()["tenant_id"]}).status_code == 403
+    assert (
+        client.get("/api/skills", headers=ada, params={"tenant_id": ben_skill.json()["tenant_id"]}).status_code == 403
+    )
     edited = client.patch(
         f"/api/skills/{ben_skill.json()['id']}",
         headers=root,
@@ -207,11 +209,14 @@ def test_chat_selects_private_and_global_skill() -> None:
     assert missed.status_code == 200, missed.text
     assert missed.json()["skill_names"] == []
     root = _login(client, "root")
-    assert client.post(
-        "/api/skills",
-        headers=root,
-        json=_body("market-seed", "市场词") | {"scope": "global"},
-    ).status_code == 201
+    assert (
+        client.post(
+            "/api/skills",
+            headers=root,
+            json=_body("market-seed", "市场词") | {"scope": "global"},
+        ).status_code
+        == 201
+    )
     global_hit = client.post("/api/chat", headers=bob_headers, json={"message": "市场词在这里"})
     assert global_hit.status_code == 200, global_hit.text
     assert global_hit.json()["skill_names"] == ["market-seed"]

@@ -55,7 +55,13 @@ def _reset_overrides():
     本 fixture 是 autouse 且先于函数级 fixture 完成 setup，
     因此即使后者 setup 失败，pytest 仍会执行这里的 teardown。
     """
+    from sse_starlette.sse import AppStatus
+
+    AppStatus.should_exit_event = None
+    AppStatus.should_exit = False
     yield
+    AppStatus.should_exit_event = None
+    AppStatus.should_exit = False
     from app.llm.factory import set_llm_provider_override
     from app.main import app
 

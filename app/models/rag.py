@@ -86,6 +86,37 @@ class Document(SQLModel, TimestampMixin, table=True):
     chunks: list["DocumentChunk"] = Relationship(
         back_populates="document", cascade_delete=True
     )
+    ingestion_snapshots: list["DocumentIngestionSnapshot"] = Relationship(
+        back_populates="document", cascade_delete=True
+    )
+
+
+class DocumentIngestionSnapshot(SQLModel, TimestampMixin, table=True):
+    """原始解析文本及结构快照；不通过公开 API 暴露。"""
+
+    __tablename__ = "rag_ingestion_snapshots"
+    document_id: str = Field(primary_key=True, foreign_key="rag_documents.id")
+    tenant_id: str = Field(index=True)
+    original_text: str
+    original_blocks: str
+    cleaning_report: str
+    document: Document | None = Relationship(back_populates="ingestion_snapshots")
+
+
+class VectorCleanupJob(SQLModel, TimestampMixin, table=True):
+    """到期清理意图和重试证据，文档删除后仍保留。"""
+
+    __tablename__ = "rag_vector_cleanup_jobs"
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    document_id: str = Field(index=True, unique=True)
+    vector_backend: str
+    vector_target: str = Field(default="")
+    status: str = Field(default="pending", index=True)
+    attempt_count: int = Field(default=0)
+    max_attempts: int = Field(default=3)
+    next_attempt_at: datetime | None = Field(default=None, index=True)
+    last_error_code: str | None = Field(default=None)
 
 
 class DocumentChunk(SQLModel, TimestampMixin, table=True):

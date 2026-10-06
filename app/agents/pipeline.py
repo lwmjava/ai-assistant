@@ -734,14 +734,14 @@ class AgentPipeline:
             )
             # 7. 响应
             yield AgentEvent("stage", "响应")
-            chunks: list[str] = []
+            response_chunks: list[str] = []
             async for delta in self.llm.stream_chat(
                 self._messages(_FINAL_SYSTEM, self._build_respond(state)),
                 self.options,
             ):
-                chunks.append(delta)
+                response_chunks.append(delta)
                 yield AgentEvent("token", delta)
-            state.answer = "".join(chunks)
+            state.answer = "".join(response_chunks)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Agent 流式管线执行失败")
             state.error = str(exc)

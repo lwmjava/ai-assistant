@@ -10,6 +10,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 
 @dataclass
@@ -23,6 +24,11 @@ class ChunkResult:
     score: float
     version_status: str = "current"
     similarity: float = 0.0  # 稠密余弦相似度（-1~1），供低分阈值过滤；score 为 RRF 融合分
+    parent_id: str | None = None
+    chunk_kind: Literal["parent", "child", "unknown"] = "unknown"
+    retrieval_origin: Literal["hit", "parent_expansion"] = "hit"
+    expanded_from_chunk_id: str | None = None
+    score_inherited_from_chunk_id: str | None = None
 
 
 class VectorStore(ABC):

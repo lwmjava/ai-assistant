@@ -153,7 +153,9 @@ def _build_node_parser(chunk_size: int, overlap: int, splitter: str):
 
         return MarkdownNodeParser()
     if name != "sentence":
-        logger.warning("未知 RAG_LLAMAINDEX_SPLITTER=%s，使用 sentence", splitter)
+        logger.warning(
+            "rag_splitter_fallback backend=llamaindex effective=sentence reason=invalid_splitter"
+        )
     from llama_index.core.node_parser import SentenceSplitter
 
     return SentenceSplitter(chunk_size=chunk_size, chunk_overlap=overlap)

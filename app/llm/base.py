@@ -49,7 +49,7 @@ class LLMProvider(ABC):
         """发送对话消息，返回模型生成的完整文本。"""
 
     @abstractmethod
-    async def stream_chat(
+    def stream_chat(
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> AsyncIterator[str]:
         """发送对话消息，增量返回模型生成的文本片段。"""

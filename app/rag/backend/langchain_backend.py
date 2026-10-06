@@ -163,7 +163,9 @@ def _build_text_splitter(chunk_size: int, overlap: int, splitter: str):
 
     name = (splitter or "recursive").strip().lower()
     if name != "recursive":
-        logger.warning("未知 RAG_LANGCHAIN_SPLITTER=%s，使用 recursive", splitter)
+        logger.warning(
+            "rag_splitter_fallback backend=langchain effective=recursive reason=invalid_splitter"
+        )
     return RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap,

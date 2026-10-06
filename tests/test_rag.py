@@ -487,6 +487,11 @@ async def test_parent_expand_dedupes_when_parent_child_both_hit(
     results = await rag.search("父块X")
     ids = [r.id for r in results]
     assert ids.count(parent.id) == 1, "父子同时命中时父块去重"
+    parent_result = next(r for r in results if r.id == parent.id)
+    assert parent_result.score == 0.9
+    assert parent_result.similarity == 0.8
+    assert parent_result.retrieval_origin == "hit"
+    assert parent_result.score_inherited_from_chunk_id is None
 
 
 async def test_retriever_as_pipeline_hook(session: Session) -> None:
@@ -1287,9 +1292,14 @@ def test_sources_keep_filename_and_existing_location(tmp_path: Path) -> None:
             ],
         )
         assert sources == [
-            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费"},
-            {"filename": "notes.txt", "page": None, "section": None},
-            {"filename": "仅标题", "page": None, "section": None},
+            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费",
+             "chunk_id": located_chunk.id, "document_id": located.id, "excerpt": "第三页"},
+            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费",
+             "chunk_id": duplicate.id, "document_id": located.id, "excerpt": "第三页重复"},
+            {"filename": "notes.txt", "page": None, "section": None,
+             "chunk_id": plain_chunk.id, "document_id": plain.id, "excerpt": "没有页码"},
+            {"filename": "仅标题", "page": None, "section": None,
+             "chunk_id": titled_chunk.id, "document_id": titled.id, "excerpt": "用标题当文件名"},
         ]
     finally:
         session.close()

@@ -1290,6 +1290,58 @@
         }
       }
     },
+    "/api/rag/documents/{document_id}/chunks": {
+      "get": {
+        "tags": [
+          "rag"
+        ],
+        "summary": "List Document Chunks",
+        "description": "列出文档的全部分块（按块序），供前端逐块展示。",
+        "operationId": "list_document_chunks_api_rag_documents__document_id__chunks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentChunkOut"
+                  },
+                  "title": "Response List Document Chunks Api Rag Documents  Document Id  Chunks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/rag/documents/{document_id}/reparse": {
       "post": {
         "tags": [
@@ -1652,7 +1704,7 @@
           "rag"
         ],
         "summary": "Search",
-        "description": "对知识库做混合检索，返回融合排序后的分块。",
+        "description": "按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。",
         "operationId": "search_api_rag_search_post",
         "requestBody": {
           "content": {
@@ -4089,6 +4141,83 @@
         "title": "ConversationRename",
         "description": "重命名会话。只接受标题。"
       },
+      "DocumentChunkOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "strategy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "chunk_index",
+          "content",
+          "source",
+          "strategy",
+          "page",
+          "section",
+          "created_at"
+        ],
+        "title": "DocumentChunkOut",
+        "description": "文档分块详情。"
+      },
       "DocumentDetail": {
         "properties": {
           "id": {
@@ -5125,6 +5254,62 @@
           "score": {
             "type": "number",
             "title": "Score"
+          },
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "chunk_kind": {
+            "type": "string",
+            "enum": [
+              "parent",
+              "child",
+              "unknown"
+            ],
+            "title": "Chunk Kind",
+            "default": "unknown"
+          },
+          "retrieval_origin": {
+            "type": "string",
+            "enum": [
+              "hit",
+              "parent_expansion"
+            ],
+            "title": "Retrieval Origin",
+            "default": "hit"
+          },
+          "expanded_from_chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expanded From Chunk Id"
+          },
+          "score_inherited_from_chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Inherited From Chunk Id"
           }
         },
         "type": "object",
@@ -5132,7 +5317,8 @@
           "document_id",
           "content",
           "source",
-          "score"
+          "score",
+          "chunk_id"
         ],
         "title": "SearchResultOut",
         "description": "检索命中结果。"
@@ -5453,6 +5639,39 @@
               }
             ],
             "title": "Section"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt"
+          },
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
           }
         },
         "type": "object",

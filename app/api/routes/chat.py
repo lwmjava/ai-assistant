@@ -222,7 +222,7 @@ async def chat(
     req: ChatRequest,
     current_user: User = Depends(require_permission("conversations", "write")),
     session: Session = Depends(get_db),
-) -> ChatResponse:
+) -> ChatResponse | JSONResponse:
     """发起一次非流式对话。"""
     if not req.message.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="message 不能为空")
@@ -311,6 +311,14 @@ async def chat_stream(
             yield _sse("error", missing)
 
         return EventSourceResponse(missing_conversation())
+    except Exception as exc:
+        await stream.aclose()
+        logger.error("流式对话首事件失败 error_type=%s", type(exc).__name__)
+
+        async def initial_failure():
+            yield _sse("error", "生成失败，请稍后重试")
+
+        return EventSourceResponse(initial_failure())
 
     async def event_generator():
         try:
@@ -319,9 +327,11 @@ async def chat_stream(
                 yield _sse(event.type, _event_payload(event.type, event.data))
         except ValueError as exc:
             yield _sse("error", str(exc))
-        except Exception:
-            logger.exception("流式对话失败")
+        except Exception as exc:
+            logger.error("流式对话失败 error_type=%s", type(exc).__name__)
             yield _sse("error", "生成失败，请稍后重试")
+        finally:
+            await stream.aclose()
 
     return EventSourceResponse(event_generator())
 

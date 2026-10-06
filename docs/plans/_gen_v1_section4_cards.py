@@ -1,4 +1,5 @@
 """One-shot: append plan §4 cards into tasks.yaml. Not part of runtime."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -90,7 +91,10 @@ add(
     priority="P0",
     depends_on=[],
     phase=2,
-    problem="现在只能从环境变量引导名为 admin 的系统管理员。没有 system、culture，也没有首次改密标记。",
+    problem=(
+        '现在只能从环境变量引导名为 admin 的系统管理员。没有 system、cul'
+        'ture，也没有首次改密标记。'
+    ),
     facts=[("§5.3.9 要求三人与首次改密。", "docs/product/项目产品需求方案.md §5.3.9")],
     allowed=[
         "app/core/",
@@ -115,7 +119,7 @@ add(
     side="builtin-accounts-force-change",
     rollback="回退账号与改密标记提交。",
     cases=["三账号首次登录强制改密"],
-    commands=["pytest -k \"admin or password or setup\""],
+    commands=['pytest -k "admin or password or setup"'],
 )
 
 add(
@@ -136,7 +140,7 @@ add(
     side="init-jwt-enforced",
     rollback="回退 init 与启动校验提交。",
     cases=["非开发环境跳过 init 应失败"],
-    commands=["pytest -k \"init or jwt\""],
+    commands=['pytest -k "init or jwt"'],
 )
 
 add(
@@ -162,7 +166,7 @@ add(
     side="compose-defaults-hardened",
     rollback="回退编排默认值提交。",
     cases=["检查生产编排默认值"],
-    commands=["rg -n \"CORS_ORIGINS|POSTGRES_PASSWORD\" docker-compose*.yml"],
+    commands=['rg -n "CORS_ORIGINS|POSTGRES_PASSWORD" docker-compose*.yml'],
 )
 
 add(
@@ -183,7 +187,7 @@ add(
     side="api-prefix-v1",
     rollback="回退前缀提交。",
     cases=["OpenAPI 路径均以 /api/v1 开头"],
-    commands=["pytest -k \"openapi or api\""],
+    commands=['pytest -k "openapi or api"'],
 )
 
 add(
@@ -206,14 +210,18 @@ add(
     non_goals=["不把引用侧栏算进本条，引用由 PRAG-003 锁定"],
     acceptance=[
         "事件带 run_id",
-        "含 run 开始与结束、节点进出、intent、plan、分开的 tool.call 与 tool.result、citations、heartbeat、断线按 Last-Event-ID 回放",
+        (
+            '含 run 开始与结束、节点进出、intent、plan、分开的 tool.ca'
+            'll 与 tool.result、citations、heartbeat、断线按'
+            ' Last-Event-ID 回放'
+        ),
         "缺一项不锁定",
     ],
     risk="L2",
     side="sse-protocol-aligned",
     rollback="回退 SSE 事件提交。",
     cases=["流式对话检查事件字段"],
-    commands=["pytest -k \"stream or sse\""],
+    commands=['pytest -k "stream or sse"'],
 )
 
 add(
@@ -234,7 +242,7 @@ add(
     side="rag-clean-compensate",
     rollback="回退清洗与补偿提交。",
     cases=["上传清洗与删除失败补偿"],
-    commands=["pytest -k \"import or delete or clean\""],
+    commands=['pytest -k "import or delete or clean"'],
 )
 
 add(
@@ -263,7 +271,7 @@ add(
     side="milvus-default",
     rollback="默认切回 local 并回退提交。",
     cases=["默认配置上传后检索命中"],
-    commands=["pytest -k \"milvus or vector\""],
+    commands=['pytest -k "milvus or vector"'],
 )
 
 add(
@@ -284,7 +292,7 @@ add(
     side="chat-regenerate",
     rollback="回退重新生成提交。",
     cases=["重新生成成功与失败"],
-    commands=["pytest -k \"regenerat or chat\""],
+    commands=['pytest -k "regenerat or chat"'],
 )
 
 add(
@@ -305,7 +313,7 @@ add(
     side="task-model-routing",
     rollback="回退路由配置提交。",
     cases=["未知任务拒绝与兜底链"],
-    commands=["pytest -k \"llm or factory or profile\""],
+    commands=['pytest -k "llm or factory or profile"'],
 )
 
 add(
@@ -338,7 +346,7 @@ add(
     side="chat-attachments",
     rollback="回退附件上传提交。",
     cases=["超限拒绝、图片交模型、文件不进知识库"],
-    commands=["pytest -k \"attach or upload or chat\""],
+    commands=['pytest -k "attach or upload or chat"'],
 )
 
 add(
@@ -364,7 +372,7 @@ add(
     side="workflow-cron-fires",
     rollback="回退调度比较逻辑提交。",
     cases=["到点触发产生执行记录"],
-    commands=["pytest -k \"workflow or schedul\""],
+    commands=['pytest -k "workflow or schedul"'],
 )
 
 add(
@@ -385,7 +393,7 @@ add(
     side="reflect-distill-on",
     rollback="关闭开关并回退提交。",
     cases=["打开开关后反思与蒸馏有记录"],
-    commands=["pytest -k \"reflect or distill or evolution\""],
+    commands=['pytest -k "reflect or distill or evolution"'],
 )
 
 add(
@@ -395,7 +403,10 @@ add(
     priority="P0",
     depends_on=[],
     phase=5,
-    problem="conversations.read 允许 system_viewer 和 viewer。§5.3.2 里这两类角色的对话权限是不允许。",
+    problem=(
+        'conversations.read 允许 system_viewer 和 vi'
+        'ewer。§5.3.2 里这两类角色的对话权限是不允许。'
+    ),
     facts=[
         (
             "权限矩阵与实现冲突。",
@@ -411,7 +422,7 @@ add(
     side="conversation-read-matrix",
     rollback="回退权限表提交。",
     cases=["viewer 与 system_viewer 读对话被拒"],
-    commands=["pytest -k \"permission or conversation\""],
+    commands=['pytest -k "permission or conversation"'],
 )
 
 add(
@@ -453,7 +464,7 @@ add(
     side="magic-byte-check",
     rollback="回退校验提交。",
     cases=["伪造扩展名被拒"],
-    commands=["pytest -k \"upload or magic or storage\""],
+    commands=['pytest -k "upload or magic or storage"'],
 )
 
 add(
@@ -516,7 +527,7 @@ add(
     side="conversation-soft-delete",
     rollback="回退软删除与归档提交。",
     cases=["软删除与归档列表"],
-    commands=["pytest -k \"conversation or archive or delete\""],
+    commands=['pytest -k "conversation or archive or delete"'],
 )
 
 add(
@@ -575,7 +586,7 @@ add(
     side="register-email-required",
     rollback="回退注册校验提交。",
     cases=["缺邮箱与重复邮箱被拒"],
-    commands=["pytest -k \"register or auth\""],
+    commands=['pytest -k "register or auth"'],
 )
 
 add(
@@ -596,7 +607,7 @@ add(
     side="admin-status-metrics",
     rollback="回退状态页提交。",
     cases=["system_admin 可见四项"],
-    commands=["pytest -k \"status or admin\""],
+    commands=['pytest -k "status or admin"'],
 )
 
 add(
@@ -643,7 +654,7 @@ add(
     side="sandbox-two-providers",
     rollback="回退沙箱与提供商提交。",
     cases=["Linux 限制生效", "切换提供商"],
-    commands=["pytest -k \"sandbox or provider\""],
+    commands=['pytest -k "sandbox or provider"'],
 )
 
 add(
@@ -664,7 +675,7 @@ add(
     side="log-pii-redaction",
     rollback="回退日志脱敏提交。",
     cases=["三类号码进入日志被替换"],
-    commands=["pytest -k \"sanitiz or log or pii\""],
+    commands=['pytest -k "sanitiz or log or pii"'],
 )
 
 add(
@@ -674,7 +685,10 @@ add(
     priority="P0",
     depends_on=[],
     phase=7,
-    problem="锁定清单还没有一次同时成立的证据。2026-10-02 的门禁记录不能当作这次的结果。",
+    problem=(
+        '锁定清单还没有一次同时成立的证据。2026-10-02 的门禁记录不能当作这次的'
+        '结果。'
+    ),
     facts=[("打标规则见锁定计划阶段 7。", "docs/plans/plan_v1_lock_20261002.md")],
     allowed=["docs/plans/", "tasks.yaml", "CHANGELOG*", "README.md"],
     forbidden=[".env", "生产数据", "app/", "frontend/src/"],
@@ -682,7 +696,10 @@ add(
     non_goals=["不把仍是 Partial 或未定的行写进标签说明", "不在打标时改验收"],
     acceptance=[
         "阶段 1 到阶段 6 的锁定标准都有命令输出或演练记录",
-        "pytest、ruff、mypy、前端类型检查、Vitest、ESLint、前端构建在同一环境的退出码都为 0",
+        (
+            'pytest、ruff、mypy、前端类型检查、Vitest、ESLint、前端'
+            '构建在同一环境的退出码都为 0'
+        ),
     ],
     risk="L2",
     side="v1-tag",

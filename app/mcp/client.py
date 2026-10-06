@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from typing import Any
 
 from app.mcp.config import MCPServerConfig
 
@@ -65,7 +66,7 @@ class MCPClient:
 
     def __init__(self, config: MCPServerConfig) -> None:
         self.config = config
-        self._session = None
+        self._session: Any = None
         self._stack: AsyncExitStack | None = None
 
     @classmethod

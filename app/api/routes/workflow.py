@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
@@ -108,7 +108,7 @@ def _list_stmt(user: User):
     # 系统管理员跨租户可见；其余仅本租户。
     if user.role_enum.value != Role.SYSTEM_ADMIN.value:
         stmt = stmt.where(Workflow.tenant_id == user.tenant_id)
-    return stmt.order_by(Workflow.created_at.desc())
+    return stmt.order_by(col(Workflow.created_at).desc())
 
 
 def _get_owned(session: Session, user: User, workflow_id: str) -> Workflow | None:
@@ -241,7 +241,7 @@ async def list_executions(
     stmt = (
         select(WorkflowExecution)
         .where(WorkflowExecution.workflow_id == workflow_id)
-        .order_by(WorkflowExecution.created_at.desc())
+        .order_by(col(WorkflowExecution.created_at).desc())
     )
     return list(session.exec(stmt).all())
 
@@ -260,9 +260,7 @@ async def run_workflow(
     # owner 可能已从库移除（异常场景）→ 降级为当前触发者，引擎会做失效校验。
     owner = session.get(User, wf.owner_id) or user
     engine = WorkflowEngine()
-    execution = await engine.execute(
-        session, wf, owner, triggered_by=TriggerSource.MANUAL.value
-    )
+    execution = await engine.execute(session, wf, owner, triggered_by=TriggerSource.MANUAL.value)
     await audit_event(
         request,
         AuditAction.WORKFLOW_EXECUTE,

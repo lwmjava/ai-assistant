@@ -230,6 +230,13 @@ export interface SearchResultOut {
   content: string
   source: string | null
   score: number
+  /** 可选以兼容旧版检索响应；缺失时页面标为未知，不推断父子关系。 */
+  chunk_id?: string
+  parent_id?: string | null
+  chunk_kind?: 'parent' | 'child' | 'unknown'
+  retrieval_origin?: 'hit' | 'parent_expansion'
+  expanded_from_chunk_id?: string | null
+  score_inherited_from_chunk_id?: string | null
 }
 
 // ── 工具与 MCP ───────────────────────────────────────

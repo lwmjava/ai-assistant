@@ -11,7 +11,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.core.database import engine
@@ -57,9 +57,7 @@ async def _tick() -> None:
     now = datetime.now(UTC)
     with Session(engine) as session:
         workflows = session.exec(
-            select(Workflow)
-            .where(Workflow.enabled.is_(True))
-            .where(Workflow.suspended_owner.is_(False))
+            select(Workflow).where(col(Workflow.enabled).is_(True)).where(col(Workflow.suspended_owner).is_(False))
         ).all()
     for wf in workflows:
         try:
@@ -87,7 +85,7 @@ def _most_recent_execution_time(workflow_id: str) -> datetime | None:
             select(WorkflowExecution)
             .where(WorkflowExecution.workflow_id == workflow_id)
             .where(WorkflowExecution.status == ExecutionStatus.SUCCESS.value)
-            .order_by(WorkflowExecution.finished_at.desc())
+            .order_by(col(WorkflowExecution.finished_at).desc())
             .limit(1)
         ).first()
     return row.finished_at if row else None
@@ -105,9 +103,7 @@ async def _trigger(wf: Workflow) -> None:
             logger.warning("Workflow %s 的 owner 不存在，已停用", wf.id)
             return
         engine_svc = WorkflowEngine()
-        await engine_svc.execute(
-            session, wf, owner, triggered_by=TriggerSource.CRON.value
-        )
+        await engine_svc.execute(session, wf, owner, triggered_by=TriggerSource.CRON.value)
 
 
 async def start_scheduler() -> None:

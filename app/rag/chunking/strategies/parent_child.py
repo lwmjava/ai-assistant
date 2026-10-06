@@ -58,7 +58,6 @@ class ParentChildChunkingStrategy(ChunkingStrategy):
 
         child_strategy = self._build_child(child_name)
         child_params = _chunk_params_for_child(params)
-        children = await child_strategy.split(text, params=child_params)
 
         parent_size = max(1, params.chunk_size * ratio)
         parent_strategy = self._build_child(parent_name)
@@ -70,13 +69,15 @@ class ParentChildChunkingStrategy(ChunkingStrategy):
 
         result: list[Chunk] = []
         for i, parent in enumerate(parents):
+            parent.index = len(result)
             parent.metadata["kind"] = "parent"
             parent.metadata["parent_key"] = f"p{i}"
             result.append(parent)
-        per_parent = max(1, len(children) // max(1, len(parents)))
-        for j, child in enumerate(children):
-            parent_idx = min(j // per_parent, len(parents) - 1)
-            child.parent_id = f"p{parent_idx}"
-            child.metadata["kind"] = "child"
-            result.append(child)
+        for parent in parents:
+            children = await child_strategy.split(parent.text, params=child_params)
+            for child in children:
+                child.index = len(result)
+                child.parent_id = parent.metadata["parent_key"]
+                child.metadata["kind"] = "child"
+                result.append(child)
         return result

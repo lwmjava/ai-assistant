@@ -39,8 +39,7 @@ _SUPERVISOR_SYSTEM = (
 )
 
 _RESEARCH_SYSTEM = (
-    "你是调研员。基于「用户目标」与已有调研，写一段精炼的调研记录。\n"
-    "不要调用工具，不要声称已经检索过知识库。"
+    "你是调研员。基于「用户目标」与已有调研，写一段精炼的调研记录。\n" "不要调用工具，不要声称已经检索过知识库。"
 )
 
 _DRAFT_SYSTEM = (
@@ -53,9 +52,7 @@ def _append_delegation(state: dict, name: str, result: str) -> list[dict[str, st
     """复制已有分派记录再追加当前一条，避免后一轮覆盖前一轮。"""
     copied: list[dict[str, str]] = []
     for item in state.get("delegations") or []:
-        copied.append(
-            {"name": str(item.get("name", "")), "result": str(item.get("result", ""))}
-        )
+        copied.append({"name": str(item.get("name", "")), "result": str(item.get("result", ""))})
     copied.append({"name": name, "result": result})
     return copied
 
@@ -125,17 +122,17 @@ class SupervisorGraph:
         return END, StateGraph
 
     def _build(self):
-        END, StateGraph = self._require_langgraph()
-        builder = StateGraph(SupervisorState)
+        end, state_graph = self._require_langgraph()
+        builder = state_graph(SupervisorState)
         builder.add_node("supervisor", self._node_supervisor)
         builder.add_node("research", self._node_research)
         builder.add_node("draft", self._node_draft)
         builder.add_edge("research", "supervisor")
-        builder.add_edge("draft", END)
+        builder.add_edge("draft", end)
         builder.add_conditional_edges(
             "supervisor",
             self._route,
-            {name: name for name in _WORKERS} | {"FINISH": END},
+            {name: name for name in _WORKERS} | {"FINISH": end},
         )
         builder.set_entry_point("supervisor")
         return builder.compile()
@@ -218,9 +215,7 @@ class SupervisorGraph:
         if action == "research" and state.get("revisions", 0) < self.max_revisions:
             return "research"
         if action == "research":
-            logger.info(
-                "Supervisor 调研轮数已达上限 %s，强制转入撰写", self.max_revisions
-            )
+            logger.info("Supervisor 调研轮数已达上限 %s，强制转入撰写", self.max_revisions)
         return "draft"
 
     # ── 对外契约（与 AgentPipeline 对齐）──

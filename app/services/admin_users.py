@@ -45,11 +45,11 @@ def list_users(
     if username:
         filters.append(func.lower(User.username).contains(username.lower()))
     if role:
-        filters.append(User.role == role)
+        filters.append(col(User.role) == role)
     if is_active is not None:
-        filters.append(User.is_active.is_(is_active))
+        filters.append(col(User.is_active).is_(is_active))
     if tenant_id:
-        filters.append(User.tenant_id == tenant_id)
+        filters.append(col(User.tenant_id) == tenant_id)
 
     count_stmt = select(func.count()).select_from(User)
     if filters:

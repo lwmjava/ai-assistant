@@ -246,15 +246,19 @@ def visible_chunks_with_status(
     rows: Sequence[DocumentChunk],
     as_of: datetime | None,
     schedule_at: datetime | None,
+    *,
+    documents: dict[str, Document] | None = None,
 ) -> tuple[list[DocumentChunk], dict[str, str]]:
     if not settings.RAG_EFFECTIVE_DATE_FILTER:
         return list(rows), {row.id: "current" for row in rows}
     moment = ensure_utc(as_of) if as_of is not None else datetime.now(UTC)
     visible: list[DocumentChunk] = []
     version_by_chunk: dict[str, str] = {}
-    doc_cache: dict[str, Document | None] = {}
+    doc_cache: dict[str, Document | None] = dict(documents or {})
     for row in rows:
         if row.document_id not in doc_cache:
+            if documents is not None:
+                continue
             doc_cache[row.document_id] = session.get(Document, row.document_id)
         doc = doc_cache[row.document_id]
         if doc is None:

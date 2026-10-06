@@ -1,4 +1,6 @@
 """Smoke test for memory system."""
+
+import asyncio
 import sys
 from pathlib import Path
 
@@ -18,11 +20,11 @@ from app.memory import (
 def msg(role: str, content: str) -> ChatMessage:
     return ChatMessage(role=ChatRole(role), content=content)
 
+
 # Test 1: Window management (no compression, threshold=0 disables compression)
 print("Test 1: Window management (10 messages, window=5, threshold=0)")
 mgr = MemoryManager(config=MemoryConfig(window_size=5, compression_threshold=0))
 messages = [msg("user", f"message {i}") for i in range(10)]
-import asyncio
 
 memory = asyncio.run(mgr.manage(messages))
 print(f"  recent={len(memory.recent_messages)}, total={memory.total_messages}, compressed={memory.is_compressed}")

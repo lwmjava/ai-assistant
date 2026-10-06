@@ -23,7 +23,7 @@ from app.agents.skills.base import (
     SkillMode,
 )
 from app.agents.skills.loader import discover_skills, load_skill_from_yaml
-from app.agents.tools.base import Tool
+from app.agents.tools.base import Tool, ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -192,9 +192,7 @@ class SkillManager:
             skill_names.append(skill.name)
 
             if skill.mode == SkillMode.PROMPT_INJECTION and skill.system_prompt:
-                prompt_parts.append(
-                    f"## 技能：{skill.name}\n{skill.system_prompt}"
-                )
+                prompt_parts.append(f"## 技能：{skill.name}\n{skill.system_prompt}")
 
             if skill.mode == SkillMode.TOOL:
                 tool_names.extend(skill.tools)

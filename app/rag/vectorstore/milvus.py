@@ -124,7 +124,7 @@ class MilvusVectorStore(VectorStore):
             field_name="embedding",
             index_params=index_params,
         )
-        logger.info("Milvus 集合 %s 已创建向量索引", settings.MILVUS_COLLECTION)
+        logger.info("rag_vector_index_created backend=milvus")
 
     def _search_params(self, collection) -> dict:
         """按集合实际索引类型构造检索参数。
@@ -172,7 +172,11 @@ class MilvusVectorStore(VectorStore):
                 return 0
             collection.delete(expr=expr)
         except Exception as exc:  # noqa: BLE001 - 集合不可用时降级为未删除
-            logger.warning("Milvus 删除文档分块失败：%s（%s）", document_id, exc)
+            logger.warning(
+                "rag_vector_delete_failed backend=milvus document=%s exception_type=%s",
+                document_id,
+                type(exc).__name__,
+            )
             return 0
         return len(ids)
 
@@ -202,8 +206,11 @@ class MilvusVectorStore(VectorStore):
                 expr=expr,
                 output_fields=["id"],
             )[0]
-        except Exception:  # pragma: no cover - 依赖线上 Milvus
-            logger.warning("Milvus 稠密检索失败，回退为空结果。")
+        except Exception as exc:  # pragma: no cover - 依赖线上 Milvus
+            logger.warning(
+                "rag_vector_search_failed backend=milvus fallback=empty exception_type=%s",
+                type(exc).__name__,
+            )
             return []
 
         candidate_ids = [h.entity.get("id") for h in hits]

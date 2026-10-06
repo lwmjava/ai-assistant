@@ -150,6 +150,9 @@ class WorkflowEngine:
 
     async def _fire_webhook(self, workflow: Workflow, execution: WorkflowExecution) -> None:
         """执行完成后回调 webhook（P2）；失败仅告警，不影响主结果。"""
+        url = workflow.webhook_url
+        if not url:
+            return
         try:
             payload = {
                 "workflow_id": workflow.id,
@@ -158,6 +161,6 @@ class WorkflowEngine:
                 "output": execution.output,
             }
             async with httpx.AsyncClient(timeout=10.0) as client:
-                await client.post(workflow.webhook_url, json=payload)
+                await client.post(url, json=payload)
         except Exception:  # noqa: BLE001
             logger.exception("Workflow %s webhook 回调失败（不影响主结果）", workflow.id)

@@ -32,8 +32,8 @@ async def _loop() -> None:
 
             with Session(engine) as session:
                 await purge_expired_documents(session, now=datetime.now(UTC))
-        except Exception:  # noqa: BLE001
-            logger.exception("RAG 导入调度器 tick 异常")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("rag_import_scheduler_failed exception_type=%s", type(exc).__name__)
         try:
             await asyncio.sleep(settings.RAG_IMPORT_INTERVAL_SECONDS)
         except asyncio.CancelledError:

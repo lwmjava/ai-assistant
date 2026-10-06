@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy import event, text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.pool import NullPool
-from sqlmodel import Session, col, create_engine, func, select
+from sqlmodel import Session, SQLModel, col, create_engine, func, select
 
 from app.core.config import settings
 from app.core.security import Role, hash_password, verify_password
@@ -233,15 +233,13 @@ def create_cli_superuser(*, username: str, password: str) -> User:
     engine = _engine_for_admin_create(settings.DATABASE_URL)
     try:
         # 成员表由启动时的建表补上，迁移脚本里没有。这里补齐后再写入同一事务。
-        Membership.__table__.create(engine, checkfirst=True)
+        SQLModel.metadata.tables["memberships"].create(engine, checkfirst=True)
         try:
             with Session(engine) as session:
                 _lock_admin_create(session)
                 admin_count = int(
                     session.exec(
-                        select(func.count())
-                        .select_from(User)
-                        .where(col(User.role) == Role.SYSTEM_ADMIN.value)
+                        select(func.count()).select_from(User).where(col(User.role) == Role.SYSTEM_ADMIN.value)
                     ).one()
                 )
                 if admin_count > 0:
@@ -330,7 +328,6 @@ def ensure_initial_admin(session: Session) -> None:
     session.refresh(admin)
     ensure_membership(session, admin)
     logger.warning(
-        "已创建初始 system_admin 账号 '%s'（来源：环境变量）。"
-        "出于安全考虑，请在创建后修改密码或移除相关环境变量。",
+        "已创建初始 system_admin 账号 '%s'（来源：环境变量）。" "出于安全考虑，请在创建后修改密码或移除相关环境变量。",
         username,
     )

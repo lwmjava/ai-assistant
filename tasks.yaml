@@ -6306,7 +6306,7 @@ tasks:
   
   - id: "QA-005"
     title: "既有测试失败修复：以开工时重跑清单为准"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -6327,6 +6327,10 @@ tasks:
         - "conftest.py"
         - "pyproject.toml"
         - "tasks.yaml"
+        - "alembic/"
+        - "docs/"
+        - "scripts/"
+        - "evals/datasets/rag-v0.1/_generate_cases.py"
       forbidden_paths:
         - ".env"
       deliverables:
@@ -6358,6 +6362,8 @@ tasks:
         - "pytest tests/test_chat.py tests/test_chat_controls.py -q"
         - "pytest tests/test_p0_regression.py tests/test_rag.py tests/test_workflow.py -q"
     execution:
+      progress: "2026-10-05：按用户直接批准提前整改，不实施NFR-001 CI建设。全量575 passed/2 skipped，RAG回归82 passed/1 skipped，Ruff全量通过、mypy172源文件通过。计划与实现说明见 docs/plans/plan_qa_005_remediation_20261005.md 和 implementation_qa_005_remediation_20261005.md。"
+      blocked_by: "NFR-001依赖尚未完成；本轮整改独立审查及人工验收未记录，不标done。"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -6417,6 +6423,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "COV-001"
     title: "覆盖率数字：可复现报告"
     status: "backlog"
@@ -6468,6 +6475,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "ENV-001"
     title: ".env.example 覆盖全部配置字段"
     status: "backlog"
@@ -6514,6 +6522,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "ENV-002"
     title: "示例口令退出仓库"
     status: "backlog"
@@ -6560,6 +6569,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "INST-004"
     title: "内置账号 admin/system/culture 与首次改密"
     status: "backlog"
@@ -6620,6 +6630,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "CLI-002"
     title: "init 写入 JWT，跳过 init 时拒绝默认密钥"
     status: "backlog"
@@ -6666,6 +6677,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "NFR-012"
     title: "Compose 口令与跨域默认收紧"
     status: "backlog"
@@ -6715,6 +6727,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "API-001"
     title: "对外路径改为 /api/v1"
     status: "backlog"
@@ -6764,6 +6777,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "SSE-001"
     title: "SSE 事件协议对齐 §5.1.4"
     status: "backlog"
@@ -6814,7 +6828,7 @@ tasks:
 
   - id: "RAG-014"
     title: "清洗链与删除向量补偿"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ''
     depends_on: []
@@ -6851,14 +6865,20 @@ tasks:
     risk:
       level: "L2"
       side_effect: "rag-clean-compensate"
-      rollback: "回退清洗与补偿提交。"
+      rollback: "暂停补偿调度并保留任务/快照表；回退清洗规则仅影响后续导入，旧索引重建另需授权；不自动降级删除非空恢复表。"
     evaluation:
       cases:
       - "上传清洗与删除失败补偿"
       commands:
       - 'pytest -k "import or delete or clean"'
+      - "pytest tests/test_rag_schema_repair.py tests/test_rag_clean_compensation.py tests/test_rag_access.py tests/test_rag_import_jobs.py -v"
+      - "pytest tests/test_rag.py tests/test_rag_import_jobs.py tests/test_rag_backend.py tests/test_chunking.py -v"
+      - "pytest"
+      - "ruff check ."
+      - "mypy app/"
     execution:
-      progress: 2026-10-05 已开始事实核对与方案设计；计划见 docs/plans/plan_rag_014_clean_compensation_20261005.md；删除语义待确认，业务代码未修改。
+      progress: "2026-10-05：保守清洗、原始快照、去重及持久删除补偿完成，缺列兼容已备份修复；本卡16项测试通过。后续QA-005全量575 passed/2 skipped，RAG回归82 passed/1 skipped，Ruff/mypy通过。独立审查见 docs/reviews/2026-10-05-RAG014-023代码审查.md；用户核对上传样本并明确确认RAG-014可以关闭，按本卡范围验收为done。实现说明见 docs/plans/implementation_rag_014_clean_compensation_20261005.md。"
+      blocked_by: null
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6975,6 +6995,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "LLM-001"
     title: "模型按 P0-8 任务类型配置"
     status: "backlog"
@@ -7025,6 +7046,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "CHAT-007"
     title: "会话附件：粘贴图片与上传文件"
     status: "backlog"
@@ -7076,6 +7098,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "FLOW-003"
     title: "工作流到点触发写入执行记录"
     status: "backlog"
@@ -7121,6 +7144,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "EVO-001"
     title: "Reflect 与夜间蒸馏可锁定运行"
     status: "backlog"
@@ -7169,6 +7193,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "AUTH-005"
     title: "对话读取权限与矩阵一致"
     status: "backlog"
@@ -7213,6 +7238,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "FE-001"
     title: "非系统角色管理页进入 403 页"
     status: "backlog"
@@ -7255,6 +7281,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "SEC-005"
     title: "上传按文件头校验魔术数字"
     status: "backlog"
@@ -7300,6 +7327,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "INV-004"
     title: "邀请码角色有效期次数可配置"
     status: "backlog"
@@ -7347,6 +7375,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "QUOTA-002"
     title: "Token 配额与自然月重置"
     status: "backlog"
@@ -7392,6 +7421,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "CHAT-008"
     title: "会话软删除与归档"
     status: "backlog"
@@ -7441,6 +7471,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "EXPORT-002"
     title: "训练格式导出 Alpaca 或 ShareGPT"
     status: "backlog"
@@ -7488,6 +7519,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "AUTH-006"
     title: "公开注册邮箱必填与唯一校验"
     status: "backlog"
@@ -7539,6 +7571,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "ADM-005"
     title: "系统状态页：健康、在线用户、存储、调用量"
     status: "backlog"
@@ -7585,6 +7618,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "MIG-001"
     title: "启动补列并入 Alembic 单轨"
     status: "backlog"
@@ -7631,6 +7665,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "SAND-003"
     title: "沙箱 Linux 实机限制验证"
     status: "backlog"
@@ -7679,6 +7714,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "SEC-006"
     title: "日志侧身份证手机号银行卡脱敏"
     status: "backlog"
@@ -7722,6 +7758,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "REL-005"
     title: "锁定清单通过后打附注标签 v1.0.0"
     status: "backlog"
@@ -7776,6 +7813,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "CLI-003"
     title: "CLI：start / stop / status / logs"
     status: "backlog"
@@ -7828,6 +7866,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "FLOW-004"
     title: "工作流开关与 croniter 缺失提示"
     status: "backlog"
@@ -7882,6 +7921,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "EVO-002"
     title: "Reflect 改技能与待办提取"
     status: "backlog"
@@ -7934,6 +7974,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "ADM-006"
     title: "租户设置页（ADM-04）"
     status: "backlog"
@@ -7985,6 +8026,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "ADM-007"
     title: "Feature Flag 管理 API（ADM-05）"
     status: "backlog"
@@ -8036,6 +8078,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "SEC-007"
     title: "注入检测可阻断"
     status: "backlog"
@@ -8088,6 +8131,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "NFR-013"
     title: "硬编码 URL 扫描"
     status: "backlog"
@@ -8141,6 +8185,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "DOC-001"
     title: "CHANGELOG 与 Breaking 区"
     status: "backlog"
@@ -8250,7 +8295,8 @@ tasks:
 
   - id: "RAG-016"
     title: "父块展开：命中子块追加父块（方案 A）"
-    status: "backlog"
+    status: "done"
+    progress: "2026-10-06: user accepted 33 passed and page evidence; direct parent kept score 0.0313 instead of child 0.0317, expanded parent inherited 0.0299 with provenance; user explicitly approved closure. Full pytest 634 passed/2 skipped, Ruff/mypy passed, independent review found no blockers. Evidence: docs/plans/implementation_rag_016_safe_parent_expansion_20261006.md"
     priority: "P1"
     target_date: ''
     depends_on: []
@@ -8268,6 +8314,10 @@ tasks:
     scope:
       allowed_paths:
       - "app/rag/"
+      - "app/api/routes/rag.py"
+      - "frontend/src/pages/Knowledge.tsx"
+      - "frontend/src/types/api.ts"
+      - "README.md"
       - "tests/"
       - "docs/"
       - "tasks.yaml"
@@ -8275,6 +8325,10 @@ tasks:
       - ".env"
       - "生产数据"
       deliverables:
+      - "2026-10-06 approved parent expansion remediation: tenant/document/version/injection checks, original direct-hit scoring and at most two SQL batches; plan: docs/plans/plan_rag_016_safe_parent_expansion_20261006.md"
+      - "2026-10-06 explicit rebuild must reindex unchanged source content; worker integration regression; plan: docs/plans/plan_rag_016_explicit_rebuild_20261006.md"
+      - "2026-10-06 parent-child mapping correction: generate children inside each parent; clarify upper-parent and score hints; plan: docs/plans/plan_rag_016_parent_mapping_fix_20261006.md"
+      - "2026-10-06 user-approved search explanation: chunk identity, parent relationship, hit/expansion provenance and top_k hint; plan: docs/plans/plan_rag_016_search_explanation_20261006.md"
       - "锁定展开行为：子块命中后结果含父块"
       - "回归用例覆盖展开与去重"
       non_goals:
@@ -8287,7 +8341,7 @@ tasks:
     risk:
       level: "L1"
       side_effect: "parent-expand-lock"
-      rollback: "回退测试与文档提交；行为保持展开。"
+      rollback: "Revert search/UI and parent-child strategy changes; strategy rollback affects future chunking only. Previously rebuilt documents require explicit rebuild to restore old index; no automatic data rewrite."
     evaluation:
       cases:
       - "子块命中后可见父块；重复父块去重"
@@ -8300,7 +8354,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-        progress: "2026-10-05：父块展开（方案 A）锁定验收：命中子块保留子块并追加父块、去重、父块继承评分；pytest -k parent 5/5 passed；待人工审查"
+        progress: "2026-10-06：独立审查及用户页面验收通过，用户明确批准关闭；仅扩展父块继承评分，直接命中父块保留真实评分。"
 
   - id: "RAG-020"
     title: "文档分块详情查看（知识库逐块展示）"
@@ -8607,6 +8661,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
   - id: "PROMPT-001"
     title: "Prompt / 模型版本可追踪（登记）"
     status: "backlog"
@@ -9308,14 +9363,14 @@ tasks:
 
   - id: "RAG-025"
     title: "RAG 日志内容最小化"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ''
     depends_on: []
     context:
       problem: "问题/计划与 sources 摘录进入日志调用，最终是否脱敏需复核。"
       facts:
-      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+      - claim: "变更前事实：检索query/plan、sources摘录、Embedding响应及异常回显进入日志；现已复现并移除，状态与证据见execution。"
         evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
@@ -9349,7 +9404,8 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: ''
+      blocked_by: "源码、最终验证和独立审查已完成；仅待用户按实现说明核验页面来源保留及日志无正文，确认关闭后独立提交。"
+      progress: "2026-10-05：源头及API/Pipeline/httpx边界日志最小化完成；最终全量593passed/2skipped、RAG82passed/1skipped、专项及相关41passed、Ruff/mypy通过。计划与实现说明见docs/plans/plan_rag_025_log_minimization_20261005.md、implementation_rag_025_log_minimization_20261005.md；独立审查见docs/reviews/2026-10-05-RAG025日志最小化独立审查.md，两项P1已修复复审通过。"
       nightly:
         eligible: false
         production_access: false
@@ -10134,6 +10190,56 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "ADR-0005 Accepted；摘要存储/授权/保留与质量门禁批准。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
+  - id: "RAG-042"
+    title: "知识库结构化正文显示与受控源文件下载入口"
+    status: "backlog"
+    priority: "P1"
+    target_date: ''
+    depends_on:
+    - "RAG-020"
+    context:
+      problem: "普通字体与换行显示使代码/盒图结构错位；后端已有源文件下载端点但页面没有入口。"
+      facts:
+      - claim: "2026-10-05 用户批准独立补卡；保持 RAG-014/020 done，尚未实施。"
+        evidence: "docs/plans/plan_rag_multi_agent_alignment_20261005.md 第7节"
+    scope:
+      allowed_paths:
+      - "frontend/"
+      - "tests/"
+      - "docs/"
+      - "tasks.yaml"
+      forbidden_paths:
+      - ".env"
+      - "生产数据"
+      deliverables:
+      - "搜索结果与文档分块正文保留代码/盒图空白，等宽展示并支持横向滚动。"
+      - "可管理文档通过已有受控 API 下载原始上传文件，显示下载失败，不放宽权限。"
+      non_goals:
+      - "不修改切分或清洗、不实现资源 ACL、不开放他人整文件下载权限、不新增渲染依赖。"
+    acceptance:
+    - "盒图/代码的缩进和列位置保留；窄屏横向滚动；不执行上传文本中的 HTML/脚本。"
+    - "下载原始文件成功；未授权、源文件缺失及服务失败有明确反馈；现有管理权限不变。"
+    risk:
+      level: "L1"
+      side_effect: "知识库页面展示与下载入口"
+      rollback: "回退页面与 API 调用改动，不修改原文、索引或后端权限。"
+    evaluation:
+      cases:
+      - "ASCII盒图/代码围栏/HTML注入/长行/窄屏/授权与失败下载"
+      commands:
+      - "cd frontend; npm run typecheck"
+      - "cd frontend; npm run build"
+      - "按开工时确认的前端测试入口验证展示与下载"
+      - "git diff --check"
+    execution:
+      owner: "个人开发者"
+      blocked_by: "用户已批准拆卡；单卡实现前落盘计划并核对现有下载契约。"
       nightly:
         eligible: false
         production_access: false

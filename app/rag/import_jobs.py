@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import html
+import json
 import logging
 import re
+from dataclasses import asdict
 from pathlib import Path
 from typing import TypedDict
 from urllib.parse import urlparse
@@ -18,6 +19,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.models.rag import (
     Document,
+    DocumentIngestionSnapshot,
     ImportBatch,
     ImportBatchStatus,
     ImportJob,
@@ -25,6 +27,7 @@ from app.models.rag import (
     ImportSourceType,
 )
 from app.models.user import User
+from app.rag.cleaning import clean_document
 from app.rag.document_parsers import (
     DocumentOcrRequiredError,
     DocumentParseError,
@@ -371,19 +374,13 @@ def _dedupe_or_version_existing(
     """判定是否去重或创建新版本。"""
     if reparse_document_id:
         current = session.get(Document, reparse_document_id)
-        if current and current.content_hash == content_hash:
-            return current, {
-                "deduplicated": True,
-                "version_group_id": current.version_group_id,
-                "version_number": current.version_number,
-                "previous_document_id": current.previous_document_id,
-            }
         if current:
+            # 显式重建需重新应用切分和索引逻辑，内容未变也不能按重复上传跳过。
             return None, {
                 "deduplicated": False,
                 "version_group_id": current.version_group_id,
-                "version_number": current.version_number + 1,
-                "previous_document_id": current.id,
+                "version_number": current.version_number,
+                "previous_document_id": current.previous_document_id,
             }
 
     stmt = select(Document).where(
@@ -466,7 +463,8 @@ async def _process_job(session: Session, job: ImportJob) -> None:
             parsed = parse_uploaded_document(raw, job.source_name or "upload.bin", job.content_type)
             source_kind = ImportSourceType.FILE.value
             source_ref = job.source_name
-        content_hash = hashlib.sha256(parsed.text.encode("utf-8")).hexdigest()
+        cleaning = clean_document(parsed)
+        content_hash = cleaning.report["original_hash"]
         existing, versioning = _dedupe_or_version_existing(
             session,
             tenant_id=job.tenant_id,
@@ -478,6 +476,13 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         job.content_hash = content_hash
         job.parser_name = str(parsed.metadata.get("parser_name") or "")
         if existing is not None:
+            if session.get(DocumentIngestionSnapshot, existing.id) is None:
+                session.add(DocumentIngestionSnapshot(
+                    document_id=existing.id, tenant_id=existing.tenant_id,
+                    original_text=parsed.text,
+                    original_blocks=json.dumps([asdict(block) for block in parsed.blocks], ensure_ascii=False),
+                    cleaning_report=json.dumps(cleaning.report, ensure_ascii=False),
+                ))
             job.document_id = existing.id
             job.status = ImportJobStatus.SUCCESS.value
             session.add(job)
@@ -544,7 +549,7 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         _record_job_trace(session, job, exc)
         _drop_attempt_source(job, new_source_path)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("导入任务执行失败: job=%s", job.id)
+        logger.error("rag_import_failed job=%s exception_type=%s", job.id, type(exc).__name__)
         job.status = ImportJobStatus.FAILED.value
         job.error = _build_job_error_message(exc)
         _record_job_trace(session, job, exc)

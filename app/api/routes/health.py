@@ -30,7 +30,7 @@ def _configured_vector_backend() -> str:
 def _database_status() -> str:
     """确认应用数据库能执行一次查询。"""
     with Session(engine) as session:
-        session.exec(text("SELECT 1")).one()
+        session.execute(text("SELECT 1")).one()
     return "ok"
 
 

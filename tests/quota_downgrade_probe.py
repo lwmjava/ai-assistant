@@ -19,7 +19,8 @@ with Session(engine) as session:
     session.add(Document(id="keep-doc", tenant_id="keep-tenant", user_id="keep-user", title="文档"))
     session.commit()
 
-downgrade("-1")
+# 配额迁移的父修订固定；后续新增迁移不能改变此业务回滚测试的目标。
+downgrade("d7c2a91e4b18")
 
 connection = sqlite3.connect(os.environ["QUOTA_DB_PATH"])
 tenant_columns = {row[1] for row in connection.execute("PRAGMA table_info(tenants)")}

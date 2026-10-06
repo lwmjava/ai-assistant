@@ -8,11 +8,12 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
 from app.audit.models import AuditAction
@@ -167,6 +168,12 @@ class SearchResultOut(BaseModel):
     content: str
     source: str | None
     score: float
+    chunk_id: str
+    parent_id: str | None = None
+    chunk_kind: Literal["parent", "child", "unknown"] = "unknown"
+    retrieval_origin: Literal["hit", "parent_expansion"] = "hit"
+    expanded_from_chunk_id: str | None = None
+    score_inherited_from_chunk_id: str | None = None
 
 
 class ImportJobOut(BaseModel):
@@ -211,11 +218,7 @@ def _chunk_out(chunk: DocumentChunk) -> DocumentChunkOut:
         except json.JSONDecodeError:
             metadata = {}
     page_raw = metadata.get("page")
-    page = (
-        page_raw
-        if isinstance(page_raw, int) and not isinstance(page_raw, bool) and page_raw >= 1
-        else None
-    )
+    page = page_raw if isinstance(page_raw, int) and not isinstance(page_raw, bool) and page_raw >= 1 else None
     section_raw = metadata.get("section_path")
     section = section_raw if isinstance(section_raw, str) and section_raw else None
     return DocumentChunkOut(
@@ -316,13 +319,9 @@ async def ingest_document(
     """
     # 校验必填字段：正文与标题去空白后均不能为空
     if not req.text.strip() or not req.title.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="text 与 title 不能为空"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="text 与 title 不能为空")
     if req.version_state not in {None, "draft", "published"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="version_state 只能是 draft 或 published"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="version_state 只能是 draft 或 published")
     # 按当前用户租户创建 RAG 服务，保证多租户数据隔离
     rag = RAGService(session, current_user.tenant_id)
     try:
@@ -358,7 +357,7 @@ async def upload_document(
     file: UploadFile = File(...),
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
-) -> DocumentOut:
+) -> DocumentOut | JSONResponse:
     """上传文档并按文件类型自动提取文本后摄取为知识文档。"""
     filename = file.filename or "未命名文档"
     raw = await file.read()
@@ -445,12 +444,10 @@ async def create_upload_jobs(
     files: list[UploadFile] = File(...),
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
-) -> ImportBatchOut:
+) -> ImportBatchOut | JSONResponse:
     """批量上传文件并创建异步导入任务。"""
     if not files:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="至少上传一个文件"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="至少上传一个文件")
     prepared: list[tuple[str, bytes, str | None]] = []
     for file in files:
         filename = file.filename or "未命名文档"
@@ -539,7 +536,7 @@ def list_import_jobs(
     stmt = select(ImportJob).where(ImportJob.tenant_id == current_user.tenant_id)
     if restrict_list_to_uploader(current_user):
         stmt = stmt.where(ImportJob.user_id == current_user.id)
-    stmt = stmt.order_by(ImportJob.updated_at.desc())
+    stmt = stmt.order_by(col(ImportJob.updated_at).desc())
     jobs = list(session.exec(stmt).all())
     return [_job_out(job) for job in jobs]
 
@@ -553,9 +550,7 @@ def get_import_job(
     """获取导入任务详情。"""
     job = session.get(ImportJob, job_id)
     if job is None or not _can_access_import_resource(job.user_id, job.tenant_id, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问")
     return _job_out(job)
 
 
@@ -568,14 +563,10 @@ def get_import_batch(
     """获取批量导入批次详情。"""
     batch = session.get(ImportBatch, batch_id)
     if batch is None or not _can_access_import_resource(batch.user_id, batch.tenant_id, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="导入批次不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="导入批次不存在或无权访问")
     jobs = list(
         session.exec(
-            select(ImportJob)
-            .where(ImportJob.batch_id == batch.id)
-            .order_by(ImportJob.created_at.asc())
+            select(ImportJob).where(ImportJob.batch_id == batch.id).order_by(col(ImportJob.created_at).asc())
         ).all()
     )
     return _batch_out(batch, jobs)
@@ -608,19 +599,13 @@ def download_import_job_source(
     """下载导入任务关联的源文件或 URL 快照。"""
     job = session.get(ImportJob, job_id)
     if job is None or not _can_access_import_resource(job.user_id, job.tenant_id, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问")
     if not job.storage_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     try:
         file_path = resolve_source_file_path(job.storage_path)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     return FileResponse(file_path, filename=job.source_name or Path(file_path).name)
 
 
@@ -653,9 +638,7 @@ def get_document(
     rag = RAGService(session, current_user.tenant_id)
     doc = rag.get_document(document_id, current_user)
     if doc is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     return DocumentDetail(**_doc_out(doc).model_dump())
 
 
@@ -669,11 +652,8 @@ def list_document_chunks(
     rag = RAGService(session, current_user.tenant_id)
     doc = rag.get_document(document_id, current_user)
     if doc is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     return [_chunk_out(c) for c in rag.list_chunks(document_id, current_user)]
-
 
     return DocumentDetail(**_doc_out(doc).model_dump())
 
@@ -703,11 +683,7 @@ async def reparse_document(
         job = create_reparse_job(session, current_user, document_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    if (
-        doc is not None
-        and current_user.role_enum == Role.SYSTEM_ADMIN
-        and doc.tenant_id != current_user.tenant_id
-    ):
+    if doc is not None and current_user.role_enum == Role.SYSTEM_ADMIN and doc.tenant_id != current_user.tenant_id:
         await audit_event(
             request,
             AuditAction.KNOWLEDGE_BASE_REINDEX,
@@ -733,23 +709,15 @@ def download_document(
     rag = RAGService(session, current_user.tenant_id)
     doc = rag.get_document(document_id, current_user)
     if doc is None or doc.deleted_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     if not doc.storage_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     try:
         file_path = resolve_source_file_path(doc.storage_path)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     if not file_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     return FileResponse(file_path, filename=doc.source or Path(file_path).name)
 
 
@@ -766,9 +734,7 @@ async def delete_document(
 
     doc = session.get(Document, document_id)
     if doc is None or not can_write_document(doc, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     try:
         consume_confirmation(session, current_user, doc, "delete", confirmation_id)
     except ValueError as exc:
@@ -777,9 +743,7 @@ async def delete_document(
     rag = RAGService(session, owner_tenant_id)
     ok = await rag.delete_document(document_id, current_user)
     if not ok:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     details = {
         "tenant_id": owner_tenant_id,
         "document_id": document_id,
@@ -917,7 +881,7 @@ def list_operation_confirmations(
     rows = session.exec(
         select(OperationConfirmation)
         .where(OperationConfirmation.actor_user_id == current_user.id)
-        .order_by(OperationConfirmation.created_at.desc())
+        .order_by(col(OperationConfirmation.created_at).desc())
     ).all()
     return [
         ConfirmationOut(
@@ -937,11 +901,9 @@ async def search(
     current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> list[SearchResultOut]:
-    """对知识库做混合检索，返回融合排序后的分块。"""
+    """按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。"""
     if not req.query.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空")
     rag = RAGService(session, current_user.tenant_id)
     results = await rag.search(req.query, req.top_k, backend=req.backend)
     return [
@@ -950,6 +912,12 @@ async def search(
             content=r.content,
             source=r.source,
             score=round(r.score, 6),
+            chunk_id=r.id,
+            parent_id=r.parent_id,
+            chunk_kind=r.chunk_kind,
+            retrieval_origin=r.retrieval_origin,
+            expanded_from_chunk_id=r.expanded_from_chunk_id,
+            score_inherited_from_chunk_id=r.score_inherited_from_chunk_id,
         )
         for r in results
     ]

@@ -10,13 +10,20 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from alembic import context
+from app.models import (
+    conversation,  # noqa: F401, E402
+    rag,  # noqa: F401, E402
+    skill,  # noqa: F401, E402
+    user,  # noqa: F401, E402
+    workflow,  # noqa: F401, E402
+)
 
 # Alembic Config 对象，提供 .ini 文件中的配置
 config = context.config
 
 # 设置日志（遵循 alembic.ini 中的 [loggers] 配置）
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # 延迟导入应用配置以避免循环依赖
 # 注意：此处仅导入配置获取 DATABASE_URL，不导入业务模块
@@ -32,13 +39,7 @@ config.set_main_option("sqlalchemy.url", _db_url)
 
 # ---- 导入所有 SQLModel 表模型 ----
 # 必须在运行 autogenerate 之前导入，确保 SQLModel.metadata 已注册所有表
-from app.models import (
-    conversation,  # noqa: F401, E402
-    rag,  # noqa: F401, E402
-    skill,  # noqa: F401, E402
-    user,  # noqa: F401, E402
-    workflow,  # noqa: F401, E402
-)
+
 
 # SQLModel.metadata 包含所有已注册的 SQLModel 表（table=True）
 target_metadata = SQLModel.metadata

@@ -78,7 +78,9 @@ def upgrade() -> None:
         op.create_index(op.f(f"ix_rag_import_jobs_{name}"), "rag_import_jobs", [name], unique=False)
 
     with op.batch_alter_table("rag_documents", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("source_kind", sqlmodel.sql.sqltypes.AutoString(), nullable=False, server_default="file"))
+        batch_op.add_column(
+            sa.Column("source_kind", sqlmodel.sql.sqltypes.AutoString(), nullable=False, server_default="file")
+        )
         batch_op.add_column(sa.Column("source_uri", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
         batch_op.add_column(sa.Column("content_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
         batch_op.add_column(sa.Column("version_group_id", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
@@ -90,7 +92,9 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f("ix_rag_documents_source_uri"), ["source_uri"], unique=False)
         batch_op.create_index(batch_op.f("ix_rag_documents_content_hash"), ["content_hash"], unique=False)
         batch_op.create_index(batch_op.f("ix_rag_documents_version_group_id"), ["version_group_id"], unique=False)
-        batch_op.create_index(batch_op.f("ix_rag_documents_previous_document_id"), ["previous_document_id"], unique=False)
+        batch_op.create_index(
+            batch_op.f("ix_rag_documents_previous_document_id"), ["previous_document_id"], unique=False
+        )
         batch_op.create_index(batch_op.f("ix_rag_documents_is_current"), ["is_current"], unique=False)
         batch_op.create_index(batch_op.f("ix_rag_documents_import_job_id"), ["import_job_id"], unique=False)
 

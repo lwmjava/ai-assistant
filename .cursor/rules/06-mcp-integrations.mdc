@@ -10,9 +10,9 @@ alwaysApply: false
 
 ## MUST
 
-- MCP/集成能力通过 Tool Registry 与 Executor 暴露，沿用 Tool 的 Schema、权限、风险、超时、错误、审计和版本要求。
+- 新增或修改 MCP/集成能力时通过现有 Registry 和受控执行入口暴露，沿用 Tool 的 Schema、权限、风险、超时、错误、审计和版本要求；独立 Executor 未落地前不得绕过现有 Service 与权限链。
 - 外部输入标记来源并视为不可信；输出经过权限过滤、校验和脱敏。
-- 写操作执行幂等、审批、速率限制及失败补偿策略。
+- 本次新增或修改的写操作必须定义幂等、审批、速率限制及失败补偿策略。
 
 ## SHOULD
 
@@ -21,7 +21,7 @@ alwaysApply: false
 ## NEVER
 
 - 将 MCP Server 作为核心业务规则中心或权限绕过通道。
-- 暴露无租户/资源过滤的数据，或让 Agent 绕过 Executor 直调外部系统。
+- 暴露无租户/资源过滤的数据，或让 Agent 绕过现有受控执行入口直调外部系统。
 
 ## 验证证据
 

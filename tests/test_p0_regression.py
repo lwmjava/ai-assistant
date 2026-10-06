@@ -308,7 +308,9 @@ async def test_delete_document_cleans_vectors(session: Session) -> None:
     store = _RecordingStore()
     rag = RAGService(session, owner.tenant_id, vector_store=store)
     assert await rag.delete_document(doc.id, owner) is True
-    assert store.deleted == [(doc.id, owner.tenant_id)]
+    assert store.deleted == []  # 软删保留90天，物理清理由到期补偿路径负责。
+    session.refresh(doc)
+    assert doc.deleted_at is not None
 
 
 # ── Supervisor 类型与收敛 ───────────────────────────

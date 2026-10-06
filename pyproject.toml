@@ -40,6 +40,8 @@ dev = [
     "pytest-asyncio==0.25.0",
     "ruff==0.8.4",
     "mypy==1.14.1",
+    "types-PyYAML==6.0.12.20260906",
+    "types-croniter==6.2.4.20260711",
 ]
 milvus = [
     "pymilvus==2.5.11",

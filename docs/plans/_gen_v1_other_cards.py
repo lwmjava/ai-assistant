@@ -1,4 +1,5 @@
 """Append other-chapter gap cards into tasks.yaml. One-shot."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,7 +25,10 @@ add(
     phase=2,
     problem="CLI-001 只做 migrate 与创建管理员，明确不做 start、stop、logs 全集。",
     facts=[
-        ("需求 P1-7 要求 init/start/stop/status/logs/migrate/admin。", "docs/product/项目产品需求方案.md §4.3 P1-7"),
+        (
+            ("需求 P1-7 要求 init/start/stop/status/logs/m" "igrate/admin。"),
+            "docs/product/项目产品需求方案.md §4.3 P1-7",
+        ),
         ("CLI-001 非目标写明不实现 start、stop、logs 全集。", "tasks.yaml CLI-001"),
     ],
     allowed=["app/", "scripts/", "README.md", "pyproject.toml", "docs/", "tasks.yaml"],
@@ -49,7 +53,7 @@ add(
     priority="P1",
     depends_on=["FLOW-002", "FLOW-003"],
     phase=4,
-    problem="WORKFLOW_ENABLED 默认关闭；未安装 croniter 时调度不跑，页面未说明只剩手动执行。",
+    problem=("WORKFLOW_ENABLED 默认关闭；未安装 croniter 时调度不跑" "，页面未说明只剩手动执行。"),
     facts=[
         ("差距表要求打开后才有定时；缺可选依赖时页面要说明。", "docs/product/企业级上线差距-2026-10-02.md §2"),
         ("FLOW-002 只交付空态与失败原因，不覆盖开关语义。", "tasks.yaml FLOW-002"),
@@ -87,7 +91,7 @@ add(
     priority="P1",
     depends_on=["EVO-001"],
     phase=4,
-    problem="EVO-001 只锁反思与蒸馏记录，明确不把反思结果改成技能；差距表仍缺改技能与待办提取。",
+    problem=("EVO-001 只锁反思与蒸馏记录，明确不把反思结果改成技能；差距表仍缺改技能与" "待办提取。"),
     facts=[
         ("差距表 v0.5/§2：Reflect 改技能、待办提取没有。", "docs/product/企业级上线差距-2026-10-02.md"),
         ("EVO-001 非目标：不在本条把反思结果直接改成技能。", "tasks.yaml EVO-001"),
@@ -195,7 +199,7 @@ add(
     priority="P0",
     depends_on=["NFR-006"],
     phase=6,
-    problem="§4.5 第 10 条密钥形状半边已核对；硬编码 URL 半边未扫，不能把整条写成通过。",
+    problem=("§4.5 第 10 条密钥形状半边已核对；硬编码 URL 半边未扫，不能把整条写" "成通过。"),
     facts=[
         ("差距表：硬编码 URL 这一半还没扫。", "docs/product/企业级上线差距-2026-10-02.md §2"),
         ("NFR-006 交付是密钥与依赖漏洞，不含 URL。", "tasks.yaml NFR-006"),
@@ -263,11 +267,11 @@ def render(c: dict) -> str:
     for claim, ev in c["facts"]:
         lines.append(f'        - claim: "{claim}"')
         lines.append(f'          evidence: "{ev}"')
+    lines.append(f'        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 {c["phase"]}。"')
     lines.append(
-        f'        - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 {c["phase"]}。"'
-    )
-    lines.append(
-        '          evidence: "docs/plans/plan_v1_other_chapters_cards_20261003.md；docs/product/企业级上线差距-2026-10-02.md"'
+        '          evidence: "docs/plans/plan_v1_'
+        "other_chapters_cards_20261003.md；docs/pr"
+        'oduct/企业级上线差距-2026-10-02.md"'
     )
     lines.append("    scope:")
     lines.append("      allowed_paths:")
@@ -332,7 +336,7 @@ def main() -> None:
         "# 其他章节缺口新卡编号",
         "",
         "> 日期：2026-10-03",
-        "> 来源：差距表第 2 表 + 需求第四～六章；拆分见 `docs/plans/plan_v1_other_chapters_cards_20261003.md`",
+        ("> 来源：差距表第 2 表 + 需求第四～六章；拆分见 `docs/plans/" "plan_v1_other_chapters_cards_20261003.md" "`"),
         "> 状态：已追加进 `tasks.yaml`，均为 `backlog`。未改业务代码。",
         "",
         "| 编号 | 标题 | 阶段 |",

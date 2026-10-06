@@ -137,10 +137,10 @@ def _run_unix(
 
 def _kill_process_group(pid: int) -> None:
     try:
-        os.killpg(pid, signal.SIGKILL)
+        getattr(os, "killpg")(pid, getattr(signal, "SIGKILL"))
     except OSError:
         try:
-            os.kill(pid, signal.SIGKILL)
+            os.kill(pid, getattr(signal, "SIGKILL"))
         except OSError:
             logger.warning("结束沙箱进程组失败")
 

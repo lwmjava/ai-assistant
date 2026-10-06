@@ -1,6 +1,7 @@
 """Smoke test for security module."""
 
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -170,7 +171,11 @@ assert "secret123" not in safe
 assert "alice" in safe
 
 # JWT token
-text = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+text = (
+    "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e"
+    "yJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9Pl"
+    "FUP0THsR8U"
+)
 safe = sanitizer.sanitize(text)
 assert "eyJ" not in safe
 print("  OK")
@@ -182,7 +187,6 @@ limiter = RateLimiter(RateLimitConfig(rate=10, capacity=10))
 
 # First request should be allowed (bucket starts empty, needs refill)
 # Let's test with a fresh bucket: allow a burst
-import time
 
 limiter.reset_all()
 time.sleep(0.1)  # small refill

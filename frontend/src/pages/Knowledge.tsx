@@ -139,8 +139,8 @@ function SearchPanel() {
               type="number"
               min={1}
               max={50}
-              label="返回条数"
-              wrapClassName="w-28"
+              label="检索命中上限"
+              wrapClassName="w-32"
               error={errors.top_k?.message}
               {...register('top_k')}
             />
@@ -155,6 +155,8 @@ function SearchPanel() {
             </Button>
           </div>
         </div>
+
+        <p className="text-sm text-text-muted">检索命中上限，父块展开后可能增加。</p>
 
         {search.error && !isSessionExpiredError(search.error) && (
           <ErrorState error={search.error} onRetry={() => search.reset()} className="border-0 bg-transparent py-6" />
@@ -179,15 +181,54 @@ function SearchPanel() {
 }
 
 function SearchResultRow({ result, index }: { result: SearchResultOut; index: number }) {
+  const isExpandedParent = result.retrieval_origin === 'parent_expansion'
+  const resultLabel = isExpandedParent
+    ? '扩展父块'
+    : result.retrieval_origin === 'hit' && result.chunk_kind === 'child'
+      ? '命中子块'
+      : result.retrieval_origin === 'hit' && result.chunk_kind === 'parent'
+        ? '命中父块'
+        : '命中块（未知）'
+
   return (
     <li className="panel-inset p-3">
-      <div className="mb-1.5 flex items-center gap-2">
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
         <Badge tone="primary">#{index + 1}</Badge>
+        <Badge tone={isExpandedParent ? 'accent' : 'neutral'}>{resultLabel}</Badge>
         <span className="font-mono text-xs text-text-faint">score {result.score.toFixed(4)}</span>
         {result.source && (
           <span className="truncate text-xs text-text-faint">来源：{result.source}</span>
         )}
       </div>
+      <dl className="mb-2 space-y-1 text-sm text-text-muted">
+        <div className="flex flex-wrap gap-x-2">
+          <dt>块 ID</dt>
+          <dd className="min-w-0 break-all font-mono">{result.chunk_id || '未知（接口未提供）'}</dd>
+        </div>
+        <div className="flex flex-wrap gap-x-2">
+          <dt>上级父块 ID</dt>
+          <dd className="min-w-0 break-all font-mono">
+            {result.parent_id || (
+              result.parent_id === null && result.chunk_kind && result.chunk_kind !== 'unknown'
+                ? '无（当前为父块）'
+                : '未知关系'
+            )}
+          </dd>
+        </div>
+        {isExpandedParent && (
+          <div className="flex flex-wrap gap-x-2">
+            <dt>扩展来源子块 ID</dt>
+            <dd className="min-w-0 break-all font-mono">
+              {result.expanded_from_chunk_id || '未知（接口未提供）'}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {result.score_inherited_from_chunk_id && (
+        <p className="mb-2 break-all text-sm text-text-muted">
+          父块 score 继承子块 <span className="font-mono">{result.score_inherited_from_chunk_id}</span>，未单独计算。
+        </p>
+      )}
       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">
         {result.content}
       </p>

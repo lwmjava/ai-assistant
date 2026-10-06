@@ -14,7 +14,7 @@ import logging
 import re
 from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.database import engine
 from app.evolution.models import (
@@ -129,9 +129,7 @@ class Distiller:
 
         result.analysis_period = f"最近 {hours} 小时"
         result.conversations_analyzed = len(conversations)
-        result.messages_analyzed = sum(
-            len(getattr(c, "messages", []) or []) for c in conversations
-        )
+        result.messages_analyzed = sum(len(getattr(c, "messages", []) or []) for c in conversations)
 
         # 2. 构建分析文本
         analysis_text = self._build_analysis_text(conversations)
@@ -220,9 +218,7 @@ class Distiller:
     # ── 数据获取 ──
 
     @staticmethod
-    def _fetch_recent_conversations(
-        cutoff: datetime, max_count: int
-    ) -> list[Conversation]:
+    def _fetch_recent_conversations(cutoff: datetime, max_count: int) -> list[Conversation]:
         """从数据库获取最近的、有实际对话内容的会话。"""
         try:
             with Session(engine) as session:
@@ -230,7 +226,7 @@ class Distiller:
                 stmt = (
                     select(Conversation)
                     .where(Conversation.updated_at >= cutoff)
-                    .order_by(Conversation.updated_at.desc())
+                    .order_by(col(Conversation.updated_at).desc())
                     .limit(max_count)
                 )
                 conversations = list(session.exec(stmt).all())
@@ -240,9 +236,7 @@ class Distiller:
                     _ = conv.messages  # 触发加载
 
                 # 过滤掉没有消息的会话
-                conversations = [
-                    c for c in conversations if len(c.messages) >= 2
-                ]
+                conversations = [c for c in conversations if len(c.messages) >= 2]
 
                 return conversations
         except Exception:  # noqa: BLE001

@@ -55,11 +55,9 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
                 )
                 if resp.is_error:
                     logger.error(
-                        "嵌入接口失败: status=%s model=%s batch_size=%s body=%s",
+                        "embedding_request_failed status=%s batch_size=%s",
                         resp.status_code,
-                        self.model,
                         len(batch),
-                        resp.text[:500],
                     )
                 resp.raise_for_status()
                 data = resp.json()["data"]

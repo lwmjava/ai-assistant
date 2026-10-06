@@ -278,7 +278,7 @@ for __name in dir(__sandbox_builtins__):
                 )
 
             # 检查 import 语句
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if isinstance(node, ast.Import | ast.ImportFrom):
                 self._check_import(node, config)
 
     def _check_import(

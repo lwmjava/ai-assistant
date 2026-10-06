@@ -37,7 +37,12 @@ from app.rag.access import (
 from app.rag.backend.base import RagBackend
 from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
 from app.rag.chunking.base import Chunk, ChunkParams
-from app.rag.chunking.factory import get_chunking_strategy, resolve_strategy_name
+from app.rag.chunking.factory import (
+    get_chunking_strategy,
+    resolve_strategy_with_decision,
+)
+from app.rag.chunking.plan import load_plan, params_from_plan, validate_params
+from app.rag.chunking.routing import ROUTING_VERSION, RoutingDecision, route, signals_from_parsed
 from app.rag.cleaning import CleaningResult, clean_document, text_hash
 from app.rag.document_parsers.base import ParsedDocument
 from app.rag.document_storage import delete_source_file, resolve_source_file_path
@@ -49,7 +54,7 @@ from app.rag.retrieval_guard import drop_injected_chunks
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.factory import get_vector_store
-from app.rag.vectorstore.local import visible_chunks_with_status
+from app.rag.vectorstore.local import LocalVectorStore, visible_chunks_with_status
 from app.services.quota import source_file_size
 
 
@@ -251,6 +256,69 @@ class RAGService:
         values = {"chunk_size": settings.RAG_CHUNK_SIZE, "chunk_overlap": settings.RAG_CHUNK_OVERLAP, **overrides}
         return ChunkParams(**values, input_policy=self._embedding.input_policy)
 
+    @staticmethod
+    def _build_chunk_plan(decision: RoutingDecision, params: ChunkParams) -> dict:
+        """构造版本化切分计划 JSON：策略名 + 有效参数 + 路由原因。"""
+        from dataclasses import asdict
+
+        values = {k: v for k, v in asdict(params).items() if k != "input_policy"}
+        validate_params(values, complete=True)
+        return {
+            "version": decision.version,
+            "strategy": decision.strategy,
+            "routing_reason": decision.reason,
+            "chunk_params": values,
+        }
+
+    @staticmethod
+    def _load_chunk_plan(raw: str | None) -> dict | None:
+        """仅NULL计划走兼容；损坏或未知版本拒绝且保留旧数据。"""
+        return load_plan(raw)
+
+    def _params_from_plan(self, plan: dict) -> ChunkParams:
+        """从持久化计划重建 ChunkParams；input_policy 由服务端重新注入。"""
+        return params_from_plan(plan, self._embedding.input_policy)
+
+    @staticmethod
+    def _attach_routing_metadata(chunks: list[Chunk], decision: RoutingDecision) -> None:
+        """把路由决策写入每个 chunk 的 metadata，便于审计与重放。"""
+        for chunk in chunks:
+            chunk.metadata["routing_version"] = decision.version
+            chunk.metadata["routing_reason"] = decision.reason
+            signals = decision.signals
+            chunk.metadata["routing_signals"] = {
+                "has_blocks": signals.has_blocks,
+                "has_bbox": signals.has_bbox,
+                "has_headings": signals.has_headings,
+                "has_structure_units": signals.has_structure_units,
+                "char_count": signals.char_count,
+            }
+
+    @staticmethod
+    def _decide_reindex_strategy(
+        previous_strategies: list[str | None],
+        parsed: ParsedDocument,
+    ) -> RoutingDecision:
+        """重解析决策：旧 chunks 策略一致则复用，否则走路由兼容路径。"""
+        non_null = [s for s in previous_strategies if s]
+        if non_null and len(set(non_null)) == 1:
+            previous = non_null[0]
+            return RoutingDecision(
+                strategy=previous,
+                reason="reuse_previous_strategy",
+                signals=signals_from_parsed(parsed),
+                version=ROUTING_VERSION,
+            )
+        signals = signals_from_parsed(parsed)
+        configured = getattr(settings, "RAG_CHUNK_STRATEGY", "structured")
+        long_threshold = max(1, settings.RAG_CHUNK_SIZE * 2)
+        return route(
+            signals,
+            requested=None,
+            configured_default=configured,
+            long_threshold_chars=long_threshold,
+        )
+
     async def _persist_document(
         self,
         *,
@@ -272,6 +340,7 @@ class RAGService:
         effective_at: datetime | None = None,
         expires_at: datetime | None = None,
         cleaning: CleaningResult | None = None,
+        chunk_plan: dict | None = None,
     ) -> Document:
         """将切分结果持久化为文档与分块。"""
         if not chunk_objs:
@@ -301,6 +370,7 @@ class RAGService:
                 effective_at=effective_at,
                 expires_at=expires_at,
                 chunk_count=len(chunk_objs),
+                chunk_plan=json.dumps(chunk_plan, ensure_ascii=False) if chunk_plan else None,
             )
             self.session.add(document)
             self.session.flush()
@@ -387,10 +457,12 @@ class RAGService:
             content_type="text/plain",
         ))
         text = cleaning.document.text
-        strategy_name = resolve_strategy_name(text, strategy)
+        decision = resolve_strategy_with_decision(text, strategy)
+        strategy_name = decision.strategy
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
         params = self._build_chunk_params(chunk_params)
         chunk_objs = await chunking.split(text, params=params)
+        self._attach_routing_metadata(chunk_objs, decision)
         return await self._persist_document(
             title=title,
             source=source,
@@ -410,6 +482,7 @@ class RAGService:
             effective_at=effective_at,
             expires_at=expires_at,
             cleaning=cleaning,
+            chunk_plan=self._build_chunk_plan(decision, params),
         )
 
     async def ingest_parsed_document(
@@ -477,13 +550,16 @@ class RAGService:
                 self.session.commit()
                 return existing
         parsed = cleaning.document
-        strategy_name = resolve_strategy_name(parsed.text, strategy)
+        decision = resolve_strategy_with_decision(parsed.text, strategy, parsed=parsed)
+        strategy_name = decision.strategy
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
         params = self._build_chunk_params(chunk_params)
-        if strategy_name in {"format_aware", "layout_aware"} and parsed.blocks:
+        if (strategy_name in {"format_aware", "layout_aware"} and parsed.blocks
+                and not decision.signals.is_text_parser):
             chunk_objs = await chunking.split_blocks(parsed.blocks, params=params)
         else:
             chunk_objs = await chunking.split(parsed.text, params=params)
+        self._attach_routing_metadata(chunk_objs, decision)
         return await self._persist_document(
             title=chosen_title,
             source=chosen_source,
@@ -502,6 +578,7 @@ class RAGService:
             effective_at=effective_at,
             expires_at=expires_at,
             cleaning=cleaning,
+            chunk_plan=self._build_chunk_plan(decision, params),
         )
 
     async def ingest_file(self, path: str, title: str | None, user_id: str) -> Document:
@@ -874,26 +951,65 @@ class RAGService:
         *,
         content_hash: str,
     ) -> Document:
+        """准备候选后替换；任何失败回滚，不能让调用方提交旧块删除。"""
+        try:
+            return await self._reindex_document_in_place(document, parsed, content_hash=content_hash)
+        except Exception:
+            self.session.rollback()
+            raise
+
+    async def _reindex_document_in_place(
+        self,
+        document: Document,
+        parsed: ParsedDocument,
+        *,
+        content_hash: str,
+    ) -> Document:
         """就地替换分块与向量，不改变 is_current 与版本组。"""
         if document.deleted_at is not None:
             raise ValueError("已删除的文档不能重建")
         cleaning = clean_document(parsed)
         parsed = cleaning.document
-        strategy_name = resolve_strategy_name(parsed.text, None)
+        # 先读旧 chunks 的策略；重解析复用同一计划，旧数据缺策略走路由兼容路径。
+        old_chunks = self.session.exec(select(DocumentChunk).where(
+            col(DocumentChunk.document_id) == document.id,
+            col(DocumentChunk.tenant_id) == document.tenant_id,
+        )).all()
+        previous_strategies = [c.strategy for c in old_chunks]
+
+        # 优先按版本化 chunk_plan 精确重放；缺 plan 时走旧策略/路由兼容路径。
+        plan = self._load_chunk_plan(document.chunk_plan)
+        if plan is not None:
+            strategy_name = plan["strategy"]
+            params = self._params_from_plan(plan)
+            decision = RoutingDecision(
+                strategy=strategy_name,
+                reason="replay_chunk_plan",
+                signals=signals_from_parsed(parsed),
+                version=plan.get("version", ROUTING_VERSION),
+            )
+        else:
+            decision = self._decide_reindex_strategy(previous_strategies, parsed)
+            strategy_name = decision.strategy
+            params = self._build_chunk_params(None)
+
         chunking = get_chunking_strategy(strategy_name, embedding=self._embedding)
-        chunk_objs = await chunking.split(parsed.text, params=self._build_chunk_params(None))
+        if (strategy_name in {"format_aware", "layout_aware"} and parsed.blocks
+                and not decision.signals.is_text_parser):
+            chunk_objs = await chunking.split_blocks(parsed.blocks, params=params)
+        else:
+            chunk_objs = await chunking.split(parsed.text, params=params)
         if not chunk_objs:
             raise ValueError("文本为空或无法切分为任何分块")
+        self._attach_routing_metadata(chunk_objs, decision)
+        # 重解析保留同一 chunk_plan（版本化计划不变），除非走兼容路径。
+        if plan is None:
+            plan = self._build_chunk_plan(decision, params)
         embeddings = await self._embed_chunks(chunk_objs)
-        try:
+        # LocalVectorStore 与应用共用SQL事务，其delete接口会commit，不能在此调用。
+        # 外部清理失败显式失败；不把异常吞掉后宣称索引替换完成。
+        if not isinstance(self._vector_store, LocalVectorStore):
             await self._vector_store.delete_by_document(document.id, document.tenant_id)
-        except Exception as exc:  # noqa: BLE001 — 旧向量清理失败不阻断就地重建
-            logger.error(
-                "rag_reparse_vector_cleanup_failed document=%s exception_type=%s",
-                document.id,
-                type(exc).__name__,
-            )
-        old_chunks = self.session.exec(select(DocumentChunk).where(DocumentChunk.document_id == document.id)).all()
         for chunk in old_chunks:
             self.session.delete(chunk)
         self.session.flush()
@@ -923,6 +1039,7 @@ class RAGService:
             self.session.add(row)
         document.content_hash = content_hash
         document.chunk_count = len(chunk_objs)
+        document.chunk_plan = json.dumps(plan, ensure_ascii=False)
         snapshot = self.session.get(DocumentIngestionSnapshot, document.id)
         if snapshot is None:
             snapshot = DocumentIngestionSnapshot(

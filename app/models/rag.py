@@ -82,6 +82,8 @@ class Document(SQLModel, TimestampMixin, table=True):
     expires_at: datetime | None = Field(default=None, index=True)
     import_job_id: str | None = Field(default=None, index=True)
     chunk_count: int = Field(default=0)
+    # 版本化切分计划（JSON）：策略名 + 有效参数 + 路由原因；重解析据此精确重放。
+    chunk_plan: str | None = Field(default=None)
 
     chunks: list["DocumentChunk"] = Relationship(
         back_populates="document", cascade_delete=True

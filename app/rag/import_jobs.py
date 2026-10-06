@@ -541,6 +541,7 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         OSError,
         ValueError,
     ) as exc:
+        session.rollback()
         job.status = ImportJobStatus.FAILED.value
         if isinstance(exc, QuotaExceededError):
             job.error = "源文件配额已用尽"
@@ -549,6 +550,7 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         _record_job_trace(session, job, exc)
         _drop_attempt_source(job, new_source_path)
     except Exception as exc:  # noqa: BLE001
+        session.rollback()
         logger.error("rag_import_failed job=%s exception_type=%s", job.id, type(exc).__name__)
         job.status = ImportJobStatus.FAILED.value
         job.error = _build_job_error_message(exc)

@@ -9202,7 +9202,7 @@ tasks:
 
   - id: "RAG-022"
     title: "自动切分策略选择（auto-routing 增强）"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -9211,14 +9211,14 @@ tasks:
       problem: "企业上线需按上传文档类型 + 读取内容自动适配切分；现有 _auto_route 仅按文本启发式选 4 种（structured/token_aware/recursive/paragraph），不接收文档类型，路由不到
         format_aware/layout_aware/semantic/parent_child，无切分质量反馈。"
       facts:
-      - claim: "_auto_route 只接收 text，不接文档类型/解析器/有无 blocks 与 bbox。"
+      - claim: "历史缺口：原 _auto_route 只接收 text；现已增加文档类型、解析器和 blocks/bbox 信号。"
         evidence: "app/rag/chunking/factory.py _auto_route"
-      - claim: "auto 路由结果不覆盖 format_aware/layout_aware/semantic/parent_child。"
+      - claim: "现 auto 可按 blocks/bbox 选 format_aware/layout_aware；TextParser 行块保守走正文；semantic/parent_child 仍显式 opt-in。"
         evidence: "app/rag/chunking/factory.py _auto_route 返回值"
       - claim: "默认策略是 structured，auto 需显式开启。"
         evidence: "app/core/config.py RAG_CHUNK_STRATEGY"
-      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
-        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
+      - claim: "版本化有效参数重放、失败保留旧数据、真实文本解析器保真与可复算结构评估已实现；最终验收见正式报告。"
+        evidence: "docs/plans/implementation_rag_022_auto_routing_20261006.md；docs/reviews/2026-10-06-RAG-022修复验收.md"
     scope:
       allowed_paths:
       - "app/rag/"
@@ -9263,7 +9263,8 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      blocked_by: "RAG-021 验收通过；策略持久化/边界变更所需 ADR 获批准；不自动重建旧文档。"
+      blocked_by: ""
+      progress: "2026-10-06 最终修复验收通过：有效参数完整校验并按版本化计划重放，NULL 历史兼容，损坏/未知计划拒绝并保留旧数据；校验/切分/Embedding 成功后同库原子替换，失败 rollback 后记录任务 failed。独立发现真实 TextParser 行块去缩进问题已修复，正文上传/新会话重解析保真。auto 专项 47 passed；独立审查 68 passed；最终全库 733 passed、2 skipped（可选 MCP/llamaindex 未安装），退出0；全库 ruff --no-cache 与 mypy app/ 通过。32组结构评估覆盖2308/2308、44保护单元破坏0、计划/内容范围重放32/32，含真实文本解析器；25项最终代码指纹一致。临时库迁移往返通过。默认策略与 Embedding/检索未改，真实索引不重建，Mock不证明质量，Milvus仍Partial。实现说明 docs/plans/implementation_rag_022_auto_routing_20261006.md；最终审查与关闭证据 docs/reviews/2026-10-06-RAG-022修复验收.md。"
 
 
   - id: "RAG-023"

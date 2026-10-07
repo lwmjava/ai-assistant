@@ -313,7 +313,10 @@ class SupervisorGraph:
             if not state.answer:
                 # 复用管线的兜底文案：预算超限必须说「请缩短输入」，
                 # 说成「请稍后重试」会诱导用户重试一次必然再被拦的请求。
-                state.answer = _failure_text(exc)
+                state.answer = _failure_text(
+                    exc,
+                    generic="抱歉，多 Agent 协作处理时出现问题，请稍后重试。",
+                )
             return state
         state.draft = final.get("draft", "")
         state.answer = state.draft

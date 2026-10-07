@@ -359,8 +359,9 @@ class _FakeMilvusCollection:
         if self.spec.drop_ids and len(rows) > 1:
             rows = rows[: len(rows) // 2]
         projected = [{key: row.get(key) for key in (output_fields or list(row))} for row in rows]
-        # ``dim`` 是诊断字段：真实服务端不会回它，但维度不符必须能被观察到，
-        # 否则「条数对得上、维度不对」这种假象会一路放行。
+        # ``dim`` 是诊断字段：服务端不会主动回它，调用方须先请求 embedding 字段
+        # 再自行计算；维度不符必须能被观察到，否则「条数对得上、维度不对」
+        # 这种假象会一路放行。
         for item, source in zip(projected, rows, strict=False):
             item["dim"] = len(source.get("embedding") or [])
         return projected
@@ -879,8 +880,8 @@ async def run_apply(
         "limitations": [
             "MockEmbeddingProvider 仅用于确定性链路对照，不代表生产语义质量。",
             "范数检查证明本次 Mock 样本为单位向量，不等同于生产写入路径已主动执行 L2 归一化。",
-            "Milvus 跨库样本在记录自动写入失败后显式补种；补种不计作上传写链路通过证据。",
-            "当前 app/rag/vectorstore/milvus.py 返回 similarity=1.0 占位，本报告会如实暴露该范围。",
+            "Milvus 跨库样本由脚本显式补种以保证样本齐备；上传写链路是否真的写入，由 milvus_upload_visible 单独判定。",
+            "Milvus 侧 similarity 取自 pymilvus 返回的 distance（COSINE 度量下的余弦相似度），精度为 float32，与本地 numpy 结果存在约 1e-8 量级差异。",
         ],
     }
     tcp_error = _tcp_error(probe_uri)
@@ -981,13 +982,18 @@ async def run_apply(
                     collection = store._connect()
                     target_index = store._resolve_index()
                     collection.flush()
-                    rows = list(
-                        collection.query(
-                            expr=_ids_expr(expected_ids),
-                            output_fields=["id", "document_id"],
+                    # 真实服务端的 query 不会默认回传向量；必须先显式请求 embedding，
+                    # 再由回传数据算出实际维度，维度判据不能依赖假 Milvus 的注入。
+                    rows = [
+                        {**row, "dim": len(row.get("embedding") or [])}
+                        for row in (
+                            collection.query(
+                                expr=_ids_expr(expected_ids),
+                                output_fields=["id", "document_id", "embedding"],
+                            )
+                            or []
                         )
-                        or []
-                    )
+                    ]
                     try:
                         assert_milvus_contains(expected_ids, rows)
                         assert_milvus_dimension_matches(target_index.dim, rows)

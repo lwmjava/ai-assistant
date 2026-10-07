@@ -9800,7 +9800,7 @@ tasks:
 
   - id: "RAG-033"
     title: "多格式解析与 OCR 质量基线"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on: []
@@ -9842,6 +9842,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "真实依赖与公开/合成/确认脱敏样本到位；本地核验可推进。涉及外部OCR时登记既有授权供应商、数据范围和调用/费用额度；质量阈值实测后批准。"
+      progress: "2026-10-07：建立 13 个真实样本语料与报告脚本（scripts/parse_quality_report.py + scripts/generate_parse_corpus.py），质量门禁锁定至 gate.v3（G5 拆为 G5a 数据暗示/G5b 表述声称/G5c used_mock 三条独立规则）。两条实测缺口裁定**不在本卡修、另开卡**：双栏交错 order=0.8571、DOCX 表格 coverage=0.40——改动会传导到解析产出、分块内容与 RAG-034/035 的检索输入。CE-13 裁定：删语料即门禁失败并强制人工注销 known_gap 属期望行为，不新增 known_gap_retired 开关，但报错必须可诊断（样本 id + 需退役的 known_gap + 下一步动作）。"
+      acceptance_record: "2026-10-07：三轮独立审查后关闭。第一轮 High 2 / Medium 4；整改 3aaa310（54 passed、7 处变异全红、gate.v2）。第二轮复审 22 处变异 19 红 3 存活，判「建议关闭 + 2 项关闭前置」；关闭前置 d5eca6b（62 passed：M-01 一致性测试绑定实测报告、CE-14 脚本路径存在性断言、CE-13 诊断可证、L-03 CLI 退出码、L-04 报告命名带门禁版本）。N-01 ddd1834：把门禁最终结论改为 blocking_rules 的派生值（无条件重算 + GATE_RULE_ORDER 作唯一来源）并补守护，66 passed——我（team lead）独立变异验证：删 parse_quality_report.py:612 的派生行，test_used_mock_true_blocks_gate_via_g5c 变红，确认守护成立（此前两次整改均因只改代码未改测试而无效）。N-02 6b7dcc0：measured_failure_rate 构造性断言，67 passed。最终回归 697 passed / 3 skipped / 0 failed；ruff 全绿。门禁当前 meets_gate=False 由 G4（pdf_scanned.pdf 缺 tesseract）挡住，属依赖缺失不是缺陷。未验证部分：真实 OCR 质量（本机无 tesseract，报告中如实标记 used_mock 与 dependency_missing）。"
       nightly:
         eligible: false
         production_access: false

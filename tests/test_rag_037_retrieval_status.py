@@ -91,6 +91,23 @@ class _IgnoreNoticeLLM(LLMProvider):
         yield "员工年假固定为 5 天。"
 
 
+class _SystemCaptureLLM(_IgnoreNoticeLLM):
+    """在对抗 LLM 基础上额外记录每轮 system 提示。
+
+    用于验证「披露要求是否真的送达模型」——只断言 state 字段证明不了这一点。
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.systems: list[str] = []
+
+    async def chat(self, messages, options=None) -> str:
+        for msg in messages:
+            if msg.role.value == "system":
+                self.systems.append(msg.content)
+        return await super().chat(messages, options)
+
+
 class _CaptureLLM(LLMProvider):
     """记录送进模型的全部文本，不真的生成。"""
 
@@ -262,7 +279,7 @@ async def test_pipeline_ok_has_no_disclosure() -> None:
 
 
 async def test_pipeline_no_hit_final_text_carries_disclosure() -> None:
-    """复审 N-01：no_hit 分支此前只验状态与提示层，没验最终回复文本。"""
+    """复审 N-01：no_hit 分支此前只断言状态与模型侧指令，没断言最终回复文本。"""
     llm = _IgnoreNoticeLLM()
     pipeline = AgentPipeline(llm, LLMOptions(), retriever=_retriever(_Backend([])))
     state = await pipeline.run(AgentState(user_input="年假怎么算"))
@@ -480,17 +497,6 @@ async def test_supervisor_directive_reaches_the_model_prompt() -> None:
     pytest.importorskip("langgraph")
     from app.agents.supervisor import SupervisorGraph
 
-    class _SystemCaptureLLM(_IgnoreNoticeLLM):
-        def __init__(self) -> None:
-            super().__init__()
-            self.systems: list[str] = []
-
-        async def chat(self, messages, options=None) -> str:
-            for msg in messages:
-                if msg.role.value == "system":
-                    self.systems.append(msg.content)
-            return await super().chat(messages, options)
-
     retriever = _retriever(_Backend(error=RuntimeError("检索不可用")))
     llm = _SystemCaptureLLM()
     graph = SupervisorGraph(llm, LLMOptions(), retriever=retriever)
@@ -526,12 +532,75 @@ async def test_supervisor_state_declares_retrieval_notice() -> None:
     """复审 N-11 的结构性防线：TypedDict 必须显式声明该键。
 
     没有这条，将来有人删掉字段声明时，上一条用例可能因为图没跑起来而跳过，
-    缺陷就漏过去了。
+    缺陷就漏过去了。这里刻意**不** importorskip langgraph：
+    读字段声明不需要图，加了反而会让这条防线在缺依赖时被静默跳过。
     """
-    pytest.importorskip("langgraph")
     from app.agents.supervisor import SupervisorState
 
     assert "retrieval_notice" in SupervisorState.__annotations__
+
+
+async def test_supervisor_stream_low_score_tokens_are_the_refusal() -> None:
+    """复审 R4-1：流式分支此前只断言 state.answer，没断言 token 拼接结果。"""
+    pytest.importorskip("langgraph")
+    from app.agents.supervisor import SupervisorGraph
+
+    retriever = _retriever(_Backend([_hit(0.2, "a")]))
+    graph = SupervisorGraph(_IgnoreNoticeLLM(), LLMOptions(), retriever=retriever)
+    state = AgentState(user_input="年假怎么算")
+    tokens: list[str] = []
+    async for event in graph.run_stream(state):
+        if event.type == "token":
+            tokens.append(event.data)
+    assert state.retrieval_status == "below_threshold"
+    assert "".join(tokens) == settings.RAG_REFUSE_MESSAGE
+
+
+async def test_supervisor_no_hit_final_text_carries_disclosure() -> None:
+    """复审 R4-2：Supervisor 的 no_hit 分支此前完全没有最终文本断言。"""
+    pytest.importorskip("langgraph")
+    from app.agents.supervisor import SupervisorGraph
+
+    retriever = _retriever(_Backend([]))
+    graph = SupervisorGraph(_IgnoreNoticeLLM(), LLMOptions(), retriever=retriever)
+    state = await graph.run(AgentState(user_input="年假怎么算"))
+    assert state.retrieval_status == "no_hit"
+    assert state.answer.startswith(settings.RAG_NO_HIT_REPLY)
+
+
+async def test_supervisor_research_receives_retrieved_context() -> None:
+    """复审 R4-2：调研节点此前拿不到上下文，只能凭空调研。"""
+    pytest.importorskip("langgraph")
+    from app.agents.supervisor import SupervisorGraph
+
+    class _ForceResearchLLM(_SystemCaptureLLM):
+        """第一次调用（Supervisor 路由）固定回答 research，确保调研节点真的跑。"""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self._calls = 0
+
+        async def chat(self, messages, options=None) -> str:
+            self._calls += 1
+            if self._calls == 1:
+                return "research"
+            return await super().chat(messages, options)
+
+    retriever = _retriever(_Backend([_hit(0.9, "年假 5 天")]))
+    llm = _ForceResearchLLM()
+    graph = SupervisorGraph(llm, LLMOptions(), retriever=retriever)
+    state = await graph.run(AgentState(user_input="年假怎么算"))
+    assert state.retrieval_status == "ok"
+    assert llm.systems, "Supervisor 未调用模型"
+    # 只看调研节点的提示（「## 已有调研」是其独有标记），
+    # 否则会被 draft 节点的同款「已掌握上下文」掩盖，断言形同虚设。
+    research_prompts = [p for p in llm.prompts if "## 已有调研" in p]
+    assert research_prompts, "调研节点没有被执行，无法验证上下文是否送达"
+    for prompt in research_prompts:
+        assert "## 已掌握上下文" in prompt, "调研提示缺少上下文段"
+        assert "年假 5 天" in prompt, "检索到的上下文没有进入调研提示"
+    # ok 状态不应带任何披露指令
+    assert not any(settings.RAG_NO_HIT_NOTICE in s for s in llm.systems)
 
 
 async def test_supervisor_low_score_is_terminal_refusal() -> None:

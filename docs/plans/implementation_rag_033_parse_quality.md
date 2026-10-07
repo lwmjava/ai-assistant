@@ -143,7 +143,7 @@ broken_empty.pdf                  pdf    expected_failure           -       -   
 broken_truncated.pdf              pdf    expected_failure           -       -      0
 unsupported.bin                   bin    expected_failure           -       -      0
 
-合计：samples=13  passed=7  failed=0  dependency_missing=1  known_limitation=2  expected_failure=3
+合计：samples=13  passed=7  failed=0  dependency_missing=1  known_limitation=2  gap_not_reproduced=0  expected_failure=3
 
 失败清单：
   （无）
@@ -160,24 +160,28 @@ unsupported.bin                   bin    expected_failure           -       -   
     原因=DocxDocumentParser 只遍历 document.paragraphs，表格单元格不进入解析结果。
     ｜实测：覆盖率 0.4 低于门禁 G2 门槛 0.95（缺失片段：['角色','职责','时限','实施','联调','五个工作日']）
 
-质量门禁 gate.v1（状态=locked，锁定人=批次评审（Agent 代执行人工评审），锁定日期=2026-10-07）：
+质量门禁 gate.v2（状态=locked，锁定人=批次评审（Agent 代执行人工评审），锁定日期=2026-10-07）：
 覆盖率≥0.95、顺序得分≥0.95、失败率≤0.0
-  G1 通过：未登记的失败必须为 0…
+  G1 通过：未登记的失败与未注销的缺口必须为 0…
   G2 通过：覆盖率 coverage ≥ 0.95…
   G3 通过：阅读顺序 order_score ≥ 0.95，豁免规则同 G2。
   G4 不通过：依赖缺失…（命中：['pdf_scanned.pdf']）
-  G5 通过：不得声称验证过…
+  G5 通过：不得声称验证过…（含 used_mock 必须为 False）
+  G6 通过：失败率 measured_failure_rate ≤ 0.0…
   实测失败率=0.0；阻断规则=['G4']；meets_gate=False
 ```
 
 复现命令：
 
 ```bash
-python scripts/parse_quality_report.py            # 打印
-python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-quality-<date>.json
+python scripts/parse_quality_report.py                 # 打印
+python scripts/parse_quality_report.py --json          # 落 evals/reports/parse-quality-<date>.json
+python scripts/parse_quality_report.py --json --force  # 覆盖当天已存在的报告
 ```
 
-> 脚本拒绝写入冻结基线文件名 `rag-v0.1-baseline-20260919.json`。
+> 脚本拒绝写入冻结基线文件名 `rag-v0.1-baseline-20260919.json`；同名报告默认也
+> **拒绝静默覆盖**（需显式 `--force` 或改用 `--json-path`），避免同日重跑把已评审的
+> 报告悄悄换掉。
 
 ---
 
@@ -228,23 +232,48 @@ python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-qual
 
 ---
 
-## 8. 质量门禁：gate.v1（**已锁定**，2026-10-07）
+## 8. 质量门禁：gate.v2（**已锁定**，2026-10-07）
 
-版本 `gate.v1`；锁定人「批次评审（Agent 代执行人工评审）」；锁定日期 2026-10-07。
+版本 `gate.v2`；锁定人「批次评审（Agent 代执行人工评审）」；锁定日期 2026-10-07。
 规则文本写在 `scripts/parse_quality_report.py::LOCKED_GATE`，报告逐条输出判定结果。
 
 | 规则 | 内容 | 当前 |
 |---|---|---|
-| **G1** | 未登记的失败必须为 0：任何 `status=fail` 且不在 manifest `expected_failure` 里的样本，整份报告判不通过 | ✅ 通过 |
+| **G1** | 未登记的失败与未注销的缺口必须为 0：任何 `status=fail`（不在 manifest `expected_failure` 里）或 `status=gap_not_reproduced`（manifest 仍登记 `known_gap` 但本次阈值突破未复现，需人工注销）的样本，整份报告判不通过 | ✅ 通过 |
 | **G2** | 覆盖率 `coverage ≥ 0.95`；低于门槛的样本**必须**登记在 manifest 的 `known_gap` 并出现在报告 `known_limitations` 中，登记后状态为 `known_limitation`（**豁免门槛，但不得计入 passed**） | ✅ 通过（DOCX 表格 0.40 走豁免） |
 | **G3** | 阅读顺序 `order_score ≥ 0.95`，同 G2 的登记豁免规则 | ✅ 通过（双栏交错 0.8571 走豁免） |
 | **G4** | 依赖缺失：存在任何 `dependency_missing` 样本时整份报告 `meets_gate=False`（即使其它全绿） | ❌ **不通过**，`pdf_scanned.pdf` 命中 |
-| **G5** | 不得声称验证过：报告中不得出现任何宣称 OCR 质量已经过验证的表述；`dependency_missing` 样本不得计入覆盖或顺序统计 | ✅ 通过 |
+| **G5** | 不得声称验证过：报告中不得出现任何宣称 OCR 质量已经过验证的表述；`dependency_missing` 样本不得计入覆盖或顺序统计；未走真实 provider 路径（`used_mock=True`）时不得声明走了真实路径 | ✅ 通过 |
+| **G6** | 失败率 `measured_failure_rate ≤ 0.0`（分母为 `pass + fail` 样本） | ✅ 通过（实测 0.0） |
 
 当前结论：`blocking_rules=['G4']`，`meets_gate=False`。
 
 **G4 在补齐 tesseract + chi_sim 语言包后需重跑才能解除，解除前本卡整体不算「质量通过」。**
 修改门槛值必须同时改 `LOCKED_GATE["version"]` 与 `locked_at`，避免静默改写已锁定门禁。
+
+### 8.1 关于「削弱期望」与「改进解析器」的等价性（H-02 收口）
+
+状态由「实测阈值 + manifest 是否登记 `known_gap`」推导，而实测值同时取决于解析器能力和
+manifest 期望强度。因此只删 manifest 期望片段（解析器一行没动、`known_gap` 也没删）也能让
+覆盖率回到 1.0——这与「真把解析器改好」在实测值上完全等价。
+
+收口方式：manifest 仍登记 `known_gap` 但本次阈值突破未复现时，**不得直接 `pass`**，判为
+`gap_not_reproduced` 并进 **G1 阻断**，需人工确认「是解析器真的改好了」还是「期望被削弱了」
+并注销 `known_gap` 后才能回到 `pass`。这样削弱期望必须伴随「同时删 `known_gap`」这一在 diff
+里看得见的动作。
+
+### 8.2 `used_mock` 是派生值而非常量（M-02 收口）
+
+`ocr_probe.used_mock` / `path` 由**实际生效的 provider 对象**派生：
+
+- `provider_class`：经 `app.rag.ocr.factory.get_ocr_provider()` 真实解析一次得到的类路径；
+- `observed_provider`：扫描件样本实际产出的 `OcrResult.provider`（依赖缺失时为 `None`）；
+- `used_mock = not (provider_class 以 app.rag.ocr. 开头 and observed_provider 在
+  {tesseract, cloud} 白名单内或为 None)`。
+
+任一侧被换成假实现都会让 `used_mock=True`，并经 G5 阻断。当前真实运行下
+`provider_class = app.rag.ocr.tesseract.TesseractOcrProvider`、`observed_provider = None`
+（依赖缺失、未产出任何 OCR 文本）、`used_mock = False`。
 
 ---
 
@@ -272,9 +301,10 @@ python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-qual
 | `evals/corpus/parsing/*` | 新增：13 个样本 + `manifest.json` |
 | `scripts/parse_quality_report.py` | 新增：评估报告脚本（含 gate.v1 门禁判定） |
 | `evals/reports/parse-quality-20261007.json` | 新增：首份报告（非冻结基线） |
-| `tests/test_rag_033_parse_quality.py` | 新增：35 条测试 |
+| `tests/test_rag_033_parse_quality.py` | 新增：54 条测试 |
 
-未改动 `app/rag/**` 下的任何产品代码；未改 `.env`；未改 `tasks.yaml` 卡片状态。
+未改动 `app/rag/**` 下的任何产品代码；未改 `.env`；未改 `tasks.yaml` 卡片状态
+（卡片状态与 `progress` / `acceptance_record` 由批次负责人在关闭时统一处理）。
 
 ### 10.1 门禁锁定后的追加变更（2026-10-07）
 
@@ -283,3 +313,14 @@ python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-qual
 | `scripts/parse_quality_report.py` | `PROPOSED_GATE` → `LOCKED_GATE`（gate.v1，locked）；新增 `evaluate_gate`（G1–G5 逐条判定）与 `scan_forbidden_phrases`（G5 全报告扫描）；状态改为「阈值 + known_gap 登记」推导 |
 | `tests/test_rag_033_parse_quality.py` | 门禁相关断言改为校验 `locked`/`gate.v1`，新增 G1–G5 五条规则测试与 G5 扫描函数自测 |
 | `docs/plans/implementation_rag_033_parse_quality.md` | 6.1 节补「不在本卡修」的三条理由；第 8 节改为已锁定的 gate.v1 |
+
+### 10.2 独立审查整改后的追加变更（2026-10-07，审查报告见 `docs/reviews/`）
+
+| 文件 | 变更 |
+|---|---|
+| `scripts/parse_quality_report.py` | 门禁升到 **gate.v2**：G1 扩到「未注销的缺口」、新增 G6（失败率真正被引用）、G5 增加 `used_mock` 维度；新增状态 `gap_not_reproduced`（H-02）；新增 `probe_ocr_provider` / `build_ocr_probe` 让 `used_mock` / `path` 从实际 provider 派生（M-02）；新增 `apply_report_level_checks` 统一承接报告级 G5 检查（M-01）；`write_json` 拒绝静默覆盖同名报告（L-02） |
+| `tests/test_rag_033_parse_quality.py` | 35 → 54 条：新增 G1/G3 构造性反例 6 条（H-01）、削弱期望反例 2 条（H-02）、G5 端到端与门禁层单测 2 条（M-01/M-04）、`used_mock` 派生与假 provider 反例 4 条（M-02）、G6 两条（M-03）、报告不覆盖与一致性 2 条（L-02）、manifest 标注一致性 1 条（L-03） |
+| `docs/plans/implementation_rag_033_parse_quality.md` | 第 8 节改为 gate.v2 并补 8.1（削弱期望等价性收口）与 8.2（used_mock 派生） |
+
+审查提出的必修项 H-01 / H-02 / M-01 / M-02 与一并处理项 M-03 / M-04 / L-02 全部落地；
+**L-01（`tasks.yaml` 落记录）按裁定不在本卡做**，由批次负责人关闭时统一处理。

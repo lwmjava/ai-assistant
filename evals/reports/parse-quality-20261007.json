@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T16:41:01+08:00",
+  "generated_at": "2026-10-07T17:21:53+08:00",
   "card": "RAG-033 多格式解析与 OCR 质量基线",
   "corpus_dir": "evals\\corpus\\parsing",
   "corpus_version": "rag-033-parsing-corpus-v1",
@@ -9,8 +9,16 @@
   "ocr_probe": {
     "enabled_for_ocr_samples": true,
     "provider": "tesseract",
-    "path": "app.rag.ocr.factory.get_ocr_provider -> 真实 provider",
-    "used_mock": false
+    "provider_class": "app.rag.ocr.tesseract.TesseractOcrProvider",
+    "factory_resolution_error": null,
+    "observed_provider": null,
+    "real_provider_module_prefix": "app.rag.ocr.",
+    "real_provider_names": [
+      "cloud",
+      "tesseract"
+    ],
+    "used_mock": false,
+    "path": "app.rag.ocr.factory.get_ocr_provider -> app.rag.ocr.tesseract.TesseractOcrProvider"
   },
   "dependencies": {
     "modules": {
@@ -447,6 +455,7 @@
     "failed": 0,
     "dependency_missing": 1,
     "known_limitation": 2,
+    "gap_not_reproduced": 0,
     "expected_failure": 3
   },
   "failures": [],
@@ -556,8 +565,9 @@
       "gap_note": null
     }
   ],
+  "gap_not_reproduced_list": [],
   "gate": {
-    "version": "gate.v1",
+    "version": "gate.v2",
     "status": "locked",
     "locked_by": "批次评审（Agent 代执行人工评审）",
     "locked_at": "2026-10-07",
@@ -565,13 +575,14 @@
     "order_score_min": 0.95,
     "failure_rate_max": 0.0,
     "rules": {
-      "G1": "未登记的失败必须为 0：任何 status=fail 且不在 manifest expected_failure 里的样本，整份报告判不通过。",
+      "G1": "未登记的失败与未注销的缺口必须为 0：任何 status=fail（不在 manifest expected_failure 里）或 status=gap_not_reproduced（manifest 仍登记 known_gap 但本次阈值突破未复现，需人工注销）的样本，整份报告判不通过。",
       "G2": "覆盖率 coverage ≥ 0.95；低于门槛的样本必须登记在 manifest 的 known_gap 并出现在报告 known_limitations 中，登记后状态为 known_limitation（豁免门槛，但不得计入 passed）。",
       "G3": "阅读顺序 order_score ≥ 0.95，豁免规则同 G2。",
       "G4": "依赖缺失：存在任何 dependency_missing 样本时整份报告 meets_gate=False（即使其它全绿）。",
-      "G5": "不得声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的表述；dependency_missing 样本不得计入覆盖率或顺序统计。"
+      "G5": "不得声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的表述；dependency_missing 样本不得计入覆盖率或顺序统计；未走真实 provider 路径（used_mock=True）时不得声明走了真实路径。",
+      "G6": "失败率 measured_failure_rate ≤ 0.0（分母为 pass+fail 样本）。"
     },
-    "note": "本门禁已锁定（gate.v1）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后才能解除，解除前本卡整体不算「质量通过」。另：本报告中不含任何宣称 OCR 已被真实依赖验证的表述，中文 OCR 质量在本机未经验证。",
+    "note": "本门禁已锁定（gate.v2）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后才能解除，解除前本卡整体不算「质量通过」。另：本报告中不含任何宣称 OCR 已被真实依赖验证的表述，中文 OCR 质量在本机未经验证。",
     "measured_failure_rate": 0.0,
     "checks": {
       "G1": {
@@ -593,6 +604,10 @@
         ]
       },
       "G5": {
+        "passed": true,
+        "violations": []
+      },
+      "G6": {
         "passed": true,
         "violations": []
       }

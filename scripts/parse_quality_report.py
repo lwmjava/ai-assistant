@@ -48,10 +48,11 @@ DEPENDENCY_MISSING_ERROR_CODES = frozenset(
 )
 DEPENDENCY_MISSING_MESSAGE_MARK = "依赖缺失"
 
-# 质量门禁（gate.v1，2026-10-07 由批次评审锁定）。
-# 五条规则见 LOCKED_GATE["rules"]；修改门槛值必须同时改 version 与 locked_at。
+# 质量门禁（gate.v2，2026-10-07 由批次评审锁定；v2 在 v1 基础上补 G6 与
+# gap_not_reproduced，并把 G1/G5 的覆盖范围写明确）。
+# 修改门槛值必须同时改 version 与 locked_at，避免静默改写已锁定门禁。
 LOCKED_GATE = {
-    "version": "gate.v1",
+    "version": "gate.v2",
     "status": "locked",
     "locked_by": "批次评审（Agent 代执行人工评审）",
     "locked_at": "2026-10-07",
@@ -59,17 +60,20 @@ LOCKED_GATE = {
     "order_score_min": 0.95,
     "failure_rate_max": 0.0,
     "rules": {
-        "G1": "未登记的失败必须为 0：任何 status=fail 且不在 manifest expected_failure 里的样本，"
-        "整份报告判不通过。",
+        "G1": "未登记的失败与未注销的缺口必须为 0：任何 status=fail（不在 manifest "
+        "expected_failure 里）或 status=gap_not_reproduced（manifest 仍登记 known_gap "
+        "但本次阈值突破未复现，需人工注销）的样本，整份报告判不通过。",
         "G2": "覆盖率 coverage ≥ 0.95；低于门槛的样本必须登记在 manifest 的 known_gap 并出现在报告 "
         "known_limitations 中，登记后状态为 known_limitation（豁免门槛，但不得计入 passed）。",
         "G3": "阅读顺序 order_score ≥ 0.95，豁免规则同 G2。",
         "G4": "依赖缺失：存在任何 dependency_missing 样本时整份报告 meets_gate=False（即使其它全绿）。",
         "G5": "不得声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的表述；"
-        "dependency_missing 样本不得计入覆盖率或顺序统计。",
+        "dependency_missing 样本不得计入覆盖率或顺序统计；"
+        "未走真实 provider 路径（used_mock=True）时不得声明走了真实路径。",
+        "G6": "失败率 measured_failure_rate ≤ 0.0（分母为 pass+fail 样本）。",
     },
     "note": (
-        "本门禁已锁定（gate.v1）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后"
+        "本门禁已锁定（gate.v2）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后"
         "才能解除，解除前本卡整体不算「质量通过」。"
         "另：本报告中不含任何宣称 OCR 已被真实依赖验证的表述，"
         "中文 OCR 质量在本机未经验证。"
@@ -84,6 +88,11 @@ FORBIDDEN_VERIFICATION_PHRASES = (
     "中文 OCR 已通过",
     "OCR 质量通过",
 )
+
+# 真实 OCR provider 的识别依据：模块前缀 + provider 自报名称白名单。
+# 用来让 ocr_probe.used_mock 从「实际生效的 provider」派生，而不是硬编码常量。
+REAL_OCR_PROVIDER_MODULE_PREFIX = "app.rag.ocr."
+REAL_OCR_PROVIDER_NAMES = frozenset({"tesseract", "cloud"})
 
 CONTENT_TYPE_BY_FORMAT = {
     "pdf": "application/pdf",
@@ -352,8 +361,16 @@ def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
         return result
 
     if registered_gap:
-        # 声明的缺口已不再复现：如实标注，避免把「已修好」继续算作缺口。
-        result["gap_note"] = "manifest 中登记的 known_gap 本次未复现"
+        # manifest 仍登记 known_gap 但阈值突破未复现：可能是解析器真的修好了，
+        # 也可能是把 manifest 期望改弱了（削弱期望与改进解析器在实测值上等价）。
+        # 因此不得直接 pass，必须判为需人工注销 known_gap 的阻断项（G1）。
+        result["status"] = "gap_not_reproduced"
+        result["failure_reason"] = (
+            "manifest 仍登记 known_gap 但本次阈值突破未复现："
+            "需人工确认是解析器已改进还是期望被削弱，并注销 known_gap 后才能回到 pass"
+        )
+        return result
+
     result["status"] = "pass"
     return result
 
@@ -369,20 +386,24 @@ def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
 
 
 def evaluate_gate(results: list[dict], *, failure_rate: float) -> dict:
-    """按 gate.v1 的五条规则逐条判定，返回门禁结果。
+    """按 gate.v2 的六条规则逐条判定，返回门禁结果。
 
-    G1 未登记的失败必须为 0；G2/G3 覆盖率与顺序门槛（登记 known_gap 则豁免，
-    但豁免项不得计入 passed）；G4 存在依赖缺失即整份不通过；
-    G5 不得声称验证过，且依赖缺失样本不得计入覆盖/顺序统计。
+    G1 未登记的失败 + 未注销的缺口必须为 0；G2/G3 覆盖率与顺序门槛（登记
+    known_gap 则豁免，但豁免项不得计入 passed）；G4 存在依赖缺失即整份不通过；
+    G5 不得声称验证过，依赖缺失样本不得计入覆盖/顺序统计；G6 失败率门槛。
     """
     coverage_min = LOCKED_GATE["coverage_min"]
     order_min = LOCKED_GATE["order_score_min"]
+    failure_rate_max = LOCKED_GATE["failure_rate_max"]
 
     def names(items: list[dict]) -> list[str]:
         return [item["name"] for item in items]
 
-    # G1：任何 status=fail 的样本都属于未登记失败（已登记的负样本状态是 expected_failure）。
-    g1_violations = [item for item in results if item["status"] == "fail"]
+    # G1：status=fail 属于未登记失败（已登记负样本状态是 expected_failure）；
+    # status=gap_not_reproduced 属于未注销的缺口（需人工注销 known_gap）。
+    g1_violations = [
+        item for item in results if item["status"] in ("fail", "gap_not_reproduced")
+    ]
     g1_passed = not g1_violations
 
     # G2：覆盖率低于门槛且未登记 known_gap（未落进 known_limitations）的样本。
@@ -418,12 +439,17 @@ def evaluate_gate(results: list[dict], *, failure_rate: float) -> dict:
     ]
     g5_passed = not claimed
 
+    # G6：失败率门槛（分母为 pass + fail）。
+    g6_passed = failure_rate <= failure_rate_max
+    g6_violations = [] if g6_passed else [f"measured_failure_rate={failure_rate} > {failure_rate_max}"]
+
     checks = {
         "G1": {"passed": g1_passed, "violations": names(g1_violations)},
         "G2": {"passed": g2_passed, "violations": names(g2_violations)},
         "G3": {"passed": g3_passed, "violations": names(g3_violations)},
         "G4": {"passed": g4_passed, "violations": names(g4_items)},
         "G5": {"passed": g5_passed, "violations": claimed},
+        "G6": {"passed": g6_passed, "violations": g6_violations},
     }
     blocking = [name for name, check in checks.items() if not check["passed"]]
     return {
@@ -441,6 +467,84 @@ def scan_forbidden_phrases(report: dict) -> list[str]:
     return [phrase for phrase in FORBIDDEN_VERIFICATION_PHRASES if phrase in serialized]
 
 
+def probe_ocr_provider(ocr_provider: str) -> dict:
+    """经真实工厂解析一次 provider，返回其类路径与是否为真实 provider。
+
+    用于让 ``ocr_probe`` 的 ``used_mock`` / ``path`` 从**实际生效的 provider 对象**
+    派生，而不是硬编码常量。
+    """
+    from app.core.config import settings
+    from app.rag.ocr.factory import get_ocr_provider
+
+    original = (settings.RAG_OCR_ENABLED, settings.RAG_OCR_PROVIDER)
+    settings.RAG_OCR_ENABLED = True
+    settings.RAG_OCR_PROVIDER = ocr_provider
+    try:
+        provider = get_ocr_provider()
+        provider_class = f"{type(provider).__module__}.{type(provider).__qualname__}"
+        return {
+            "provider_class": provider_class,
+            "factory_provider_is_real": provider_class.startswith(REAL_OCR_PROVIDER_MODULE_PREFIX),
+            "factory_resolution_error": None,
+        }
+    except Exception as exc:  # noqa: BLE001 - 解析失败也要如实记录
+        return {
+            "provider_class": None,
+            "factory_provider_is_real": False,
+            "factory_resolution_error": f"{type(exc).__name__}: {exc}",
+        }
+    finally:
+        settings.RAG_OCR_ENABLED, settings.RAG_OCR_PROVIDER = original
+
+
+def build_ocr_probe(results: list[dict], *, ocr_provider: str) -> dict:
+    """组装 ocr_probe 段：全部字段从实际生效的 provider 派生。"""
+    probe = probe_ocr_provider(ocr_provider)
+    observed = next(
+        (
+            item["ocr_provider"]
+            for item in results
+            if item["kind"] == "ocr" and item.get("ocr_provider")
+        ),
+        None,
+    )
+    observed_is_real = observed is None or observed in REAL_OCR_PROVIDER_NAMES
+    used_mock = not (probe["factory_provider_is_real"] and observed_is_real)
+    return {
+        "enabled_for_ocr_samples": True,
+        "provider": ocr_provider,
+        "provider_class": probe["provider_class"],
+        "factory_resolution_error": probe["factory_resolution_error"],
+        "observed_provider": observed,
+        "real_provider_module_prefix": REAL_OCR_PROVIDER_MODULE_PREFIX,
+        "real_provider_names": sorted(REAL_OCR_PROVIDER_NAMES),
+        "used_mock": used_mock,
+        "path": (
+            f"app.rag.ocr.factory.get_ocr_provider -> {probe['provider_class']}"
+            if probe["provider_class"]
+            else "app.rag.ocr.factory.get_ocr_provider -> 解析失败"
+        ),
+    }
+
+
+def apply_report_level_checks(report: dict) -> dict:
+    """把「报告级」的 G5 检查（禁用表述扫描 + used_mock）结果写回门禁。"""
+    gate = report["gate"]
+    violations = list(gate["checks"]["G5"]["violations"])
+    violations.extend(scan_forbidden_phrases(report))
+    if report["ocr_probe"]["used_mock"]:
+        violations.append(
+            "ocr_probe.used_mock=True：未走真实 provider 路径，不得声明走了真实路径"
+        )
+    if violations:
+        gate["checks"]["G5"] = {"passed": False, "violations": violations}
+        gate["blocking_rules"] = [
+            name for name, check in gate["checks"].items() if not check["passed"]
+        ]
+        gate["meets_gate"] = not gate["blocking_rules"]
+    return report
+
+
 def build_report(*, ocr_provider: str) -> dict:
     """跑完整样本集并组装报告。"""
     manifest = load_manifest()
@@ -449,6 +553,7 @@ def build_report(*, ocr_provider: str) -> dict:
     failures = [item for item in results if item["status"] == "fail"]
     dependency_missing = [item for item in results if item["status"] == "dependency_missing"]
     known_limitations = [item for item in results if item["status"] == "known_limitation"]
+    gap_not_reproduced = [item for item in results if item["status"] == "gap_not_reproduced"]
     expected_failures = [item for item in results if item["status"] == "expected_failure"]
     passed = [item for item in results if item["status"] == "pass"]
 
@@ -459,17 +564,16 @@ def build_report(*, ocr_provider: str) -> dict:
     report = {
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "card": "RAG-033 多格式解析与 OCR 质量基线",
-        "corpus_dir": str(CORPUS_DIR.relative_to(REPO_ROOT)),
+        "corpus_dir": (
+            str(CORPUS_DIR.relative_to(REPO_ROOT))
+            if CORPUS_DIR.is_relative_to(REPO_ROOT)
+            else str(CORPUS_DIR)
+        ),
         "corpus_version": manifest.get("version"),
         "cjk_font": manifest.get("cjk_font"),
         "cjk_font_is_system_font": manifest.get("cjk_font_is_system_font"),
         "cjk_font_note": manifest.get("cjk_font_note"),
-        "ocr_probe": {
-            "enabled_for_ocr_samples": True,
-            "provider": ocr_provider,
-            "path": "app.rag.ocr.factory.get_ocr_provider -> 真实 provider",
-            "used_mock": False,
-        },
+        "ocr_probe": build_ocr_probe(results, ocr_provider=ocr_provider),
         "dependencies": probe_dependencies(),
         "samples": results,
         "totals": {
@@ -478,23 +582,18 @@ def build_report(*, ocr_provider: str) -> dict:
             "failed": len(failures),
             "dependency_missing": len(dependency_missing),
             "known_limitation": len(known_limitations),
+            "gap_not_reproduced": len(gap_not_reproduced),
             "expected_failure": len(expected_failures),
         },
         "failures": failures,
         "dependency_missing_list": dependency_missing,
         "known_limitations": known_limitations,
+        "gap_not_reproduced_list": gap_not_reproduced,
         "gate": gate,
     }
 
-    # G5 全报告扫描：任何「OCR 质量已验证」类表述都直接判 G5 不通过。
-    forbidden = scan_forbidden_phrases(report)
-    if forbidden:
-        gate["checks"]["G5"] = {"passed": False, "violations": forbidden}
-        gate["blocking_rules"] = [
-            name for name, check in gate["checks"].items() if not check["passed"]
-        ]
-        gate["meets_gate"] = not gate["blocking_rules"]
-    return report
+    # 报告级检查（禁用表述扫描 + used_mock 派生值）回写门禁。
+    return apply_report_level_checks(report)
 
 
 def render_report(report: dict) -> str:
@@ -545,6 +644,11 @@ def render_report(report: dict) -> str:
             f"  - {item['name']}: 覆盖={item['coverage']} 顺序={item['order_score']} "
             f"原因={item['failure_reason']}"
         )
+    if report["gap_not_reproduced_list"]:
+        lines.append("")
+        lines.append("未注销的缺口（G1 阻断：需人工注销 known_gap）：")
+        for item in report["gap_not_reproduced_list"]:
+            lines.append(f"  - {item['name']}: {item['failure_reason']}")
     lines.append("")
     gate = report["gate"]
     lines.append(
@@ -552,7 +656,7 @@ def render_report(report: dict) -> str:
         f"锁定日期={gate['locked_at']}）：覆盖率≥{gate['coverage_min']}、"
         f"顺序得分≥{gate['order_score_min']}、失败率≤{gate['failure_rate_max']}"
     )
-    for rule_name in ("G1", "G2", "G3", "G4", "G5"):
+    for rule_name in ("G1", "G2", "G3", "G4", "G5", "G6"):
         check = gate["checks"][rule_name]
         lines.append(
             f"  {rule_name} {'通过' if check['passed'] else '不通过'}："
@@ -566,10 +670,19 @@ def render_report(report: dict) -> str:
     return "\n".join(lines)
 
 
-def write_json(report: dict, target: Path) -> Path:
-    """写入 JSON 报告；禁止覆盖冻结基线报告。"""
+def write_json(report: dict, target: Path, *, force: bool = False) -> Path:
+    """写入 JSON 报告。
+
+    禁止覆盖冻结基线报告；同名报告默认也拒绝静默覆盖（需显式 ``--force``
+    或改用 ``--json-path``），避免同一天重跑把已评审的报告悄悄换掉。
+    """
     if target.name == FROZEN_BASELINE_NAME:
         raise SystemExit(f"拒绝写入冻结基线报告：{target}")
+    if target.exists() and not force:
+        raise SystemExit(
+            f"目标报告已存在，拒绝静默覆盖：{target}（如需覆盖请显式加 --force，"
+            f"或用 --json-path 指定新路径）"
+        )
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return target
@@ -580,6 +693,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="RAG-033 多格式解析与 OCR 质量基线报告")
     parser.add_argument("--json", action="store_true", help="同时落一份 JSON 报告到 evals/reports/")
     parser.add_argument("--json-path", default="", help="自定义 JSON 报告路径")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="允许覆盖同名报告（默认拒绝静默覆盖）",
+    )
     parser.add_argument(
         "--ocr-provider",
         default="tesseract",
@@ -596,7 +714,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.json_path
             else REPORT_DIR / f"parse-quality-{datetime.now().strftime('%Y%m%d')}.json"
         )
-        written = write_json(report, target)
+        written = write_json(report, target, force=args.force)
         print(f"\nJSON 报告已写入：{written}")
     return 0
 

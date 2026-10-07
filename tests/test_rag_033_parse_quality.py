@@ -73,6 +73,45 @@ def _sample_bytes(corpus: Path, name: str) -> bytes:
     return (corpus / name).read_bytes()
 
 
+def _manifest_sample(manifest: dict, name: str) -> dict:
+    """按样本名取 manifest 条目。"""
+    for sample in manifest["samples"]:
+        if sample["name"] == name:
+            return sample
+    raise AssertionError(f"manifest 中缺少样本：{name}")
+
+
+@pytest.fixture
+def corpus_copy(tmp_path: Path, corpus: Path, monkeypatch: pytest.MonkeyPatch):
+    """返回一个「复制语料到临时目录并按需改 manifest」的工厂。
+
+    用于构造**门禁真的会失败**的输入（H-01/H-02 的构造性反例）：
+    不污染仓库语料，只把补丁后的目录挂到脚本的 ``CORPUS_DIR`` 上。
+    """
+
+    def _make(mutate=None) -> Path:
+        dest = tmp_path / "corpus-copy"
+        dest.mkdir(parents=True, exist_ok=True)
+        for path in corpus.iterdir():
+            shutil.copy2(path, dest / path.name)
+        manifest = json.loads((dest / "manifest.json").read_text(encoding="utf-8"))
+        if mutate is not None:
+            mutate(manifest, dest)
+        (dest / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        monkeypatch.setattr(_report_mod, "CORPUS_DIR", dest)
+        return dest
+
+    return _make
+
+
+def _build(corpus_copy, mutate) -> dict:
+    """用补丁后的语料重建报告。"""
+    corpus_copy(mutate)
+    return _report_mod.build_report(ocr_provider="tesseract")
+
+
 # ---------------------------------------------------------------------------
 # OCR 依赖缺失行为
 # ---------------------------------------------------------------------------
@@ -386,6 +425,7 @@ def test_report_totals_are_consistent(report: dict) -> None:
         + totals["failed"]
         + totals["dependency_missing"]
         + totals["known_limitation"]
+        + totals["gap_not_reproduced"]
         + totals["expected_failure"]
         == totals["samples"]
     )
@@ -413,17 +453,143 @@ def test_dependency_inventory_records_missing_items(report: dict) -> None:
         assert "pytesseract" in dependencies["missing"]
 
 
-def test_quality_gate_is_locked_v1(report: dict) -> None:
-    """门禁必须为已锁定的 gate.v1，并带齐锁定人/日期/五条规则。"""
+def test_quality_gate_is_locked(report: dict) -> None:
+    """门禁必须为已锁定的 gate.v2，并带齐锁定人/日期/六条规则。"""
     gate = report["gate"]
     assert gate["status"] == "locked"
-    assert gate["version"] == "gate.v1"
+    assert gate["version"] == "gate.v2"
     assert gate["locked_by"] == "批次评审（Agent 代执行人工评审）"
     assert gate["locked_at"] == "2026-10-07"
-    assert set(gate["rules"]) == {"G1", "G2", "G3", "G4", "G5"}
+    assert set(gate["rules"]) == {"G1", "G2", "G3", "G4", "G5", "G6"}
     assert gate["coverage_min"] == 0.95
     assert gate["order_score_min"] == 0.95
     assert gate["failure_rate_max"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# H-01：G1 与「未登记 gap 即判 fail」的构造性反例
+# ---------------------------------------------------------------------------
+
+
+def test_unregistered_coverage_break_blocks_gate(corpus_copy) -> None:
+    """删掉 docx 的 known_gap：阈值突破不再豁免 → fail，G1/G2 必须亮灯。"""
+    def mutate(manifest: dict, dest: Path) -> None:
+        _manifest_sample(manifest, "docx_headings_table.docx")["known_gap"] = None
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "docx_headings_table.docx")
+    assert entry["status"] == "fail"
+    assert entry["status"] != "known_limitation"
+    assert report["gate"]["checks"]["G1"]["passed"] is False
+    assert "docx_headings_table.docx" in report["gate"]["checks"]["G1"]["violations"]
+    assert report["gate"]["checks"]["G2"]["passed"] is False
+    assert report["gate"]["meets_gate"] is False
+
+
+def test_unregistered_order_break_blocks_gate(corpus_copy) -> None:
+    """删掉双栏交错样本的 known_gap：顺序突破不再豁免 → fail，G1/G3 亮灯。"""
+    def mutate(manifest: dict, dest: Path) -> None:
+        _manifest_sample(manifest, "pdf_twocolumn_interleaved.pdf")["known_gap"] = None
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "pdf_twocolumn_interleaved.pdf")
+    assert entry["status"] == "fail"
+    assert report["gate"]["checks"]["G1"]["passed"] is False
+    assert report["gate"]["checks"]["G3"]["passed"] is False
+    assert "pdf_twocolumn_interleaved.pdf" in report["gate"]["checks"]["G3"]["violations"]
+    assert report["gate"]["meets_gate"] is False
+
+
+def test_injected_unreachable_fragment_blocks_gate(corpus_copy) -> None:
+    """给表格 PDF 加一个不可能命中的期望片段 → 未登记覆盖失败。"""
+    def mutate(manifest: dict, dest: Path) -> None:
+        _manifest_sample(manifest, "pdf_table.pdf")["expected_fragments"].append(
+            "这个片段在样本里根本不存在"
+        )
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "pdf_table.pdf")
+    assert entry["status"] == "fail"
+    assert entry["coverage"] is not None and entry["coverage"] < 0.95
+    assert "pdf_table.pdf" in report["gate"]["checks"]["G1"]["violations"]
+    assert report["gate"]["checks"]["G2"]["passed"] is False
+
+
+def test_reversed_expected_order_blocks_gate(corpus_copy) -> None:
+    """反转单栏样本的期望顺序 → 未登记顺序失败，G1/G3 拦。"""
+    def mutate(manifest: dict, dest: Path) -> None:
+        sample = _manifest_sample(manifest, "pdf_single_column.pdf")
+        sample["expected_order"] = list(reversed(sample["expected_order"]))
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "pdf_single_column.pdf")
+    assert entry["status"] == "fail"
+    assert entry["order_score"] == 0.0
+    assert report["gate"]["checks"]["G3"]["passed"] is False
+    assert report["gate"]["meets_gate"] is False
+
+
+def test_negative_sample_silent_pass_is_failure(corpus_copy) -> None:
+    """把空文件负样本换成合法 PDF → 必须判 fail「静默通过」。"""
+    def mutate(manifest: dict, dest: Path) -> None:
+        shutil.copy2(dest / "pdf_table.pdf", dest / "broken_empty.pdf")
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "broken_empty.pdf")
+    assert entry["status"] == "fail"
+    assert entry["status"] != "expected_failure"
+    assert "静默通过" in (entry["failure_reason"] or "")
+    assert "broken_empty.pdf" in report["gate"]["checks"]["G1"]["violations"]
+
+
+def test_negative_sample_wrong_error_type_is_failure(corpus_copy) -> None:
+    """负样本声明的错误类型与实际不符 → 判 fail 而非 expected_failure。"""
+    def mutate(manifest: dict, dest: Path) -> None:
+        _manifest_sample(manifest, "unsupported.bin")["expected_error"] = "DocumentParseError"
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "unsupported.bin")
+    assert entry["status"] == "fail"
+    assert entry["status"] != "expected_failure"
+    assert "未按预期错误类型失败" in (entry["failure_reason"] or "")
+    assert "unsupported.bin" in report["gate"]["checks"]["G1"]["violations"]
+
+
+# ---------------------------------------------------------------------------
+# H-02：削弱 manifest 期望不得让已登记缺口静默变 pass
+# ---------------------------------------------------------------------------
+
+
+def test_weakened_expectation_does_not_silently_pass(corpus_copy) -> None:
+    """只删期望片段、保留 known_gap：不得 pass，必须判为需人工注销的阻断项。"""
+    table_cells = {"角色", "职责", "时限", "实施", "联调", "五个工作日"}
+
+    def mutate(manifest: dict, dest: Path) -> None:
+        sample = _manifest_sample(manifest, "docx_headings_table.docx")
+        sample["expected_fragments"] = [
+            frag for frag in sample["expected_fragments"] if frag not in table_cells
+        ]
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "docx_headings_table.docx")
+
+    # 削弱期望后覆盖率确实回到 1.0，但门禁不能因此放行。
+    assert entry["coverage"] == 1.0
+    assert entry["status"] == "gap_not_reproduced"
+    assert entry["status"] != "pass"
+    assert entry["status"] != "known_limitation"
+    assert entry["known_gap"], "known_gap 仍在 manifest 里，必须人工注销"
+    assert "docx_headings_table.docx" in report["gate"]["checks"]["G1"]["violations"]
+    assert report["gate"]["checks"]["G1"]["passed"] is False
+    assert report["gate"]["meets_gate"] is False
+    assert entry["name"] not in [item["name"] for item in report["samples"] if item["status"] == "pass"]
+
+
+def test_gap_not_reproduced_is_listed_separately(report: dict) -> None:
+    """当前语料不应产生 gap_not_reproduced（两条缺口都还在复现）。"""
+    assert report["gate"]["checks"]["G1"]["passed"] is True
+    assert report["gap_not_reproduced_list"] == []
+    assert report["totals"]["gap_not_reproduced"] == 0
 
 
 def test_gate_g1_no_unregistered_failure(report: dict) -> None:
@@ -466,6 +632,131 @@ def test_gate_g5_no_verification_claims(report: dict) -> None:
     for item in report["dependency_missing_list"]:
         assert item["coverage"] is None
         assert item["order_score"] is None
+
+
+def test_gate_g5_blocks_when_report_claims_verification(monkeypatch: pytest.MonkeyPatch) -> None:
+    """M-01：报告里出现禁用表述时，必须走到门禁并阻断（端到端，不只测扫描函数）。"""
+    monkeypatch.setitem(_report_mod.LOCKED_GATE, "note", "OCR 质量已验证")
+    polluted = _report_mod.build_report(ocr_provider="tesseract")
+    assert polluted["gate"]["checks"]["G5"]["passed"] is False
+    assert "G5" in polluted["gate"]["blocking_rules"]
+    assert polluted["gate"]["meets_gate"] is False
+
+
+def test_gate_g5_unit_flags_dependency_missing_with_stats() -> None:
+    """M-04：门禁层直接判定「dependency_missing 却带覆盖率/顺序」为违规。"""
+    results = [
+        {
+            "name": "pdf_scanned.pdf",
+            "status": "dependency_missing",
+            "coverage": 1.0,
+            "order_score": None,
+            "kind": "ocr",
+            "ocr_provider": None,
+        }
+    ]
+    gate = _report_mod.evaluate_gate(results, failure_rate=0.0)
+    assert gate["checks"]["G5"]["passed"] is False
+    assert gate["checks"]["G5"]["violations"] == ["pdf_scanned.pdf"]
+    assert "G5" in gate["blocking_rules"]
+
+
+def test_gate_g6_uses_measured_failure_rate() -> None:
+    """M-03：failure_rate_max 必须被规则真正引用。"""
+    clean = _report_mod.evaluate_gate([], failure_rate=0.0)
+    assert clean["checks"]["G6"]["passed"] is True
+
+    dirty = _report_mod.evaluate_gate([], failure_rate=0.5)
+    assert dirty["checks"]["G6"]["passed"] is False
+    assert "G6" in dirty["blocking_rules"]
+    assert dirty["meets_gate"] is False
+
+
+def test_gate_g6_passes_on_current_corpus(report: dict) -> None:
+    """当前语料失败率为 0，G6 通过。"""
+    assert report["gate"]["measured_failure_rate"] == 0.0
+    assert report["gate"]["checks"]["G6"]["passed"] is True
+
+
+# ---------------------------------------------------------------------------
+# M-02：ocr_probe 的 used_mock / path 必须从实际生效的 provider 派生
+# ---------------------------------------------------------------------------
+
+
+def test_ocr_probe_is_derived_from_real_provider(report: dict) -> None:
+    """真实运行下 provider_class 必须落在 app.rag.ocr.* 白名单内。"""
+    probe = report["ocr_probe"]
+    assert probe["used_mock"] is False
+    assert probe["provider_class"] == "app.rag.ocr.tesseract.TesseractOcrProvider"
+    assert probe["provider_class"].startswith(probe["real_provider_module_prefix"])
+    assert probe["real_provider_module_prefix"] == "app.rag.ocr."
+    assert probe["observed_provider"] is None  # 依赖缺失，未产出任何 OCR 文本
+    assert "app.rag.ocr.tesseract" in probe["path"]
+
+
+def test_used_mock_is_true_when_factory_provider_is_faked(monkeypatch: pytest.MonkeyPatch) -> None:
+    """工厂被换成假 provider 时，不得再声明走了真实路径。"""
+    class _FakeProvider:
+        def extract_pdf_text(self, file_bytes: bytes):  # pragma: no cover - 不会被调用
+            raise AssertionError("不应调用假 provider 的 OCR")
+
+    monkeypatch.setattr("app.rag.ocr.factory.get_ocr_provider", lambda: _FakeProvider())
+    probe = _report_mod.build_ocr_probe([], ocr_provider="tesseract")
+    assert probe["used_mock"] is True
+    assert probe["provider_class"].startswith("app.rag.ocr.") is False
+
+
+def test_used_mock_is_true_when_observed_provider_is_faked() -> None:
+    """反例 CE-11b：解析器实际用了假 provider（自报名不在白名单）也要识别出来。"""
+    results = [{"kind": "ocr", "ocr_provider": "fake", "name": "pdf_scanned.pdf"}]
+    probe = _report_mod.build_ocr_probe(results, ocr_provider="tesseract")
+    assert probe["observed_provider"] == "fake"
+    assert probe["used_mock"] is True
+
+
+def test_used_mock_true_blocks_gate_via_g5() -> None:
+    """used_mock=True 必须落到门禁（G5），不能只是个字段。"""
+    report = {
+        "ocr_probe": {"used_mock": True, "provider_class": "fake.FakeProvider"},
+        "gate": _report_mod.evaluate_gate([], failure_rate=0.0),
+    }
+    _report_mod.apply_report_level_checks(report)
+    assert report["gate"]["checks"]["G5"]["passed"] is False
+    assert "G5" in report["gate"]["blocking_rules"]
+
+
+# ---------------------------------------------------------------------------
+# L-02：报告不静默覆盖 + 与脚本输出一致
+# ---------------------------------------------------------------------------
+
+
+def test_write_json_refuses_silent_overwrite(tmp_path: Path, report: dict) -> None:
+    """同名报告默认拒绝覆盖；显式 --force 才允许。"""
+    target = tmp_path / "parse-quality-test.json"
+    _report_mod.write_json(report, target)
+    with pytest.raises(SystemExit, match="拒绝静默覆盖"):
+        _report_mod.write_json(report, target)
+    assert _report_mod.write_json(report, target, force=True).exists()
+
+
+def test_committed_report_matches_script_output(report: dict) -> None:
+    """落盘报告必须与脚本输出逐字段一致（除 generated_at），防止评审看到过期数据。"""
+    candidates = sorted((_REPO_ROOT / "evals" / "reports").glob("parse-quality-*.json"))
+    if not candidates:  # pragma: no cover - 首次提交前无报告
+        pytest.skip("尚无落盘报告")
+    committed = json.loads(candidates[-1].read_text(encoding="utf-8"))
+    committed.pop("generated_at", None)
+    fresh = dict(report)
+    fresh.pop("generated_at", None)
+    assert committed == fresh
+
+
+def test_manifest_known_limitation_requires_known_gap(corpus: Path) -> None:
+    """L-03：expectation_mode=known_limitation 与 known_gap 必须同真同假，避免死标注。"""
+    manifest = json.loads((corpus / "manifest.json").read_text(encoding="utf-8"))
+    for sample in manifest["samples"]:
+        declared = sample.get("expectation_mode") == "known_limitation"
+        assert declared == bool(sample.get("known_gap")), f"{sample['name']} 标注不一致"
 
 
 def test_g5_scan_detects_forbidden_claim(report: dict) -> None:

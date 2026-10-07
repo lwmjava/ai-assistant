@@ -264,8 +264,9 @@ def _ensure_rag_schema_columns() -> None:
         ]:
             conn.execute(text(index_sql))
 
-        # 为历史库补齐分块元数据列（父子文档 / 策略 / 溯源）。
+        # 为历史库补齐分块元数据列（父子文档 / 策略 / 溯源 / 索引身份）。
         chunk_columns = {
+            "index_id": "ALTER TABLE rag_document_chunks ADD COLUMN index_id VARCHAR",
             "parent_id": "ALTER TABLE rag_document_chunks ADD COLUMN parent_id VARCHAR",
             "strategy": "ALTER TABLE rag_document_chunks ADD COLUMN strategy VARCHAR",
             "chunk_metadata": "ALTER TABLE rag_document_chunks ADD COLUMN chunk_metadata VARCHAR",
@@ -282,6 +283,12 @@ def _ensure_rag_schema_columns() -> None:
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_rag_document_chunks_parent_id "
                     "ON rag_document_chunks (parent_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_rag_document_chunks_index_id "
+                    "ON rag_document_chunks (index_id)"
                 )
             )
 

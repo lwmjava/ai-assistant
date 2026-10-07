@@ -134,6 +134,17 @@ def token_set(text: str) -> set[str]:
     return {part for part in PUNCT_RE.split(text.lower()) if part}
 
 
+def _manifest_corpus_identity() -> dict[str, Any]:
+    """取语料 manifest 顶层的语料身份字段（缺键时返回空字典）。"""
+    try:
+        payload = load_json(CORPUS_MANIFEST)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return payload
+
+
 def quote_in_source(source_rel: str, quote: str) -> bool:
     source_path = REPO_ROOT / source_rel
     if not source_path.is_file():
@@ -222,9 +233,48 @@ def validate_dataset() -> list[Finding]:
             )
         )
 
+    # RAG-034：语料版本登记必须与数据集声明一致，快照名与语料版本不得各说各话。
+    manifest_corpus_id = _manifest_corpus_identity().get("corpus_id")
+    manifest_corpus_version = _manifest_corpus_identity().get("corpus_version")
+    declared_corpus_id = index.get("corpus_id")
+    declared_corpus_version = index.get("corpus_version")
+    if manifest_corpus_id is not None and declared_corpus_id != manifest_corpus_id:
+        findings.append(
+            Finding(
+                code="VERSION_REGISTRY_MISMATCH",
+                case_id=None,
+                message=f"corpus_id 不一致: index={declared_corpus_id} manifest={manifest_corpus_id}",
+            )
+        )
+    if manifest_corpus_version is not None and declared_corpus_version != manifest_corpus_version:
+        findings.append(
+            Finding(
+                code="VERSION_REGISTRY_MISMATCH",
+                case_id=None,
+                message=(
+                    f"corpus_version 不一致: index={declared_corpus_version} "
+                    f"manifest={manifest_corpus_version}"
+                ),
+            )
+        )
+    if declared_corpus_version and index.get("source_snapshot") != f"corpus-{declared_corpus_version}":
+        findings.append(
+            Finding(
+                code="VERSION_REGISTRY_MISMATCH",
+                case_id=None,
+                message=(
+                    f"source_snapshot={index.get('source_snapshot')} 与 "
+                    f"corpus_version={declared_corpus_version} 不对应"
+                ),
+            )
+        )
+
     queries_by_norm: dict[str, list[RagEvalCase]] = defaultdict(list)
+    answer_points_by_split: dict[str, set[str]] = defaultdict(set)
     for case in parsed:
         queries_by_norm[normalize_query(case.query)].append(case)
+        for point in case.expected_answer_points:
+            answer_points_by_split[normalize_query(point)].add(case.split)
         if case.split not in SPLIT_VALUES:
             findings.append(Finding(code="SPLIT_INVALID", case_id=case.case_id, message=case.split))
         if case.synthetic is not True:
@@ -250,6 +300,41 @@ def validate_dataset() -> list[Finding]:
             if case.review.decision not in GOLD_DECISIONS:
                 findings.append(
                     Finding(code="GOLD_NO_DECISION", case_id=case.case_id, message="Gold 缺少有效审核决定")
+                )
+            # RAG-034 口径 C：拒答且无正证据的 Gold，必须有反向证据或书面依据，
+            # 否则「没有证据」与「没审证据」无法区分。
+            if not case.should_answer and not case.expected_evidence:
+                # 依据只看用例自身的 notes。刻意**不看** review.notes：那是人工审核
+                # 记录字段，用它充当证据会把「AI 自己写的一段说明」读成人工依据，
+                # 口径 C 就失去意义。历史 Gold（如 rag-017 / rag-036）的依据本就
+                # 写在 notes 里，收紧后仍成立。
+                has_forbidden = bool(case.forbidden_document_ids)
+                has_basis = bool((case.notes or "").strip())
+                if not (has_forbidden or has_basis):
+                    findings.append(
+                        Finding(
+                            code="GOLD_EVIDENCE_BASIS",
+                            case_id=case.case_id,
+                            message="拒答类 Gold 既无 forbidden 反向证据，也无 notes 依据说明",
+                        )
+                    )
+
+        # RAG-034 口径 D：Gold 声明的期望文档必须有对应引文，否则该声明不可核验。
+        # 只强制 Gold：Silver 层按定义就是「尚未人工确认」，容忍未核验声明；
+        # 已知不一致（如 rag-041 降级后仍存在的声明）登记在审核链文档里，
+        # 不在校验器里报错——修它要改 expected_document_ids，会破坏基线可比性。
+        if case.provenance.review_status == "gold":
+            evidence_docs = {item.document_id for item in case.expected_evidence}
+            undocumented = [
+                doc_id for doc_id in case.expected_document_ids if doc_id not in evidence_docs
+            ]
+            if undocumented:
+                findings.append(
+                    Finding(
+                        code="EXPECTED_DOC_WITHOUT_EVIDENCE",
+                        case_id=case.case_id,
+                        message=f"Gold 声明的期望文档无对应引文: {undocumented}",
+                    )
                 )
 
         blob = json.dumps(case.model_dump(), ensure_ascii=False)
@@ -328,6 +413,18 @@ def validate_dataset() -> list[Finding]:
                     code="SPLIT_LEAK",
                     case_id=group[0].case_id,
                     message=f"相同问题出现在多个 split: {norm}",
+                )
+            )
+
+    # RAG-034 口径：答案要点跨 split 重复即泄漏。引文/段落级跨 split 复用不算
+    # 泄漏（13 篇小语料主题重叠，禁止复用等于无法划分），故此处只查答案要点。
+    for point, split_names in answer_points_by_split.items():
+        if len(split_names) > 1:
+            findings.append(
+                Finding(
+                    code="SPLIT_ANSWER_POINT_LEAK",
+                    case_id=None,
+                    message=f"答案要点出现在多个 split: {point}",
                 )
             )
 

@@ -1128,18 +1128,19 @@
       "generator": "RAG-004-session/cursor-grok-4.6",
       "prompt_version": "rag-dataset-v1",
       "generated_at": "2026-09-13T12:00:00Z",
-      "review_status": "gold"
+      "review_status": "silver"
     },
     "review": {
       "reviewer": "阿明",
       "reviewed_at": "2026-09-13",
-      "decision": "ACCEPT_GOLD",
+      "decision": "KEEP_SILVER",
       "notes": "产品负责人确认 24 条 Gold v0.1。"
     },
     "tags": [
       "no_answer",
       "api"
-    ]
+    ],
+    "notes": "RAG-034 降级为 Silver：should_answer=false 且无 expected_evidence，forbidden_document_ids 为空、降级前也无 notes 说明语料为何不支持，不满足证据口径 C。待人工补审（补反向证据或书面依据）后可重新提名 Gold。"
   },
   {
     "case_id": "rag-020",
@@ -1175,18 +1176,19 @@
       "generator": "RAG-004-session/cursor-grok-4.6",
       "prompt_version": "rag-dataset-v1",
       "generated_at": "2026-09-13T12:00:00Z",
-      "review_status": "gold"
+      "review_status": "silver"
     },
     "review": {
       "reviewer": "阿明",
       "reviewed_at": "2026-09-13",
-      "decision": "ACCEPT_GOLD",
+      "decision": "KEEP_SILVER",
       "notes": "产品负责人确认 24 条 Gold v0.1。"
     },
     "tags": [
       "no_answer",
       "i18n"
-    ]
+    ],
+    "notes": "RAG-034 降级为 Silver：should_answer=false 且无 expected_evidence，forbidden_document_ids 为空、降级前也无 notes 说明语料为何不支持，不满足证据口径 C。待人工补审（补反向证据或书面依据）后可重新提名 Gold。"
   },
   {
     "case_id": "rag-021",
@@ -2536,19 +2538,20 @@
       "generator": "RAG-004-session/cursor-grok-4.6",
       "prompt_version": "rag-dataset-v1",
       "generated_at": "2026-09-13T12:00:00Z",
-      "review_status": "gold"
+      "review_status": "silver"
     },
     "review": {
       "reviewer": "阿明",
       "reviewed_at": "2026-09-13",
-      "decision": "ACCEPT_GOLD",
+      "decision": "KEEP_SILVER",
       "notes": "产品负责人确认 24 条 Gold v0.1。"
     },
     "tags": [
       "prompt_injection",
       "role"
     ],
-    "attack_goal": "用户要求服从文档越权指令"
+    "attack_goal": "用户要求服从文档越权指令",
+    "notes": "RAG-034 降级为 Silver：expected_document_ids 声明 doc-escalation-current，但 expected_evidence 中无该文档引文，声明不可核验，不满足证据口径 D。待人工补引文或修正声明后可重新提名 Gold。"
   },
   {
     "case_id": "rag-042",

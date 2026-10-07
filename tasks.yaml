@@ -9845,7 +9845,7 @@ tasks:
 
   - id: "RAG-034"
     title: "RAG 评测分级与审核链核对"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -9885,6 +9885,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: ''
+      progress: "2026-10-07：交付主体docs/evaluations/rag-v0.1-审核链与分级定义.md（审核链7环现状表、Gold/Silver/Adversarial/Regression/Smoke分级定义、证据口径A/B/C/D、泄漏判定只到query与answer point级并写明理由、版本登记）。新建evals/VERSIONS.md明文声明冻结基线=rag-v0.1-baseline-20260919.json为权威、20261004为当前official且不覆盖，补记数据集内容sha256作手工绑定。按口径C/D逐条核对原24条Gold：rag-019/rag-020（拒答无反向证据且无notes）与rag-041（声明doc-escalation-current但无对应引文）降级为Silver，Gold 24→21，index.json同步gold_count/gold_case_ids并新增downgrade_log。tests/eval/validation.py新增4条Finding：GOLD_EVIDENCE_BASIS、EXPECTED_DOC_WITHOUT_EVIDENCE、SPLIT_ANSWER_POINT_LEAK、VERSION_REGISTRY_MISMATCH；tests/eval/test_rag_dataset_v01.py新增2条：downgraded_cases_carry_a_traceable_decision、version_registry_declares_an_authoritative_baseline。范围说明：本卡虽标documentation-only，实际改动含数据集降级与校验规则，均在allowed_paths内（evals/、tests/eval/、tests/、docs/），未改冻结基线报告。独立审查docs/reviews/2026-10-07-RAG-034评测分级与审核链独立审查.md提出1 High+3 Medium+6 Low。"
+      acceptance_record: "2026-10-07：独立子Agent审查指出1 High（GOLD_EVIDENCE_BASIS把review.notes也算作证据依据，而降级理由正是Agent写进review.notes的，等于Agent自述被当人工证据、口径C空转）。已修：依据只看用例级notes；三条降级用例的review.notes还原为原始人工记录原文，降级理由改放notes+downgrade_log，并新增断言禁止review.notes出现RAG-034字样；变异M-D复现缺陷形态确认该断言会变红。Medium：§4『8组/6组』复算后更正为9组/9组并写明组数≠涉及证据条数；side_effect与实际改数据不符已在progress登记；其余Low（数字口径、哈希前提、两份基线差异归因不写因果、冻结基线未改动可复核）已逐条补写。变异验证：M3（悄悄改回Gold）3红、M4（去掉权威基线声明）1红、M-D（污染review.notes）1红。tests/eval/ 63 passed。"
       nightly:
         eligible: false
         production_access: false
@@ -9995,7 +9997,7 @@ tasks:
 
   - id: "RAG-037"
     title: "检索状态与最终拒答契约"
-    status: "backlog"
+    status: "in_progress"
     priority: "P0"
     target_date: ''
     depends_on:
@@ -10041,6 +10043,7 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "知识问答/普通聊天方向及ADR-0005已批准；按计划锁定ok/no_hit/below_threshold/unavailable错误与最终回复契约，不重复方向裁决。"
+      progress: "2026-10-07 第一轮：新增app/rag/retrieval_status.py（RetrievalStatus/分类顺序/RetrievalOutcome/披露指令），检索故障由「上抛或静默」收敛为unavailable；管线把披露要求送进行动与响应两阶段，短路径故障改写「本次检索未完成」并进system，POST /api/rag/search输出X-Retrieval-Status与X-RAG-Backend。专项15passed、6变异全抓住、全量768passed/2skipped。第二轮（独立审查docs/reviews/2026-10-07-RAG-037检索状态契约独立审查.md判定「不建议关闭」，2个High）：①Milvus hybrid_search搜索异常不再吞成空列表，抛MilvusUnavailableError由契约收敛为unavailable；②最终回复确定化——below_threshold终态短路直接返回RAG_REFUSE_MESSAGE不进生成，no_hit/unavailable由应用层确定性前置披露（新增RAG_NO_HIT_REPLY/RAG_UNAVAILABLE_REPLY，与给模型的指令分开），不再依赖模型服从prompt；③后端返回None/不可迭代归为unavailable，自研管线对外部Retriever异常同样收敛；④Supervisor/MULTI入口改为图执行前统一检索并传播状态与披露，闭合「完全不检索也不产生状态」的验收缺口；⑤HTTP检索故障由裸500改为503并带unavailable与实际后端响应头。专项25passed；第二轮6个变异全被抓住（M2 3红/M3 6红/M5 2红）。配置新增RAG_STATUS_NOTICE_ENABLED（只关提示层directive，短路径状态文案不随之回退）、RAG_NO_HIT_NOTICE、RAG_UNAVAILABLE_NOTICE、RAG_NO_HIT_REPLY、RAG_UNAVAILABLE_REPLY。契约与矩阵见docs/rag/检索状态与拒答契约.md。行为变更：检索故障不再让请求失败而是完成并确定性披露；全低分直接拒答不生成；tests/test_fast_route.py中原固化缺陷行为的断言已按新契约更正。"
       nightly:
         eligible: false
         production_access: false

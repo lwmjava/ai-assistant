@@ -91,3 +91,8 @@ export function chunkContentClassName(text: string): string {
 export function structuredClassTokens(): string[] {
   return STRUCTURED_CLASS.split(' ').filter(Boolean)
 }
+
+/** 普通正文渲染 class 的 token 列表，与 `structuredClassTokens` 成对使用。 */
+export function plainClassTokens(): string[] {
+  return PLAIN_CLASS.split(' ').filter(Boolean)
+}

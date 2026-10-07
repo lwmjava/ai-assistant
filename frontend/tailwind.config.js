@@ -2,6 +2,24 @@
 export default {
   darkMode: ['class', '[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  // 分块正文的渲染类是 Tailwind 提取器的盲区：它们只在 `chunk-content.ts`
+  // 里以字符串常量出现，一旦被改成拼接形式（`${WS}pre …`）就扫不到，
+  // 而盒图缩进会**静默**失效（CSS 里没规则，但代码照样跑）。
+  // 这里无条件保留；`chunk-content.test.ts` 会断言本列表与常量集合完全一致，
+  // 改动任一侧都必须同步另一侧，否则测试变红。
+  safelist: [
+    // 结构化正文：whitespace-pre font-mono overflow-x-auto …
+    'whitespace-pre',
+    'font-mono',
+    'overflow-x-auto',
+    // 普通正文：whitespace-pre-wrap break-words …
+    'whitespace-pre-wrap',
+    'break-words',
+    // 两类共用的排版 token
+    'text-sm',
+    'leading-relaxed',
+    'text-text-muted',
+  ],
   theme: {
     extend: {
       colors: {

@@ -206,7 +206,22 @@ $ D:/DepTooL/nodejs/node.exe --test src/components/knowledge/ChunkContent.test.t
 
 6 条断言见第 3.2 节的真实输出（盒图/换行保留、4 与 8 空格列位置、`<script>` 转义、`<img onerror=>` 转义、输出无 `dangerouslySetInnerHTML`、普通段落走非结构化分支）。
 
-### 5.1c 权限镜像测试（补审查 M-01）
+### 5.1c 渲染类与 Tailwind safelist 的一致性（补审查 L-03）
+
+`chunk-content.test.ts` 里 3 条：
+
+- 常量里的每个 token 都必须在 `tailwind.config.js` 的 `safelist` 里；
+- safelist 与常量集合**双向完全一致**（多一个少一个都红）；
+- 常量必须是**单引号字面量**：测试直接读 `chunk-content.ts` 源码取字面量，与运行时值比对。
+
+为什么读源码而不是只比对运行时值：Tailwind 提取器对**文件原文**做正则，类名一旦写成拼接形式
+（`${WS}pre …`）就扫不到，而 `structuredClassTokens()` 仍会返回同样的 token——只比运行时值的话这个改动
+会完全逃逸（审查变异 4 就是这么跑掉的）。要求单引号字面量比 Tailwind 更严格，换来的是可静态校验。
+
+`tailwind.config.js` 侧的 `safelist` 无条件保留这 8 个 token，于是即使常量被改坏，
+构建产物里这些规则也不会消失——从「静默降级」变成「CSS 仍在、但一致性测试立刻红」。
+
+### 5.1d 权限镜像测试（补审查 M-01）
 
 ```
 $ cd frontend
@@ -221,7 +236,7 @@ $ D:/DepTooL/nodejs/node.exe --test src/lib/permissions.test.ts
 `is_current=false` 拒绝、`user=null` 拒绝。另有一条说明「控制面只看身份关系，`can(read)` 另把关」，
 与 `Knowledge.tsx` 里 `canRead && canControlDocument(...)` 的合取一致。
 
-### 5.1d 下载成功路径（补审查 H-01）
+### 5.1e 下载成功路径（补审查 H-01）
 
 **(a) 前端落盘**（`download.test.ts`，约 40 行最小 DOM 桩替换 `document` / `URL.createObjectURL` /
 `URL.revokeObjectURL`，零新依赖）：文件名取自传入值、点击前必须先挂到 DOM、点击后再移除节点、
@@ -248,15 +263,18 @@ $ DATABASE_URL="sqlite:///./data/test_rag042.db" /d/DepTooL/anaconda3/python.exe
 2. `--basetemp` 指向独立子目录：默认 `data/pytest-tmp/run` 累积够 3 个历史目录后，pytest 的
    tmp 清理会触发本机 safe-delete 护栏（`SAFE_DELETE_BULK_GUARD_ERROR` → `SystemExit: 1`）。
 
-**合计 34 条**（19 纯函数 + 6 渲染级 + 6 权限镜像 + 3 落盘/头解析 = 34，其中前端 `node --test` 34 条）：
+**合计 37 条**（前端 `node --test`）：15 条 chunk-content（含 3 条 safelist 一致性）+ 10 条 download
++ 6 条权限镜像 + 6 条渲染级。
 
 ```
 $ D:/DepTooL/nodejs/node.exe --test src/lib/chunk-content.test.ts src/lib/download.test.ts \
       src/lib/permissions.test.ts src/components/knowledge/ChunkContent.test.ts
-# tests 34
-# pass 34
+# tests 37
+# pass 37
 # fail 0
 ```
+
+另有服务端往返 3 条（pytest，见 5.1e）。
 
 ### 5.2 类型检查与构建
 
@@ -317,19 +335,29 @@ vite v5.4.8 building for production...
 审查发现的**类名拼接**（`${WS}pre …`）逃逸方向仍未守护——它没有单测，
 只能靠构建后 grep 产物 CSS；已列入第 6 节已知取舍与后续项（safelist 或 CI grep）。
 
+第四轮（L-03 整改，37 条）：
+
+| # | 变异 | 变红的测试 | 失败条数 |
+| --- | --- | --- | --- |
+| 10 | 从 `tailwind.config.js` 的 safelist 里删掉 `whitespace-pre` | `渲染类常量必须逐 token 出现在 Tailwind safelist 里`、`safelist 与常量集合双向完全一致：任一侧多一个/少一个都要红` | 2 / 37 |
+| 11 | 常量改成拼接形式 `` `${WS}pre font-mono …` ``（审查变异 4 复现） | `safelist 与常量集合双向完全一致：任一侧多一个/少一个都要红`、`常量必须是静态字面量：拼接写法会让提取器失效` | 2 / 37 |
+
+第 11 条此前**完全逃逸**（25/25 全绿），现已闭合。配套做法是 `tailwind.config.js` 加 `safelist`
+无条件保留这 8 个 token：即使有人绕过测试改坏常量，构建产物里规则仍在，不会静默降级。
+
 ### 5.4 无残留证明
 
 ```
-$ grep -rn "MUTATION" frontend/src/          # 无输出（三轮后均无输出）
-$ cd frontend && node --test <四个测试文件>   # pass 34 / fail 0
+$ grep -rn "MUTATION" frontend/src/ frontend/tailwind.config.js   # 无输出（四轮后均无输出）
+$ cd frontend && node --test <四个测试文件>   # pass 37 / fail 0
 $ git diff --exit-code HEAD -- frontend/src  # 退出码 0
 $ git status --porcelain -- frontend/src     # 无输出
 ```
 
-工作区零残留：所有改动（含新增文件）均已随 commit 落库。累计改动面为 4 个既有生产文件
-（`api/rag.ts`、`lib/http.ts`、`lib/permissions.ts`、`pages/Knowledge.tsx`）+ 3 个新增实现/组件文件
-（`lib/chunk-content.ts`、`lib/download.ts`、`components/knowledge/ChunkContent.ts`）+ 4 个测试文件
-（3 个前端 + `tests/test_rag_042_download_roundtrip.py`）。
+工作区零残留：所有改动（含新增文件）均已随 commit 落库。累计改动面为 5 个既有生产文件
+（`api/rag.ts`、`lib/http.ts`、`lib/permissions.ts`、`pages/Knowledge.tsx`、`tailwind.config.js`）
++ 3 个新增实现/组件文件（`lib/chunk-content.ts`、`lib/download.ts`、`components/knowledge/ChunkContent.ts`）
++ 4 个测试文件（3 个前端 + `tests/test_rag_042_download_roundtrip.py`）。
 
 ---
 
@@ -371,6 +399,8 @@ $ git status --porcelain -- frontend/src     # 无输出
 7. **文件名兜底与后端仍有理论分歧**：已改为优先后端 `Content-Disposition` 的权威值，
    只有在响应头被网关剥掉时才会落到 `source` → `title`。真正彻底的解法是后端补
    `has_source_file`（第 4.1 节后续项），一并消除入口显隐的猜测。
-8. **类名被改成拼接形式仍会静默失效**（审查 L-03）：单测只验字符串 token，不验产物 CSS。
-   建议后续二选一：Tailwind `safelist: ['whitespace-pre','font-mono','overflow-x-auto']`，
-   或 CI 加一步「构建后 grep 产物 CSS 必须含 `.whitespace-pre{`」。本卡未做（超出允许改动面）。
+8. ~~类名被改成拼接形式仍会静默失效~~ → **已闭合**：`tailwind.config.js` 加了 `safelist`
+   无条件保留这 8 个 token，`chunk-content.test.ts` 另加 3 条一致性测试（双向相等 + 必须是字面量）。
+   构建期兜底与防漂移成对出现：改坏常量 → 测试立刻红；绕过测试 → CSS 规则仍在。
+   **残留风险**：safelist 只保 token 存在，不保它们仍被正确使用（例如常量改成了别的类，
+   一致性测试会红，但如果连测试一起绕过，safelist 会白白保留旧 token——无害但会有冗余 CSS）。

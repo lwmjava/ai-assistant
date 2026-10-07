@@ -104,6 +104,21 @@ counter / counting_method / safety_margin / source / verified_on / version / not
 对方状态码，换家只是拿另一家的窗口再判一次同样的 payload，属于白跑
 （`app/llm/routing.py:27` 已注明；测试有断言）。
 
+### 4.4b 建链时的「未批准」告警（`app/llm/factory.py`）
+
+护栏默认开启且未知即拒绝，如果什么都不说，运维升级后只会看到「对话只剩固定提示」
+而找不到原因。因此 `_client_for()` 在构造完每一跳后核对一次：该 profile 的模型
+拿不到已核对或已声明的能力，就打一条 warning：
+
+```
+llm_capability_unapproved profile=<chat|intent|fallback> model=<模型名>：
+该模型没有已核对或已声明的能力配置，护栏开启后调用会被拒绝。
+请登记 LLM_CAPABILITY_DECLARED 与 LLM_CAPABILITY_DECLARED_SOURCE。
+```
+
+字段只有 `profile` 与 `model`：**不带 base_url、不带密钥、不带任何请求内容**。
+护栏关闭（`LLM_CAPABILITY_GUARD_ENABLED=false`）时不打——那时本来就不会拒绝。
+
 ### 4.5 调用方（`app/agents/pipeline.py`、`app/services/chat_service.py`）
 
 两端都捕获 `ContextBudgetExceeded` 并转固定中文提示
@@ -113,17 +128,35 @@ counter / counting_method / safety_margin / source / verified_on / version / not
 
 ---
 
-## 5. 局限与未闭合项
+## 5. 局限（如实记录，不为了凑验收去补）
 
 - **计数不是精确 tokenizer**：官方计数器 `tiktoken` 未随本仓库安装
   （本机 2026-10-07 实测 `No module named 'tiktoken'`），当前**一律**走保守估算。
   装上 `tiktoken` 后 `official_counter_for()` 会自动返回计数器并被优先使用，无需改代码；
   本卡**未**把它加进 `requirements`，因为那是一次未经授权的依赖变更。
-- 内置表只有三条，且只在两家：其余模型一律走运营者声明。
-- 护栏按「事前估算」拦，不做「事后核验」：厂商返回的真实 usage 没有被回收校准。
-- 工具**描述**（`registry.describe()`）随消息一起被计入 payload，但工具**输出**只在
-  写回 `state.tool_results` 后的下一轮被计入——同一轮内工具刚返回还没发出请求的
-  那一跳不受影响，这是符合预期的（那一跳的 payload 本来就还没包含它）。
+  因此「官方计数器优先」这条在本机**没有真实官方数字可比对**，只有接线与条件断言。
+- **只做事前估算、无事后校准**：厂商返回的 usage 没有被回收，也没有与估算值比对过。
+  「保守」的依据是「字节数一般 ≥ token 数」这一推理，缺少实测数据支撑。
+- 内置表只有三条、只在两家：其余模型一律走运营者声明。
+- 工具**输出**在写回 `state.tool_results` 后的下一跳才被计入——同一轮内工具刚返回、
+  尚未发出请求的那一跳不受影响，这符合预期（那一跳的 payload 本来就还没包含它）。
+
+---
+
+## 5.1 生成侧与 Embedding 侧是两张表（决定：不并入）
+
+卡片 deliverable 提到「生成/Embedding 能力」，本卡**只**落了生成侧。Embedding 侧沿用
+RAG-021 已批准、已版本化的策略（`app/rag/embeddings/input_limits.py`，同样带
+`counter` / `counting_method` / `safety_margin` / `source` / `version`）。
+
+不并入的理由：
+
+1. 两侧都已版本化，重复建表会造出第二个事实源；
+2. `app/rag/` 此刻正被同批次另一张卡改动，合并会引入冲突；
+3. 两侧的失败语义不同（生成侧是「拒绝发出请求」，Embedding 侧是「摄取前截断/拒绝」），
+   合成一张表会把两种语义压成一个开关。
+
+后续若要统一，应**单独开卡**：先定统一身份与失败语义，再做迁移，不在本卡内顺手合并。
 
 ---
 
@@ -135,6 +168,7 @@ counter / counting_method / safety_margin / source / verified_on / version / not
 | `app/llm/capabilities.py` | 新增：版本化能力契约与解析 |
 | `app/llm/budget.py` | 新增：预算核对与 `ContextBudgetExceeded` |
 | `app/llm/openai_compatible.py` | 改：`chat` / `stream_chat` 发请求前 Guard |
+| `app/llm/factory.py` | 改：建链时对未批准能力打 `llm_capability_unapproved` |
 | `app/llm/routing.py` | 改：注释说明预算错误不是 failover |
 | `app/agents/pipeline.py` | 改：`_failure_text` 转固定提示 |
 | `app/services/chat_service.py` | 改：同步 / 流式两处捕获转固定提示 |
@@ -153,8 +187,26 @@ DATABASE_URL="sqlite:///.../data/tmp-rag028-N.db" \
   --basetemp=data/pytest-tmp/rag028-N
 ```
 
-- RAG-028 用例 25 条 + `test_llm_route.py` 16 条全通过；
+- RAG-028 用例 **29 条** + `test_llm_route.py` 16 条全通过；
 - `tests/ -k "llm or agent or chat"` 97 passed, 2 skipped
   （`tests/test_p0_regression.py` 因同批次另一张卡正在改 `app/rag/vectorstore/milvus.py`
   而收集失败，与本卡无关，本卡未触碰 `app/rag/`）；
-- 变异验证 4 处，全部变红后还原（见交付汇报的变异表）。
+- 变异验证 6 处，全部变红后还原：
+
+| # | 变异 | 变红的测试 | 条数 |
+|---|---|---|---|
+| M1 | 去掉 `chat()` 里的 Guard | 未知模型拦截、声明无来源、窗口超限、输出预留超限、工具计入、critique 计入、兜底链不换家 | 7 |
+| M2 | 运营者声明不要来源也放行 | `test_declaration_without_source_is_still_blocked` | 1 |
+| M3 | 只算内容、不算消息框架开销 | `test_message_frame_overhead_is_counted`、`test_message_frame_overhead_can_block_a_request` | 2 |
+| M4 | `stream_chat` 不做 Guard | `test_stream_path_is_guarded` | 1 |
+| M5 | 去掉建链时的未批准告警 | `test_factory_warns_when_capability_is_unapproved` | 1 |
+| M6 | 把 intent 的声明窗口改成 128000 | `test_each_profile_is_judged_by_its_own_window` | 1 |
+
+### 验收点对应方式
+
+| acceptance | 证据 |
+|---|---|
+| 模型切换按对应窗口 | `test_each_profile_is_judged_by_its_own_window`：走真实 `get_llm_provider("chat"/"intent")`，同 payload 一个放行一个被拦；M6 变红 |
+| 未知模型无批准配置拒绝 | `test_unknown_model_is_blocked_without_sending_request`（0 次 HTTP）；建链告警 `test_factory_warns_when_capability_is_unapproved` |
+| payload + 输出预留 + 余量不超已验证限制 | `test_payload_plus_reserve_plus_margin_over_window_is_blocked` 与 `test_payload_exactly_at_budget_is_allowed`（边界两侧） |
+| 包含工具与 critique | `test_tool_result_blocks_the_next_round_end_to_end`（真实工具循环，工具返回 30000 字符把下一跳顶出窗口）+ 消息级的 `test_tool_results_are_counted` / `test_critique_round_is_counted` |

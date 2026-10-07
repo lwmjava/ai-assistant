@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import logging
 from collections.abc import AsyncIterator
 
 import httpx
@@ -16,6 +17,7 @@ import pytest
 from sqlmodel import Session
 
 from app.agents.pipeline import AgentPipeline, AgentState
+from app.agents.tools.base import Tool, ToolRegistry
 from app.core.config import settings
 from app.core.database import engine
 from app.core.security import Role
@@ -40,6 +42,7 @@ from app.llm.counters import (
     official_counter_for,
     utf8_byte_count,
 )
+from app.llm.factory import get_llm_provider, set_llm_provider_override
 from app.llm.openai_compatible import OpenAICompatibleProvider
 from app.llm.routing import FallbackChain, is_failover_error
 from app.models.user import User
@@ -72,19 +75,32 @@ class _Recorder:
         return len(self.requests)
 
 
-def _patch_transport(monkeypatch: pytest.MonkeyPatch, recorder: _Recorder) -> None:
-    """让 provider 内部新建的 AsyncClient 全部走 MockTransport 并计数。"""
+def _patch_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    recorder: _Recorder,
+    script: list[str] | None = None,
+) -> None:
+    """让 provider 内部新建的 AsyncClient 全部走 MockTransport 并计数。
+
+    ``script`` 给出第 n 次请求要返回的正文，超出长度时复用最后一条。
+    """
     real_client = httpx.AsyncClient
+
+    def content_for() -> str:
+        if not script:
+            return _OK
+        return script[min(len(recorder.requests) - 1, len(script) - 1)]
 
     def respond(request: httpx.Request) -> httpx.Response:
         recorder.requests.append(request)
         body = json.loads(request.content or b"{}")
+        text = content_for()
         if body.get("stream"):
-            chunk = json.dumps({"choices": [{"delta": {"content": _OK}}]}, ensure_ascii=False)
+            chunk = json.dumps({"choices": [{"delta": {"content": text}}]}, ensure_ascii=False)
             return httpx.Response(
                 200, content=f"data: {chunk}\n\ndata: [DONE]\n\n".encode("utf-8")
             )
-        return httpx.Response(200, json={"choices": [{"message": {"content": _OK}}]})
+        return httpx.Response(200, json={"choices": [{"message": {"content": text}}]})
 
     def factory(*args, **kwargs):
         kwargs["transport"] = httpx.MockTransport(respond)
@@ -109,6 +125,22 @@ def _user(content: str = "你好") -> ChatMessage:
 
 async def _drain(provider: LLMProvider, messages: list[ChatMessage], options=None) -> list[str]:
     return [chunk async for chunk in provider.stream_chat(messages, options)]
+
+
+class _FixedAnswer(LLMProvider):
+    """固定返回一句话的提供商，用来顶替不需要计数的那一跳（如意图分流）。"""
+
+    def __init__(self, answer: str, model: str = "fixed") -> None:
+        self.model = model
+        self.answer = answer
+
+    async def chat(self, messages: list[ChatMessage], options: LLMOptions | None = None) -> str:
+        return self.answer
+
+    async def stream_chat(
+        self, messages: list[ChatMessage], options: LLMOptions | None = None
+    ) -> AsyncIterator[str]:
+        yield self.answer
 
 
 class _BudgetBlocked(LLMProvider):
@@ -468,6 +500,109 @@ def test_message_frame_overhead_can_block_a_request(monkeypatch: pytest.MonkeyPa
 
 def test_utf8_byte_count_is_conservative_for_chinese() -> None:
     assert utf8_byte_count("知识库") == 9  # 3 字 × 3 字节 ≥ 实际 token 数
+
+
+# ── 11. 建链时把「没有批准配置」说出来 ────────────
+def test_factory_warns_when_capability_is_unapproved(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """运维升级后不能只看到「对话只剩固定提示」而找不到原因。"""
+    monkeypatch.setattr(settings, "LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-chat")
+    monkeypatch.setattr(settings, "LLM_DEFAULT_MODEL", "deepseek-chat")
+    set_llm_provider_override(None)
+
+    with caplog.at_level(logging.WARNING, logger="app.llm.factory"):
+        get_llm_provider("chat")
+
+    assert "llm_capability_unapproved" in caplog.text
+    assert "profile=chat" in caplog.text
+    assert "deepseek-chat" in caplog.text
+    assert "LLM_CAPABILITY_DECLARED_SOURCE" in caplog.text
+
+
+def test_factory_stays_silent_when_capability_is_approved(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(settings, "LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-chat")
+    monkeypatch.setattr(settings, "LLM_DEFAULT_MODEL", "gpt-4o-mini")
+    set_llm_provider_override(None)
+
+    with caplog.at_level(logging.WARNING, logger="app.llm.factory"):
+        get_llm_provider("chat")
+
+    assert "llm_capability_unapproved" not in caplog.text
+
+
+# ── 12. 每一跳按自己的窗口判定（端到端）───────────
+def test_each_profile_is_judged_by_its_own_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """同一份 payload：chat 走已核对大窗口放行，intent 走声明的小窗口被拦。"""
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(settings, "LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-chat")
+    monkeypatch.setattr(settings, "LLM_DEFAULT_MODEL", "gpt-4o-mini")
+    monkeypatch.setattr(settings, "LLM_CHAT_FALLBACK_CHAIN", "chat")
+    monkeypatch.setattr(settings, "LLM_INTENT_PROVIDER", "openai")
+    monkeypatch.setattr(settings, "LLM_INTENT_BASE_URL", "https://intent.example/v1")
+    monkeypatch.setattr(settings, "LLM_INTENT_API_KEY", "sk-intent")
+    monkeypatch.setattr(settings, "LLM_INTENT_MODEL", "intent-small")
+    monkeypatch.setattr(settings, "LLM_INTENT_FALLBACK_CHAIN", "intent")
+    monkeypatch.setattr(settings, "LLM_FALLBACK_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "intent-small=1000:100")
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "测试用小窗口声明")
+    set_llm_provider_override(None)
+
+    recorder = _Recorder()
+    _patch_transport(monkeypatch, recorder)
+    # 640 字节上下：装得进 gpt-4o-mini 的 128000，装不进 intent-small 的 1000。
+    messages = [_user("查一下这个月的退货政策" + "。" * 200)]
+    options = LLMOptions(max_tokens=64)
+
+    chat = get_llm_provider("chat")
+    intent = get_llm_provider("intent")
+
+    assert asyncio.run(chat.chat(messages, options)) == _OK
+    assert recorder.count == 1
+
+    with pytest.raises(ContextBudgetExceeded) as caught:
+        asyncio.run(intent.chat(messages, options))
+
+    assert caught.value.reason == "context_window_exceeded"
+    assert recorder.count == 1  # intent 那一跳一次请求都没发
+
+
+# ── 13. 工具循环端到端：工具返回把下一跳顶出窗口 ───
+def test_tool_result_blocks_the_next_round_end_to_end(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "tool-model=20000:4096")
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "测试用工具循环声明")
+    recorder = _Recorder()
+    big_text = "X" * 30_000
+    tool_call = '<tool_call>{"name": "big_tool", "arguments": {}}</tool_call>'
+    # 理解 → 规划 → 行动（产出工具调用）；第 4 次是收尾，应当被护栏拦下。
+    _patch_transport(monkeypatch, recorder, script=["意图：查询", "步骤：调用工具", tool_call])
+
+    provider = _provider(model="tool-model", base_url="https://gateway.internal/v1")
+    tool = Tool(
+        name="big_tool",
+        description="返回一大段文本",
+        parameters={},
+        func=lambda _arguments: big_text,
+    )
+    pipeline = AgentPipeline(
+        provider,
+        options=LLMOptions(max_tokens=1024),
+        tools=ToolRegistry([tool]),
+        intent_llm=_FixedAnswer("YES"),
+    )
+    pipeline.max_tool_rounds = 1
+
+    state = asyncio.run(pipeline.run(AgentState(user_input="调用工具查一下")))
+
+    assert state.tool_results and big_text in state.tool_results[0]  # 工具真的跑过
+    assert state.answer == BUDGET_EXCEEDED_MESSAGE
+    assert "context_window_exceeded" not in state.answer
+    assert recorder.count == 3  # 理解、规划、行动；收尾那一跳没发出
 
 
 # ── 兜底链不把预算错误当成可恢复故障 ──────────────

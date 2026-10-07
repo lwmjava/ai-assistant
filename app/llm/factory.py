@@ -8,6 +8,7 @@ import logging
 
 from app.core.config import settings
 from app.llm.base import LLMProvider
+from app.llm.capabilities import resolve_effective_capability
 from app.llm.mock import MockLLMProvider
 from app.llm.openai_compatible import OpenAICompatibleProvider
 from app.llm.routing import FallbackChain
@@ -83,11 +84,33 @@ def _client_for(name: str) -> OpenAICompatibleProvider | None:
     provider, base_url, api_key, model = _fields(name)
     if provider == "mock" or not api_key.strip():
         return None
-    return OpenAICompatibleProvider(
+    client = OpenAICompatibleProvider(
         base_url=base_url,
         api_key=api_key,
         model=model,
         timeout=settings.LLM_TIMEOUT,
+    )
+    _warn_if_unapproved(name, base_url, model)
+    return client
+
+
+def _warn_if_unapproved(profile: str, base_url: str, model: str) -> None:
+    """建链时把「这个模型没有批准配置」说出来。
+
+    护栏默认开启且未知即拒绝，若不提示，运维升级后只会看到「对话只剩固定提示」
+    而找不到原因。这里只带 profile 与 model：不带 base_url、不带密钥、
+    不带任何请求内容。
+    """
+    if not settings.LLM_CAPABILITY_GUARD_ENABLED:
+        return
+    if resolve_effective_capability(base_url, model) is not None:
+        return
+    logger.warning(
+        "llm_capability_unapproved profile=%s model=%s：该模型没有已核对或已声明的"
+        "能力配置，护栏开启后调用会被拒绝。"
+        "请登记 LLM_CAPABILITY_DECLARED 与 LLM_CAPABILITY_DECLARED_SOURCE。",
+        profile,
+        model,
     )
 
 

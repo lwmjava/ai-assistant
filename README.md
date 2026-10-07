@@ -460,6 +460,8 @@ LLM_CAPABILITY_DECLARED_SOURCE=厂商文档 URL 或内部依据
 
 声明与依据来源**缺一即视为未批准**，护栏照旧拒绝。数值由运营者给，不由代码替他猜；声明条目的计数方法会被标成 `operator-declared`，不冒充已核对条目。
 
+建链时如果发现某个 profile（chat / intent / fallback）的模型拿不到已核对或已声明的能力，日志会打一条 `llm_capability_unapproved profile=... model=...`，提示去登记上面两行。字段只带 profile 与模型名，不带接口地址、密钥或请求内容。
+
 ### 计数方法与局限
 
 官方计数器优先，不可用时退回经校准的保守估算，用哪种都会写进能力契约：

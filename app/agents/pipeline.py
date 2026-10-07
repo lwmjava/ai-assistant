@@ -37,8 +37,10 @@ from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
 from app.llm.routing import LLMUnavailableError
+from app.rag.context_builder import build_context, build_from_rag_text
 from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_call
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
+from app.rag.vectorstore.base import ChunkResult
 
 logger = logging.getLogger(__name__)
 
@@ -440,6 +442,11 @@ class AgentPipeline:
 
         同时把检索终态写进 state。状态从 ``last_outcome`` 读，不靠解析检索文本
         反推：检索失败与「知识库里确实没有」必须区分开。
+
+        RAG-029：预算先于拼接。检索器若给出结构化命中（``last_hits`` 是 ChunkResult
+        列表），走 ``context_builder`` **按块**累加预算，再把「实际选入的命中」回写
+        ``last_selected`` —— 对外来源与进模型的证据因此出自同一份。只有字符串的
+        自定义 Retriever 走降级路径，围栏闭合要求不变。
         """
         memory = state.context or ""
         rag = ""
@@ -458,7 +465,38 @@ class AgentPipeline:
                 outcome = last if isinstance(last, RetrievalOutcome) else None
             if outcome is not None:
                 self._record_outcome(state, outcome)
-        state.context = merge_memory_and_rag(memory, rag)
+        state.context = self._assemble_context(memory, rag)
+
+    def _assemble_context(self, memory: str, rag: str) -> str:
+        """按块预算组装上下文；命中可得时同时回写 ``last_selected``。"""
+        hits = self._structured_hits()
+        if hits:
+            payload = build_context(memory, hits)
+            # 回写「实际进入 payload 的命中」，供入口生成来源；未选块不出现在来源里。
+            # 用 setattr：Retriever 是协议，不要求实现方有 last_selected 字段。
+            setattr(self.retriever, "last_selected", payload.selected)
+            if payload.dropped:
+                logger.info(
+                    "rag_context_budget_dropped selected=%s dropped=%s reasons=%s",
+                    len(payload.selected),
+                    len(payload.dropped),
+                    payload.drop_reasons,
+                )
+            return payload.text
+        if self.retriever is None:
+            return merge_memory_and_rag(memory, rag)
+        # 降级：只有整段字符串（自定义 Retriever 协议实现）。围栏闭合由
+        # build_from_rag_text 保证——先给闭合标记留位置再截断。
+        return build_from_rag_text(memory, rag).text
+
+    def _structured_hits(self) -> list[ChunkResult]:
+        """取检索器给出的结构化命中；拿不到或不是 ChunkResult 则返回空列表。"""
+        raw = getattr(self.retriever, "last_hits", None)
+        if not isinstance(raw, list) or not raw:
+            return []
+        if not all(isinstance(hit, ChunkResult) for hit in raw):
+            return []
+        return list(raw)
 
     @staticmethod
     def _record_outcome(state: AgentState, outcome: RetrievalOutcome) -> None:

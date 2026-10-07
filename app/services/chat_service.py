@@ -513,8 +513,18 @@ class ChatService:
 
     @staticmethod
     def _reply_sources(session: Session, retriever) -> list[dict]:
+        """对外来源只取**实际进入模型 payload** 的命中。
+
+        RAG-029：``last_hits`` 是阈值过滤后的全部命中，预算挤掉的块并不在模型
+        看到的文本里。用它会让展示给用户的来源多于实际证据。管线按块预算组装后
+        回写 ``last_selected``，这里优先用它；``last_selected`` 为 None（还没组装
+        过，如短路径）才回落 ``last_hits``。
+        """
         if retriever is None:
             return []
+        selected = getattr(retriever, "last_selected", None)
+        if isinstance(selected, list):
+            return sources_from_hits(session, selected)
         return sources_from_hits(session, getattr(retriever, "last_hits", []))
 
     def _model_name(self) -> str | None:

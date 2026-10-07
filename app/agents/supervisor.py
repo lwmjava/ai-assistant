@@ -17,7 +17,7 @@ import json
 import logging
 from typing import TypedDict
 
-from app.agents.pipeline import AgentEvent, AgentState
+from app.agents.pipeline import AgentEvent, AgentState, _failure_text
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
@@ -299,7 +299,9 @@ class SupervisorGraph:
             logger.exception("Supervisor 编排执行失败")
             state.error = str(exc)
             if not state.answer:
-                state.answer = "抱歉，多 Agent 协作处理时出现问题，请稍后重试。"
+                # 复用管线的兜底文案：预算超限必须说「请缩短输入」，
+                # 说成「请稍后重试」会诱导用户重试一次必然再被拦的请求。
+                state.answer = _failure_text(exc)
             return state
         state.draft = final.get("draft", "")
         state.answer = state.draft

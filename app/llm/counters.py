@@ -10,6 +10,8 @@
 - ``utf8_byte_count`` 是**估算**，不是精确 tokenizer 输出。一个汉字 3 字节 ≥ 1 token，
   英文约 4 字符 1 token，因此「UTF-8 字节数」一般 ≥ token 数。把它当 token 上界
   使用是**偏保守**的：宁可把刚好够用的请求拦下，也不放行超限请求。
+- 计不出来的时候**不计 0**。多模态内容序列化失败、正文含不可编码字符都会抛
+  ``PayloadUncountableError``，由护栏按「无法计数」拒绝发送。
 - 官方计数器 ``tiktoken`` 未随本仓库安装（本机 2026-10-07 实测 ``No module named
   'tiktoken'``），因此当前一律退回保守估算。**安装后** ``official_counter_for``
   会自动返回真实计数器并被优先使用，无需改代码、也无需改能力表。
@@ -17,6 +19,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Sequence
 from typing import Any
 
@@ -33,24 +36,53 @@ _MESSAGE_OVERHEAD = 4
 _REPLY_PRIMER = 3
 
 
+class PayloadUncountableError(RuntimeError):
+    """内容无法可靠计数。
+
+    计不出来就是「不知道会不会超限」——按本卡的立场只能拒绝发送，
+    不能按 0 放行：计 0 等于宣布任何窗口都装得下。
+    """
+
+
 def message_content(message: Any) -> str:
-    """取出一条消息计进窗口的正文。缺失内容按空串计，不抛异常。"""
+    """取出一条消息计进窗口的正文。
+
+    字符串原样返回；非字符串（OpenAI 多模态的 list/dict content，如
+    ``image_url``）按 JSON 序列化后的文本计——按 Python ``repr`` 计会把一张图
+    算成几十字节，方向是彻底的低估。序列化不了就抛 ``PayloadUncountableError``。
+    """
     if isinstance(message, dict):
-        return str(message.get("content") or "")
-    return str(getattr(message, "content", "") or "")
+        content = message.get("content")
+    else:
+        content = getattr(message, "content", None)
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    try:
+        return json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    except (TypeError, ValueError) as exc:
+        raise PayloadUncountableError("多模态内容无法序列化，无法计数") from exc
 
 
 def utf8_byte_count(text: str) -> int:
     """保守估算：UTF-8 字节数。
 
     字节数一般 ≥ token 数，因此偏保守；**不是**精确 tokenizer 输出。
-    不可编码字符不计数，避免计数本身把请求打挂。
+    不可编码字符（如孤立代理项）会让「字节数 ≥ token 数」这条依据失效，
+    因此直接抛 ``PayloadUncountableError``，不静默计 0。
     """
-    return len((text or "").encode("utf-8", errors="ignore"))
+    try:
+        return len((text or "").encode("utf-8"))
+    except UnicodeEncodeError as exc:
+        raise PayloadUncountableError("正文含无法编码的字符，无法计数") from exc
 
 
 def estimate_messages_tokens(messages: Sequence[Any]) -> int:
-    """估算一组消息占用的 token 数：正文字节数 + 每消息框架开销 + 回复引导。"""
+    """估算一组消息占用的 token 数：正文字节数 + 每消息框架开销 + 回复引导。
+
+    任何一条正文计不出来就抛 ``PayloadUncountableError``（fail-closed）。
+    """
     total = _REPLY_PRIMER
     for message in messages:
         total += _MESSAGE_OVERHEAD + utf8_byte_count(message_content(message))

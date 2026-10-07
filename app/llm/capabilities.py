@@ -8,13 +8,16 @@
 没核对过的模型一律不猜：解析不到就是「无批准配置」，由护栏拒绝调用。
 
 运营者显式声明通道：模型不在已核对表内时，运营者必须同时填写窗口/最大输出
-与依据来源才放行。数值由运营者给，不是我们替他猜。
+与依据来源才放行，且**声明按部署+模型生效**（省略部署时只作用于主部署）。
+数值由运营者给，不是我们替他猜——但也不能写多少都算，超出合理区间按未批准处理。
 """
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urlsplit
 
 from app.core.config import settings
@@ -27,13 +30,22 @@ from app.llm.counters import (
 
 # 已核对条目的核对日期（2026-10-07 实取厂商公开页面）。
 VERIFIED_ON = "2026-10-07"
-# 运营者声明不绑定部署：按模型名登记，任何 deployment 同名模型都适用。
+# 声明条目拿不到具体部署时的占位（如 LLM_BASE_URL 为空）。正常路径下声明
+# 都带部署，这里的 "*" 不代表「任意部署都适用」。
 OPERATOR_DECLARED_DEPLOYMENT = "*"
 # 声明条目没有核对日期——我们没核对过，不能冒充已核对条目。
 OPERATOR_DECLARED_VERIFIED_ON = "operator-declared"
 
 OPENAI_GPT4O_MINI_SOURCE = "https://platform.openai.com/docs/models/gpt-4o-mini"
 DEEPSEEK_PRICING_SOURCE = "https://api-docs.deepseek.com/quick_start/pricing"
+
+# 运营者声明的合理上界。登记行为不能越过「不猜未知上限」，所以声明也不能是
+# 「写多少都算」：超过这两个数几乎必然是填错或拍脑袋的，按未批准处理。
+# 上界取当前公开在售模型的量级（最大公开窗口 1M~2M、最大输出 384K）。
+MAX_DECLARED_CONTEXT_WINDOW = 2_000_000
+MAX_DECLARED_OUTPUT_TOKENS = 400_000
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_deployment(base_url: str) -> str:
@@ -185,8 +197,16 @@ def resolve_generation_capability(base_url: str, model: str) -> GenerationCapabi
     return _with_best_counter(capability)
 
 
-def declared_capability(model: str) -> GenerationCapability | None:
-    """运营者显式声明的能力。声明与依据来源缺一即视为未批准。"""
+def declared_capability(model: str, base_url: str = "") -> GenerationCapability | None:
+    """运营者显式声明的能力。
+
+    格式：``部署!模型=窗口:最大输出``，多项逗号分隔。``部署`` 用与内置表相同的
+    归一化规则（去凭据、host 小写、去尾斜杠），**省略部署时只对主部署生效**
+    ——即 ``LLM_BASE_URL`` 对应的那个部署。声明与依据来源缺一即视为未批准。
+
+    声明必须绑定部署，理由与内置表一致：窗口不能跟着模型名一起被借走。否则
+    「为 gateway-a 声明一次」会让任何别家网关上的同名模型都拿到同一个窗口。
+    """
     raw = (settings.LLM_CAPABILITY_DECLARED or "").strip()
     source = (settings.LLM_CAPABILITY_DECLARED_SOURCE or "").strip()
     if not raw or not source:
@@ -194,12 +214,22 @@ def declared_capability(model: str) -> GenerationCapability | None:
     target = (model or "").strip()
     if not target:
         return None
+    wanted = normalize_deployment(base_url or settings.LLM_BASE_URL or "")
     for part in raw.split(","):
         item = part.strip()
         if "=" not in item:
             continue
-        name, _, spec = item.partition("=")
-        if name.strip() != target:
+        left, _, spec = item.partition("=")
+        left = left.strip()
+        if "!" in left:
+            deployment_text, _, name = left.partition("!")
+            deployment = _declared_deployment(deployment_text)
+            name = name.strip()
+        else:
+            # 省略部署：只认主部署，不得被 intent / fallback 指向的其它端点借用。
+            deployment = normalize_deployment(settings.LLM_BASE_URL or "")
+            name = left
+        if name != target or deployment != wanted:
             continue
         window_text, _, output_text = spec.partition(":")
         try:
@@ -207,10 +237,10 @@ def declared_capability(model: str) -> GenerationCapability | None:
             max_output_tokens = int(output_text.strip())
         except ValueError:
             return None
-        if context_window <= 0 or max_output_tokens <= 0:
+        if not _within_reasonable_range(target, context_window, max_output_tokens):
             return None
         return GenerationCapability(
-            deployment=OPERATOR_DECLARED_DEPLOYMENT,
+            deployment=deployment or OPERATOR_DECLARED_DEPLOYMENT,
             model=target,
             context_window=context_window,
             max_output_tokens=max_output_tokens,
@@ -225,9 +255,59 @@ def declared_capability(model: str) -> GenerationCapability | None:
     return None
 
 
+def _declared_deployment(text: str) -> str:
+    """声明里的部署写法。允许省略 scheme（``gateway.internal/v1`` 也认）。"""
+    raw = (text or "").strip()
+    if raw and "://" not in raw:
+        raw = f"https://{raw}"
+    return normalize_deployment(raw)
+
+
+def _within_reasonable_range(model: str, context_window: int, max_output_tokens: int) -> bool:
+    """声明值必须落在合理区间内，越界按未批准处理并留下明确日志。
+
+    「数值由运营者给」不等于「写多少都算」：1e9 的窗口不是声明，是把护栏关掉。
+    """
+    if context_window <= 0 or max_output_tokens <= 0:
+        logger.error(
+            "llm_capability_declared_out_of_range model=%s window=%d max_output=%d："
+            "窗口与最大输出必须为正整数",
+            model,
+            context_window,
+            max_output_tokens,
+        )
+        return False
+    if context_window > MAX_DECLARED_CONTEXT_WINDOW:
+        logger.error(
+            "llm_capability_declared_out_of_range model=%s window=%d：超过合理上界 %d",
+            model,
+            context_window,
+            MAX_DECLARED_CONTEXT_WINDOW,
+        )
+        return False
+    if max_output_tokens > MAX_DECLARED_OUTPUT_TOKENS:
+        logger.error(
+            "llm_capability_declared_out_of_range model=%s max_output=%d：超过合理上界 %d",
+            model,
+            max_output_tokens,
+            MAX_DECLARED_OUTPUT_TOKENS,
+        )
+        return False
+    if max_output_tokens > context_window:
+        logger.error(
+            "llm_capability_declared_out_of_range model=%s window=%d max_output=%d："
+            "最大输出不能超过上下文窗口",
+            model,
+            context_window,
+            max_output_tokens,
+        )
+        return False
+    return True
+
+
 def resolve_effective_capability(base_url: str, model: str) -> GenerationCapability | None:
     """内置已核对优先，其次运营者声明，都没有则为 None（无批准配置）。"""
     builtin = resolve_generation_capability(base_url, model)
     if builtin is not None:
         return builtin
-    return declared_capability(model)
+    return declared_capability(model, base_url)

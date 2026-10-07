@@ -94,6 +94,11 @@ def _client_for(name: str) -> OpenAICompatibleProvider | None:
     return client
 
 
+# 同一次进程里同一 (profile, model) 只提示一次。``ChatService.llm`` 是 property，
+# 每次访问都重新建链，不去重的话一次请求会打出 4~6 条一模一样的 WARNING。
+_UNAPPROVED_WARNED: set[tuple[str, str]] = set()
+
+
 def _warn_if_unapproved(profile: str, base_url: str, model: str) -> None:
     """建链时把「这个模型没有批准配置」说出来。
 
@@ -105,6 +110,10 @@ def _warn_if_unapproved(profile: str, base_url: str, model: str) -> None:
         return
     if resolve_effective_capability(base_url, model) is not None:
         return
+    key = (profile, model)
+    if key in _UNAPPROVED_WARNED:
+        return
+    _UNAPPROVED_WARNED.add(key)
     logger.warning(
         "llm_capability_unapproved profile=%s model=%s：该模型没有已核对或已声明的"
         "能力配置，护栏开启后调用会被拒绝。"

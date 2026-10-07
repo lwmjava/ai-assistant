@@ -24,7 +24,7 @@ from app.agents.tools.base import Tool, ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
-from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetExceeded
+from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
 from app.llm.factory import get_llm_provider
 from app.memory.base import ConversationMemory
 from app.memory.manager import MemoryManager
@@ -313,7 +313,7 @@ class ChatService:
                     pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
                 # 7. 执行
                 result = await pipeline.run(state)
-        except ContextBudgetExceeded:
+        except ContextBudgetError:
             # 预算超限不是故障：给固定提示并把这次回复照常落库，不抛给路由。
             result = state
             result.answer = BUDGET_EXCEEDED_REPLY
@@ -414,7 +414,7 @@ class ChatService:
         except (GeneratorExit, asyncio.CancelledError):
             stopped = True
             raise
-        except ContextBudgetExceeded:
+        except ContextBudgetError:
             # 预算超限时给固定提示，异常原文不外传；补一个 done 让流有终态。
             state.answer = BUDGET_EXCEEDED_REPLY
             yield AgentEvent("error", BUDGET_EXCEEDED_REPLY)

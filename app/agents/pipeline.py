@@ -35,7 +35,7 @@ from app.agents.prompts import (
 from app.agents.tools.base import ToolIntent, ToolRegistry, inspect_tool_call
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
-from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetExceeded
+from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
 from app.llm.routing import LLMUnavailableError
 from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_call
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
@@ -63,7 +63,7 @@ def _failure_text(exc: Exception) -> str:
     """
     if isinstance(exc, LLMUnavailableError):
         return str(exc)
-    if isinstance(exc, ContextBudgetExceeded):
+    if isinstance(exc, ContextBudgetError):
         return BUDGET_EXCEEDED_MESSAGE
     return _GENERIC_FAILURE
 

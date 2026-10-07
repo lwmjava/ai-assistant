@@ -10,6 +10,8 @@ import asyncio
 import importlib.util
 import json
 import logging
+import sys
+import types
 from collections.abc import AsyncIterator
 
 import httpx
@@ -24,7 +26,7 @@ from app.core.security import Role
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.budget import (
     BUDGET_EXCEEDED_MESSAGE,
-    ContextBudgetExceeded,
+    ContextBudgetError,
     check_generation_payload,
     estimate_payload_tokens,
 )
@@ -38,6 +40,7 @@ from app.llm.capabilities import (
 from app.llm.counters import (
     OFFICIAL_METHOD,
     UTF8_METHOD,
+    PayloadUncountableError,
     estimate_messages_tokens,
     official_counter_for,
     utf8_byte_count,
@@ -46,6 +49,9 @@ from app.llm.factory import get_llm_provider, set_llm_provider_override
 from app.llm.openai_compatible import OpenAICompatibleProvider
 from app.llm.routing import FallbackChain, is_failover_error
 from app.models.user import User
+from app.rag.ocr import openai_vision
+from app.rag.ocr.base import OcrProviderError
+from app.rag.ocr.openai_vision import OpenAiVisionOcrProvider
 from app.services.chat_service import ChatService
 
 _TIKTOKEN_INSTALLED = importlib.util.find_spec("tiktoken") is not None
@@ -61,6 +67,10 @@ def _clean_budget_settings(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "")
     monkeypatch.setattr(settings, "LLM_BUDGET_SAFETY_MARGIN", 512)
     monkeypatch.setattr(settings, "LLM_OUTPUT_RESERVE_TOKENS", 2048)
+    # 建链告警按 (profile, model) 进程级去重，用例之间必须各起一套。
+    from app.llm import factory
+
+    monkeypatch.setattr(factory, "_UNAPPROVED_WARNED", set())
     yield
 
 
@@ -79,12 +89,16 @@ def _patch_transport(
     monkeypatch: pytest.MonkeyPatch,
     recorder: _Recorder,
     script: list[str] | None = None,
+    *,
+    sync: bool = False,
 ) -> None:
-    """让 provider 内部新建的 AsyncClient 全部走 MockTransport 并计数。
+    """让 provider 内部新建的 httpx client 全部走 MockTransport 并计数。
 
     ``script`` 给出第 n 次请求要返回的正文，超出长度时复用最后一条。
+    ``sync`` 同时盖住同步的 ``httpx.Client``（云 OCR 的同步入口用它）。
     """
-    real_client = httpx.AsyncClient
+    real_async = httpx.AsyncClient
+    real_sync = httpx.Client
 
     def content_for() -> str:
         if not script:
@@ -98,15 +112,23 @@ def _patch_transport(
         if body.get("stream"):
             chunk = json.dumps({"choices": [{"delta": {"content": text}}]}, ensure_ascii=False)
             return httpx.Response(
-                200, content=f"data: {chunk}\n\ndata: [DONE]\n\n".encode("utf-8")
+                200, content=f"data: {chunk}\n\ndata: [DONE]\n\n".encode()
             )
         return httpx.Response(200, json={"choices": [{"message": {"content": text}}]})
 
-    def factory(*args, **kwargs):
-        kwargs["transport"] = httpx.MockTransport(respond)
-        return real_client(*args, **kwargs)
+    transport = httpx.MockTransport(respond)
 
-    monkeypatch.setattr(httpx, "AsyncClient", factory)
+    def async_factory(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_async(*args, **kwargs)
+
+    def sync_factory(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_sync(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", async_factory)
+    if sync:
+        monkeypatch.setattr(httpx, "Client", sync_factory)
 
 
 def _provider(
@@ -149,7 +171,7 @@ class _BudgetBlocked(LLMProvider):
     model = "lab-model"
 
     async def chat(self, messages: list[ChatMessage], options: LLMOptions | None = None) -> str:
-        raise ContextBudgetExceeded(
+        raise ContextBudgetError(
             "context_window_exceeded",
             payload_tokens=99_999,
             reserved_output=2048,
@@ -160,7 +182,7 @@ class _BudgetBlocked(LLMProvider):
     async def stream_chat(
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> AsyncIterator[str]:
-        raise ContextBudgetExceeded(
+        raise ContextBudgetError(
             "context_window_exceeded",
             payload_tokens=99_999,
             reserved_output=2048,
@@ -227,7 +249,7 @@ def test_unknown_model_is_blocked_without_sending_request(
     _patch_transport(monkeypatch, recorder)
     provider = _provider(model="totally-unknown-model")
 
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat([_user()]))
 
     assert caught.value.reason == "capability_unverified"
@@ -235,7 +257,10 @@ def test_unknown_model_is_blocked_without_sending_request(
 
 
 def test_operator_declaration_allows_unknown_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "mystery-model=32768:4096")
+    """声明写成 部署!模型=窗口:输出，只在这个部署上生效。"""
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "gateway.internal/v1!mystery-model=32768:4096"
+    )
     monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "运营者压测报告 2026-10-07")
     recorder = _Recorder()
     _patch_transport(monkeypatch, recorder)
@@ -244,26 +269,99 @@ def test_operator_declaration_allows_unknown_model(monkeypatch: pytest.MonkeyPat
     assert asyncio.run(provider.chat([_user()])) == _OK
     assert recorder.count == 1
 
-    cap = declared_capability("mystery-model")
+    cap = declared_capability("mystery-model", "https://gateway.internal/v1")
     assert cap is not None
     assert (cap.context_window, cap.max_output_tokens) == (32_768, 4096)
+    assert cap.deployment == "gateway.internal/v1"
     assert cap.counting_method == "operator-declared"
     assert cap.verified_on == "operator-declared"
 
 
+def test_declaration_does_not_leak_to_another_deployment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """为 gateway-a 声明一次，不得让 evil-gateway 上的同名模型也拿到窗口。"""
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "gateway-a.example/v1!shared-model=32768:4096"
+    )
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "运营者压测报告")
+    recorder = _Recorder()
+    _patch_transport(monkeypatch, recorder)
+    provider = _provider(model="shared-model", base_url="https://evil-gateway.example/v1")
+
+    with pytest.raises(ContextBudgetError) as caught:
+        asyncio.run(provider.chat([_user()]))
+
+    assert caught.value.reason == "capability_unverified"
+    assert declared_capability("shared-model", "https://evil-gateway.example/v1") is None
+    assert recorder.count == 0
+
+
+def test_declaration_without_deployment_binds_to_main_deployment_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """省略部署时只作用于 LLM_BASE_URL 对应的主部署。"""
+    monkeypatch.setattr(settings, "LLM_BASE_URL", "https://main.example/v1")
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "home-model=8000:4096")
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "运营者压测报告")
+
+    home = declared_capability("home-model", "https://main.example/v1")
+    assert home is not None
+    assert home.deployment == "main.example/v1"
+    assert declared_capability("home-model", "https://intent.example/v1") is None
+
+    recorder = _Recorder()
+    _patch_transport(monkeypatch, recorder)
+    intent_provider = _provider(model="home-model", base_url="https://intent.example/v1")
+    with pytest.raises(ContextBudgetError) as caught:
+        asyncio.run(intent_provider.chat([_user()]))
+    assert caught.value.reason == "capability_unverified"
+    assert recorder.count == 0
+
+
 def test_declaration_without_source_is_still_blocked(monkeypatch: pytest.MonkeyPatch) -> None:
     """只有声明没有依据来源 = 未批准：来源是为了能追溯，不是为了好看。"""
-    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "mystery-model=32768:4096")
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "gateway.internal/v1!mystery-model=32768:4096"
+    )
     recorder = _Recorder()
     _patch_transport(monkeypatch, recorder)
     provider = _provider(model="mystery-model", base_url="https://gateway.internal/v1")
 
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat([_user()]))
 
     assert caught.value.reason == "capability_unverified"
-    assert declared_capability("mystery-model") is None
+    assert declared_capability("mystery-model", "https://gateway.internal/v1") is None
     assert recorder.count == 0
+
+
+def test_declared_window_above_reasonable_bound_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """「数值由运营者给」不等于写多少都算：1e9 的窗口是把护栏关掉。"""
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "gateway.internal/v1!huge=1000000000:999999999"
+    )
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "拍脑袋填的")
+    recorder = _Recorder()
+    _patch_transport(monkeypatch, recorder)
+    provider = _provider(model="huge", base_url="https://gateway.internal/v1")
+
+    with caplog.at_level(logging.ERROR, logger="app.llm.capabilities"):
+        assert declared_capability("huge", "https://gateway.internal/v1") is None
+        with pytest.raises(ContextBudgetError) as caught:
+            asyncio.run(provider.chat([_user("x" * 5_000_000)]))
+
+    assert caught.value.reason == "capability_unverified"
+    assert "llm_capability_declared_out_of_range" in caplog.text
+    assert recorder.count == 0
+
+
+def test_declared_output_above_window_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "gateway.internal/v1!odd=1000:999999")
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "填反了")
+    assert declared_capability("odd", "https://gateway.internal/v1") is None
 
 
 # ── 4/5. payload、输出预留与余量 ──────────────────
@@ -276,6 +374,7 @@ def _budget_messages(cap: GenerationCapability, overflow: int) -> list[ChatMessa
         ChatMessage(role=ChatRole.USER, content=""),
     ]
     payload = estimate_payload_tokens(cap, base)
+    assert payload is not None
     room = cap.context_window - reserve - margin
     return [
         base[0],
@@ -299,7 +398,7 @@ def test_payload_plus_reserve_plus_margin_over_window_is_blocked(
         )
         == "context_window_exceeded"
     )
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat(messages))
 
     assert caught.value.reason == "context_window_exceeded"
@@ -322,7 +421,7 @@ def test_reserved_output_above_max_output_is_blocked(monkeypatch: pytest.MonkeyP
     _patch_transport(monkeypatch, recorder)
     provider = _provider()
 
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat([_user()], LLMOptions(max_tokens=32_768)))
 
     assert caught.value.reason == "output_reserve_exceeded"
@@ -332,9 +431,14 @@ def test_reserved_output_above_max_output_is_blocked(monkeypatch: pytest.MonkeyP
 # ── 6. 工具结果与 critique 轮次被计入 ─────────────
 def _small_capability(monkeypatch: pytest.MonkeyPatch) -> GenerationCapability:
     # 最大输出给足（> 默认输出预留 2048），这样被拦下只可能是窗口超限。
-    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "lab-model=4000:4096")
+    # 窗口 4200：余量外的空间 1640，正好卡在「200 条短文按正文算装得下、
+    # 加上框架开销装不下」之间；最大输出 4096 大于默认输出预留 2048，
+    # 这样被拦下只可能是窗口超限。
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "gateway.internal/v1!lab-model=4200:4096"
+    )
     monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "测试用小窗口声明")
-    cap = declared_capability("lab-model")
+    cap = declared_capability("lab-model", "https://gateway.internal/v1")
     assert cap is not None
     return cap
 
@@ -356,7 +460,7 @@ def test_tool_results_are_counted(monkeypatch: pytest.MonkeyPatch) -> None:
     with_tool = base + [
         ChatMessage(role=ChatRole.ASSISTANT, content="## 已调用工具结果\n" + "D" * 5000)
     ]
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat(with_tool))
 
     assert caught.value.reason == "context_window_exceeded"
@@ -377,7 +481,7 @@ def test_critique_round_is_counted(monkeypatch: pytest.MonkeyPatch) -> None:
     critique = base + [
         ChatMessage(role=ChatRole.USER, content="## 审查意见\n" + "C" * 5000)
     ]
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat(critique))
 
     assert caught.value.reason == "context_window_exceeded"
@@ -390,7 +494,7 @@ def test_stream_path_is_guarded(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_transport(monkeypatch, recorder)
     provider = _provider(model="totally-unknown-model")
 
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(_drain(provider, [_user()]))
 
     assert caught.value.reason == "capability_unverified"
@@ -450,9 +554,59 @@ def test_counting_method_is_reported_in_metadata() -> None:
 
 
 def test_official_counter_is_not_claimed_for_other_vendors() -> None:
-    """别家的 token 不能用 OpenAI 的 tokenizer 数——那是伪造精度。"""
+    """别家的 token 不能用 OpenAI 的 tokenizer 数——那是伪造精度。
+
+    注意：tiktoken 未安装时这条断言是空跑的（无论怎样都返回 None）。
+    真正让这条规则生效的断言在下面两条（注入假 tiktoken 之后）。
+    """
     assert official_counter_for("api.deepseek.com/v1", "deepseek-flash") is None
     assert official_counter_for("gateway.internal/v1", "gpt-4o-mini") is None
+
+
+class _FakeEncoding:
+    """假 tokenizer：每 4 个字符 1 个 token + 1，便于断言「确实用了它」。"""
+
+    def encode(self, text: str) -> list[int]:
+        return [1] * (len(text) // 4 + 1)
+
+
+@pytest.fixture()
+def _fake_tiktoken(monkeypatch: pytest.MonkeyPatch) -> types.ModuleType:
+    """把假 tiktoken 塞进 sys.modules，让官方计数器分支真正被执行一次。"""
+    module = types.ModuleType("tiktoken")
+    module.encoding_for_model = lambda _model: _FakeEncoding()  # type: ignore[attr-defined]
+    module.get_encoding = lambda _name: _FakeEncoding()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "tiktoken", module)
+    return module
+
+
+def test_official_counter_is_used_on_openai_official_deployment(
+    _fake_tiktoken: types.ModuleType,
+) -> None:
+    counter = official_counter_for("api.openai.com/v1", "gpt-4o-mini")
+    assert counter is not None
+
+    messages = [_user("a" * 40)]
+    # 假 tokenizer：40 字符 → 11，加消息框架 4 与回复引导 3 = 18；
+    # 字节估算则是 40 + 7 = 47。两者不同，证明走的确实是官方计数器。
+    assert counter(messages) == 18
+    assert estimate_messages_tokens(messages) == 47
+
+    cap = resolve_generation_capability("https://api.openai.com/v1", "gpt-4o-mini")
+    assert cap is not None
+    assert cap.counting_method == OFFICIAL_METHOD
+
+
+def test_official_counter_still_refused_for_other_vendors_even_when_installed(
+    _fake_tiktoken: types.ModuleType,
+) -> None:
+    """装了 tiktoken 也不拿它数别家的 token——这条规则必须有可执行证据。"""
+    assert official_counter_for("api.deepseek.com/v1", "deepseek-flash") is None
+    assert official_counter_for("gateway.internal/v1", "gpt-4o-mini") is None
+
+    deepseek = resolve_generation_capability("https://api.deepseek.com/v1", "deepseek-flash")
+    assert deepseek is not None
+    assert deepseek.counting_method == UTF8_METHOD
 
 
 def test_fallback_counting_method_matches_installed_counter() -> None:
@@ -480,7 +634,7 @@ def test_message_frame_overhead_can_block_a_request(monkeypatch: pytest.MonkeyPa
     工具调用与自纠错恰好都是「条数多、每条不大」的形态，只算正文会漏掉这一类。
     """
     _small_capability(monkeypatch)
-    cap = declared_capability("lab-model")
+    cap = declared_capability("lab-model", "https://gateway.internal/v1")
     assert cap is not None
     recorder = _Recorder()
     _patch_transport(monkeypatch, recorder)
@@ -491,7 +645,7 @@ def test_message_frame_overhead_can_block_a_request(monkeypatch: pytest.MonkeyPa
     messages = [ChatMessage(role=ChatRole.USER, content=content) for _ in range(200)]
     assert 200 * len(content) < room  # 只算正文时确实装得下
 
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat(messages))
 
     assert caught.value.reason == "context_window_exceeded"
@@ -500,6 +654,73 @@ def test_message_frame_overhead_can_block_a_request(monkeypatch: pytest.MonkeyPa
 
 def test_utf8_byte_count_is_conservative_for_chinese() -> None:
     assert utf8_byte_count("知识库") == 9  # 3 字 × 3 字节 ≥ 实际 token 数
+
+
+# ── 14. 计不出来就拒绝，不许计 0 ──────────────────
+def test_multimodal_content_is_counted_as_json_not_repr() -> None:
+    """多模态 content 按 repr 计数会把一张图算成几十字节——彻底的低估。"""
+    image = "data:image/png;base64," + "A" * 5_000
+    message = {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "请提取文字"},
+            {"type": "image_url", "image_url": {"url": image}},
+        ],
+    }
+    serialized = json.dumps(
+        message["content"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    # 按 JSON（也就是真正外发的线格式）计，而不是按 Python repr 计。
+    assert estimate_messages_tokens([message]) == len(serialized) + 7
+    assert len(serialized) > len(image)  # 图片本体被算进去
+
+
+def test_unserializable_content_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """序列化不了的 content 计不出来：不知道会不会超限，就不发。"""
+    with pytest.raises(PayloadUncountableError):
+        estimate_messages_tokens([{"role": "user", "content": [object()]}])
+
+    cap = resolve_generation_capability("https://api.openai.com/v1", "gpt-4o-mini")
+    assert cap is not None
+    assert (
+        check_generation_payload(cap, [{"role": "user", "content": [object()]}], 64, 512)
+        == "payload_uncountable"
+    )
+
+    recorder = _Recorder()
+    _patch_transport(monkeypatch, recorder)
+    provider = _provider(capability=cap)
+
+    class _Raw:
+        content = [object()]
+
+    with pytest.raises(ContextBudgetError) as caught:
+        asyncio.run(provider.chat([_Raw()]))  # type: ignore[list-item]
+
+    assert caught.value.reason == "payload_uncountable"
+    assert recorder.count == 0
+
+
+def test_unencodable_text_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """不可编码字符被计成 0 字节等于宣布任何窗口都装得下。"""
+    broken = "\ud800" * 10
+    with pytest.raises(PayloadUncountableError):
+        utf8_byte_count(broken)
+
+    cap = resolve_generation_capability("https://api.openai.com/v1", "gpt-4o-mini")
+    assert cap is not None
+    recorder = _Recorder()
+    _patch_transport(monkeypatch, recorder)
+    provider = _provider(capability=cap)
+
+    class _Raw:
+        content = broken
+
+    with pytest.raises(ContextBudgetError) as caught:
+        asyncio.run(provider.chat([_Raw()]))  # type: ignore[list-item]
+
+    assert caught.value.reason == "payload_uncountable"
+    assert recorder.count == 0
 
 
 # ── 11. 建链时把「没有批准配置」说出来 ────────────
@@ -519,6 +740,22 @@ def test_factory_warns_when_capability_is_unapproved(
     assert "profile=chat" in caplog.text
     assert "deepseek-chat" in caplog.text
     assert "LLM_CAPABILITY_DECLARED_SOURCE" in caplog.text
+
+
+def test_factory_warns_once_per_profile_and_model(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """同一 (profile, model) 只提示一次：ChatService.llm 是 property，每次访问都建链。"""
+    monkeypatch.setattr(settings, "LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-chat")
+    monkeypatch.setattr(settings, "LLM_DEFAULT_MODEL", "deepseek-chat")
+    set_llm_provider_override(None)
+
+    with caplog.at_level(logging.WARNING, logger="app.llm.factory"):
+        for _ in range(5):
+            get_llm_provider("chat")
+
+    assert caplog.text.count("llm_capability_unapproved") == 1
 
 
 def test_factory_stays_silent_when_capability_is_approved(
@@ -549,7 +786,9 @@ def test_each_profile_is_judged_by_its_own_window(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(settings, "LLM_INTENT_MODEL", "intent-small")
     monkeypatch.setattr(settings, "LLM_INTENT_FALLBACK_CHAIN", "intent")
     monkeypatch.setattr(settings, "LLM_FALLBACK_API_KEY", "")
-    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "intent-small=1000:100")
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "intent.example/v1!intent-small=1000:100"
+    )
     monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "测试用小窗口声明")
     set_llm_provider_override(None)
 
@@ -565,7 +804,7 @@ def test_each_profile_is_judged_by_its_own_window(monkeypatch: pytest.MonkeyPatc
     assert asyncio.run(chat.chat(messages, options)) == _OK
     assert recorder.count == 1
 
-    with pytest.raises(ContextBudgetExceeded) as caught:
+    with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(intent.chat(messages, options))
 
     assert caught.value.reason == "context_window_exceeded"
@@ -574,7 +813,9 @@ def test_each_profile_is_judged_by_its_own_window(monkeypatch: pytest.MonkeyPatc
 
 # ── 13. 工具循环端到端：工具返回把下一跳顶出窗口 ───
 def test_tool_result_blocks_the_next_round_end_to_end(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED", "tool-model=20000:4096")
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "gateway.internal/v1!tool-model=20000:4096"
+    )
     monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "测试用工具循环声明")
     recorder = _Recorder()
     big_text = "X" * 30_000
@@ -617,8 +858,71 @@ def test_budget_error_is_not_a_failover_error(monkeypatch: pytest.MonkeyPatch) -
         ],
     )
 
-    assert is_failover_error(ContextBudgetExceeded("capability_unverified", payload_tokens=1, reserved_output=1, margin=1, limit=0)) is False
-    with pytest.raises(ContextBudgetExceeded):
+    budget_error = ContextBudgetError(
+        "capability_unverified", payload_tokens=1, reserved_output=1, margin=1, limit=0
+    )
+    assert is_failover_error(budget_error) is False
+    with pytest.raises(ContextBudgetError):
         asyncio.run(chain.chat([_user()]))
 
+    assert recorder.count == 0
+
+
+# ── 15. Supervisor 编排不把预算超限说成「请稍后重试」──
+def test_supervisor_reports_budget_message_not_retry_hint() -> None:
+    """langgraph 编排下预算超限必须说「请缩短输入」，说「请稍后重试」是诱导重试。"""
+    pytest.importorskip("langgraph")
+    from app.agents.supervisor import SupervisorGraph
+
+    graph = SupervisorGraph(_BudgetBlocked())
+    state = asyncio.run(graph.run(AgentState(user_input="你好")))
+
+    assert state.answer == BUDGET_EXCEEDED_MESSAGE
+    assert "请稍后重试" not in state.answer
+
+
+# ── 16. 云 OCR 视觉调用同样在护栏内 ────────────────
+def _ocr_provider(
+    monkeypatch: pytest.MonkeyPatch,
+    recorder: _Recorder,
+    model: str,
+    page_bytes: bytes = b"fake",
+) -> OpenAiVisionOcrProvider:
+    """构造云 OCR provider：渲染页被打桩，HTTP 走 MockTransport 计数。"""
+    monkeypatch.setattr(openai_vision, "_render_pdf_pages", lambda _data: [page_bytes])
+    _patch_transport(monkeypatch, recorder, sync=True)
+    return OpenAiVisionOcrProvider(
+        base_url="https://vision.example/v1",
+        api_key="sk-ocr",
+        model=model,
+        timeout_seconds=5.0,
+    )
+
+
+def test_cloud_ocr_blocks_unknown_model_without_http(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorder = _Recorder()
+    provider = _ocr_provider(monkeypatch, recorder, "unknown-vision-model")
+
+    with pytest.raises(OcrProviderError) as caught:
+        provider.extract_pdf_text(b"pdf-bytes")
+
+    assert caught.value.error_code == "ocr_budget_exceeded"
+    assert recorder.count == 0
+
+
+def test_cloud_ocr_blocks_oversized_image_without_http(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        settings, "LLM_CAPABILITY_DECLARED", "vision.example/v1!vision-model=6000:4096"
+    )
+    monkeypatch.setattr(settings, "LLM_CAPABILITY_DECLARED_SOURCE", "测试用视觉声明")
+    recorder = _Recorder()
+    # 10 KB 图片 → base64 约 13.4 KB，远超 6000-2048-512=3440 的余量。
+    provider = _ocr_provider(
+        monkeypatch, recorder, "vision-model", page_bytes=b"x" * 10_000
+    )
+
+    with pytest.raises(OcrProviderError) as caught:
+        asyncio.run(provider.aextract_pdf_text(b"pdf-bytes"))
+
+    assert caught.value.error_code == "ocr_budget_exceeded"
     assert recorder.count == 0

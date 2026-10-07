@@ -381,7 +381,7 @@ docker compose up -d --build
 | `LLM_INTENT_BASE_URL` | 意图分流的接口地址。留空则沿用对话地址 | — |
 | `LLM_INTENT_MODEL` | 意图分流的模型名。留空则沿用对话模型 | — |
 | `LLM_CAPABILITY_GUARD_ENABLED` | 每次真实调用前核对上下文预算。关闭后回到 RAG-028 之前的行为 | `true` |
-| `LLM_CAPABILITY_DECLARED` | 运营者显式声明的窗口与最大输出（`model=窗口:最大输出`）。未知模型靠它放行 | — |
+| `LLM_CAPABILITY_DECLARED` | 运营者显式声明的窗口与最大输出（`部署!模型=窗口:最大输出`，按部署+模型生效）。未知模型靠它放行 | — |
 | `LLM_CAPABILITY_DECLARED_SOURCE` | 上面声明的依据来源。与声明同时填写才生效 | — |
 | `LLM_BUDGET_SAFETY_MARGIN` | 预算余量，覆盖消息框架与工具描述的计数误差 | `512` |
 | `LLM_OUTPUT_RESERVE_TOKENS` | 未显式给出 `max_tokens` 时的输出预留 | `2048` |
@@ -503,11 +503,15 @@ payload 用**本次真正要发的 messages** 现算，所以工具返回、自�
 `deepseek-chat` 是仓库代码里的默认模型名，但它已不在厂商在售模型表内，各来源给出的窗口数字互相矛盾。本仓库**没有**登记它的能力——不去猜一个上限。继续使用它，必须由运营者显式声明：
 
 ```dotenv
-LLM_CAPABILITY_DECLARED=deepseek-chat=65536:8192
+LLM_CAPABILITY_DECLARED=api.deepseek.com/v1!deepseek-chat=65536:8192
 LLM_CAPABILITY_DECLARED_SOURCE=厂商文档 URL 或内部依据
 ```
 
-声明与依据来源**缺一即视为未批准**，护栏照旧拒绝。数值由运营者给，不由代码替他猜；声明条目的计数方法会被标成 `operator-declared`，不冒充已核对条目。
+**升级后第一步就在这里**：护栏默认开启，未声明时所有真实调用都会被拒绝（对话只剩固定提示）。
+
+声明的格式是 `部署!模型=窗口:最大输出`，**按部署+模型生效**——为 `gateway-a` 声明一次，不会让别家网关上的同名模型也拿到同一个窗口。省略部署时（`deepseek-chat=65536:8192`）只对 `LLM_BASE_URL` 对应的主部署生效。
+
+声明与依据来源**缺一即视为未批准**，护栏照旧拒绝。数值由运营者给，不由代码替他猜；声明条目的计数方法会被标成 `operator-declared`，不冒充已核对条目。「由运营者给」不等于写多少都算：窗口与最大输出必须是正整数、最大输出不超过窗口，且不超过合理上界（窗口 2,000,000、输出 400,000），越界按未批准处理并在日志里给出 `llm_capability_declared_out_of_range`。
 
 建链时如果发现某个 profile（chat / intent / fallback）的模型拿不到已核对或已声明的能力，日志会打一条 `llm_capability_unapproved profile=... model=...`，提示去登记上面两行。字段只带 profile 与模型名，不带接口地址、密钥或请求内容。
 
@@ -515,8 +519,10 @@ LLM_CAPABILITY_DECLARED_SOURCE=厂商文档 URL 或内部依据
 
 官方计数器优先，不可用时退回经校准的保守估算，用哪种都会写进能力契约：
 
-- 官方计数器：只在 OpenAI 官方域名下认 `tiktoken`。装上 `tiktoken` 后自动优先使用，无需改代码（本仓库不强制安装这个依赖）。
+- 官方计数器：只在 OpenAI 官方域名下认 `tiktoken`。装上 `tiktoken` 后自动优先使用，无需改代码（本仓库不强制安装这个依赖）。装上之后，别家的 token 仍然不用 OpenAI 的 tokenizer 数——那是伪造精度。
 - 保守估算：UTF-8 字节数 + 每条消息的框架开销。字节数一般 ≥ token 数（一个汉字 3 字节 ≥ 1 token），因此**偏保守**——宁可拦下刚好够用的请求，也不放行超限请求。**这不是精确 tokenizer 输出。**
+- 计不出来就拒绝，不许计 0：多模态 content（如 `image_url`）按 JSON 序列化的字节数计，序列化不了、或正文含不可编码字符，一律按 `payload_uncountable` 拒绝发送。已知残余低估：远程 `image_url`（`http://` 而非 `data:`）只计 URL 本身，图片本体不在文本里，计不到。
+- 云 OCR（`RAG_OCR_PROVIDER=cloud`）送 base64 图片，是全系统最大的单次生成 payload，也走同一条不等式；超限或未知模型时抛 `OcrProviderError`（`ocr_budget_exceeded`），一个字节都不外发。
 
 ### 关闭护栏
 

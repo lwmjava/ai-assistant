@@ -218,6 +218,38 @@ export interface DocumentChunkOut {
 }
 
 
+/** 引用原文核验的定位信息（页码 / 段落 / 源范围；缺失为 null，不推断）。 */
+export interface ChunkLocatorOut {
+  chunk_id: string
+  chunk_index: number
+  page: number | null
+  section: string | null
+  source_start: number | null
+  source_end: number | null
+  /** 仅父块在显式请求且通过独立鉴权后返回；默认为 null。 */
+  content: string | null
+}
+
+/**
+ * 引用原文核验结果（ADR-0007 只读核验）。
+ *
+ * 只有命中块本身的正文与定位信息，没有整章 / 整文档正文、源文件与控制面字段。
+ */
+export interface ChunkEvidenceOut {
+  chunk_id: string
+  document_id: string
+  document_title: string
+  version_state: string
+  chunk_index: number
+  content: string
+  source: string | null
+  page: number | null
+  section: string | null
+  source_start: number | null
+  source_end: number | null
+  parent: ChunkLocatorOut | null
+}
+
 export interface ImportJobOut {
   id: string
   status: string

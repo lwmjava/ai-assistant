@@ -7,7 +7,7 @@ import {
   contentDispositionFilename,
   SOURCE_FILE_NETWORK_FAILURE,
 } from '@/lib/download'
-import type { DocumentChunkOut, DocumentOut, ImportJobOut, SearchResultOut } from '@/types/api'
+import type { ChunkEvidenceOut, DocumentChunkOut, DocumentOut, ImportJobOut, SearchResultOut } from '@/types/api'
 export const documentKeys = {
   all: ['documents'] as const,
   list: (includeDeleted = false, versionState = '') =>
@@ -125,5 +125,22 @@ export function useDocumentChunks(documentId: string) {
     queryFn: () => api.get<DocumentChunkOut[]>(`/rag/documents/${documentId}/chunks`),
     enabled: Boolean(documentId),
     staleTime: 15_000,
+  })
+}
+
+/**
+ * 引用原文核验（ADR-0007 只读核验）。
+ *
+ * 只取回命中块正文与定位信息；权限由后端每次请求独立复核，前端不预判。
+ * `chunkId` 传 null 表示尚未展开，不发请求。
+ */
+export function useChunkEvidence(chunkId: string | null) {
+  return useQuery({
+    queryKey: ['chunk-evidence', chunkId] as const,
+    queryFn: () => api.get<ChunkEvidenceOut>(`/rag/chunks/${chunkId}/evidence`),
+    enabled: Boolean(chunkId),
+    staleTime: 60_000,
+    // 无权 / 已失效是终态结论，重试只会放大噪声。
+    retry: false,
   })
 }

@@ -18,6 +18,7 @@ import { createConfirmation, downloadDocumentSource, fetchImportJob, useDeleteDo
 import { ApiError, hideStackTrace, isSessionExpiredError } from '@/lib/http'
 import { can, canControlDocument } from '@/lib/permissions'
 import { ChunkContent } from '@/components/knowledge/ChunkContent'
+import { ChunkEvidence } from '@/components/knowledge/ChunkEvidence'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
 import type { DocumentOut, SearchResultOut } from '@/types/api'
@@ -231,6 +232,10 @@ function SearchResultRow({ result, index }: { result: SearchResultOut; index: nu
         </p>
       )}
       <ChunkContent content={result.content} />
+      {/* 后端每次请求独立复核权限；未提供块 ID 时组件自己给出说明。 */}
+      <div className="mt-2">
+        <ChunkEvidence chunkId={result.chunk_id || null} />
+      </div>
     </li>
   )
 }
@@ -252,6 +257,9 @@ function DocumentChunkList({ documentId }: { documentId: string }) {
             {c.strategy && <span>· {c.strategy}</span>}
           </div>
           <ChunkContent content={c.content} />
+          <div className="mt-1.5">
+            <ChunkEvidence chunkId={c.id} />
+          </div>
         </li>
       ))}
     </ul>

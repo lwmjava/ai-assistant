@@ -43,6 +43,7 @@ from app.rag.document_storage import (
     resolve_source_file_path,
     save_source_file,
 )
+from app.rag.evidence import EVIDENCE_DENIED_MESSAGE, ChunkEvidence, EvidenceDeniedError, load_chunk_evidence
 from app.rag.import_jobs import (
     create_import_batch,
     create_reparse_job,
@@ -191,6 +192,40 @@ class SearchResultOut(BaseModel):
     retrieval_origin: Literal["hit", "parent_expansion"] = "hit"
     expanded_from_chunk_id: str | None = None
     score_inherited_from_chunk_id: str | None = None
+
+
+class ChunkLocatorOut(BaseModel):
+    """块的定位信息。没有的部分显式为 ``None``，不推断、不编造。"""
+
+    chunk_id: str
+    chunk_index: int
+    page: int | None = None
+    section: str | None = None
+    source_start: int | None = None
+    source_end: int | None = None
+    # 只有显式请求父块正文且父块通过独立鉴权时才非空。
+    content: str | None = None
+
+
+class ChunkEvidenceOut(BaseModel):
+    """引用原文核验结果：命中块正文 + 必要定位信息。
+
+    刻意不含整文档正文、源文件、资源 ACL 或任何控制面字段：核验只回答
+    「这个命中块的原文是什么、在哪里」，不提供整章 / 整文件的旁路读取。
+    """
+
+    chunk_id: str
+    document_id: str
+    document_title: str
+    version_state: str
+    chunk_index: int
+    content: str
+    source: str | None = None
+    page: int | None = None
+    section: str | None = None
+    source_start: int | None = None
+    source_end: int | None = None
+    parent: ChunkLocatorOut | None = None
 
 
 class ImportJobOut(BaseModel):
@@ -690,6 +725,79 @@ def list_document_chunks(
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     return [_chunk_out(c) for c in rag.list_chunks(document_id, current_user)]
+
+
+def _evidence_out(evidence: ChunkEvidence) -> ChunkEvidenceOut:
+    locator = evidence.chunk
+    return ChunkEvidenceOut(
+        chunk_id=locator.chunk_id,
+        document_id=evidence.document_id,
+        document_title=evidence.document_title,
+        version_state=evidence.version_state,
+        chunk_index=locator.chunk_index,
+        content=evidence.content,
+        source=evidence.source,
+        page=locator.page,
+        section=locator.section,
+        source_start=locator.source_start,
+        source_end=locator.source_end,
+        parent=(
+            ChunkLocatorOut(
+                chunk_id=evidence.parent.chunk_id,
+                chunk_index=evidence.parent.chunk_index,
+                page=evidence.parent.page,
+                section=evidence.parent.section,
+                source_start=evidence.parent.source_start,
+                source_end=evidence.parent.source_end,
+                content=evidence.parent.content,
+            )
+            if evidence.parent is not None
+            else None
+        ),
+    )
+
+
+@router.get("/chunks/{chunk_id}/evidence", response_model=ChunkEvidenceOut)
+def get_chunk_evidence(
+    chunk_id: str,
+    document_id: str | None = None,
+    include_parent_content: bool = False,
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
+    session: Session = Depends(get_db),
+) -> ChunkEvidenceOut:
+    """核验命中块的引用原文与定位信息（ADR-0007 只读核验）。
+
+    只返回**该命中块本身**的正文，以及标题、版本状态、块序、页码 / 段落、
+    源范围这些必要定位信息；不返回整章、整文档正文或源文件。
+
+    每次请求都重新鉴权：主体权限 → 同租户 → Document/Chunk 真实关联 →
+    未软删 → 当前版本与时效规则 → uploader 模式下限定上传者。任一项不满足
+    统一返回 404 与固定文案，不返回正文，也不泄漏存在性细节。
+
+    请求参数:
+        chunk_id: 待核验块 ID；只是待核验线索，不是授权证明。
+        document_id: 调用方声称的所属文档；与实际关联不一致即拒绝。
+        include_parent_content: 是否返回父块正文；默认只给父块定位信息，
+            即便开启也要对父块独立复核同文档关系与同一检索授权。
+
+    异常:
+        404: 块不存在、无权核验、已软删、非当前版本或关联不自洽（文案一致）。
+    """
+    try:
+        evidence = load_chunk_evidence(
+            session,
+            chunk_id,
+            current_user,
+            document_id=document_id,
+            include_parent_content=include_parent_content,
+        )
+    except EvidenceDeniedError:
+        # 失败关闭：统一文案与统一状态码，异常原因只留在服务端。
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=EVIDENCE_DENIED_MESSAGE,
+        ) from None
+    return _evidence_out(evidence)
 
 
 @router.post(

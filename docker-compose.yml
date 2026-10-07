@@ -4,7 +4,8 @@
 #
 # 默认使用 Postgres；如需快速本地试用 SQLite，可注释掉 app 的 DATABASE_URL 覆盖，
 # 并将 volumes 中挂载 ./data 以持久化 SQLite 文件。
-# 开发用 Milvus 是单容器，供显式 RAG_VECTOR_STORE=milvus 时连接。默认向量库仍是 local。
+# 默认向量库仍是 local（SQLite + BM25），只有显式 RAG_VECTOR_STORE=milvus 时
+# 才会连下面的开发用 Milvus。轻量部署形态是单容器 + SQLite + local，不需要本编排。
 
 services:
   db:
@@ -20,6 +21,53 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  # ── 开发用 Milvus：standalone 本体 + 外部 etcd + 外部 MinIO ────────────────
+  #
+  # 这里刻意不用 Milvus 自带的 embedded etcd：它在 Docker Desktop(WSL2) 上稳定
+  # 触发 SIGSEGV（v2.5.11 实测，崩溃点在 etcd.InitEtcdServer）：
+  #     SIGNAL CATCH BY NON-GO SIGNAL HANDLER
+  #     SIGNO: 11; SIGNAME: Segmentation fault; SI_CODE: 1; SI_ADDR: 0x18
+  # 加 security_opt: seccomp:unconfined 与命名卷均无法规避，单容器方案本地起不来。
+  # 因此改为官方推荐的「外部 etcd + 外部 MinIO」三件套。
+  #
+  # etcd 与 MinIO 不向宿主机发布端口，只在编排网络内可达。
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    volumes:
+      - etcddata:/etcd
+    command: >-
+      etcd
+      --advertise-client-urls=http://etcd:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - miniodata:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
 
   milvus:
     image: milvusdb/milvus:v2.5.11
@@ -27,23 +75,32 @@ services:
     security_opt:
       - seccomp:unconfined
     environment:
-      ETCD_USE_EMBED: "true"
-      ETCD_DATA_DIR: /var/lib/milvus/etcd
-      ETCD_CONFIG_PATH: /milvus/configs/embedEtcd.yaml
-      COMMON_STORAGETYPE: local
+      # 关闭内嵌 etcd，改用上面独立的 etcd 服务。
+      ETCD_USE_EMBED: "false"
+      ETCD_ENDPOINTS: etcd:2379
+      # 对象存储走 MinIO；密钥与 minio 服务保持一致，便于统一用环境变量覆盖。
+      COMMON_STORAGETYPE: minio
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - milvusdata:/var/lib/milvus
-      - ./deploy/milvus/embedEtcd.yaml:/milvus/configs/embedEtcd.yaml:ro
       - ./deploy/milvus/user.yaml:/milvus/configs/user.yaml:ro
     ports:
       - "${MILVUS_PORT:-19530}:19530"
       - "${MILVUS_HEALTH_PORT:-9091}:9091"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 30s
+      interval: 15s
       start_period: 90s
       timeout: 20s
-      retries: 3
+      retries: 10
+    restart: unless-stopped
 
   app:
     build: .
@@ -70,4 +127,6 @@ services:
 
 volumes:
   pgdata:
+  etcddata:
+  miniodata:
   milvusdata:

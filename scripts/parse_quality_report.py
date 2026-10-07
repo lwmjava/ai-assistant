@@ -103,6 +103,16 @@ FORBIDDEN_VERIFICATION_PHRASES = (
 REAL_OCR_PROVIDER_MODULE_PREFIX = "app.rag.ocr."
 REAL_OCR_PROVIDER_NAMES = frozenset({"tesseract", "cloud"})
 
+# provider 工厂的两个「引用点」。工厂侧与解析器侧是**两个可分别替换的名字绑定**：
+# 解析模块在 import 时把 get_ocr_provider 绑成了自己的模块属性，之后只替换工厂侧
+# 不会影响它，反之亦然。因此「解析器实际会用哪个 provider」必须由两侧解析结果
+# 一致来证明，不能只听产物自报（N-03）。
+FACTORY_OCR_BINDING = "app.rag.ocr.factory.get_ocr_provider"
+PARSER_OCR_BINDINGS = (
+    "app.rag.document_parsers.pdf.get_ocr_provider",
+    "app.rag.document_parsers.office.get_ocr_provider",
+)
+
 CONTENT_TYPE_BY_FORMAT = {
     "pdf": "application/pdf",
     "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -521,31 +531,58 @@ def scan_forbidden_phrases(report: dict) -> list[str]:
     return [phrase for phrase in FORBIDDEN_VERIFICATION_PHRASES if phrase in serialized]
 
 
+def _resolve_provider_binding(dotted: str) -> tuple[str | None, str | None]:
+    """解析 ``module.attr`` 指向的工厂函数并真的调用它。
+
+    返回 ``(provider 类路径, 错误)``，两者必有一个为 ``None``。解析失败也要如实
+    记录，不能当成「没替换」。
+    """
+    module_name, _, attr = dotted.rpartition(".")
+    try:
+        factory = getattr(importlib.import_module(module_name), attr)
+        provider = factory()
+    except Exception as exc:  # noqa: BLE001 - 解析失败同样是可观测事实
+        return None, f"{type(exc).__name__}: {exc}"
+    return f"{type(provider).__module__}.{type(provider).__qualname__}", None
+
+
 def probe_ocr_provider(ocr_provider: str) -> dict:
-    """经真实工厂解析一次 provider，返回其类路径与是否为真实 provider。
+    """解析 provider，返回类路径、解析器侧绑定与两侧一致性。
 
     用于让 ``ocr_probe`` 的 ``used_mock`` / ``path`` 从**实际生效的 provider 对象**
-    派生，而不是硬编码常量。
+    派生，而不是硬编码常量（M-02），也不听产物自报（N-03）。
+
+    N-03 的关键：工厂侧（``app.rag.ocr.factory``）与解析器侧（解析模块 import 时
+    绑到自己模块上的 ``get_ocr_provider``）是两个**可分别替换**的引用。两侧解析
+    结果一致，才是「解析器确实会用这个 provider」的证据；不一致说明有人只换了
+    一边，此时不得声明走了真实路径。
     """
     from app.core.config import settings
-    from app.rag.ocr.factory import get_ocr_provider
 
     original = (settings.RAG_OCR_ENABLED, settings.RAG_OCR_PROVIDER)
     settings.RAG_OCR_ENABLED = True
     settings.RAG_OCR_PROVIDER = ocr_provider
     try:
-        provider = get_ocr_provider()
-        provider_class = f"{type(provider).__module__}.{type(provider).__qualname__}"
+        provider_class, error = _resolve_provider_binding(FACTORY_OCR_BINDING)
+        bindings: dict[str, str | None] = {}
+        binding_errors: dict[str, str] = {}
+        for dotted in PARSER_OCR_BINDINGS:
+            resolved, binding_error = _resolve_provider_binding(dotted)
+            bindings[dotted] = resolved
+            if binding_error:
+                binding_errors[dotted] = binding_error
         return {
             "provider_class": provider_class,
-            "factory_provider_is_real": provider_class.startswith(REAL_OCR_PROVIDER_MODULE_PREFIX),
-            "factory_resolution_error": None,
-        }
-    except Exception as exc:  # noqa: BLE001 - 解析失败也要如实记录
-        return {
-            "provider_class": None,
-            "factory_provider_is_real": False,
-            "factory_resolution_error": f"{type(exc).__name__}: {exc}",
+            "factory_provider_is_real": bool(provider_class)
+            and provider_class.startswith(REAL_OCR_PROVIDER_MODULE_PREFIX),
+            "factory_resolution_error": error,
+            "parser_bindings": bindings,
+            "parser_binding_errors": binding_errors,
+            "inconsistent_bindings": sorted(
+                dotted for dotted, resolved in bindings.items() if resolved != provider_class
+            ),
+            "bindings_consistent": bool(provider_class)
+            and all(resolved == provider_class for resolved in bindings.values()),
         }
     finally:
         settings.RAG_OCR_ENABLED, settings.RAG_OCR_PROVIDER = original
@@ -563,20 +600,34 @@ def build_ocr_probe(results: list[dict], *, ocr_provider: str) -> dict:
         None,
     )
     observed_is_real = observed is None or observed in REAL_OCR_PROVIDER_NAMES
-    used_mock = not (probe["factory_provider_is_real"] and observed_is_real)
+    # N-03：双侧一致才说明解析器真的会用这个 provider；只有工厂侧或只有自报都不足为证。
+    used_mock = not (
+        probe["factory_provider_is_real"]
+        and observed_is_real
+        and probe["bindings_consistent"]
+    )
+    binding_summary = " / ".join(
+        sorted({resolved or "解析失败" for resolved in probe["parser_bindings"].values()})
+    )
     return {
         "enabled_for_ocr_samples": True,
         "provider": ocr_provider,
         "provider_class": probe["provider_class"],
+        "factory_provider_is_real": probe["factory_provider_is_real"],
         "factory_resolution_error": probe["factory_resolution_error"],
+        "parser_bindings": probe["parser_bindings"],
+        "parser_binding_errors": probe["parser_binding_errors"],
+        "inconsistent_bindings": probe["inconsistent_bindings"],
+        "bindings_consistent": probe["bindings_consistent"],
         "observed_provider": observed,
         "real_provider_module_prefix": REAL_OCR_PROVIDER_MODULE_PREFIX,
         "real_provider_names": sorted(REAL_OCR_PROVIDER_NAMES),
         "used_mock": used_mock,
         "path": (
-            f"app.rag.ocr.factory.get_ocr_provider -> {probe['provider_class']}"
+            f"{FACTORY_OCR_BINDING} -> {probe['provider_class']}"
+            f"｜解析模块绑定 -> {binding_summary}"
             if probe["provider_class"]
-            else "app.rag.ocr.factory.get_ocr_provider -> 解析失败"
+            else f"{FACTORY_OCR_BINDING} -> 解析失败"
         ),
     }
 
@@ -763,7 +814,10 @@ def write_json(report: dict, target: Path, *, force: bool = False) -> Path:
             f"或用 --json-path 指定新路径）"
         )
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # newline="\n"：仓库规范是 LF（core.eol=lf），避免 Windows 上写出 CRLF 导致
+    # 每次重生成都把整个文件算作改动（评审在 worktree 里也会被 autocrlf 伪影干扰）。
+    with target.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     return target
 
 

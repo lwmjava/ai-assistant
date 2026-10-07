@@ -306,10 +306,10 @@ manifest 期望强度。因此只删 manifest 期望片段（解析器一行没�
 ```
 
 断言（都断言三要素齐全）：
-- `tests/test_rag_033_parse_quality.py:838` `test_missing_corpus_file_failure_is_diagnosable`
+- `tests/test_rag_033_parse_quality.py:946` `test_missing_corpus_file_failure_is_diagnosable`
   —— 额外断言样本名出现在 `gate.checks.G1.violations`、`G1.passed is False`，并断言
   **「未损坏」「未加密」不出现在文案里**（N-04）
-- `tests/test_rag_033_parse_quality.py:860` `test_gap_not_reproduced_message_is_diagnosable`
+- `tests/test_rag_033_parse_quality.py:968` `test_gap_not_reproduced_message_is_diagnosable`
 
 ### 8.3 报告文件命名约定（L-04）
 
@@ -350,7 +350,7 @@ SKIPPED [1] tests\test_rag_033_parse_quality.py:746: 尚无落盘报告
 **CE-14（硬编码脚本路径）**：`tests/test_rag_033_parse_quality.py:28` 定义 `_REPO_ROOT`，
 `:29` `_SCRIPTS_DIR`，加载脚本时硬编码 `scripts/parse_quality_report.py`。
 整改：新增 `test_script_paths_exist_and_expose_symbols`
-（`tests/test_rag_033_parse_quality.py:885`），两层断言——
+（`tests/test_rag_033_parse_quality.py:993`），两层断言——
 
 1. **文件层**：`scripts/parse_quality_report.py` 与 `scripts/generate_parse_corpus.py`
    必须存在，且源码含 `def main(` / `def build_report(` / `def evaluate_gate(` /
@@ -390,20 +390,21 @@ SKIPPED [1] tests\test_rag_033_parse_quality.py:746: 尚无落盘报告
 
 **第 2 步（本次补上）** 做三件事：
 
-1. `test_used_mock_true_blocks_gate_via_g5c`（`tests/test_rag_033_parse_quality.py:730`）
+1. `test_used_mock_true_blocks_gate_via_g5c`（`tests/test_rag_033_parse_quality.py:838`）
    构造「初始 `meets_gate=True` → 经 `apply_report_level_checks` 置入 G5c 阻断」的场景，
    先断言前置状态为 `True`，再断言结论**翻转**成 `False`。这条是唯一能抓住「删掉派生行」
    的用例——因为真实语料报告本来就被 G4 阻断、`meets_gate` 恒为 `False`，删掉派生行
    从真实报告上看不出差别。
-2. `test_meets_gate_is_derived_from_checks`（`:744`）断言不变式
+2. `test_meets_gate_is_derived_from_checks`（`:852`）断言不变式
    `meets_gate == (not blocking_rules)` 且 `blocking_rules == [未通过的规则]`，
    堵住「两处各维护一份、各自漂移」。
-3. `test_gate_checks_cover_all_locked_rules`（`:752`）断言 `checks` 的键**恰好等于**
+3. `test_gate_checks_cover_all_locked_rules`（`:860`）断言 `checks` 的键**恰好等于**
    `GATE_RULE_ORDER`，少一条规则就是漏判。
 
 同时把派生从「只有出现违规才重算」改成**无条件重算**：`blocking_rules` 与 `meets_gate`
-始终由 `checks` 重新算出（`scripts/parse_quality_report.py:611-612`），并抽出
-`_derive_blocking_rules()` 作为唯一派生入口。
+始终由 `checks` 重新算出（`scripts/parse_quality_report.py:662-663`，在
+`apply_report_level_checks`:635 内），并抽出 `_derive_blocking_rules()`（`:442`）
+作为唯一派生入口。
 
 **变异验证（实测）**：
 
@@ -442,16 +443,79 @@ SKIPPED [1] tests\test_rag_033_parse_quality.py:746: 尚无落盘报告
 四条变异还原后 `sha256(scripts/parse_quality_report.py)=5ff19bb42355de8e…` 与变异前一致，
 **零残留**。
 
-`ocr_probe.used_mock` / `path` 由**实际生效的 provider 对象**派生：
+`ocr_probe.used_mock` / `path` 由**实际生效的 provider 对象**派生（M-02），且不再采信产物
+自报（N-03，见 §8.8）：
 
 - `provider_class`：经 `app.rag.ocr.factory.get_ocr_provider()` 真实解析一次得到的类路径；
+- `parser_bindings`：解析模块各自 import 进来的同名引用
+  （`app.rag.document_parsers.{pdf,office}.get_ocr_provider`）分别解析出的类路径；
+- `bindings_consistent`：工厂侧与解析模块侧**解析结果完全一致**；
 - `observed_provider`：扫描件样本实际产出的 `OcrResult.provider`（依赖缺失时为 `None`）；
-- `used_mock = not (provider_class 以 app.rag.ocr. 开头 and observed_provider 在
-  {tesseract, cloud} 白名单内或为 None)`。
+- `used_mock = not (provider_class 以 app.rag.ocr. 开头 and 双侧一致 and
+  observed_provider 在 {tesseract, cloud} 白名单内或为 None)`
 
-任一侧被换成假实现都会让 `used_mock=True`，并经 G5 阻断。当前真实运行下
-`provider_class = app.rag.ocr.tesseract.TesseractOcrProvider`、`observed_provider = None`
-（依赖缺失、未产出任何 OCR 文本）、`used_mock = False`。
+任一侧被换成假实现都会让 `used_mock=True`，并经 G5c 阻断。当前真实运行下
+`provider_class = app.rag.ocr.tesseract.TesseractOcrProvider`、两个解析模块绑定解析结果
+与之一致、`observed_provider = None`（依赖缺失、未产出任何 OCR 文本）、`used_mock = False`。
+
+### 8.8 N-03：provider 不能靠自报，必须由「工厂侧 + 解析模块侧」双侧一致派生
+
+**缺陷**：`ocr_probe` 唯一能说明「解析器实际用了哪个 provider」的字段是
+`observed_provider`，而它取自 `OcrResult.provider`——**产物里的一个字符串，谁产出谁就能填**。
+一个假 provider 只要把自己报成 `tesseract`，就能让 `used_mock=False`、G5c 通过、
+`blocking=[]`、`meets_gate=True`，报告照样声明走了真实路径。实测：
+
+```
+observed_provider = tesseract | used_mock = False
+G5c passed = True | blocking = [] | meets_gate = True
+```
+
+**根因归类**：与已按必修处理的 M-02、N-01 属于同一类——**把「被观测方自报的数据」当成证据**。
+M-02 修的是硬编码 `used_mock: False`，N-01 修的是独立维护的 `meets_gate`，N-03 修的是自报的
+`provider`。三者标准必须一致，否则前面三轮的工作会被这一条抵消。
+
+**为什么只看工厂侧不够**：工厂侧（`app.rag.ocr.factory.get_ocr_provider` 解析出的
+`provider_class`）是**独立派生的真证据**；但解析模块在 import 时把 `get_ocr_provider`
+绑成了**它自己的模块属性**（`app/rag/document_parsers/pdf.py:22`、`office.py:25`），
+与工厂侧可被分别替换。只换一边时，工厂侧解析结果仍然「看起来是真的」。
+
+**修法**：`probe_ocr_provider`（`scripts/parse_quality_report.py:549`）经
+`_resolve_provider_binding`（`:534`）把工厂侧与两个解析模块绑定**各解析一次并调用**，
+比对解析出的 provider 类路径：
+
+- 新增常量 `FACTORY_OCR_BINDING`（`:110`）与 `PARSER_OCR_BINDINGS`（`:111`）；
+- `used_mock` 的判定加入 `bindings_consistent`（`:605-607`）；
+- `ocr_probe` 增加 `parser_bindings` / `parser_binding_errors` / `inconsistent_bindings` /
+  `bindings_consistent` / `factory_provider_is_real` 五个字段（`:616-621`），
+  不一致时 `inconsistent_bindings` 直接点名哪个引用被换了。
+
+**反例（必须挡住）**：
+
+| 用例 | 行号 | 场景 |
+|---|---|---|
+| `test_used_mock_is_true_when_only_parser_binding_is_replaced` | `:769` | 只换解析模块侧（工厂侧仍是真 provider，光看工厂侧会误判） |
+| `test_parser_binding_divergence_blocks_gate_end_to_end` | `:792` | 端到端：单侧替换必须让 G5c 不通过、`meets_gate=False`，不只是个字段 |
+| `test_used_mock_is_true_when_factory_provider_is_faked` | `:737` | 只换工厂侧（原有 M-02 用例，补断言 `bindings_consistent is False`） |
+
+**正例（不得误杀真实路径）**：
+
+| 用例 | 行号 | 场景 |
+|---|---|---|
+| `test_consistent_switch_to_another_real_provider_keeps_used_mock_false` | `:808` | 经配置双侧一致切到 `cloud`（`OpenAiVisionOcrProvider`）→ `used_mock=False` |
+| `test_both_sides_rebound_to_same_real_provider_is_not_a_mock` | `:817` | 工厂侧与两个解析模块绑定一致地重绑定到同一个真实 provider → `used_mock=False` |
+
+只有反例没有正例等于「把真实路径一起误杀」，所以两类都在。
+
+**变异验证（实测，每条都先 `assert mutated != text` 自证改到字节）**：
+
+| 编号 | 变异 | 字节数变化 | 变红条数 | 变红用例 |
+|---|---|---|---|---|
+| N-03-a | `used_mock` 去掉 `bindings_consistent` 项（退回 N-03 的洞） | 30732 → 30691 | **2** | `test_used_mock_is_true_when_only_parser_binding_is_replaced`、`test_parser_binding_divergence_blocks_gate_end_to_end` |
+| N-03-b | `bindings_consistent` 恒为 `True` | 30732 → 30671 | **3** | 上述 2 条 + `test_used_mock_is_true_when_factory_provider_is_faked` |
+| N-03-c | `bindings_consistent` 恒为 `False`（把真实路径一起误杀） | 30732 → 30672 | **6** | `test_consistent_switch_to_another_real_provider_keeps_used_mock_false`、`test_both_sides_rebound_to_same_real_provider_is_not_a_mock`、`test_ocr_probe_is_derived_from_real_provider`、`test_gate_g5c_passes_on_real_provider_path`、`test_ocr_report_never_claims_ocr_verified`、`test_committed_report_matches_script_output` |
+
+N-03-c 同时打掉两条正例，证明正例不是摆设。还原后
+`sha256(scripts/parse_quality_report.py)=7a293414406fec14…` 三次均一致，**零残留**。
 
 ---
 
@@ -479,7 +543,7 @@ SKIPPED [1] tests\test_rag_033_parse_quality.py:746: 尚无落盘报告
 | `evals/corpus/parsing/*` | 新增：13 个样本 + `manifest.json` |
 | `scripts/parse_quality_report.py` | 新增：评估报告脚本（含门禁判定，当前 **gate.v3**） |
 | `evals/reports/parse-quality-<日期>-gate-v3.json` | 新增：首份报告（非冻结基线），文件名带门禁版本 |
-| `tests/test_rag_033_parse_quality.py` | 新增：67 条测试 |
+| `tests/test_rag_033_parse_quality.py` | 新增：71 条测试 |
 
 未改动 `app/rag/**` 下的任何产品代码；未改 `.env`；未改 `tasks.yaml` 卡片状态
 （卡片状态与 `progress` / `acceptance_record` 由批次负责人在关闭时统一处理）。
@@ -615,3 +679,19 @@ B 会连带 43 条变红，因为该符号被下游普遍依赖。）
 两条都命中 `test_measured_failure_rate_is_guarded_by_constructive_case`。
 还原后 `sha256(scripts/parse_quality_report.py)=5ff19bb42355de8e…` 与变异前一致，**零残留**。
 专项测试 66 → **67 passed**。
+
+### 10.6 N-03：provider 从自报改为双侧一致派生（2026-10-07，卡片关闭后按裁定补修）
+
+| 文件 | 变更 |
+|---|---|
+| `scripts/parse_quality_report.py` | 新增 `FACTORY_OCR_BINDING`（`:110`）/ `PARSER_OCR_BINDINGS`（`:111`）/ `_resolve_provider_binding()`（`:534`）；`probe_ocr_provider`（`:549`）改为工厂侧与两个解析模块绑定**各解析一次并调用**后比对；`used_mock` 判定加入 `bindings_consistent`（`:605-607`）；`ocr_probe` 增加 `parser_bindings` / `parser_binding_errors` / `inconsistent_bindings` / `bindings_consistent` / `factory_provider_is_real`（`:616-621`） |
+| `evals/reports/parse-quality-20261007-gate-v3.json` | 随 `ocr_probe` 新增字段重新生成（`--force`） |
+| `tests/test_rag_033_parse_quality.py` | 67 → 71 条：新增解析模块侧单侧替换反例（`:769`）、端到端门禁阻断反例（`:792`）、配置切换正例（`:808`）、双侧一致重绑定正例（`:817`）；`test_ocr_probe_is_derived_from_real_provider`（`:721`）与 `test_used_mock_is_true_when_factory_provider_is_faked`（`:737`）补 `bindings_consistent` 断言 |
+| `docs/plans/implementation_rag_033_parse_quality.md` | 新增 8.8（N-03 缺陷、根因归类、修法、正反例、变异表）；§8.2 的 `used_mock` 派生说明同步为「双侧一致」版本 |
+
+**门禁未动**：版本仍 `gate.v3`，`GATE_RULE_ORDER` 未改，三个门槛值未改，
+`meets_gate=False` / `blocking_rules=['G4']` 与改动前一致——只把一个字段从自报改成派生，
+规则集没有变化，因此不构成版本升级。
+
+变异验证表见 §8.8（三条，均先 `assert mutated != text` 自证改到字节）。
+专项测试 **71 passed**。

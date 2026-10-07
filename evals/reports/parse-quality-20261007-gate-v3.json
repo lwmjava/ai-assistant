@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T18:30:29+08:00",
+  "generated_at": "2026-10-07T20:04:04+08:00",
   "card": "RAG-033 多格式解析与 OCR 质量基线",
   "corpus_dir": "evals\\corpus\\parsing",
   "corpus_version": "rag-033-parsing-corpus-v1",
@@ -10,7 +10,15 @@
     "enabled_for_ocr_samples": true,
     "provider": "tesseract",
     "provider_class": "app.rag.ocr.tesseract.TesseractOcrProvider",
+    "factory_provider_is_real": true,
     "factory_resolution_error": null,
+    "parser_bindings": {
+      "app.rag.document_parsers.pdf.get_ocr_provider": "app.rag.ocr.tesseract.TesseractOcrProvider",
+      "app.rag.document_parsers.office.get_ocr_provider": "app.rag.ocr.tesseract.TesseractOcrProvider"
+    },
+    "parser_binding_errors": {},
+    "inconsistent_bindings": [],
+    "bindings_consistent": true,
     "observed_provider": null,
     "real_provider_module_prefix": "app.rag.ocr.",
     "real_provider_names": [
@@ -18,7 +26,7 @@
       "tesseract"
     ],
     "used_mock": false,
-    "path": "app.rag.ocr.factory.get_ocr_provider -> app.rag.ocr.tesseract.TesseractOcrProvider"
+    "path": "app.rag.ocr.factory.get_ocr_provider -> app.rag.ocr.tesseract.TesseractOcrProvider｜解析模块绑定 -> app.rag.ocr.tesseract.TesseractOcrProvider"
   },
   "dependencies": {
     "modules": {

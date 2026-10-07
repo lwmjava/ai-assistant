@@ -719,7 +719,7 @@ def test_gate_g6_passes_on_current_corpus(report: dict) -> None:
 
 
 def test_ocr_probe_is_derived_from_real_provider(report: dict) -> None:
-    """真实运行下 provider_class 必须落在 app.rag.ocr.* 白名单内。"""
+    """真实运行下 provider_class 必须落在 app.rag.ocr.* 白名单内，且两侧一致。"""
     probe = report["ocr_probe"]
     assert probe["used_mock"] is False
     assert probe["provider_class"] == "app.rag.ocr.tesseract.TesseractOcrProvider"
@@ -727,10 +727,19 @@ def test_ocr_probe_is_derived_from_real_provider(report: dict) -> None:
     assert probe["real_provider_module_prefix"] == "app.rag.ocr."
     assert probe["observed_provider"] is None  # 依赖缺失，未产出任何 OCR 文本
     assert "app.rag.ocr.tesseract" in probe["path"]
+    # N-03：工厂侧与解析模块侧必须解析出同一个类
+    assert probe["bindings_consistent"] is True
+    assert probe["inconsistent_bindings"] == []
+    assert set(probe["parser_bindings"]) == set(_report_mod.PARSER_OCR_BINDINGS)
+    assert set(probe["parser_bindings"].values()) == {probe["provider_class"]}
 
 
 def test_used_mock_is_true_when_factory_provider_is_faked(monkeypatch: pytest.MonkeyPatch) -> None:
-    """工厂被换成假 provider 时，不得再声明走了真实路径。"""
+    """工厂被换成假 provider 时，不得再声明走了真实路径。
+
+    这也是 N-03 的**工厂侧单侧替换**反例：解析模块侧的绑定没动，因此两侧必然
+    解析出不同的类，一致性判定必须判为不一致。
+    """
     class _FakeProvider:
         def extract_pdf_text(self, file_bytes: bytes):  # pragma: no cover - 不会被调用
             raise AssertionError("不应调用假 provider 的 OCR")
@@ -739,6 +748,8 @@ def test_used_mock_is_true_when_factory_provider_is_faked(monkeypatch: pytest.Mo
     probe = _report_mod.build_ocr_probe([], ocr_provider="tesseract")
     assert probe["used_mock"] is True
     assert probe["provider_class"].startswith("app.rag.ocr.") is False
+    assert probe["bindings_consistent"] is False
+    assert probe["inconsistent_bindings"] == sorted(_report_mod.PARSER_OCR_BINDINGS)
 
 
 def test_used_mock_is_true_when_observed_provider_is_faked() -> None:
@@ -747,6 +758,81 @@ def test_used_mock_is_true_when_observed_provider_is_faked() -> None:
     probe = _report_mod.build_ocr_probe(results, ocr_provider="tesseract")
     assert probe["observed_provider"] == "fake"
     assert probe["used_mock"] is True
+
+
+# ---------------------------------------------------------------------------
+# N-03：provider 不能靠产物自报，必须由「工厂侧 + 解析模块侧」双侧一致来派生
+# 反例（单侧替换必须挡住）+ 正例（双侧一致不得误杀真实路径），两者都要有。
+# ---------------------------------------------------------------------------
+
+
+def test_used_mock_is_true_when_only_parser_binding_is_replaced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """N-03 反例 A：只换解析模块侧绑定，工厂侧没动 → 必须判为不一致。"""
+    class _FakeProvider:
+        def extract_pdf_text(self, file_bytes: bytes):  # pragma: no cover - 不会被调用
+            raise AssertionError("不应调用假 provider 的 OCR")
+
+    monkeypatch.setattr(
+        "app.rag.document_parsers.pdf.get_ocr_provider", lambda: _FakeProvider()
+    )
+    probe = _report_mod.build_ocr_probe([], ocr_provider="tesseract")
+    # 工厂侧仍是真 provider，光看工厂侧会误判为「走了真实路径」
+    assert probe["provider_class"] == "app.rag.ocr.tesseract.TesseractOcrProvider"
+    assert probe["factory_provider_is_real"] is True
+    # 只有双侧比对能发现解析模块侧被换了
+    assert probe["bindings_consistent"] is False
+    assert probe["inconsistent_bindings"] == [
+        "app.rag.document_parsers.pdf.get_ocr_provider"
+    ]
+    assert probe["used_mock"] is True
+
+
+def test_parser_binding_divergence_blocks_gate_end_to_end(monkeypatch: pytest.MonkeyPatch) -> None:
+    """N-03 反例 B：端到端——单侧替换必须让门禁真的拦下，不只是个字段。"""
+    class _FakeProvider:
+        def extract_pdf_text(self, file_bytes: bytes):  # pragma: no cover - 不会被调用
+            raise OSError("不应调用假 provider 的 OCR")
+
+    monkeypatch.setattr(
+        "app.rag.document_parsers.pdf.get_ocr_provider", lambda: _FakeProvider()
+    )
+    polluted = _report_mod.build_report(ocr_provider="tesseract")
+    assert polluted["ocr_probe"]["used_mock"] is True
+    assert polluted["gate"]["checks"]["G5c"]["passed"] is False
+    assert "G5c" in polluted["gate"]["blocking_rules"]
+    assert polluted["gate"]["meets_gate"] is False
+
+
+def test_consistent_switch_to_another_real_provider_keeps_used_mock_false() -> None:
+    """N-03 正例 A：双侧一致地切到另一个真实 provider，不得误判为 mock。"""
+    probe = _report_mod.build_ocr_probe([], ocr_provider="cloud")
+    assert probe["provider_class"] == "app.rag.ocr.openai_vision.OpenAiVisionOcrProvider"
+    assert probe["bindings_consistent"] is True
+    assert probe["inconsistent_bindings"] == []
+    assert probe["used_mock"] is False
+
+
+def test_both_sides_rebound_to_same_real_provider_is_not_a_mock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """N-03 正例 B：两侧一致地重绑定到另一个真实 provider，不算 mock（不得误杀）。"""
+
+    def _cloud_factory():
+        from app.rag.ocr.openai_vision import OpenAiVisionOcrProvider
+
+        return OpenAiVisionOcrProvider.from_settings()
+
+    monkeypatch.setattr("app.rag.ocr.factory.get_ocr_provider", _cloud_factory)
+    for dotted in _report_mod.PARSER_OCR_BINDINGS:
+        monkeypatch.setattr(dotted, _cloud_factory)
+
+    probe = _report_mod.build_ocr_probe([], ocr_provider="tesseract")
+    assert probe["provider_class"] == "app.rag.ocr.openai_vision.OpenAiVisionOcrProvider"
+    assert probe["bindings_consistent"] is True
+    assert probe["inconsistent_bindings"] == []
+    assert probe["used_mock"] is False
 
 
 def test_used_mock_true_blocks_gate_via_g5c() -> None:

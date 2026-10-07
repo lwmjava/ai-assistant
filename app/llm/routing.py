@@ -25,7 +25,11 @@ class LLMUnavailableError(RuntimeError):
 
 
 def is_failover_error(exc: BaseException) -> bool:
-    """超时、连不上，以及 401/403/408/429/5xx 才换下一家。400 不换。"""
+    """超时、连不上，以及 401/403/408/429/5xx 才换下一家。400 不换。
+
+    预算超限（``ContextBudgetExceeded``）既不是网络错误也不是对方的状态码，
+    换家重试只会拿另一家的窗口再判一次同样的 payload，属于白跑，因此不换。
+    """
     if isinstance(exc, httpx.HTTPStatusError):
         code = exc.response.status_code
         return code in _FAILOVER_STATUS or code >= 500

@@ -24,6 +24,7 @@ from app.agents.tools.base import Tool, ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
+from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetExceeded
 from app.llm.factory import get_llm_provider
 from app.memory.base import ConversationMemory
 from app.memory.manager import MemoryManager
@@ -56,6 +57,8 @@ logger = logging.getLogger(__name__)
 # 送入管线的历史轮次上限，避免上下文过长。
 _HISTORY_LIMIT = 20
 HISTORY_REDACTED = "（历史内容已省略）"
+# 预算超限时给用户的固定提示。异常原文（计数数字、模型名、原因码）不外传。
+BUDGET_EXCEEDED_REPLY = BUDGET_EXCEEDED_MESSAGE
 
 
 def sanitize_history_text(text: str) -> str:
@@ -299,16 +302,21 @@ class ChatService:
         trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
         fast = self._fast_route(safe_message)
-        if fast is not None:
-            async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx):
-                pass
+        try:
+            if fast is not None:
+                async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx):
+                    pass
+                result = state
+            else:
+                pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
+                if isinstance(pipeline, AgentPipeline):
+                    pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
+                # 7. 执行
+                result = await pipeline.run(state)
+        except ContextBudgetExceeded:
+            # 预算超限不是故障：给固定提示并把这次回复照常落库，不抛给路由。
             result = state
-        else:
-            pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
-            if isinstance(pipeline, AgentPipeline):
-                pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
-            # 7. 执行
-            result = await pipeline.run(state)
+            result.answer = BUDGET_EXCEEDED_REPLY
         # 8. 收集追踪
         self._collect_trace(trace)
         # 9. 安全治理：输出过滤
@@ -406,6 +414,11 @@ class ChatService:
         except (GeneratorExit, asyncio.CancelledError):
             stopped = True
             raise
+        except ContextBudgetExceeded:
+            # 预算超限时给固定提示，异常原文不外传；补一个 done 让流有终态。
+            state.answer = BUDGET_EXCEEDED_REPLY
+            yield AgentEvent("error", BUDGET_EXCEEDED_REPLY)
+            yield AgentEvent("done", BUDGET_EXCEEDED_REPLY)
         finally:
             if stopped and not assistant_saved:
                 # 只用已经交给页面的 token。不用 state.answer，避免把未展示的后文写进去。

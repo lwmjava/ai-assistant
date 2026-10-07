@@ -35,6 +35,7 @@ from app.agents.prompts import (
 from app.agents.tools.base import ToolIntent, ToolRegistry, inspect_tool_call
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetExceeded
 from app.llm.routing import LLMUnavailableError
 from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_call
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
@@ -55,9 +56,15 @@ _PREFLIGHT_WORD = re.compile(r"\s*(YES|NO)\b", re.IGNORECASE)
 
 
 def _failure_text(exc: Exception) -> str:
-    """全部模型都不可用时用固定句子。其它失败仍用原来的笼统提示。"""
+    """全部模型都不可用时用固定句子。其它失败仍用原来的笼统提示。
+
+    预算超限单独给一句能照做的提示，但只给固定文案：异常原文里的计数数字、
+    模型名与原因码都不出现在用户看到的句子里。
+    """
     if isinstance(exc, LLMUnavailableError):
         return str(exc)
+    if isinstance(exc, ContextBudgetExceeded):
+        return BUDGET_EXCEEDED_MESSAGE
     return _GENERIC_FAILURE
 
 

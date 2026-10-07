@@ -380,6 +380,11 @@ docker compose up -d --build
 | `LLM_INTENT_API_KEY` | 意图分流专用密钥。留空则和对话用同一家 | — |
 | `LLM_INTENT_BASE_URL` | 意图分流的接口地址。留空则沿用对话地址 | — |
 | `LLM_INTENT_MODEL` | 意图分流的模型名。留空则沿用对话模型 | — |
+| `LLM_CAPABILITY_GUARD_ENABLED` | 每次真实调用前核对上下文预算。关闭后回到 RAG-028 之前的行为 | `true` |
+| `LLM_CAPABILITY_DECLARED` | 运营者显式声明的窗口与最大输出（`model=窗口:最大输出`）。未知模型靠它放行 | — |
+| `LLM_CAPABILITY_DECLARED_SOURCE` | 上面声明的依据来源。与声明同时填写才生效 | — |
+| `LLM_BUDGET_SAFETY_MARGIN` | 预算余量，覆盖消息框架与工具描述的计数误差 | `512` |
+| `LLM_OUTPUT_RESERVE_TOKENS` | 未显式给出 `max_tokens` 时的输出预留 | `2048` |
 | `RAG_ENABLED` | 是否将检索上下文注入对话。无真实 Embedding 时，开发环境用 Mock，只能证明链路 | `true` |
 | `RAG_DROP_INJECTED_CHUNKS` | 检索后剔除高置信度注入分块 | `true` |
 | `RAG_RETRIEVAL_CANDIDATE_MULTIPLIER` | 检索过取倍数，供剔除后补位 | `3` |
@@ -421,6 +426,50 @@ docker compose up -d --build
 | `CORS_ORIGINS` | 允许的跨域来源（前后端分离部署时必填） | `*` |
 
 完整配置项见 [`.env.example`](.env.example)。
+
+## 模型能力契约与预算护栏（RAG-028）
+
+每次真实调用发出之前，护栏核对一条不等式：
+
+```
+实际 payload + 输出预留 + 余量 ≤ 已登记的上下文窗口
+```
+
+payload 用**本次真正要发的 messages** 现算，所以工具返回、自纠错（critique）轮次、历史和系统提示都天然被计入，不需要每个调用方各自统计一遍。超过预算时请求**不会发出**，调用方收到固定提示「本次请求内容超出模型已登记的上下文预算，请缩短输入或拆分后重试。」，异常里的计数数字与模型名不会出现在用户看到的句子里。
+
+### 内置已核对模型表
+
+只登记核对过厂商公开依据的条目，登记时同时写下来源 URL 与核对日期（2026-10-07 实取）：
+
+| 部署 | 模型 | 上下文窗口 | 最大输出 | 依据 |
+|------|------|-----------|---------|------|
+| `api.openai.com` | `gpt-4o-mini` | 128000 | 16384 | <https://platform.openai.com/docs/models/gpt-4o-mini> |
+| `api.deepseek.com` | `deepseek-flash` | 1000000 | 384000 | <https://api-docs.deepseek.com/quick_start/pricing> |
+| `api.deepseek.com` | `deepseek-v4-pro` | 1000000 | 384000 | <https://api-docs.deepseek.com/quick_start/pricing> |
+
+部署参与身份：同一个模型名在自建网关上跑，不等于厂商官方接口上的同一模型，窗口不能跟着模型名一起被借走。
+
+### 为什么 `deepseek-chat` 需要声明
+
+`deepseek-chat` 是仓库代码里的默认模型名，但它已不在厂商在售模型表内，各来源给出的窗口数字互相矛盾。本仓库**没有**登记它的能力——不去猜一个上限。继续使用它，必须由运营者显式声明：
+
+```dotenv
+LLM_CAPABILITY_DECLARED=deepseek-chat=65536:8192
+LLM_CAPABILITY_DECLARED_SOURCE=厂商文档 URL 或内部依据
+```
+
+声明与依据来源**缺一即视为未批准**，护栏照旧拒绝。数值由运营者给，不由代码替他猜；声明条目的计数方法会被标成 `operator-declared`，不冒充已核对条目。
+
+### 计数方法与局限
+
+官方计数器优先，不可用时退回经校准的保守估算，用哪种都会写进能力契约：
+
+- 官方计数器：只在 OpenAI 官方域名下认 `tiktoken`。装上 `tiktoken` 后自动优先使用，无需改代码（本仓库不强制安装这个依赖）。
+- 保守估算：UTF-8 字节数 + 每条消息的框架开销。字节数一般 ≥ token 数（一个汉字 3 字节 ≥ 1 token），因此**偏保守**——宁可拦下刚好够用的请求，也不放行超限请求。**这不是精确 tokenizer 输出。**
+
+### 关闭护栏
+
+`LLM_CAPABILITY_GUARD_ENABLED=false` 会完全跳过核对，行为与 RAG-028 之前一致。仅在排查护栏本身时临时关闭。
 
 ## 备份与恢复
 

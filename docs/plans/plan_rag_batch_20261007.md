@@ -108,18 +108,26 @@ cd frontend && npm run typecheck && npm run build
 
 | 卡 | 状态 | 备注 |
 |---|---|---|
-| RAG-026 | pending | |
-| RAG-024 | pending | |
-| RAG-037 | pending | |
-| RAG-034 | pending | |
-| RAG-032 | pending | |
+| RAG-026 | verified | commit `85bd20d`；检索按鉴权主体有效读范围过滤 |
+| RAG-024 | verified | commit `42bf7e5` + `5cce269`（复审补修：外部向量库探测移入 try、补偿登记尽力而为） |
+| RAG-037 | running | commit `cfafcdb`（第一轮）+ `58da8bf`（第二轮闭合高危项）；独立复审进行中 |
+| RAG-034 | running | 交付主体 `docs/evaluations/rag-v0.1-审核链与分级定义.md` + `evals/VERSIONS.md` + Gold 24→21；独立审查进行中 |
+| RAG-032 | pending | 只读调研完成：ADR-0008 已 Accepted，属实现卡；缺统一索引身份抽象、向量库无身份登记、Milvus `add()` 在 app/ 下无调用点 |
 | RAG-028 | pending | |
-| RAG-033 | pending | |
+| RAG-033 | pending | 依赖 `pytesseract` / `pdfplumber` 未安装，中文 OCR 无真实依赖可证 |
 | RAG-042 | pending | |
-| RAG-015 | pending | Milvus 真实验收预计未验证 |
-| RAG-027 | pending | |
+| RAG-015 | pending | Milvus 真实验收预计未验证（无 docker、milvus-lite 与锁定 pymilvus 不兼容） |
+| RAG-027 | pending | ADR-0007 已批准，属实现卡 |
 | RAG-029 | pending | |
 | RAG-036 | pending | Milvus 真实验收预计未验证 |
 | RAG-038 | pending | |
 | RAG-030 | pending | |
-| RAG-035 | pending | 真实模型调用需登记费用上限 |
+| RAG-035 | pending | 真实模型调用需登记费用上限，预计需升级授权 |
+
+### 批次内新增环境事实
+
+| 项 | 实测 | 影响 |
+|---|---|---|
+| 全量 pytest 基线 | 截至 `58da8bf`：**783 passed / 2 skipped / 0 failed**（799s） | 后续卡以此为对照；数字只在用户本机终端重采才可信 |
+| 沙箱 heredoc 怪癖 | Bash `<<'EOF'` 传给 `python -` 时，**正则里的 `\s` 会被吃掉**（`r'\s'` 实际得到 `s`），导致匹配静默失败 | 在 heredoc 里写 Python 正则要避免反斜杠，改用字符串切分或写临时脚本文件 |
+| 日志事件名映射 | `app/security/log_redaction.py` 的 `_minimize_content_record` 对 `app.agents.pipeline` 且带异常的日志，未命中 `_PIPELINE_FAILURE_EVENTS` 时统一落 `agent_pipeline_failed` | 新增管线日志要同步登记事件名，否则不同故障混成同一个事件 |

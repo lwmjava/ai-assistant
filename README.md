@@ -403,6 +403,9 @@ docker compose up -d --build
 | `RAG_OCR_MODEL` | 云 OCR 模型名（优先于 LLM 配置） | — |
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |
 | `EMBEDDING_BATCH_SIZE` | 单次嵌入请求的文本条数（DashScope v3/v4 上限 10） | `10` |
+| `EMBEDDING_INDEX_VERSION` | 向量索引版本。换模型或改归一化/度量时递增，配合重建脚本切换 | `1` |
+| `EMBEDDING_NORMALIZATION` | 写入前的向量归一化：`l2` / `none`，属索引身份的一部分 | `l2` |
+| `EMBEDDING_METRIC` | 相似度度量：`cosine` / `ip` / `l2`，属索引身份的一部分 | `cosine` |
 | `MCP_ENABLED` | 是否启用 MCP 客户端 | `false` |
 | `MCP_SERVERS` | MCP 服务器清单（JSON 数组） | — |
 | `WORKFLOW_ENABLED` | 是否启用工作流引擎 | `false` |

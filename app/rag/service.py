@@ -25,7 +25,13 @@ from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.core.json_logging import JsonLogFormatter
-from app.models.rag import Document, DocumentChunk, DocumentIngestionSnapshot, ImportJob
+from app.models.rag import (
+    Document,
+    DocumentChunk,
+    DocumentIngestionSnapshot,
+    EmbeddingIndex,
+    ImportJob,
+)
 from app.models.user import User
 from app.rag.access import (
     ReadScope,
@@ -53,6 +59,8 @@ from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
 from app.rag.import_trace import ImportTraceError
+from app.rag.index_identity import identity_from_provider
+from app.rag.index_registry import resolve_write_index
 from app.rag.retrieval_guard import drop_injected_chunks
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
@@ -247,6 +255,8 @@ class RAGService:
             tokenizer=self._tokenizer,
             rrf_k=settings.RAG_HYBRID_RRF_K,
         )
+        # 本次写入归属的索引；惰性解析，读取面不需要它。
+        self._index: EmbeddingIndex | None = None
 
     def _resolve_backend(self, backend: str | None = None) -> RagBackend:
         """按请求级覆盖或默认配置返回后端实例。"""
@@ -425,6 +435,7 @@ class RAGService:
                     strategy=strategy_name,
                     chunk_metadata=json.dumps(metadata, ensure_ascii=False) if metadata else None,
                     parent_id=parent_id,
+                    index_id=self._write_index().id,
                 )
                 if metadata.get("kind") == "parent":
                     parent_id_map[str(metadata.get("parent_key"))] = row_id
@@ -606,6 +617,17 @@ class RAGService:
             text = fh.read()
         source = title or os.path.basename(path)
         return await self.ingest_text(text, source, source, user_id)
+
+    def _write_index(self) -> EmbeddingIndex:
+        """本次写入所属的向量索引；身份不符时拒绝写入（ADR-0008）。
+
+        结果按实例缓存：一次摄取只核对一次，不每个分块查一遍库。
+        """
+        if self._index is None:
+            self._index = resolve_write_index(
+                self.session, identity_from_provider(self._embedding), commit=False
+            )
+        return self._index
 
     async def _embed_texts(self, texts: list[str]) -> list[list[float]]:
         """调用嵌入接口；分批由提供商按厂商上限处理，这里不触碰数据库事务。"""
@@ -1062,6 +1084,7 @@ class RAGService:
                 strategy=strategy_name,
                 chunk_metadata=json.dumps(metadata, ensure_ascii=False) if metadata else None,
                 parent_id=parent_id,
+                index_id=self._write_index().id,
             )
             if metadata.get("kind") == "parent":
                 parent_id_map[str(metadata.get("parent_key"))] = row_id

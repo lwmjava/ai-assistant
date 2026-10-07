@@ -22,6 +22,8 @@ from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
 from app.rag.access import ReadScope
 from app.rag.effective_date import document_version_status, ensure_utc
+from app.rag.index_identity import IndexIdentityError
+from app.rag.index_registry import resolve_read_index
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
 logger = logging.getLogger(__name__)
@@ -153,6 +155,20 @@ class LocalVectorStore(VectorStore):
             .where(DocumentChunk.tenant_id == tenant_id)
         )
         stmt = stmt.where(col(Document.deleted_at).is_(None))
+        # 索引身份过滤（ADR-0008）：只检索当前生效索引名下的分块。
+        # 身份未知的历史分块（index_id 为 NULL）不参与，也不静默跳过——
+        # 它们的数量由 health 暴露，需要人工登记或重建后才能纳入。
+        read_index = resolve_read_index(self.session, "local")
+        if read_index is None:
+            # 尚未登记任何索引：保持未启用索引治理时的行为，避免存量库整体失检索。
+            logger.debug("no_active_embedding_index backend=local tenant=%s", tenant_id)
+        else:
+            if len(query_embedding) != read_index.dim:
+                raise IndexIdentityError(
+                    f"查询向量维度 {len(query_embedding)} 与生效索引 {read_index.name} "
+                    f"登记的 dim={read_index.dim} 不一致，拒绝混用"
+                )
+            stmt = stmt.where(col(DocumentChunk.index_id) == read_index.id)
         # 鉴权主体的有效读范围必须在取候选时就生效，否则他人文档会先占位再被丢弃。
         if read_scope is not None and read_scope.uploader_id is not None:
             stmt = stmt.where(col(Document.user_id) == read_scope.uploader_id)
@@ -167,7 +183,9 @@ class LocalVectorStore(VectorStore):
         if not rows:
             return []
 
-        expected_dim = len(query_embedding)
+        # 以索引登记的维度为准，而不是以本次查询向量的长度为准：
+        # 同维异模型时长度相同，按长度判断根本发现不了混用。
+        expected_dim = read_index.dim if read_index is not None else len(query_embedding)
         embeddings: list[list[float]] = []
         tokens: list[list[str]] = []
         valid: list[DocumentChunk] = []

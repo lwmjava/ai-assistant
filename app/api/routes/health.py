@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.llm.factory import llm_availability
 from app.models.rag import DocumentChunk
+from app.rag.index_registry import active_index, legacy_chunk_count
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,44 @@ def _check(probe) -> str:
         return "error"
 
 
+def _embedding_index_view() -> dict:
+    """当前生效索引的身份与存量状态。
+
+    展示只是可观测手段，**不是校验**：阻断混用发生在写入与检索的核对点，
+    不在这里。失败时返回 unknown 而不是让整个 health 挂掉。
+    """
+    view = {
+        "status": "unknown",
+        "index_version": settings.EMBEDDING_INDEX_VERSION,
+        "model": settings.EMBEDDING_MODEL,
+        "dim": settings.EMBEDDING_DIM,
+        "normalization": settings.EMBEDDING_NORMALIZATION,
+        "metric": settings.EMBEDDING_METRIC,
+        "legacy_chunks": None,
+    }
+    try:
+        with Session(engine) as session:
+            index = active_index(session)
+            if index is not None:
+                view.update(
+                    {
+                        "status": index.status,
+                        "name": index.name,
+                        "provider": index.provider,
+                        "model": index.model,
+                        "dim": index.dim,
+                        "index_version": index.index_version,
+                        "normalization": index.normalization,
+                        "metric": index.metric,
+                        "fingerprint": index.identity_key,
+                    }
+                )
+            view["legacy_chunks"] = legacy_chunk_count(session)
+    except Exception as exc:  # noqa: BLE001 — 展示层故障不应把 health 判死
+        logger.warning("embedding index view failed: %s", type(exc).__name__)
+    return view
+
+
 @router.get("/health")
 def health_check() -> JSONResponse:
     """报告进程、数据库与当前向量库是否连通。任一依赖失败则整体不是 ok。"""
@@ -88,7 +127,11 @@ def health_check() -> JSONResponse:
         "env": settings.ENV,
         "checks": {
             "database": {"status": database},
-            "vector_store": {"status": vector_status, "backend": backend},
+            "vector_store": {
+                "status": vector_status,
+                "backend": backend,
+                "embedding_index": _embedding_index_view(),
+            },
             "llm": {"mode": llm_availability()},
         },
     }

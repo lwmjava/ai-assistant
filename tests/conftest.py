@@ -45,6 +45,27 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _reset_embedding_index_registry():
+    """清空向量索引登记表，避免跨用例泄漏。
+
+    索引登记是**全局**状态：一旦某个用例摄取过文档，就会登记并激活一个索引，
+    之后的检索只读该索引名下的分块。而不同用例故意使用不同维度的 Mock 嵌入，
+    共享测试库时会互相冲突（后一个用例的写入被判为身份不符而拒绝）。
+    这在生产不是问题——生产只有一套固定的模型配置——但测试必须隔离。
+    """
+    from sqlmodel import Session, select
+
+    from app.core.database import engine
+    from app.models.rag import EmbeddingIndex
+
+    with Session(engine) as session:
+        for row in session.exec(select(EmbeddingIndex)).all():
+            session.delete(row)
+        session.commit()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _reset_overrides():
     """兜底清理测试期间注册的全局覆盖，避免跨测试泄漏。
 

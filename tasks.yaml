@@ -9997,7 +9997,7 @@ tasks:
 
   - id: "RAG-037"
     title: "检索状态与最终拒答契约"
-    status: "in_progress"
+    status: "done"
     priority: "P0"
     target_date: ''
     depends_on:
@@ -10043,6 +10043,7 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "知识问答/普通聊天方向及ADR-0005已批准；按计划锁定ok/no_hit/below_threshold/unavailable错误与最终回复契约，不重复方向裁决。"
+      acceptance_record: "2026-10-07：独立子Agent四轮审查。第二轮（docs/reviews/2026-10-07-RAG-037检索状态契约复审-第二轮.md）判不建议关闭，2 Medium+6 Low+2 Info，3项必修已修（补最终文本断言、流式披露语分隔、Supervisor披露要求真正随图状态送达并修正TypedDict未声明键导致被静默丢弃）。第三轮复核追加N-11(Medium)：确认已闭合。第四轮复核结论为可以关闭，另指出4条Low/Info（Supervisor流式全低分、no_hit、调研节点上下文无断言；TypedDict守卫挂在importorskip后缺依赖会连守卫一起跳过），已一并补齐并变异验证（去掉调研节点上下文1红、置空no_hit披露语3红）。证据：tests/test_rag_037_retrieval_status.py 36 passed；ruff全绿。"
       progress: "2026-10-07 第一轮：新增app/rag/retrieval_status.py（RetrievalStatus/分类顺序/RetrievalOutcome/披露指令），检索故障由「上抛或静默」收敛为unavailable；管线把披露要求送进行动与响应两阶段，短路径故障改写「本次检索未完成」并进system，POST /api/rag/search输出X-Retrieval-Status与X-RAG-Backend。专项15passed、6变异全抓住、全量768passed/2skipped。第二轮（独立审查docs/reviews/2026-10-07-RAG-037检索状态契约独立审查.md判定「不建议关闭」，2个High）：①Milvus hybrid_search搜索异常不再吞成空列表，抛MilvusUnavailableError由契约收敛为unavailable；②最终回复确定化——below_threshold终态短路直接返回RAG_REFUSE_MESSAGE不进生成，no_hit/unavailable由应用层确定性前置披露（新增RAG_NO_HIT_REPLY/RAG_UNAVAILABLE_REPLY，与给模型的指令分开），不再依赖模型服从prompt；③后端返回None/不可迭代归为unavailable，自研管线对外部Retriever异常同样收敛；④Supervisor/MULTI入口改为图执行前统一检索并传播状态与披露，闭合「完全不检索也不产生状态」的验收缺口；⑤HTTP检索故障由裸500改为503并带unavailable与实际后端响应头。专项25passed；第二轮6个变异全被抓住（M2 3红/M3 6红/M5 2红）。配置新增RAG_STATUS_NOTICE_ENABLED（只关提示层directive，短路径状态文案不随之回退）、RAG_NO_HIT_NOTICE、RAG_UNAVAILABLE_NOTICE、RAG_NO_HIT_REPLY、RAG_UNAVAILABLE_REPLY。契约与矩阵见docs/rag/检索状态与拒答契约.md。行为变更：检索故障不再让请求失败而是完成并确定性披露；全低分直接拒答不生成；tests/test_fast_route.py中原固化缺陷行为的断言已按新契约更正。"
       nightly:
         eligible: false

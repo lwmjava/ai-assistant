@@ -15,6 +15,19 @@ from sqlmodel import Field, Relationship, SQLModel
 from app.models.base import TimestampMixin
 
 
+class IndexStatus(StrEnum):
+    """向量索引生命周期状态（ADR-0008）。
+
+    ``preparing`` 的索引正在重建，此时旧索引仍是 ``active``，读路径不受影响；
+    只有显式激活才切换，失败保留旧读路径。
+    """
+
+    PREPARING = "preparing"
+    ACTIVE = "active"
+    RETIRED = "retired"
+    FAILED = "failed"
+
+
 def _uuid() -> str:
     """生成短 UUID 主键（十六进制字符串）。"""
     return uuid.uuid4().hex
@@ -142,6 +155,9 @@ class DocumentChunk(SQLModel, TimestampMixin, table=True):
     strategy: str | None = Field(default=None)
     # 章节 / 位置 / 溯源等扩展信息（JSON 字符串）。
     chunk_metadata: str | None = Field(default=None)
+    # 所属向量索引。为 None 表示身份未知的历史数据：
+    # 按 ADR-0008 不得自动认定与当前配置兼容，因此默认不参与检索。
+    index_id: str | None = Field(default=None, index=True)
 
     document: Document | None = Relationship(back_populates="chunks")
 
@@ -209,6 +225,35 @@ class ImportJobTrace(SQLModel, TimestampMixin, table=True):
     exit_code: int | None = Field(default=None)
     stdout: str | None = Field(default=None)
     stderr: str | None = Field(default=None)
+
+
+class EmbeddingIndex(SQLModel, TimestampMixin, table=True):
+    """向量索引登记（ADR-0008）。
+
+    一个索引 = 一套「同一模型、同一维度、同一归一化与度量」的向量集合。
+    切换模型时不原地改写，而是建新索引、校验后显式激活，旧索引保留用于回退。
+    """
+
+    __tablename__ = "rag_embedding_indexes"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    name: str = Field(index=True, unique=True)
+    backend: str = Field(default="local", index=True)
+    provider: str = Field(default="")
+    model: str = Field(default="", index=True)
+    deployment: str = Field(default="")
+    dim: int = Field(default=0)
+    index_version: str = Field(default="1")
+    normalization: str = Field(default="l2")
+    metric: str = Field(default="cosine")
+    # 身份指纹：比对用，避免每次拼字符串。
+    identity_key: str = Field(default="", index=True)
+    status: str = Field(default=IndexStatus.PREPARING.value, index=True)
+    # 重建/校验结果，失败时保留证据而不是静默回退。
+    chunk_count: int = Field(default=0)
+    notes: str | None = Field(default=None)
+    activated_at: datetime | None = Field(default=None)
+    retired_at: datetime | None = Field(default=None)
 
 
 class OperationConfirmation(SQLModel, TimestampMixin, table=True):

@@ -89,6 +89,20 @@ class Settings(BaseSettings):
     LLM_CHAT_FALLBACK_CHAIN: str = "chat,fallback"
     LLM_INTENT_FALLBACK_CHAIN: str = "intent,chat,fallback"
 
+    # ── 模型能力契约与调用预算（RAG-028）──
+    # 护栏在**每次真实请求发出前**核对：实际 payload + 输出预留 + 余量 ≤ 已验证上下文窗口。
+    # 计数优先用官方计数器，没有官方计数器时用经校准的保守估算，并把方法名写进结果。
+    LLM_CAPABILITY_GUARD_ENABLED: bool = True
+    # 运营者声明：模型不在已核对能力表内时，必须显式登记窗口与最大输出才放行。
+    # 格式：model=窗口:最大输出，多项用逗号分隔，例：my-model=32768:4096
+    LLM_CAPABILITY_DECLARED: str = ""
+    # 声明的依据来源（与声明同时填写，用于追溯依据，不填则声明不生效）
+    LLM_CAPABILITY_DECLARED_SOURCE: str = ""
+    # 预算余量：覆盖消息框架、工具描述等计数误差
+    LLM_BUDGET_SAFETY_MARGIN: int = 512
+    # max_tokens 未显式给出时，按此值预留输出（与 LLM_MAX_TOKENS 同量级）
+    LLM_OUTPUT_RESERVE_TOKENS: int = 2048
+
     # ── 嵌入模型（RAG 检索）──
     # 默认使用阿里通义千问（DashScope 兼容模式）：与 OpenAI 的 /embeddings 协议一致。
     # 因 DeepSeek 不提供嵌入接口，向量模型与对话模型可以是不同厂商。

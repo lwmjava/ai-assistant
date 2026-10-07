@@ -12,25 +12,28 @@ python scripts/milvus_switch_check.py --apply --milvus-uri http://127.0.0.1:1953
 
 ## 2. Milvus standalone 启动方式
 
-目标镜像固定为 `milvusdb/milvus:v2.5.11`，与项目可选依赖 `pymilvus==2.5.11` 对齐。单容器使用内嵌 etcd 和本地对象存储，端口 `19530` 提供 SDK 连接、`9091` 提供健康检查：
+目标镜像固定为 `milvusdb/milvus:v2.5.11`，与项目可选依赖 `pymilvus==2.5.11` 对齐。
 
-```bash
-docker run -d --name rag015-milvus \
-  -p 19530:19530 -p 9091:9091 \
-  --security-opt seccomp:unconfined \
-  -e ETCD_USE_EMBED=true \
-  -e ETCD_DATA_DIR=/var/lib/milvus/etcd \
-  -e ETCD_CONFIG_PATH=/milvus/configs/embedEtcd.yaml \
-  -e COMMON_STORAGETYPE=local \
-  -v rag015-milvus-data:/var/lib/milvus \
-  -v "$PWD/deploy/milvus/embedEtcd.yaml:/milvus/configs/embedEtcd.yaml:ro" \
-  -v "$PWD/deploy/milvus/user.yaml:/milvus/configs/user.yaml:ro" \
-  milvusdb/milvus:v2.5.11 milvus run standalone
+**不要使用「单容器 + 内嵌 etcd」的写法。** 实测 v2.5.11 在 Docker Desktop(WSL2) 上稳定触发 SIGSEGV，崩溃点在 `etcd.InitEtcdServer`：
+
+```text
+SIGNAL CATCH BY NON-GO SIGNAL HANDLER
+SIGNO: 11; SIGNAME: Segmentation fault; SI_CODE: 1; SI_ADDR: 0x18
 ```
 
-`docker-compose.yml` 同步暴露 `${MILVUS_PORT:-19530}` 与 `${MILVUS_HEALTH_PORT:-9091}`，因此也可单独执行 `docker compose up -d milvus`。应用容器内仍连接 `http://milvus:19530`，宿主机验收连接 `http://127.0.0.1:19530`。
+`--security-opt seccomp:unconfined`、命名卷、挂载仓库内 etcd 配置三种规避手段**同时具备仍崩溃**，所以这条路不是配置问题，本机不可用。改用官方推荐的「外部 etcd + 外部 MinIO + standalone」三件套后正常，已固化进根 `docker-compose.yml`：
 
-本机第一次、第二次及第三次执行 `docker info` 时 Docker Desktop Linux engine named pipe 均不存在；未等待超过五分钟，先完成脚本、单测和 local 实测。最终容器实测状态见第 4 节，以实际命令输出和 JSON 报告为准。
+```bash
+docker compose up -d milvus   # 按 depends_on 自动带起 etcd 与 minio
+docker compose ps             # 三者均应 healthy
+docker compose down           # 停止；数据保留在命名卷
+```
+
+etcd 与 MinIO **不向宿主机发布端口**，只在编排网络内可达；对外仍只有 `${MILVUS_PORT:-19530}` 与 `${MILVUS_HEALTH_PORT:-9091}`。应用容器内连接 `http://milvus:19530`，宿主机验收连接 `http://127.0.0.1:19530`。
+
+Milvus 冷启动到 healthy 约需 60–90 秒，`docker compose up -d app` 会等它，`RAG_VECTOR_STORE=local` 的纯本地调试可直接 `docker compose up -d db app` 跳过。
+
+本机 `docker info` 一度报 Docker Desktop Linux engine named pipe 不存在，等待后恢复（28.5.1，12 核 / 约 12GB）。三条路径的真实容器实测结果见第 4 节。
 
 ## 3. 验收脚本判定
 
@@ -49,10 +52,10 @@ docker run -d --name rag015-milvus \
 | 路径 | 结果 | 证据摘要 |
 |---|---|---|
 | 默认 local 上传 → 检索 | 通过 | 上传 3 个文档、SQL 3 个分块，检索状态 `ok`，目标文档命中；Mock 向量 L2 范数为 1 |
-| 切换 Milvus 后上传 → 直接查集合 | 阻塞（Docker 尚未就绪时的当前报告） | TCP `127.0.0.1:19530` 被拒绝；没有伪造通过结果 |
+| 切换 Milvus 后上传 → 直接查集合 | 通过 | 集合里确有上传产生的向量（`milvus_indexed_chunk_count=3`）且维度与登记索引一致，不是用 SQL 行冒充 |
 | 切回 local | 通过 | SQL 仍有 3 个原 local 分块，检索状态 `ok`，目标文档仍命中，且 `data_vs_empty_distinguished=true` |
 
-当前报告总结果为 `fail_or_blocked`，不能据此宣称 Milvus 切换已经通过。Docker 可用后须重跑同一 `--apply` 命令覆盖本次**非冻结**报告，并更新本节容器状态和路径 2 的真实结果。
+本机第一次记录的结果曾是 `fail_or_blocked`（Docker 未就绪 + `app/` 侧两个真实缺陷，见第 6 节）。这两类原因都已消除后，用同一条 `--apply` 命令重跑覆盖了本次**非冻结**报告：现在 `result=pass`、`all_acceptance_paths_passed=true`，脚本退出码 0。重跑不会污染其它租户的集合（每次用唯一前缀，结束只删除本次集合）。
 
 ## 5. 跨库检索差异
 
@@ -65,15 +68,23 @@ Docker 未就绪时跨库部分按 `blocked` 记录，没有生成虚假的 Milv
 
 比较使用正文 SHA-256 映射的 `logical_id`，不会把两次上传必然不同的数据库主键误报为命中集合差异。重点是保留差异，不把“一致”作为通过条件。
 
-## 6. 本轮不能闭合的验收点
+## 6. 遗留问题与处置结果
 
-以下问题必须修改 `app/`，本轮因并行改动约束只记录、不修复：
+环境就绪后重跑暴露出真实缺陷，三项逐一定性如下。**不要按本节原文重修一遍——前两项已修。**
 
-1. **上传写链路未调用 `MilvusVectorStore.add()`**：`RAGService._persist_document()` 只提交 `DocumentChunk`，没有把向量写入外部集合。因此即使 Milvus 可连接，普通上传预计仍会出现 SQL 有分块、Milvus 集合无向量，路径 2 应真实失败。
-2. **Milvus `similarity` 仍固定为 `1.0`**：`app/rag/vectorstore/milvus.py` 没有把 COSINE hit distance/score 转为真实相似度，跨库 `similarity_range` 会暴露为 `[1.0, 1.0]`，不能作为真实相似度通过证据。
-3. **生产写入未显式执行通用 L2 归一化**：本次 Mock provider 自带归一化，所以样本范数校验能通过；但通用摄取路径保存 provider 原始向量，`EMBEDDING_NORMALIZATION=l2` 当前主要参与索引身份，不能证明任意生产 provider 都在写入前归一化。
+1. **上传写链路未调用 `MilvusVectorStore.add()` —— 已修复。**
+   缺陷真实存在：全仓 `app/` 此前只调过 `delete_by_document`，`add()` 零调用点，所以上传后集合里一根向量都没有（`milvus_indexed_chunk_count=0`）。现在 `RAGService._persist_document()` 会执行 `await self._vector_store.add(persisted_rows)`（`app/rag/service.py:461`），两条摄取入口 `ingest_text` 与 `ingest_parsed_document` 都走同一函数。`LocalVectorStore.add()` 本身是空操作（分块已随主库持久化），因此默认后端零影响。
+2. **Milvus `similarity` 固定返回 `1.0` —— 已修复。**
+   `_remote_search()` 现在把 hit 的 `distance` 收进 `similarity_by_id`（`app/rag/vectorstore/milvus.py:315`），装配时用 `similarity_by_id.get(row.id, 0.0)`（`:363`）。集合以 COSINE 为度量，返回的 distance 即余弦相似度。跨库分数区间不再是 `[1.0, 1.0]`。
+3. **写入侧未做通用 L2 归一化 —— 不是缺陷，不要改。**
+   `app/rag/index_identity.py` 的 `ACTUAL_NORMALIZATION = "l2_at_query_time"` 表明归一化被**有意放在查询侧**，本地检索打分前也会显式归一化（见 `app/rag/vectorstore/local.py` 的 `dense = matrix @ q` 之前）。把它挪到写入侧反而会与索引身份约定冲突。
 
-后续修复需在同一事务/补偿语义下接入外部 `add()`，使用批准的 `COSINE` metric 返回值填充真实 `similarity`，并在写入边界统一 L2 归一化；随后重跑本脚本，要求三条路径全部 `pass`。
+上述 1、2 两项都配了**不依赖真实 Milvus** 的守护用例，因为在修好之前它们连 CI 都发现不了（默认后端下 `add()` 是空操作）：
+
+- `test_ingest_calls_vector_store_add`：注入记录型向量库，断言摄取真的调了 `add()`；
+- `test_milvus_similarity_returns_real_cosine_not_placeholder`：注入假集合返回互异距离，断言相似度不再恒为 1.0。
+
+变异测试确认二者各自精准变红（分别去掉 `add()` 调用、改回 `similarity=1.0`，各 1 failed）。**注意**：判定前必须先确认变异真的命中且保持 LF 锚点，且必须用全新 `--basetemp`——复用 basetemp 触发的沙箱错误会被误读成"已杀红"。
 
 ## 7. 假 Milvus 反例（证明脚本不会恒真）
 

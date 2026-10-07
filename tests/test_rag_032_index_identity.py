@@ -917,8 +917,15 @@ class _FakeCollection:
         self, data: list, anns_field: str, param: dict, limit: int, expr: str, output_fields: list
     ) -> list:
         self.search_calls.append({"expr": expr, "param": param, "limit": limit})
+        # 假 eager 命中必须携带 ``distance``：真实 pymilvus 的 COSINE 检索会返回它，
+        # 生产代码用它作为相似度。缺了这个属性，替身就与真实契约脱节。
         return [
-            [types.SimpleNamespace(entity={"id": cid}) for cid in _CANDIDATE_IDS]
+            [
+                types.SimpleNamespace(
+                    entity={"id": cid}, distance=0.9 - 0.1 * position
+                )
+                for position, cid in enumerate(_CANDIDATE_IDS)
+            ]
         ]
 
 
@@ -1373,10 +1380,14 @@ def test_revert_switch_restores_retired_timestamp(db: Session) -> None:
     with pytest.raises(IndexIdentityError):
         activate_index(db, target.id)
 
+    observed = db.get(EmbeddingIndex, target.id)
+    assert observed is not None
+    assert observed.retired_at is not None, "撤销后退役时间戳不能被清空"
+    # SQLite 往返会剥离 tzinfo，比较前统一按 naive 时刻对齐，同一时刻才算没丢。
+    assert observed.retired_at.replace(tzinfo=None) == retired_at.replace(
+        tzinfo=None
+    ), "撤销后退役时间戳必须还在"
     assert target.status == IndexStatus.RETIRED.value
-    assert target.retired_at == retired_at, "撤销后退役时间戳必须还在"
-    db.refresh(target)
-    assert target.retired_at == retired_at
     assert active_index(db).id == old.id
 
 

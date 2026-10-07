@@ -199,6 +199,54 @@ def _record_job_trace(session: Session, job: ImportJob, exc: Exception) -> None:
     session.add(trace)
 
 
+def _uses_external_vector_store(session: Session) -> bool:
+    """生效的向量库是否与主库共享事务。
+
+    本地实现就是主库本身，与主库同一事务；外部实现（如 Milvus）不是，
+    因此需要单独的补偿记录。
+    """
+    from app.rag.vectorstore.factory import get_vector_store
+    from app.rag.vectorstore.local import LocalVectorStore
+
+    return not isinstance(get_vector_store(session), LocalVectorStore)
+
+
+# 待补偿的两类情形用 error_code 区分，便于后续按类型处理：
+# - external_index_missing_chunks：主库已有分块，外部索引缺少对应向量（补齐即可）
+# - external_index_deleted_main_db_failed：外部索引已不可逆删除，主库尚未提交（需重建）
+EXTERNAL_INDEX_MISSING_CHUNKS = "external_index_missing_chunks"
+EXTERNAL_INDEX_DELETED_MAIN_DB_FAILED = "external_index_deleted_main_db_failed"
+
+
+def _record_external_index_compensation(
+    session: Session,
+    job: ImportJob,
+    document_id: str,
+    reason: str,
+    *,
+    error_code: str = EXTERNAL_INDEX_MISSING_CHUNKS,
+) -> None:
+    """登记外部索引与主库不一致的待补偿事项。
+
+    向量库与应用主库不是同一个事务：可能出现「主库已提交而外部索引未同步」或
+    「外部索引已变更而主库未提交」。这里只做记录，不假装跨库事务已生效，
+    也不自动重建索引。
+    """
+    from app.models.rag import ImportJobTrace
+
+    session.add(
+        ImportJobTrace(
+            job_id=job.id,
+            tenant_id=job.tenant_id,
+            attempt_count=job.attempt_count,
+            stage="external_index_compensation",
+            error_code=error_code,
+            exception_type="ExternalIndexOutOfSync",
+            message=f"外部索引待补偿：document={document_id}；{reason}",
+        )
+    )
+
+
 def _recompute_batch(session: Session, batch: ImportBatch) -> None:
     """根据子任务状态回写批次统计。"""
     jobs = session.exec(select(ImportJob).where(ImportJob.batch_id == batch.id)).all()
@@ -494,23 +542,52 @@ async def _process_job(session: Session, job: ImportJob) -> None:
             if target is None:
                 raise ValueError("重解析目标文档不存在")
             rag = RAGService(session, target.tenant_id)
-            doc = await rag.reindex_document_in_place(
-                target, parsed, content_hash=content_hash
-            )
+            external = _uses_external_vector_store(session)
+            try:
+                doc = await rag.reindex_document_in_place(
+                    target, parsed, content_hash=content_hash
+                )
+            except Exception as exc:  # noqa: BLE001 — 外部删除不可逆，失败也要留痕
+                # 外部索引的清理一旦发生就不可回滚：无论它是成功还是失败，
+                # 只要主库随后没提交成功，两边就已经发散，必须登记待补偿。
+                if external and getattr(exc, "stage", None) != "external_index_compensation":
+                    # 外层处理失败时会 rollback，这里必须先把补偿记录提交出去，
+                    # 否则这条「外部索引已不可逆变更」的证据会被一并回滚掉。
+                    try:
+                        session.rollback()
+                        _record_external_index_compensation(
+                            session,
+                            job,
+                            target.id,
+                            f"重解析的外部索引清理已发生且不可回滚，主库未提交成功："
+                            f"{type(exc).__name__}（需按主库状态重建外部向量）",
+                            error_code=EXTERNAL_INDEX_DELETED_MAIN_DB_FAILED,
+                        )
+                        session.commit()
+                    except Exception:  # noqa: BLE001 — 补偿记录失败不能掩盖原始异常
+                        logger.warning(
+                            "rag_external_index_compensation_record_failed job=%s", job.id
+                        )
+                raise
             job.document_id = doc.id
             job.status = ImportJobStatus.SUCCESS.value
+            # 重解析同样不共享事务：外部索引已清理旧向量，主库才写入新分块。
+            if external:
+                _record_external_index_compensation(
+                    session,
+                    job,
+                    doc.id,
+                    "重解析已清理外部索引旧向量，新分块缺少对应向量（补齐即可）",
+                    error_code=EXTERNAL_INDEX_MISSING_CHUNKS,
+                )
             session.add(job)
             session.commit()
             return
 
         previous_id = versioning["previous_document_id"]
-        if previous_id:
-            previous = session.get(Document, previous_id)
-            if previous is not None:
-                previous.is_current = False
-                session.add(previous)
-                session.commit()
-
+        # 旧版不在此处提前退出 current：那需要一次独立提交，一旦后续摄取失败就
+        # 无法回滚，会让该来源既有知识整体不可检索。降级由 ingest_parsed_document
+        # 与新版落在同一个事务内完成（同版本组只保留新版为当前版）。
         rag = RAGService(session, job.tenant_id)
         title = job.requested_title or parsed.title
         doc = await rag.ingest_parsed_document(
@@ -529,6 +606,23 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         )
         job.document_id = doc.id
         job.status = ImportJobStatus.SUCCESS.value
+        # 外部向量库不与应用主库共享事务：发布成功后仍可能未同步，显式登记待补偿，
+        # 不把「主库已发布」当成「外部索引也已就绪」。
+        # 此时发布已提交且不可回滚，登记只能尽力而为：失败只记录告警，
+        # 绝不能把一次成功的发布翻成失败任务。
+        if _uses_external_vector_store(session):
+            try:
+                _record_external_index_compensation(
+                    session,
+                    job,
+                    doc.id,
+                    "主库已发布新版分块，外部向量索引缺少对应向量（补齐即可）",
+                    error_code=EXTERNAL_INDEX_MISSING_CHUNKS,
+                )
+            except Exception:  # noqa: BLE001 — 已提交，不能因登记失败而报任务失败
+                logger.warning(
+                    "rag_external_index_compensation_record_failed job=%s", job.id
+                )
     except (
         UnsupportedDocumentTypeError,
         DocumentParseError,

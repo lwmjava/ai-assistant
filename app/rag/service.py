@@ -52,6 +52,7 @@ from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
+from app.rag.import_trace import ImportTraceError
 from app.rag.retrieval_guard import drop_injected_chunks
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
@@ -1026,7 +1027,14 @@ class RAGService:
         # LocalVectorStore 与应用共用SQL事务，其delete接口会commit，不能在此调用。
         # 外部清理失败显式失败；不把异常吞掉后宣称索引替换完成。
         if not isinstance(self._vector_store, LocalVectorStore):
-            await self._vector_store.delete_by_document(document.id, document.tenant_id)
+            try:
+                await self._vector_store.delete_by_document(document.id, document.tenant_id)
+            except Exception as exc:  # noqa: BLE001 — 外部索引未知异常统一转成可追踪错误
+                raise ImportTraceError(
+                    f"外部索引清理失败，需补偿：document={document.id} 原因={type(exc).__name__}",
+                    stage="external_index_compensation",
+                    error_code=type(exc).__name__,
+                ) from exc
         for chunk in old_chunks:
             self.session.delete(chunk)
         self.session.flush()

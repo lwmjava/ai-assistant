@@ -9319,7 +9319,7 @@ tasks:
 
   - id: "RAG-024"
     title: "导入新版本发布原子性"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ''
     depends_on:
@@ -9361,6 +9361,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "实际故障复现与事务基线隔离后开工；生产重建另获授权。"
+      acceptance_record: "2026-10-07：独立子Agent两轮审查（docs/reviews/2026-10-07-RAG-024发布原子性独立审查.md）结论为条件通过，F-01/F-03 已修复并复审闭环，F-02 经取证为RAG-013遗留（部分唯一索引在PG与SQLite均已建出）不作为本卡阻塞，F-04 保留为已知限制，F-05 澄清version_state变化不构成语义改动。"
+      progress: "2026-10-07：复现并修复『新版摄取前旧版先退出current的独立提交』——移除该提交，改由ingest_parsed_document与新版同事务降级；新增外部索引补偿记录，覆盖重解析成功、外部删除后主库失败、外部删除本身失败三类，并用error_code区分待补齐与待重建，Local模式不发记录。RAG子集372passed/2skipped、专项8passed、全量750passed/2skipped、Ruff/mypy通过。计划与实现说明见docs/plans/plan_rag_024_publish_atomicity_20261007.md、implementation_rag_024_publish_atomicity_20261007.md。未做：跨库事务（不宣称）、外部索引写入接线（VectorStore.add当前未调用，属向量库治理）。"
       nightly:
         eligible: false
         production_access: false

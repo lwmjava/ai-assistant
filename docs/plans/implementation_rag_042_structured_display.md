@@ -15,7 +15,7 @@
 | 渲染 class 来源 | `chunkContentClassName(text)` 单一出口，两处渲染点共用 | 让「盒图必须保留空白」这条契约可被断言，改动一处即两处同时生效 |
 | 下载取流方式 | 复用 `src/lib/http.ts`（新增 `api.blob`），**不用 `window.open` 直链** | 直链不带 `Authorization` 头，会被后端判为未认证 |
 | 下载入口显隐 | 镜像后端 `can_control_document`，仅在可控文档上出现 | 后端已自带同一判定，前端只是「不放按钮」，不构成权限放宽或收紧 |
-| 文件名 | `doc.source ?? doc.title` | 与后端 `FileResponse(filename=doc.source or Path(...).name)` 的取值来源一致，无需解析 `Content-Disposition` |
+| 文件名 | **优先后端 `Content-Disposition` 的权威取值**（含 RFC 5987 的 `filename*=UTF-8''…`），其次 `doc.source`，最后 `doc.title` | 后端 `FileResponse` 可能按 `Path(file_path).name` 兜底，前端自行拼接会与之分歧；以响应头为准可消除两端不一致。详见 §4 与 §6.7 |
 
 ---
 

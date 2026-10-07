@@ -9526,7 +9526,7 @@ tasks:
 
   - id: "RAG-028"
     title: "模型能力契约与全部调用预算"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on: []
@@ -9571,7 +9571,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "ADR-0005第9节已批准能力配置/计数方法方向；具体模型能力证据、计数校准与数值余量需在单卡计划锁定，未知模型无批准配置拒绝。"
-      progress: "2026-10-06：用户批准版本化能力、适用官方计数器优先及校准保守估算；沿用已批准Embedding护栏，生成预算未实现。"
+      progress: "2026-10-07：已实现版本化生成能力表、计数器与每次调用 payload 护栏（含工具轮次、critique、云 OCR、stream）；独立审查 High3/Medium5 已整改并复审通过。内置能力表只登记有厂商依据的条目（gpt-4o-mini 128000/16384、deepseek-flash 与 deepseek-v4-pro 1M/384K，来源与核对日期 2026-10-07 已落代码）；deepseek-chat 不在厂商在售表内，走运营者显式声明（LLM_CAPABILITY_DECLARED + _SOURCE，须绑定部署且受合理区间校验）。局限：tiktoken 未安装，官方计数器分支仅有可执行证据、无真实数字比对；无事后 usage 校准；Embedding 侧沿用 RAG-021 既有版本化策略、未并入同一张表。"
+      acceptance_record: "2026-10-07：commits 86acb26 + b27fde8 + 9a7dfa1（配置项）+ 4937a5e（审查整改）。证据：专项 42 条 + llm_route = 58 passed；tests -k \"llm or agent or chat or ocr\" = 134 passed/2 skipped；两轮变异累计 15 处（首轮 6 含 1 处逃逸、整改轮 9 处全红）；独立审查报告 docs/reviews/2026-10-07-RAG-028模型能力契约与调用预算独立审查.md（含复审第二轮章节）。"
       nightly:
         eligible: false
         production_access: false
@@ -10222,7 +10223,7 @@ tasks:
 
   - id: "RAG-042"
     title: "知识库结构化正文显示与受控源文件下载入口"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -10264,6 +10265,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "用户已批准拆卡；单卡实现前落盘计划并核对现有下载契约。"
+      progress: "2026-10-07：已实现结构化正文展示（判定纯函数 + ChunkContent 展示组件）与受控源文件下载入口；独立审查 High1/Medium1 已整改并复审通过。正文一律作 React 文本节点渲染，生产代码 dangerouslySetInnerHTML/innerHTML 零处；下载沿用后端既有控制面判定（can_control_document），前端只决定按钮显隐，未放宽权限。局限：浏览器保存对话框与窄屏像素级仅有人眼验收项；文本摄取型文档仍显示下载入口（点击给 404），彻底解法需后端补 has_source_file 字段、另开卡；等宽长行未加最大高度（加会截断盒图）。"
+      acceptance_record: "2026-10-07：commits 409dd64 + e90683e（渲染级证据）+ 7d4bed3（审查整改）+ 69cdc53e（safelist）。证据：node --test 四文件 37/37；npx tsc -b --force 退出码 0；npx vite build --emptyOutDir=false 通过且产物 CSS 含 .whitespace-pre/.font-mono/.overflow-x-auto；后端下载往返 TestClient 3 passed（字节完全相同 + Content-Disposition 文件名一致 + 越权 404 + 源文件缺失 404）；变异累计 9 处（含审查一轮逃逸的 2 处已闭合）；报告 docs/reviews/2026-10-07-RAG-042结构化正文显示与下载入口独立审查.md（含复审第二轮章节）。"
       nightly:
         eligible: false
         production_access: false

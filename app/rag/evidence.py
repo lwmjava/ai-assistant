@@ -133,6 +133,13 @@ def _authorized_parent(
     子块有权不代表父块有权：父子必须同属一个文档，父块所属文档也要独立通过
     同一套检索授权与时效校验。任一项不满足就整体不返回——既不返回父正文，
     也不返回父块的存在性线索。
+
+    纵深防御说明：下面「同文档关系」（``parent.document_id == chunk.document_id``）
+    与「同一检索授权」（再走一次 ``_document_is_verifiable``）在当前数据模型下
+    是**冗余的两道防线**——父子同文档意味着父块所属文档就是已通过授权的那一个，
+    第二道恒为真。单独删掉任一道在当前行为上不可观测（实测专项用例全绿），
+    只有两道同时拆才会被抓红。保留它是有意为之：一旦数据模型允许父子跨文档，
+    第二道就是唯一防线。不要因为「看起来不可达」而删掉它。
     """
     if not chunk.parent_id:
         return None
@@ -182,7 +189,7 @@ def load_chunk_evidence(
     chunk = session.get(DocumentChunk, chunk_id)
     if chunk is None:
         raise EvidenceDeniedError("chunk missing")
-    # 真实关联：按 block 自己记录的 document_id 取文档，不信传入的 ID。
+    # 真实关联：按块自己记录的 document_id 取文档，不信传入的 ID。
     doc = session.get(Document, chunk.document_id)
     if doc is None:
         raise EvidenceDeniedError("document missing")

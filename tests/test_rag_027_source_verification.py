@@ -6,6 +6,10 @@
 
 ``GET /api/rag/chunks/{chunk_id}/evidence`` 是新的只读入口，本文件同时守住
 「不返回整章 / 整文件」的边界：响应字段被逐个钉住。
+
+「ADR-0007 §4 不缓存 / 每次重新鉴权」与「§5 时效过滤」在本文件里都有
+allow → deny 两个方向的反例：先成功后失败的顺序同样被钉住，只测「本来就拒绝」
+的方向抓不到「复用上次授权结论」这类实现。
 """
 
 from __future__ import annotations
@@ -13,7 +17,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -49,6 +53,14 @@ _EVIDENCE_FIELDS = {
     "source_end",
     "parent",
 }
+# 四角色在两种检索范围下「是否能在检索面看到该块」的裁决取值（M-03）。
+# tenant：同租户共享；uploader：仅本人可见，TENANT_ADMIN 不豁免，
+# SYSTEM_ADMIN 与 RAG-026 已批准的 read_scope_for 行为一致（同租户可见）。
+_EXPECTED_FACE: dict[str, dict[str, bool]] = {
+    "tenant": {"owner": True, "peer": True, "tenant_admin": True, "system_admin": True},
+    "uploader": {"owner": True, "peer": False, "tenant_admin": False, "system_admin": True},
+}
+
 _LOCATOR_FIELDS = {"chunk_id", "chunk_index", "page", "section", "source_start", "source_end", "content"}
 
 
@@ -659,3 +671,251 @@ async def test_evidence_never_returns_whole_document(monkeypatch: pytest.MonkeyP
     for forbidden in ("document_text", "text", "original_text", "storage_path", "acl", "content_hash"):
         assert forbidden not in body
     assert second_content not in json.dumps(body, ensure_ascii=False)
+
+
+# ── M-01：不缓存、每次请求重新鉴权（allow → deny 方向）──
+def test_previous_verification_is_not_reused_for_another_subject(monkeypatch: pytest.MonkeyPatch) -> None:
+    """同一 chunk_id、同一进程：owner 先 200，换 peer 必须立刻 404。
+
+    只测「peer 先被拒 → owner 通过」抓不到「复用上次授权结论」的实现，
+    这条把成功结果放在前面，正是 ADR-0007 §4「缓存文本不能充当授权证明」
+    要求的方向。
+    """
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _UPLOADER_SCOPE)
+    init_db()
+    tenant = f"rag027-cache-{uuid4().hex[:8]}"
+    owner = _user("rag027-cache-a", tenant)
+    peer = _user("rag027-cache-b", tenant)
+    with Session(engine) as session:
+        doc = _seed_document(session, tenant_id=tenant, owner_id=owner.id, title="A 的文档")
+        chunk_id = _seed_chunk(session, doc, content="A 的正文，不得被他人复用").id
+
+    with _as(owner) as client:
+        assert client.get(_evidence(chunk_id)).status_code == 200
+    # 紧接着的第二次请求换了主体：上一次的成功结论不得被沿用。
+    with _as(peer) as client:
+        _denied(client.get(_evidence(chunk_id)))
+    # 被拒之后 owner 仍可核验：说明不是把块拉黑，而是每次都重新判定。
+    with _as(owner) as client:
+        assert client.get(_evidence(chunk_id)).status_code == 200
+
+
+def test_document_state_change_takes_effect_immediately(monkeypatch: pytest.MonkeyPatch) -> None:
+    """同一主体两次请求之间文档被软删：第二次必须 404。"""
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _TENANT_SCOPE)
+    init_db()
+    tenant = f"rag027-state-{uuid4().hex[:8]}"
+    owner = _user("rag027-state-a", tenant)
+    with Session(engine) as session:
+        doc = _seed_document(session, tenant_id=tenant, owner_id=owner.id, title="将失效的文档")
+        chunk_id = _seed_chunk(session, doc, content="将失效的正文").id
+        doc_id = doc.id
+
+    with _as(owner) as client:
+        assert client.get(_evidence(chunk_id)).status_code == 200
+
+    with Session(engine) as session:
+        stored = session.get(Document, doc_id)
+        assert stored is not None
+        stored.deleted_at = datetime.now(UTC)
+        session.add(stored)
+        session.commit()
+
+    with _as(owner) as client:
+        _denied(client.get(_evidence(chunk_id)))
+
+
+def test_scope_tightening_takes_effect_immediately(monkeypatch: pytest.MonkeyPatch) -> None:
+    """同一主体两次请求之间检索范围由 tenant 收紧为 uploader：第二次必须 404。"""
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _TENANT_SCOPE)
+    init_db()
+    tenant = f"rag027-tight-{uuid4().hex[:8]}"
+    owner = _user("rag027-tight-a", tenant)
+    peer = _user("rag027-tight-b", tenant)
+    with Session(engine) as session:
+        doc = _seed_document(session, tenant_id=tenant, owner_id=owner.id, title="A 的文档")
+        chunk_id = _seed_chunk(session, doc, content="A 的正文").id
+
+    with _as(peer) as client:
+        assert client.get(_evidence(chunk_id)).status_code == 200
+
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _UPLOADER_SCOPE)
+    with _as(peer) as client:
+        _denied(client.get(_evidence(chunk_id)))
+
+
+# ── M-02：时效过滤开关（ADR-0007 §5）──────────────────
+@pytest.mark.parametrize("case", ["scheduled", "expired"])
+def test_effective_date_filter_blocks_unpublished_and_expired(
+    monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    """开关打开时，未生效（scheduled）与已过期的版本不通过普通引用核验读取。"""
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _TENANT_SCOPE)
+    monkeypatch.setattr("app.rag.evidence.settings.RAG_EFFECTIVE_DATE_FILTER", True)
+    init_db()
+    tenant = f"rag027-eff-{uuid4().hex[:8]}"
+    owner = _user("rag027-eff-a", tenant)
+    peer = _user("rag027-eff-b", tenant)
+    now = datetime.now(UTC)
+    with Session(engine) as session:
+        future = _seed_document(
+            session,
+            tenant_id=tenant,
+            owner_id=owner.id,
+            title="未生效文档",
+            version_state="scheduled",
+        )
+        future.effective_at = now + timedelta(days=1)
+        session.add(future)
+        session.commit()
+        future_chunk_id = _seed_chunk(session, future, content="未生效正文").id
+
+        expired = _seed_document(session, tenant_id=tenant, owner_id=owner.id, title="已过期文档")
+        expired.expires_at = now - timedelta(days=1)
+        session.add(expired)
+        session.commit()
+        expired_chunk_id = _seed_chunk(session, expired, content="已过期正文").id
+
+    target = future_chunk_id if case == "scheduled" else expired_chunk_id
+    with _as(peer) as client:
+        _denied(client.get(_evidence(target)))
+    # 服务层直连同样拒绝：绕过 HTTP 也拿不到未生效 / 已过期的正文。
+    with Session(engine) as session:
+        with pytest.raises(EvidenceDeniedError):
+            load_chunk_evidence(session, target, peer)
+
+
+def test_effective_date_filter_still_allows_live_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    """开关打开时落在生效窗口内的当前版本仍可核验（防止有人把开关语义反过来改）。"""
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _TENANT_SCOPE)
+    monkeypatch.setattr("app.rag.evidence.settings.RAG_EFFECTIVE_DATE_FILTER", True)
+    init_db()
+    tenant = f"rag027-efflive-{uuid4().hex[:8]}"
+    owner = _user("rag027-efflive-a", tenant)
+    peer = _user("rag027-efflive-b", tenant)
+    with Session(engine) as session:
+        live = _seed_document(session, tenant_id=tenant, owner_id=owner.id, title="生效中文档")
+        live_chunk_id = _seed_chunk(session, live, content="生效中正文").id
+
+    with _as(peer) as client:
+        resp = client.get(_evidence(live_chunk_id))
+    assert resp.status_code == 200
+    assert resp.json()["content"] == "生效中正文"
+
+
+def test_effective_date_filter_off_keeps_is_current_semantics(monkeypatch: pytest.MonkeyPatch) -> None:
+    """开关关闭（默认）时只按当前版本判定，避免有人把开关语义反过来改。"""
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _TENANT_SCOPE)
+    monkeypatch.setattr("app.rag.evidence.settings.RAG_EFFECTIVE_DATE_FILTER", False)
+    init_db()
+    tenant = f"rag027-effoff-{uuid4().hex[:8]}"
+    owner = _user("rag027-effoff-a", tenant)
+    peer = _user("rag027-effoff-b", tenant)
+    with Session(engine) as session:
+        future = _seed_document(
+            session, tenant_id=tenant, owner_id=owner.id, title="预告文档", version_state="scheduled"
+        )
+        future.effective_at = datetime.now(UTC) + timedelta(days=1)
+        session.add(future)
+        session.commit()
+        future_chunk_id = _seed_chunk(session, future, content="预告正文").id
+        expired = _seed_document(session, tenant_id=tenant, owner_id=owner.id, title="已过期文档")
+        expired.expires_at = datetime.now(UTC) - timedelta(days=1)
+        session.add(expired)
+        session.commit()
+        expired_chunk_id = _seed_chunk(session, expired, content="已过期正文").id
+
+    # 检索面在开关关闭时只看 is_current（两篇都 is_current=True），核验面必须一致。
+    with _as(peer) as client:
+        assert client.get(_evidence(future_chunk_id)).status_code == 200
+        assert client.get(_evidence(expired_chunk_id)).status_code == 200
+
+
+# ── M-03：核验面 = 检索面（四角色逐个同真同假）──────────
+async def test_evidence_matches_retrieval_face_for_every_role(monkeypatch: pytest.MonkeyPatch) -> None:
+    """对每个角色：``RAGService.search`` 能否命中 == ``/evidence`` 是否 200。
+
+    检索侧用真实检索实测（不是只读 ``can_read_document``），否则等于用实现
+    验证实现。这样 ``read_scope_for``（SQL 过滤）与 ``can_read_document``
+    （行级判定）任一处单独偏移——收紧管理员或放开管理员——都会被抓红。
+    """
+    monkeypatch.setattr("app.rag.service.get_embedding_provider", lambda: MockEmbeddingProvider(dim=64))
+    init_db()
+    observed: list[str] = []
+    for scope in (_TENANT_SCOPE, _UPLOADER_SCOPE):
+        monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", scope)
+        tenant = f"rag027-equiv-{scope}-{uuid4().hex[:8]}"
+        marker = f"RAG027EQ{uuid4().hex[:10]}"
+        owner = _user("rag027-eq-owner", tenant)
+        peer = _user("rag027-eq-peer", tenant)
+        tadmin = _user("rag027-eq-tadmin", tenant, Role.TENANT_ADMIN)
+        sadmin = _user("rag027-eq-sadmin", tenant, Role.SYSTEM_ADMIN)
+        roles = {
+            "owner": owner,
+            "peer": peer,
+            "tenant_admin": tadmin,
+            "system_admin": sadmin,
+        }
+
+        with Session(engine) as session:
+            rag = RAGService(
+                session, tenant, embedding_provider=MockEmbeddingProvider(dim=64), reader=owner
+            )
+            doc = await rag.ingest_text(
+                f"{marker} 用于比对核验面与检索面的正文。",
+                title="等价性文档",
+                source=f"rag027-equiv-{scope}",
+                user_id=owner.id,
+            )
+            chunk_id = session.exec(
+                select(DocumentChunk).where(col(DocumentChunk.document_id) == doc.id)
+            ).first()
+            assert chunk_id is not None
+            target_chunk_id = chunk_id.id
+
+    observed: list[str] = []
+    for scope in (_TENANT_SCOPE, _UPLOADER_SCOPE):
+        monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", scope)
+        expected = _EXPECTED_FACE[scope]
+        retrieval: dict[str, bool] = {}
+        verified: dict[str, bool] = {}
+        for label, user in roles.items():
+            with Session(engine) as session:
+                hits = await RAGService(
+                    session, tenant, embedding_provider=MockEmbeddingProvider(dim=64), reader=user
+                ).search(marker, top_k=5)
+                retrieval[label] = any(hit.id == target_chunk_id for hit in hits)
+            with _as(user) as client:
+                verified[label] = client.get(_evidence(target_chunk_id)).status_code == 200
+        observed.append(f"{scope}: 检索={retrieval} 核验={verified}")
+        # 两面同真同假：任一处单独偏移（收紧或放开管理员）都会在这里变红。
+        assert retrieval == verified, (
+            f"{scope} 核验面与检索面脱钩：检索={retrieval}，核验={verified}"
+        )
+        # 同时钉住每个角色的**期望取值**，避免「全都不可见」也能通过等价断言。
+        assert retrieval == expected, f"{scope} 检索面取值与裁决不符：{retrieval} != {expected}"
+    assert len(observed) == 2
+
+
+# ── L-01：父块租户自洽 ────────────────────────────────
+def test_parent_with_tampered_tenant_is_denied(monkeypatch: pytest.MonkeyPatch) -> None:
+    """父子同文档，但父块行的 tenant_id 被拼改：整体不返回父块信息。"""
+    monkeypatch.setattr("app.rag.access.settings.RAG_KB_SCOPE", _TENANT_SCOPE)
+    init_db()
+    tenant = f"rag027-partamper-{uuid4().hex[:8]}"
+    owner = _user("rag027-pt-a", tenant)
+    peer = _user("rag027-pt-b", tenant)
+    with Session(engine) as session:
+        doc = _seed_document(session, tenant_id=tenant, owner_id=owner.id, title="本租户文档")
+        parent_id = _seed_chunk(
+            session, doc, content="父块正文", chunk_index=0, tenant_id=f"{tenant}-other"
+        ).id
+        child_id = _seed_chunk(
+            session, doc, content="子块正文", chunk_index=1, parent_id=parent_id
+        ).id
+
+    with _as(peer) as client:
+        resp = client.get(_evidence(child_id, include_parent_content="true"))
+    assert resp.status_code == 200
+    assert resp.json()["parent"] is None
+    assert "父块正文" not in json.dumps(resp.json(), ensure_ascii=False)

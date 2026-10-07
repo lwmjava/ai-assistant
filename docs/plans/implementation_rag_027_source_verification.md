@@ -80,26 +80,57 @@
 
 ## 5. 已知取舍
 
-1. **system_admin 沿用检索面豁免。** ADR-0001 §10 / RAG-026 的 `read_scope_for()` 在 uploader 模式下
-   对 `SYSTEM_ADMIN` 返回「不过滤上传者」，即系统管理员在检索面能看到全部当前版。核验面必须等于检索面，
-   否则「检索命中却不能核验」会逼调用方转向控制面详情接口——那正是 ADR-0007 想避免的旁路。
-   `TENANT_ADMIN` 在 uploader 模式下**不豁免**（ADR-0007 §3 明确要求），已由测试锁定。
+1. **管理员语义（唯一一处「代码 ≠ ADR 字面」，按 team-lead 裁决维持现状）。** 正确表述是：
+   - **核验面 = 检索面**，逐项对齐 `read_scope_for()` 与 `can_read_document()` 的真假；
+   - **`TENANT_ADMIN` 在 uploader 模式下不豁免**（`app/rag/access.py` 的 `can_read_document` 对非
+     `SYSTEM_ADMIN` 一律落到 `doc.user_id == user.id`，`read_scope_for` 同样给出 `uploader_id`）；
+   - **`SYSTEM_ADMIN` 豁免，与 `read_scope_for`（`uploader_id=None`）的既有行为一致，沿用 RAG-026 CE-1**
+     （`docs/reviews/2026-10-07-RAG-026上传者范围独立审查.md` 已记录「SYSTEM_ADMIN 保留」并与
+     `can_read_document` 逐例同真同假）。
+
+   这不是本卡引入的偏差，而是 RAG-026 已批准的现状；本卡刻意不改，因为改它会同时改变检索面。
+   理由：核验面必须等于检索面，否则「检索命中却不能核验」会把调用方逼向控制面详情接口——那正是
+   ADR-0007 想消灭的旁路诱因。两个方向的偏移都由 `test_evidence_matches_retrieval_face_for_every_role`
+   锁住（见 §6）。若日后要改成字面合规，必须**同时**改 `read_scope_for` 与 `can_read_document` 两处，
+   并同步 RAG-026 的期望值。
+   （注：早期台账里「admin 不豁免 uploader 限制」的措辞不严谨，以上面这段为准。）
 2. **父块默认只给定位信息。** 要父正文必须显式 `include_parent_content=true`，且仍只返回单个父块，
    不做整章拼接；父块未通过独立鉴权时整体返回 `null`（连父块 ID 都不给），以免泄漏存在性。
 3. **父块必须同文档。** 父子跨文档（他人文档、他租户文档、旧版本文档）一律不认 — 这比「逐项判父文档权限」
    更保守，也让「旧版本父块」这类场景天然被拒。
 4. **不缓存、不签发票据。** 每次核验都打库；性能代价换来「权限变化立即生效」，符合 ADR-0007 §4。
-5. **未做的事**：不提供批量核验、不提供按文档导出全部块正文、不提供源文件下载（这些属于整文件读取，
-   ADR-0007 明确不授予）。历史会话引用失效时前端显示后端文案「引用原文不可用或无权核验」，不猜测块或版本。
+   该结论有 allow → deny 两个方向的测试守卫（成功之后换主体 / 换范围 / 文档转态都必须立刻失败）。
+5. **父块两道防线是有意的纵深防御。** `_authorized_parent()` 里「同文档关系」与「再走一次检索授权」
+   在当前数据模型下冗余（前者成立时后者恒为真），单独删任一道在当前行为上不可观测。保留它是为了
+   数据模型将来允许父子跨文档时仍有防线；docstring 已如实写明，不要因为「看起来不可达」而删掉。
+6. **`include_parent_content` 当前没有前端调用方。** 后端保留该参数并由
+   `test_parent_content_only_when_authorized` 锁住（属**预留能力**）：前端 `ChunkEvidence` 只请求默认
+   行为（父块仅定位信息），`frontend/src/api/rag.ts` 的 `useChunkEvidence` 不传该参数。因此前端的
+   「父正文」渲染分支在当前 UI 上走不到——这是有意的，不是死代码错误：等核验 UI 需要展示父块上下文时
+   再接，接之前后端契约与测试保持不变。
+7. **未做的事**：不提供批量核验、不提供按文档导出全部块正文、不提供源文件下载（这些属于整文件读取，
+   ADR-0007 明确不授予）。**Chat 会话侧未挂载核验入口**（本卡只挂知识库页的检索命中块与文档分块）；
+   未来若挂载到 Chat，引用失效时同样展示后端文案「引用原文不可用或无权核验」，不猜测块或版本。
+
+## 5.1 已知边界（登记不修）
+
+- **失败路径残余时序侧信道。** 「块不存在」比「无权」少一次 `session.get(Document)`，实测
+  p50 差约 0.44ms（Cohen's d ≈ 0.10，单次错分率 37.5%），即单次请求基本不可分，仅大样本均值可分离。
+  ADR-0007 §4 的「不返回存在性细节」按「不提供可用区分手段」解读时这是残留面，但做到严格等时的代价
+  远大于收益。**登记为已知边界，不做防护**；约定：存在性只能通过「是否返回正文」判定。
+- **前端核验结果缓存不随登出失效。** `useChunkEvidence` 的 queryKey 不含用户维度，`logout()` 也不清
+  react-query 缓存（仓库既有模式：文档列表、分块列表同样如此）。后端每次仍重新鉴权，因此不是越权读，
+  只是同一浏览器换账号后短时间内可能先显示上一账号已读到的原文。**登记，单开前端项统一修。**
 
 ## 6. 验证
 
 ```
 DATABASE_URL="sqlite:///…/data/tmp-rag027-<n>.db" python -m pytest tests/test_rag_027_source_verification.py -q --basetemp=data/pytest-tmp/rag027-<n>
 ```
-21 条全绿；`tests/ -k "rag or chunk or context or embedding"` 无新增失败；`cd frontend && npx tsc -b --force` 通过。
+**30 条全绿**（首轮 21 条 + 审查整改后新增 9 条）；`tests/ -k "rag or chunk or context or embedding"`
+无本卡引入的失败；`cd frontend && npx tsc -b --force` 通过；`ruff` / `mypy app/rag/` 干净。
 
-### 变异验证（每处均被抓红后还原）
+### 首轮变异验证（8 处，每处抓红后还原）
 
 | # | 变异 | 变红测试 | 条数 |
 | --- | --- | --- | --- |
@@ -113,7 +144,28 @@ DATABASE_URL="sqlite:///…/data/tmp-rag027-<n>.db" python -m pytest tests/test_
 | 8 | 不校验 `chunk.tenant_id == doc.tenant_id` | `test_chunk_document_tenant_mismatch_is_denied` | 1 |
 
 还原方式：`git checkout -- app/rag/access.py`（其余文件用改动前副本覆盖），
-`grep -rn "MUTATION" app/` 为空 + 21 条全绿确认无残留。
+`grep -rn "MUTATION" app/` 为空 + 全绿确认无残留。
+
+### 审查整改（第二轮）复现证据与整改后证据
+
+独立审查（`docs/reviews/2026-10-07-RAG-027授权引用原文只读核验独立审查.md`）指出三条 Medium 与若干 Low：
+实现行为正确，**缺的是能把它锁住的测试**。下表给出「整改前的存活证据」（审查实测 / 我复跑）与
+「整改后的抓红证据」。
+
+| 项 | 缺口 | 整改前的复现证据 | 整改（新增用例） | 整改后的变异结果 |
+| --- | --- | --- | --- | --- |
+| **M-01** | 缓存绕过只有 deny→deny 方向，缺 allow→deny | 按 `chunk_id` 缓存并复用上次授权结论 → 21 条全绿（存活）；owner 先 200 后 peer 可拿到正文 | `test_previous_verification_is_not_reused_for_another_subject`（owner 200 → peer 404 → owner 仍 200，同进程同 chunk_id）、`test_document_state_change_takes_effect_immediately`（两次请求之间软删 → 第二次 404）、`test_scope_tightening_takes_effect_immediately`（tenant→uploader 收紧 → 第二次 404） | 同一缓存变异 → **4 红**（上述 3 条 + 等价性用例） |
+| **M-02** | 时效分支 `RAG_EFFECTIVE_DATE_FILTER` 零覆盖 | 删掉分支 → 21 条全绿（存活）；组合实测开关打开时未生效 / 已过期版本被放行（404 → 200） | `test_effective_date_filter_blocks_unpublished_and_expired[scheduled]`、`[expired]`（开关打开 → 404，含服务层直连断言）、`test_effective_date_filter_still_allows_live_version`（生效中仍 200）、`test_effective_date_filter_off_keeps_is_current_semantics`（开关关闭时语义不变） | 删除时效分支 → **2 红**（`[scheduled]` / `[expired]`） |
+| **M-03** | 核验面 = 检索面只有 `TENANT_ADMIN` 单向约束 | 去掉 `SYSTEM_ADMIN` 豁免 → 全仓 42 passed（存活），无人发现两面脱钩 | `test_evidence_matches_retrieval_face_for_every_role`：四角色 × 两种范围，逐个断言 `RAGService.search` 是否命中（真实检索，非只读 `can_read_document`）与 `/evidence` 是否 200 **同真同假**，并用 `_EXPECTED_FACE` 钉住每个角色的期望取值（防「全都不可见」也能通过等价断言） | 去掉 `SYSTEM_ADMIN` 豁免 → **1 红**，报错原文：`uploader 核验面与检索面脱钩：检索={'owner': True, 'peer': False, 'tenant_admin': False, 'system_admin': True}，核验={'owner': True, 'peer': False, 'tenant_admin': False, 'system_admin': False}` |
+| **L-01** | 父块租户自洽分支零覆盖 | 删掉 `parent.tenant_id != doc.tenant_id` → 21 条全绿（存活） | `test_parent_with_tampered_tenant_is_denied`（父子同文档、父块 `tenant_id` 被拼改 → `parent=null`，不返回父正文） | 删除该校验 → **1 红** |
+| **L-02** | 父块两道防线冗余，单删不可证伪 | M2 / M2b 单删各存活，同时拆才红 | 不改行为：`_authorized_parent` docstring 如实写明「冗余但有意保留」，见 §5.5 | 行为不变；纵深防御的意图可读 |
+| **L-05** | `include_parent_content` 无前端调用方 | — | 按 team-lead 裁定保留后端能力、前端不接；§5.6 写明「预留，当前无前端调用方」，后端由 `test_parent_content_only_when_authorized` 锁住 | 不变 |
+| **L-06 / L-04** | 时序侧信道 / 前端登出不清缓存 | — | 按裁定登记不修，写入 §5.1「已知边界」 | 不变 |
+| **I-03 / I-06** | 措辞与注释笔误 | — | §5.1 补上「SYSTEM_ADMIN 偏差来源 RAG-026 CE-1」与「Chat 侧未挂载」；`app/rag/evidence.py` 注释 block → 块 | 不变 |
+
+四角色等价性**实测取值**（整改后，uploader 模式）：
+`owner=True / peer=False / tenant_admin=False / system_admin=True`，核验面与之一一对应；
+tenant 模式四角色同为 `True`。该取值表即 `_EXPECTED_FACE`，任一处单独偏移都会变红。
 
 ## 7. 回滚
 

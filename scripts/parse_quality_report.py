@@ -48,17 +48,42 @@ DEPENDENCY_MISSING_ERROR_CODES = frozenset(
 )
 DEPENDENCY_MISSING_MESSAGE_MARK = "依赖缺失"
 
-# 建议门槛（**尚未经人工评审锁定**，仅作为评审输入）。
-PROPOSED_GATE = {
+# 质量门禁（gate.v1，2026-10-07 由批次评审锁定）。
+# 五条规则见 LOCKED_GATE["rules"]；修改门槛值必须同时改 version 与 locked_at。
+LOCKED_GATE = {
+    "version": "gate.v1",
+    "status": "locked",
+    "locked_by": "批次评审（Agent 代执行人工评审）",
+    "locked_at": "2026-10-07",
     "coverage_min": 0.95,
-    "order_correct_required": True,
+    "order_score_min": 0.95,
     "failure_rate_max": 0.0,
-    "status": "proposed_not_locked",
+    "rules": {
+        "G1": "未登记的失败必须为 0：任何 status=fail 且不在 manifest expected_failure 里的样本，"
+        "整份报告判不通过。",
+        "G2": "覆盖率 coverage ≥ 0.95；低于门槛的样本必须登记在 manifest 的 known_gap 并出现在报告 "
+        "known_limitations 中，登记后状态为 known_limitation（豁免门槛，但不得计入 passed）。",
+        "G3": "阅读顺序 order_score ≥ 0.95，豁免规则同 G2。",
+        "G4": "依赖缺失：存在任何 dependency_missing 样本时整份报告 meets_gate=False（即使其它全绿）。",
+        "G5": "不得声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的表述；"
+        "dependency_missing 样本不得计入覆盖率或顺序统计。",
+    },
     "note": (
-        "门槛为建议值，尚未经人工评审锁定（proposed，not locked）；"
-        "本报告中不作为判定通过与否的依据，需评审结论后再锁定。"
+        "本门禁已锁定（gate.v1）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后"
+        "才能解除，解除前本卡整体不算「质量通过」。"
+        "另：本报告中不含任何宣称 OCR 已被真实依赖验证的表述，"
+        "中文 OCR 质量在本机未经验证。"
     ),
 }
+
+# G5 禁止出现的表述（在整份报告序列化结果里扫描）。
+FORBIDDEN_VERIFICATION_PHRASES = (
+    "OCR 质量已验证",
+    "已验证 OCR",
+    "OCR 已验证",
+    "中文 OCR 已通过",
+    "OCR 质量通过",
+)
 
 CONTENT_TYPE_BY_FORMAT = {
     "pdf": "application/pdf",
@@ -247,6 +272,7 @@ def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
         "used_ocr": False,
         "ocr_provider": None,
         "ocr_probe_mode": None,
+        "gap_note": None,
     }
 
     file_bytes = path.read_bytes() if path.exists() else b""
@@ -292,39 +318,127 @@ def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
     result.update(measure_coverage(parsed.text, sample["expected_fragments"]))
     result.update(evaluate_order(parsed.blocks, sample["expected_order"]))
 
-    if sample["expectation_mode"] == "known_limitation":
-        result["status"] = "known_limitation"
-        result["failure_reason"] = sample.get("known_gap") or "已知解析缺口，指标仅作记录"
-        return result
-
     problems: list[str] = []
     coverage = result["coverage"]
-    if coverage is not None and coverage < PROPOSED_GATE["coverage_min"]:
+    if coverage is not None and coverage < LOCKED_GATE["coverage_min"]:
         problems.append(
-            f"覆盖率 {coverage} 低于建议门槛 {PROPOSED_GATE['coverage_min']}"
+            f"覆盖率 {coverage} 低于门禁 G2 门槛 {LOCKED_GATE['coverage_min']}"
             f"（缺失片段：{result['missing_fragments']}）"
         )
-    if sample["expected_order"] and not result["reading_order_correct"]:
+    order_score = result["order_score"]
+    if sample["expected_order"] and order_score is not None and order_score < LOCKED_GATE["order_score_min"]:
         problems.append(
-            f"阅读顺序不正确（命中 {result['order_matched']}/{result['order_expected']}，"
-            f"顺序得分 {result['order_score']}）"
+            f"阅读顺序得分 {order_score} 低于门禁 G3 门槛 {LOCKED_GATE['order_score_min']}"
+            f"（命中 {result['order_matched']}/{result['order_expected']}）"
         )
+    if result["reading_order_correct"] is False and order_score is None:
+        problems.append("阅读顺序片段未全部命中，无法计算顺序得分")
+
     if sample["expectation_mode"] == "must_fail":
         result["status"] = "fail"
         result["failure_reason"] = "负样本未报错，属于静默通过"
         return result
 
+    registered_gap = sample.get("known_gap")
     if problems:
-        result["status"] = "fail"
-        result["failure_reason"] = "；".join(problems)
-    else:
-        result["status"] = "pass"
+        if registered_gap:
+            # G2/G3 豁免：已登记 known_gap 的样本记为 known_limitation，
+            # 豁免门槛但不得计入 passed。
+            result["status"] = "known_limitation"
+            result["failure_reason"] = f"{registered_gap}｜实测：{'；'.join(problems)}"
+        else:
+            result["status"] = "fail"
+            result["failure_reason"] = f"未登记的门禁突破（G1/G2/G3）：{'；'.join(problems)}"
+        return result
+
+    if registered_gap:
+        # 声明的缺口已不再复现：如实标注，避免把「已修好」继续算作缺口。
+        result["gap_note"] = "manifest 中登记的 known_gap 本次未复现"
+    result["status"] = "pass"
     return result
 
 
 # ---------------------------------------------------------------------------
 # 报告组装
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# 质量门禁（gate.v1，已锁定）
+# ---------------------------------------------------------------------------
+
+
+def evaluate_gate(results: list[dict], *, failure_rate: float) -> dict:
+    """按 gate.v1 的五条规则逐条判定，返回门禁结果。
+
+    G1 未登记的失败必须为 0；G2/G3 覆盖率与顺序门槛（登记 known_gap 则豁免，
+    但豁免项不得计入 passed）；G4 存在依赖缺失即整份不通过；
+    G5 不得声称验证过，且依赖缺失样本不得计入覆盖/顺序统计。
+    """
+    coverage_min = LOCKED_GATE["coverage_min"]
+    order_min = LOCKED_GATE["order_score_min"]
+
+    def names(items: list[dict]) -> list[str]:
+        return [item["name"] for item in items]
+
+    # G1：任何 status=fail 的样本都属于未登记失败（已登记的负样本状态是 expected_failure）。
+    g1_violations = [item for item in results if item["status"] == "fail"]
+    g1_passed = not g1_violations
+
+    # G2：覆盖率低于门槛且未登记 known_gap（未落进 known_limitations）的样本。
+    g2_violations = [
+        item
+        for item in results
+        if item["coverage"] is not None
+        and item["coverage"] < coverage_min
+        and item["status"] != "known_limitation"
+    ]
+    g2_passed = not g2_violations
+
+    # G3：顺序得分低于门槛且未登记的样本。
+    g3_violations = [
+        item
+        for item in results
+        if item["order_score"] is not None
+        and item["order_score"] < order_min
+        and item["status"] != "known_limitation"
+    ]
+    g3_passed = not g3_violations
+
+    # G4：依赖缺失即为阻断项。
+    g4_items = [item for item in results if item["status"] == "dependency_missing"]
+    g4_passed = not g4_items
+
+    # G5：不得声称验证过；依赖缺失样本不得带覆盖率/顺序数值。
+    claimed = [
+        item["name"]
+        for item in results
+        if item["status"] == "dependency_missing"
+        and (item["coverage"] is not None or item["order_score"] is not None)
+    ]
+    g5_passed = not claimed
+
+    checks = {
+        "G1": {"passed": g1_passed, "violations": names(g1_violations)},
+        "G2": {"passed": g2_passed, "violations": names(g2_violations)},
+        "G3": {"passed": g3_passed, "violations": names(g3_violations)},
+        "G4": {"passed": g4_passed, "violations": names(g4_items)},
+        "G5": {"passed": g5_passed, "violations": claimed},
+    }
+    blocking = [name for name, check in checks.items() if not check["passed"]]
+    return {
+        **LOCKED_GATE,
+        "measured_failure_rate": failure_rate,
+        "checks": checks,
+        "blocking_rules": blocking,
+        "meets_gate": not blocking,
+    }
+
+
+def scan_forbidden_phrases(report: dict) -> list[str]:
+    """扫描整份报告，返回出现的禁用表述（G5）。"""
+    serialized = json.dumps(report, ensure_ascii=False)
+    return [phrase for phrase in FORBIDDEN_VERIFICATION_PHRASES if phrase in serialized]
 
 
 def build_report(*, ocr_provider: str) -> dict:
@@ -338,16 +452,11 @@ def build_report(*, ocr_provider: str) -> dict:
     expected_failures = [item for item in results if item["status"] == "expected_failure"]
     passed = [item for item in results if item["status"] == "pass"]
 
-    scored = [item for item in results if item["status"] == "pass"]
-    failure_rate = (
-        round(len(failures) / len(scored + failures), 4) if (scored or failures) else 0.0
-    )
-    meets_gate = (
-        not failures
-        and not dependency_missing
-        and failure_rate <= PROPOSED_GATE["failure_rate_max"]
-    )
-    return {
+    scored = [item for item in results if item["status"] in ("pass", "fail")]
+    failure_rate = round(len(failures) / len(scored), 4) if scored else 0.0
+
+    gate = evaluate_gate(results, failure_rate=failure_rate)
+    report = {
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "card": "RAG-033 多格式解析与 OCR 质量基线",
         "corpus_dir": str(CORPUS_DIR.relative_to(REPO_ROOT)),
@@ -374,12 +483,18 @@ def build_report(*, ocr_provider: str) -> dict:
         "failures": failures,
         "dependency_missing_list": dependency_missing,
         "known_limitations": known_limitations,
-        "gate": {
-            **PROPOSED_GATE,
-            "measured_failure_rate": failure_rate,
-            "meets_gate": meets_gate,
-        },
+        "gate": gate,
     }
+
+    # G5 全报告扫描：任何「OCR 质量已验证」类表述都直接判 G5 不通过。
+    forbidden = scan_forbidden_phrases(report)
+    if forbidden:
+        gate["checks"]["G5"] = {"passed": False, "violations": forbidden}
+        gate["blocking_rules"] = [
+            name for name, check in gate["checks"].items() if not check["passed"]
+        ]
+        gate["meets_gate"] = not gate["blocking_rules"]
+    return report
 
 
 def render_report(report: dict) -> str:
@@ -424,7 +539,7 @@ def render_report(report: dict) -> str:
     else:
         lines.append("  （无）")
     lines.append("")
-    lines.append("已知缺口（指标仅记录，不计入失败）：")
+    lines.append("已知缺口（G2/G3 豁免：豁免门槛，但不计入 passed）：")
     for item in report["known_limitations"]:
         lines.append(
             f"  - {item['name']}: 覆盖={item['coverage']} 顺序={item['order_score']} "
@@ -433,9 +548,20 @@ def render_report(report: dict) -> str:
     lines.append("")
     gate = report["gate"]
     lines.append(
-        f"建议门槛（状态={gate['status']}，未锁定）：覆盖率≥{gate['coverage_min']}、"
-        f"顺序必须正确、失败率≤{gate['failure_rate_max']}；实测失败率={gate['measured_failure_rate']}、"
-        f"是否满足={gate['meets_gate']}"
+        f"质量门禁 {gate['version']}（状态={gate['status']}，锁定人={gate['locked_by']}，"
+        f"锁定日期={gate['locked_at']}）：覆盖率≥{gate['coverage_min']}、"
+        f"顺序得分≥{gate['order_score_min']}、失败率≤{gate['failure_rate_max']}"
+    )
+    for rule_name in ("G1", "G2", "G3", "G4", "G5"):
+        check = gate["checks"][rule_name]
+        lines.append(
+            f"  {rule_name} {'通过' if check['passed'] else '不通过'}："
+            f"{gate['rules'][rule_name]}"
+            + (f"（命中：{check['violations']}）" if check["violations"] else "")
+        )
+    lines.append(
+        f"  实测失败率={gate['measured_failure_rate']}；阻断规则={gate['blocking_rules']}；"
+        f"meets_gate={gate['meets_gate']}"
     )
     return "\n".join(lines)
 

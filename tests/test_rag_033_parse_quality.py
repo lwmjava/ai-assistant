@@ -6,7 +6,7 @@
    的覆盖率与阅读顺序（样本由 ``scripts/generate_parse_corpus.py`` 真实生成）。
 2. **依赖失败行为**：OCR 依赖缺失时的错误类型与文案、是否影响非 OCR 文档、
    空文件/损坏文件/不支持扩展名的失败行为。
-3. **报告结构**：覆盖率、顺序、失败清单字段齐全，建议门槛明确标注未锁定。
+3. **报告结构**：覆盖率、顺序、失败清单字段齐全，门禁按 gate.v1 已锁定。
 
 本机事实：未安装 ``pytesseract`` / ``pdfplumber``，也没有 tesseract 二进制，
 因此**中文 OCR 质量在本机无法用真实依赖验证**，相关断言只验证「依赖缺失时的
@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -319,7 +320,7 @@ def test_docx_table_gap_is_recorded_not_hidden(report: dict) -> None:
     ],
 )
 def test_positive_samples_reach_full_coverage(report: dict, name: str) -> None:
-    """各格式正样本覆盖率需达到建议门槛（1.0）。"""
+    """各格式正样本覆盖率需达到门禁 G2 门槛。"""
     entry = _entry(report, name)
     assert entry["status"] == "pass", f"{name} 状态为 {entry['status']}：{entry['failure_reason']}"
     assert entry["coverage"] == 1.0, f"{name} 缺失片段：{entry['missing_fragments']}"
@@ -412,19 +413,66 @@ def test_dependency_inventory_records_missing_items(report: dict) -> None:
         assert "pytesseract" in dependencies["missing"]
 
 
-def test_quality_gate_is_proposed_not_locked(report: dict) -> None:
-    """质量门槛必须标注「尚未经人工评审锁定」。"""
+def test_quality_gate_is_locked_v1(report: dict) -> None:
+    """门禁必须为已锁定的 gate.v1，并带齐锁定人/日期/五条规则。"""
     gate = report["gate"]
-    assert gate["status"] == "proposed_not_locked"
-    assert "coverage_min" in gate and "order_correct_required" in gate
-    assert "failure_rate_max" in gate
-    assert "尚未经人工评审锁定" in gate["note"]
+    assert gate["status"] == "locked"
+    assert gate["version"] == "gate.v1"
+    assert gate["locked_by"] == "批次评审（Agent 代执行人工评审）"
+    assert gate["locked_at"] == "2026-10-07"
+    assert set(gate["rules"]) == {"G1", "G2", "G3", "G4", "G5"}
+    assert gate["coverage_min"] == 0.95
+    assert gate["order_score_min"] == 0.95
+    assert gate["failure_rate_max"] == 0.0
 
 
-def test_gate_not_met_while_dependency_missing(report: dict) -> None:
-    """存在未验证（依赖缺失）样本时，不得宣称满足门槛。"""
+def test_gate_g1_no_unregistered_failure(report: dict) -> None:
+    """G1：未登记的失败必须为 0。"""
+    check = report["gate"]["checks"]["G1"]
+    assert check["passed"] is True
+    assert check["violations"] == []
+    assert report["failures"] == []
+
+
+def test_gate_g2_g3_exemptions_must_be_registered(report: dict) -> None:
+    """G2/G3：低于门槛的样本必须登记 known_gap，且豁免项不得计入 passed。"""
+    gate = report["gate"]
+    for rule in ("G2", "G3"):
+        assert gate["checks"][rule]["passed"] is True, f"{rule} 命中：{gate['checks'][rule]['violations']}"
+    for item in report["known_limitations"]:
+        assert item["known_gap"], f"{item['name']} 豁免但 manifest 未登记 known_gap"
+        assert item["name"] not in [entry["name"] for entry in report["samples"] if entry["status"] == "pass"]
+    # 当前两条豁免项：双栏交错（顺序 0.8571）与 DOCX 表格（覆盖 0.40）
+    exempt_names = {item["name"] for item in report["known_limitations"]}
+    assert "pdf_twocolumn_interleaved.pdf" in exempt_names
+    assert "docx_headings_table.docx" in exempt_names
+
+
+def test_gate_g4_blocks_while_dependency_missing(report: dict) -> None:
+    """G4：存在 dependency_missing 样本时整份报告不通过，阻断原因必须指向 G4。"""
     if report["dependency_missing_list"]:
-        assert report["gate"]["meets_gate"] is False
+        gate = report["gate"]
+        assert gate["checks"]["G4"]["passed"] is False
+        assert "G4" in gate["blocking_rules"]
+        assert gate["meets_gate"] is False
+        assert "pdf_scanned.pdf" in gate["checks"]["G4"]["violations"]
+
+
+def test_gate_g5_no_verification_claims(report: dict) -> None:
+    """G5：报告不得出现「OCR 质量已验证」类表述；依赖缺失样本不得计入覆盖/顺序统计。"""
+    gate = report["gate"]
+    assert gate["checks"]["G5"]["passed"] is True
+    assert _report_mod.scan_forbidden_phrases(report) == []
+    for item in report["dependency_missing_list"]:
+        assert item["coverage"] is None
+        assert item["order_score"] is None
+
+
+def test_g5_scan_detects_forbidden_claim(report: dict) -> None:
+    """G5 扫描函数本身必须能识别禁用表述（防止扫描恒空）。"""
+    polluted = json.loads(json.dumps(report))
+    polluted["samples"][0]["failure_reason"] = "OCR 质量已验证"
+    assert _report_mod.scan_forbidden_phrases(polluted) == ["OCR 质量已验证"]
 
 
 def test_json_report_can_be_written(tmp_path: Path, report: dict) -> None:

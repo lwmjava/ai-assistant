@@ -62,14 +62,14 @@
 pypdf 与 PyMuPDF 两侧都能正确提取中文（内置 `china-s` 字体不写 ToUnicode，
 会让 pypdf 取到乱码；脚本探测不到系统字体时会回退并在 manifest 里如实记录）。
 
-| 样本 | 形态 | 期望模式 |
+| 样本 | 形态 | 声明模式 → 实际状态 |
 |---|---|---|
-| `pdf_single_column.pdf` | 三页单栏，H1/H2 标题层级 | must_pass（含跨页顺序） |
-| `pdf_twocolumn.pdf` | 双栏，内容流按「左栏整体→右栏整体」写入 | must_pass（阅读顺序关键样本） |
-| `pdf_twocolumn_interleaved.pdf` | 同上文本，内容流按「逐行左右交替」写入 | known_limitation（量化跨栏错乱） |
-| `pdf_table.pdf` | 带框线表格 | must_pass |
-| `pdf_scanned.pdf` | 图片型 PDF，无文本层（中文页面渲染成 JPEG 后嵌入） | must_pass → 实际 `dependency_missing` |
-| `docx_headings_table.docx` | H1/H2 + 2×3 表格 | known_limitation（表格未提取） |
+| `pdf_single_column.pdf` | 三页单栏，H1/H2 标题层级 | must_pass → `pass`（含跨页顺序） |
+| `pdf_twocolumn.pdf` | 双栏，内容流按「左栏整体→右栏整体」写入 | must_pass → `pass`（阅读顺序关键样本） |
+| `pdf_twocolumn_interleaved.pdf` | 同上文本，内容流按「逐行左右交替」写入 | must_pass → `known_limitation`（G3 豁免，登记 known_gap） |
+| `pdf_table.pdf` | 带框线表格 | must_pass → `pass` |
+| `pdf_scanned.pdf` | 图片型 PDF，无文本层（中文页面渲染成 JPEG 后嵌入） | must_pass → `dependency_missing`（G4 阻断） |
+| `docx_headings_table.docx` | H1/H2 + 2×3 表格 | must_pass → `known_limitation`（G2 豁免，登记 known_gap） |
 | `xlsx_multi_sheet.xlsx` | 两个 sheet + A1:B1 合并单元格 | must_pass |
 | `pptx_notes.pptx` | 两页幻灯片 + 备注页 | must_pass |
 | `md_code_fence.md` | bash 代码围栏 + ASCII 盒图 | must_pass |
@@ -108,11 +108,14 @@ coverage = 命中的期望片段数 / 期望片段总数
 
 | 状态 | 含义 |
 |---|---|
-| `pass` | 覆盖率达建议门槛且顺序正确（若有顺序期望） |
-| `fail` | must_pass 样本未达标；或负样本反而没报错（静默通过） |
-| `dependency_missing` | 真实依赖缺失导致该路径**无法验证**；绝不等同 pass |
-| `known_limitation` | 已在 manifest 里标注的解析缺口，指标仅记录、不计入失败清单 |
+| `pass` | 覆盖率与顺序都达到门禁门槛（G2/G3） |
+| `fail` | 未登记的门禁突破（G1/G2/G3）：有阈值突破但 manifest 未登记 `known_gap`；或负样本反而没报错（静默通过） |
+| `dependency_missing` | 真实依赖缺失导致该路径**无法验证**；绝不等同 pass（G4 阻断项） |
+| `known_limitation` | 阈值突破但已在 manifest 登记 `known_gap` 并落入报告 `known_limitations`：**豁免门槛，但不得计入 passed** |
 | `expected_failure` | 负样本按预期错误类型失败 |
+
+> 状态由「阈值 + 是否登记 known_gap」推导，不由 manifest 的 `expectation_mode` 直接指定，
+> 因此**缺口被修好后不会再被算作缺口**（会回到 `pass` 并记 `gap_note`）。
 
 ---
 
@@ -149,14 +152,22 @@ unsupported.bin                   bin    expected_failure           -       -   
   - pdf_scanned.pdf: error_code=ocr_tesseract_missing error_type=DocumentParseError
     reason=真实依赖缺失，无法在本机验证该路径：OCR 依赖缺失：未检测到 tesseract 或 chi_sim/eng 语言包
 
-已知缺口（指标仅记录，不计入失败）：
+已知缺口（G2/G3 豁免：豁免门槛，但不计入 passed）：
   - pdf_twocolumn_interleaved.pdf: 覆盖=1.0 顺序=0.8571
     原因=解析器未做列聚类排序，逐行交替写入的双栏 PDF 阅读顺序会跨栏错乱。
+    ｜实测：阅读顺序得分 0.8571 低于门禁 G3 门槛 0.95（命中 7/7）
   - docx_headings_table.docx: 覆盖=0.4
     原因=DocxDocumentParser 只遍历 document.paragraphs，表格单元格不进入解析结果。
+    ｜实测：覆盖率 0.4 低于门禁 G2 门槛 0.95（缺失片段：['角色','职责','时限','实施','联调','五个工作日']）
 
-建议门槛（状态=proposed_not_locked，未锁定）：覆盖率≥0.95、顺序必须正确、
-失败率≤0.0；实测失败率=0.0、是否满足=False
+质量门禁 gate.v1（状态=locked，锁定人=批次评审（Agent 代执行人工评审），锁定日期=2026-10-07）：
+覆盖率≥0.95、顺序得分≥0.95、失败率≤0.0
+  G1 通过：未登记的失败必须为 0…
+  G2 通过：覆盖率 coverage ≥ 0.95…
+  G3 通过：阅读顺序 order_score ≥ 0.95，豁免规则同 G2。
+  G4 不通过：依赖缺失…（命中：['pdf_scanned.pdf']）
+  G5 通过：不得声称验证过…
+  实测失败率=0.0；阻断规则=['G4']；meets_gate=False
 ```
 
 复现命令：
@@ -170,20 +181,37 @@ python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-qual
 
 ---
 
-## 6. 实测暴露的两条真实缺口（未修复，留待评审决策）
+## 6. 实测暴露的两条真实缺口 —— **裁定：不在本卡修，另开卡**
 
 1. **双栏 PDF 的阅读顺序依赖内容流顺序**。
    `PdfDocumentParser` 直接用 `page.get_text("blocks")` 的返回次序，未做列聚类/几何排序。
    内容流按栏写入（常见排版）时顺序正确（样本 `pdf_twocolumn.pdf`，`order_score=1.0`）；
    内容流逐行交替写入时会跨栏错乱（样本 `pdf_twocolumn_interleaved.pdf`，
-   `order_score=0.8571`，块内把左右两行合并成一块）。本卡只做量化与记录，未改解析器。
+   `order_score=0.8571`，块内把左右两行合并成一块）。
 2. **DOCX 表格未进入解析结果**。
    `DocxDocumentParser.extract()` 只遍历 `document.paragraphs`，
    `python-docx` 的表格不在 `paragraphs` 里，故表格单元格全部缺失
-   （样本覆盖率 4/10 = 0.40）。本卡只做记录，未改解析器。
+   （样本覆盖率 4/10 = 0.40）。
 
 两条都在 manifest 的 `known_gap` 与报告的 `known_limitations` 中留痕，
-**不计入失败清单**，也不会被当作「已验收」。
+**不计入 passed**，也不会被当作「已验收」。
+
+### 6.1 为什么不在 RAG-033 内修（评审裁定，2026-10-07）
+
+1. **本卡验收是「真实依赖样本报告 + 质量门禁锁定」，交付物是基线与门禁，不是解析器改造。**
+   把修复塞进来，基线本身就失去参照价值——**先有基线、再对照修复**，这个顺序才有意义，
+   也才是能对外讲的做法。
+2. **两条修复都会改变解析产物 → 改变分块内容 → 改变检索结果。**
+   双栏几何排序会重排块序，DOCX 表格抽取会新增块内容。这类改动要单独评估回归
+   （尤其会影响 RAG-034/035 的评测输入），不能搭在基线卡里顺手做。
+3. **现状是诚实的，不需要为了「看起来通过」去动解析器。**
+   `known_gap` 已登记、报告里已落在 `known_limitations` 且不计入 `passed`。
+
+后续卡建议（各自带回归评估）：
+
+- 一条「**双栏 PDF 阅读顺序几何排序**」：期望 `pdf_twocolumn_interleaved.pdf`
+  的 `order_score` 从 0.8571 提升到 ≥0.95，且 `pdf_twocolumn.pdf` 保持 1.0。
+- 一条「**DOCX 表格纳入解析**」：期望 `docx_headings_table.docx` 覆盖率从 0.40 提升到 1.0。
 
 ---
 
@@ -200,19 +228,23 @@ python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-qual
 
 ---
 
-## 8. 建议门槛（**尚未经人工评审锁定**）
+## 8. 质量门禁：gate.v1（**已锁定**，2026-10-07）
 
-| 指标 | 建议值 | 状态 |
+版本 `gate.v1`；锁定人「批次评审（Agent 代执行人工评审）」；锁定日期 2026-10-07。
+规则文本写在 `scripts/parse_quality_report.py::LOCKED_GATE`，报告逐条输出判定结果。
+
+| 规则 | 内容 | 当前 |
 |---|---|---|
-| 覆盖率（正样本） | ≥ 0.95 | **建议，未锁定** |
-| 阅读顺序 | 有顺序期望的样本必须 `reading_order_correct=True` | **建议，未锁定** |
-| 失败率（must_pass 样本） | ≤ 0.00 | **建议，未锁定** |
-| 依赖缺失样本 | 不计入通过，单独列清单并在补齐依赖后重跑 | **建议，未锁定** |
+| **G1** | 未登记的失败必须为 0：任何 `status=fail` 且不在 manifest `expected_failure` 里的样本，整份报告判不通过 | ✅ 通过 |
+| **G2** | 覆盖率 `coverage ≥ 0.95`；低于门槛的样本**必须**登记在 manifest 的 `known_gap` 并出现在报告 `known_limitations` 中，登记后状态为 `known_limitation`（**豁免门槛，但不得计入 passed**） | ✅ 通过（DOCX 表格 0.40 走豁免） |
+| **G3** | 阅读顺序 `order_score ≥ 0.95`，同 G2 的登记豁免规则 | ✅ 通过（双栏交错 0.8571 走豁免） |
+| **G4** | 依赖缺失：存在任何 `dependency_missing` 样本时整份报告 `meets_gate=False`（即使其它全绿） | ❌ **不通过**，`pdf_scanned.pdf` 命中 |
+| **G5** | 不得声称验证过：报告中不得出现任何宣称 OCR 质量已经过验证的表述；`dependency_missing` 样本不得计入覆盖或顺序统计 | ✅ 通过 |
 
-报告里 `gate.status = "proposed_not_locked"`，`gate.note` 明确写
-「尚未经人工评审锁定」。本次**没有**宣称门禁已锁定；`gate.meets_gate` 在存在
-`dependency_missing` 样本时恒为 `False`（未验证的路径不能算满足）。
-等评审结论出来后再把门槛写进脚本并改掉该标记。
+当前结论：`blocking_rules=['G4']`，`meets_gate=False`。
+
+**G4 在补齐 tesseract + chi_sim 语言包后需重跑才能解除，解除前本卡整体不算「质量通过」。**
+修改门槛值必须同时改 `LOCKED_GATE["version"]` 与 `locked_at`，避免静默改写已锁定门禁。
 
 ---
 
@@ -238,9 +270,16 @@ python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-qual
 |---|---|
 | `scripts/generate_parse_corpus.py` | 新增：样本集生成器 |
 | `evals/corpus/parsing/*` | 新增：13 个样本 + `manifest.json` |
-| `scripts/parse_quality_report.py` | 新增：评估报告脚本 |
+| `scripts/parse_quality_report.py` | 新增：评估报告脚本（含 gate.v1 门禁判定） |
 | `evals/reports/parse-quality-20261007.json` | 新增：首份报告（非冻结基线） |
-| `tests/test_rag_033_parse_quality.py` | 新增：29 条测试 |
-| `docs/plans/implementation_rag_033_parse_quality.md` | 本文档 |
+| `tests/test_rag_033_parse_quality.py` | 新增：35 条测试 |
 
 未改动 `app/rag/**` 下的任何产品代码；未改 `.env`；未改 `tasks.yaml` 卡片状态。
+
+### 10.1 门禁锁定后的追加变更（2026-10-07）
+
+| 文件 | 变更 |
+|---|---|
+| `scripts/parse_quality_report.py` | `PROPOSED_GATE` → `LOCKED_GATE`（gate.v1，locked）；新增 `evaluate_gate`（G1–G5 逐条判定）与 `scan_forbidden_phrases`（G5 全报告扫描）；状态改为「阈值 + known_gap 登记」推导 |
+| `tests/test_rag_033_parse_quality.py` | 门禁相关断言改为校验 `locked`/`gate.v1`，新增 G1–G5 五条规则测试与 G5 扫描函数自测 |
+| `docs/plans/implementation_rag_033_parse_quality.md` | 6.1 节补「不在本卡修」的三条理由；第 8 节改为已锁定的 gate.v1 |

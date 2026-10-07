@@ -75,21 +75,47 @@ Docker 未就绪时跨库部分按 `blocked` 记录，没有生成虚假的 Milv
 
 后续修复需在同一事务/补偿语义下接入外部 `add()`，使用批准的 `COSINE` metric 返回值填充真实 `similarity`，并在写入边界统一 L2 归一化；随后重跑本脚本，要求三条路径全部 `pass`。
 
-## 7. 自动化与变异验证
+## 7. 假 Milvus 反例（证明脚本不会恒真）
+
+Docker 不可用期间，最大的风险不是「跑不了 Milvus」，而是**脚本恒真**：无论 Milvus 侧发生什么都判通过。因此新增一组假 Milvus 反例：真实走 SQL、真实走融合与 HTTP 面，只把集合 IO 换成内存假库（或裸 TCP 监听），逐个场景断言脚本必须**非 0 退出且留下可诊断错误**。
+
+```bash
+python scripts/milvus_switch_check.py --apply --counterexample \
+  --report evals/reports/rag-015-fake-milvus-counterexamples-20261007.json
+```
+
+8 个场景全部被捕获（`detected_count=8`、`undetected_scenarios=[]`、`result=all_detected`），且每个场景都撞在自己的判据上：
+
+| 场景 | 假象 | 退出码 | 判据（节选） |
+| --- | --- | --- | --- |
+| `bare_listener_not_milvus` | 19530 有监听但不是 Milvus | 1 | `MilvusException: Fail connecting to server on 127.0.0.1:19531` |
+| `collection_exists_but_zero_rows` | 集合存在但 0 行 | 1 | `Milvus 集合缺少上传产生的向量…；仅有 DocumentChunk 不能算 Milvus 写入通过` |
+| `collection_rows_mismatch_dim` | 向量条数少于 SQL 分块 | 1 | 同上（`missing=[…]` 列出缺的 chunk id） |
+| `collection_rows_match_but_dim_wrong` | 条数对、维度错（32 vs 64） | 1 | `Milvus 集合向量维度 [32] 与登记索引 dim=64 不一致` |
+| `milvus_search_returns_zero_hits` | 有向量但检索零命中 | 1 | `已有 3 条已向量化分块，检索却零命中：不得把检索故障当成空知识库` |
+| `dense_only_sparse_all_zero` | 只写稠密、BM25 词项没落库 | 1 | `没有任何分块带 BM25 词项：稀疏侧没有生效（稠密单路伪装成混合检索）` |
+| `collection_has_stale_identity_vectors` | 集合里残留旧身份向量（5 vs 3） | 1 | `当前租户的向量条数 5 与 SQL 已向量化分块数 3 不一致：旧身份残留 / 清理失败` |
+| `similarity_is_placeholder` | `similarity` 写死 1.0 | 1 | `Milvus 侧 similarity 恒为 1.0（3 条命中），仍为占位值` |
+
+前两个「旧身份残留」与「稀疏侧为空」一开始是**漏检**的（脚本 exit 0），据此补了两条判据后才收敛：只按上传 id 查集合会漏掉集合里的多余向量（改为同时做租户级条数核对）；只看命中数看不出 BM25 有没有生效（改为核对 SQL 侧带词项的分块数）。
+
+## 8. 自动化与变异验证
 
 正常测试使用全新数据库与全新 basetemp：
 
 ```bash
-DATABASE_URL=sqlite:///./data/test_rag015_unit_20261007_e.db \
-  pytest tests/test_rag_015_milvus_switch.py \
-  --basetemp=data/pytest-tmp/rag015-unit-20261007-e -q
+DATABASE_URL=sqlite:///./data/test_rag015_fake_b2.db \
+  python -m pytest tests/test_rag_015_milvus_switch.py \
+  --basetemp=C:/Users/123/AppData/Local/Temp/rag015-fake-bt-b2 -q
 ```
 
-结果：`7 passed`。
+结果：`20 passed`（7 条判据级用例 + 5 条新增判据用例 + 8 条假 Milvus 反例用例，后者每个都在独立子进程里跑真实脚本）。
 
-两处变异均在验证后还原：
+变异均在验证后还原（`diff -u` 与变异前快照逐字节一致）：
 
 1. 把“Milvus 必须包含全部 SQL chunk id”的缺失判断改成恒假，`test_milvus_presence_requires_rows_from_milvus_not_sql_only` 与 `test_milvus_presence_rejects_partial_collection_write` 共 **2 条变红**。
 2. 把“local SQL 有数据时禁止 `no_hit`”判断改成恒假，`test_switch_back_rejects_silent_no_hit_when_local_data_exists` 共 **1 条变红**。
+3. 把“集合条数必须与 SQL 分块数相等”放宽成 `observed < expected`（即多于预期也算通过），`collection_has_stale_identity_vectors` 场景脚本 **exit 0（漏检）**，对应用例 `test_stale_vectors_break_row_count_against_sql` 与 `test_fake_milvus_counterexample_must_not_pass[collection_has_stale_identity_vectors]` **2 条变红**。
+4. 把“稀疏侧为空”判断改成恒假，`dense_only_sparse_all_zero` 场景脚本 **exit 0（漏检）**，对应用例 `test_sparse_side_all_zero_is_reported_as_fake_hybrid` 与 `test_fake_milvus_counterexample_must_not_pass[dense_only_sparse_all_zero]` **2 条变红**。
 
 恢复后再次运行全套单测和 Ruff，必须保持全绿。

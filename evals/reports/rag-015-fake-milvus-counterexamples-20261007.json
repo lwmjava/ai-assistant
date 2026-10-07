@@ -1,0 +1,208 @@
+{
+  "schema_version": "rag-015-fake-milvus-v1",
+  "run_at": "2026-10-07T11:14:15.912752+00:00",
+  "fake_port": 19531,
+  "python": "3.12.0",
+  "scenarios": [
+    {
+      "scenario": "bare_listener_not_milvus",
+      "fake_spec": null,
+      "used_fake_milvus": false,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "blocked",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "blocked",
+      "diagnostic": "milvus_upload_visible=blocked(MilvusException: <MilvusException: (code=2, message=Fail connecting to server on 127.0.0.1:19531, illegal connection params or server unavailable)>) | cross_backend=blocked(MilvusException: <MilvusException: (code=2, message=Fail connecting to server on 127.0.0.1:19531, illegal connection params or server unavailable)>)"
+    },
+    {
+      "scenario": "collection_exists_but_zero_rows",
+      "fake_spec": {
+        "zero_rows": true,
+        "drop_ids": false,
+        "upsert_dim_mismatch": false,
+        "write_dim": null,
+        "search_hits": null,
+        "stale_rows": false,
+        "sparse_tokens_missing": false,
+        "similarity": null,
+        "real_similarity": false,
+        "indexes": []
+      },
+      "used_fake_milvus": true,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "fail",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "blocked",
+      "diagnostic": "milvus_upload_visible=fail(Milvus 集合缺少上传产生的向量：expected=3 observed=0 missing=['199a7e612c34426c843ed18924d6c307', '22cc703f3af241ba83fe445a57aef2a0', 'a38ea511d73a40f9a0cebe0b43e7d748']；仅有 DocumentChunk 不能算 Milvus 写入通过) | cross_backend=blocked(AcceptanceCheckError: Milvus 侧 similarity 恒为 1.0（3 条命中），仍为占位值，不能作为真实余弦相似度)"
+    },
+    {
+      "scenario": "collection_rows_mismatch_dim",
+      "fake_spec": {
+        "zero_rows": false,
+        "drop_ids": true,
+        "upsert_dim_mismatch": true,
+        "write_dim": null,
+        "search_hits": null,
+        "stale_rows": false,
+        "sparse_tokens_missing": false,
+        "similarity": null,
+        "real_similarity": false,
+        "indexes": []
+      },
+      "used_fake_milvus": true,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "fail",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "blocked",
+      "diagnostic": "milvus_upload_visible=fail(Milvus 集合缺少上传产生的向量：expected=3 observed=1 missing=['4e745417785c4c5fa9c39f1b1b5f2de2', '7c1190271b6b4b4cbe04077bb0a827f0']；仅有 DocumentChunk 不能算 Milvus 写入通过) | cross_backend=blocked(AcceptanceCheckError: Milvus 侧 similarity 恒为 1.0（3 条命中），仍为占位值，不能作为真实余弦相似度)"
+    },
+    {
+      "scenario": "collection_rows_match_but_dim_wrong",
+      "fake_spec": {
+        "zero_rows": false,
+        "drop_ids": false,
+        "upsert_dim_mismatch": false,
+        "write_dim": 32,
+        "search_hits": null,
+        "stale_rows": false,
+        "sparse_tokens_missing": false,
+        "similarity": null,
+        "real_similarity": false,
+        "indexes": []
+      },
+      "used_fake_milvus": true,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "fail",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "blocked",
+      "diagnostic": "milvus_upload_visible=fail(Milvus 集合向量维度 [32] 与登记索引 dim=64 不一致：维度不符的向量不可比) | cross_backend=blocked(AcceptanceCheckError: Milvus 侧 similarity 恒为 1.0（3 条命中），仍为占位值，不能作为真实余弦相似度)"
+    },
+    {
+      "scenario": "milvus_search_returns_zero_hits",
+      "fake_spec": {
+        "zero_rows": false,
+        "drop_ids": false,
+        "upsert_dim_mismatch": false,
+        "write_dim": null,
+        "search_hits": 0,
+        "stale_rows": false,
+        "sparse_tokens_missing": false,
+        "similarity": null,
+        "real_similarity": true,
+        "indexes": []
+      },
+      "used_fake_milvus": true,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "pass",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "blocked",
+      "diagnostic": "cross_backend=blocked(AcceptanceCheckError: Milvus 索引名下已有 3 条已向量化分块，检索却零命中：不得把检索故障当成空知识库)"
+    },
+    {
+      "scenario": "dense_only_sparse_all_zero",
+      "fake_spec": {
+        "zero_rows": false,
+        "drop_ids": false,
+        "upsert_dim_mismatch": false,
+        "write_dim": null,
+        "search_hits": null,
+        "stale_rows": false,
+        "sparse_tokens_missing": true,
+        "similarity": null,
+        "real_similarity": true,
+        "indexes": []
+      },
+      "used_fake_milvus": true,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "pass",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "blocked",
+      "diagnostic": "cross_backend=blocked(AcceptanceCheckError: Milvus 检索返回 3 条命中，但索引名下没有任何分块带 BM25 词项：稀疏侧没有生效，融合结果不可信（稠密单路伪装成混合检索）)"
+    },
+    {
+      "scenario": "collection_has_stale_identity_vectors",
+      "fake_spec": {
+        "zero_rows": false,
+        "drop_ids": false,
+        "upsert_dim_mismatch": false,
+        "write_dim": null,
+        "search_hits": null,
+        "stale_rows": true,
+        "sparse_tokens_missing": false,
+        "similarity": null,
+        "real_similarity": true,
+        "indexes": []
+      },
+      "used_fake_milvus": true,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "fail",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "completed",
+      "diagnostic": "milvus_upload_visible=fail(Milvus 集合里当前租户的向量条数 5 与 SQL 已向量化分块数 3 不一致：集合里混了不属于当前索引的向量（旧身份残留 / 清理失败）)"
+    },
+    {
+      "scenario": "similarity_is_placeholder",
+      "fake_spec": {
+        "zero_rows": false,
+        "drop_ids": false,
+        "upsert_dim_mismatch": false,
+        "write_dim": null,
+        "search_hits": null,
+        "stale_rows": false,
+        "sparse_tokens_missing": false,
+        "similarity": 1.0,
+        "real_similarity": false,
+        "indexes": []
+      },
+      "used_fake_milvus": true,
+      "isolation": "subprocess",
+      "exit_code": 1,
+      "detected": true,
+      "path_statuses": {
+        "default_local": "pass",
+        "milvus_upload_visible": "pass",
+        "switch_back_local": "pass"
+      },
+      "cross_backend_status": "blocked",
+      "diagnostic": "cross_backend=blocked(AcceptanceCheckError: Milvus 侧 similarity 恒为 1.0（3 条命中），仍为占位值，不能作为真实余弦相似度)"
+    }
+  ],
+  "detected_count": 8,
+  "undetected_scenarios": [],
+  "result": "all_detected"
+}

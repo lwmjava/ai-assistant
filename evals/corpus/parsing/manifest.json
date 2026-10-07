@@ -1,0 +1,272 @@
+{
+  "version": "rag-033-parsing-corpus-v1",
+  "generated_by": "scripts/generate_parse_corpus.py",
+  "cjk_font": "C:/Windows/Fonts/simhei.ttf",
+  "cjk_font_is_system_font": true,
+  "cjk_font_note": "系统 CJK 字体带 ToUnicode，pypdf 与 PyMuPDF 均可正确提取中文",
+  "samples": [
+    {
+      "name": "pdf_single_column.pdf",
+      "format": "pdf",
+      "kind": "positive",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "产品知识库运维手册",
+        "第一章 索引构建",
+        "第二章 检索与重排",
+        "第三章 故障排查",
+        "索引构建阶段会先解析源文件再写入向量库。",
+        "检索阶段采用向量召回加关键词召回的混合策略。",
+        "故障排查优先检查依赖是否完整以及索引身份是否一致。"
+      ],
+      "expected_order": [
+        "产品知识库运维手册",
+        "第一章 索引构建",
+        "索引构建阶段会先解析源文件再写入向量库。",
+        "第二章 检索与重排",
+        "检索阶段采用向量召回加关键词召回的混合策略。",
+        "第三章 故障排查",
+        "故障排查优先检查依赖是否完整以及索引身份是否一致。"
+      ],
+      "expected_error": null,
+      "notes": "三页单栏，含 H1/H2 标题层级；顺序断言覆盖跨页顺序。",
+      "known_gap": null
+    },
+    {
+      "name": "pdf_twocolumn.pdf",
+      "format": "pdf",
+      "kind": "positive",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "双栏排版阅读顺序样本",
+        "左栏第一段第一行内容",
+        "左栏第一段第二行内容",
+        "左栏第二段第一行内容",
+        "右栏第一段第一行内容",
+        "右栏第一段第二行内容",
+        "右栏第二段第一行内容"
+      ],
+      "expected_order": [
+        "双栏排版阅读顺序样本",
+        "左栏第一段第一行内容",
+        "左栏第一段第二行内容",
+        "左栏第二段第一行内容",
+        "右栏第一段第一行内容",
+        "右栏第一段第二行内容",
+        "右栏第二段第一行内容"
+      ],
+      "expected_error": null,
+      "notes": "双栏样本，内容流按「左栏整体→右栏整体」写入；正确阅读顺序为左栏全部行先于右栏全部行。",
+      "known_gap": null
+    },
+    {
+      "name": "pdf_twocolumn_interleaved.pdf",
+      "format": "pdf",
+      "kind": "positive",
+      "expectation_mode": "known_limitation",
+      "expected_fragments": [
+        "双栏排版阅读顺序样本",
+        "左栏第一段第一行内容",
+        "左栏第一段第二行内容",
+        "左栏第二段第一行内容",
+        "右栏第一段第一行内容",
+        "右栏第一段第二行内容",
+        "右栏第二段第一行内容"
+      ],
+      "expected_order": [
+        "双栏排版阅读顺序样本",
+        "左栏第一段第一行内容",
+        "左栏第一段第二行内容",
+        "左栏第二段第一行内容",
+        "右栏第一段第一行内容",
+        "右栏第一段第二行内容",
+        "右栏第二段第一行内容"
+      ],
+      "expected_error": null,
+      "notes": "与 pdf_twocolumn.pdf 文本完全相同，但内容流按「逐行左右交替」写入。当前解析器沿用内容流顺序、未做几何分栏排序，本样本用于量化跨栏错乱。",
+      "known_gap": "解析器未做列聚类排序，逐行交替写入的双栏 PDF 阅读顺序会跨栏错乱。"
+    },
+    {
+      "name": "pdf_table.pdf",
+      "format": "pdf",
+      "kind": "positive",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "套餐资费对照表",
+        "套餐",
+        "月费",
+        "席位",
+        "基础版",
+        "99",
+        "5",
+        "专业版",
+        "299",
+        "20",
+        "企业版",
+        "899",
+        "100"
+      ],
+      "expected_order": [],
+      "expected_error": null,
+      "notes": "带框线表格的 PDF；覆盖率按单元格取值逐项命中。",
+      "known_gap": null
+    },
+    {
+      "name": "pdf_scanned.pdf",
+      "format": "pdf",
+      "kind": "ocr",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "扫描件样例",
+        "发票号码 12345678",
+        "金额 1234.00 元"
+      ],
+      "expected_order": [],
+      "expected_error": null,
+      "notes": "图片型 PDF（中文页面渲染成位图后嵌入），无文本层，必然走 OCR 路径。本机无 tesseract 二进制，真实 provider 必然报依赖缺失。",
+      "known_gap": null
+    },
+    {
+      "name": "docx_headings_table.docx",
+      "format": "docx",
+      "kind": "positive",
+      "expectation_mode": "known_limitation",
+      "expected_fragments": [
+        "客服系统接入说明",
+        "接入流程",
+        "责任矩阵",
+        "接入流程分为申请、验证与上线三个阶段。",
+        "角色",
+        "职责",
+        "时限",
+        "实施",
+        "联调",
+        "五个工作日"
+      ],
+      "expected_order": [],
+      "expected_error": null,
+      "notes": "含 H1/H2 标题层级与 2x3 表格。",
+      "known_gap": "DocxDocumentParser 只遍历 document.paragraphs，表格单元格不进入解析结果，故表格片段必然未命中。"
+    },
+    {
+      "name": "xlsx_multi_sheet.xlsx",
+      "format": "xlsx",
+      "kind": "positive",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "# Sheet: 汇总",
+        "季度汇总表",
+        "指标",
+        "数值",
+        "工单量",
+        "1280",
+        "首响时长",
+        "3.5",
+        "# Sheet: 明细",
+        "工单号",
+        "状态",
+        "T-1001",
+        "已关闭",
+        "T-1002",
+        "处理中"
+      ],
+      "expected_order": [],
+      "expected_error": null,
+      "notes": "两个 sheet，A1:B1 为合并单元格；合并单元格取值只出现在左上角。",
+      "known_gap": null
+    },
+    {
+      "name": "pptx_notes.pptx",
+      "format": "pptx",
+      "kind": "positive",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "知识库接入培训",
+        "验收清单",
+        "本次培训覆盖解析、切分与检索三段链路。",
+        "验收清单包含覆盖率与阅读顺序两项。",
+        "备注：培训材料需同步到知识库。",
+        "备注：验收前需完成一次全量重建。"
+      ],
+      "expected_order": [],
+      "expected_error": null,
+      "notes": "两页幻灯片，每页带备注页文本。",
+      "known_gap": null
+    },
+    {
+      "name": "md_code_fence.md",
+      "format": "md",
+      "kind": "positive",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "# 部署手册",
+        "## 环境准备",
+        "```bash",
+        "python scripts/rebuild_embedding_index.py --rebuild",
+        "```",
+        "+---",
+        "解析阶段",
+        "切分阶段",
+        "检索与重排阶段",
+        "## 回滚"
+      ],
+      "expected_order": [],
+      "expected_error": null,
+      "notes": "含 bash 代码围栏与 ASCII 盒图；盒图完整性呼应 RAG-042 的展示诉求。",
+      "known_gap": null
+    },
+    {
+      "name": "txt_plain.txt",
+      "format": "txt",
+      "kind": "positive",
+      "expectation_mode": "must_pass",
+      "expected_fragments": [
+        "运维值班手册",
+        "解析失败率",
+        "检索超时率",
+        "链路示意",
+        "+-------------+",
+        "解析阶段",
+        "检索与重排阶段",
+        "异常时先查依赖"
+      ],
+      "expected_order": [],
+      "expected_error": null,
+      "notes": "纯文本，含 ASCII 盒图。",
+      "known_gap": null
+    },
+    {
+      "name": "broken_empty.pdf",
+      "format": "pdf",
+      "kind": "negative",
+      "expectation_mode": "must_fail",
+      "expected_fragments": [],
+      "expected_order": [],
+      "expected_error": "DocumentParseError",
+      "notes": "零字节 PDF，验证不静默返回空知识。",
+      "known_gap": null
+    },
+    {
+      "name": "broken_truncated.pdf",
+      "format": "pdf",
+      "kind": "negative",
+      "expectation_mode": "must_fail",
+      "expected_fragments": [],
+      "expected_order": [],
+      "expected_error": "DocumentParseError",
+      "notes": "有 PDF 头但结构损坏的截断文件。",
+      "known_gap": null
+    },
+    {
+      "name": "unsupported.bin",
+      "format": "bin",
+      "kind": "negative",
+      "expectation_mode": "must_fail",
+      "expected_fragments": [],
+      "expected_order": [],
+      "expected_error": "UnsupportedDocumentTypeError",
+      "notes": "不支持的扩展名，注册表应明确报错。",
+      "known_gap": null
+    }
+  ]
+}

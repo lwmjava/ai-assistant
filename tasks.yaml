@@ -9421,7 +9421,7 @@ tasks:
 
   - id: "RAG-026"
     title: "上传者范围贯穿检索授权"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ''
     depends_on: []
@@ -9461,6 +9461,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "uploader检索隔离方向已于2026-10-05批准（ADR-0001第10节）；开工复核API/Agent/后端当前事实与权限测试基线，不再重复方向裁决。"
+      acceptance_record: "2026-10-07：独立子Agent审查（docs/reviews/2026-10-07-RAG-026上传者范围独立审查.md）确认对话/Agent链路隔离生效并发现HTTP检索面缺口；用户授权扩范围后同卡补齐/api/rag/search，复现取证与变异测试均已记录。"
+      progress: "2026-10-07：新增ReadScope与read_scope_for，检索读范围贯穿三套后端、两个向量库与父块回查，并在取候选前过滤；对话与HTTP检索入口均传入鉴权主体。RAG子集364passed/2skipped、专项12passed、Ruff/mypy通过。计划与实现说明见docs/plans/plan_rag_026_uploader_scope_20261007.md、implementation_rag_026_uploader_scope_20261007.md。未做：资源级ACL（仍Planned）、Milvus真实环境验证（本机无实例）。"
       nightly:
         eligible: false
         production_access: false

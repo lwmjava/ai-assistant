@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from app.rag.access import ReadScope
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
@@ -38,7 +39,12 @@ class NativeRagBackend(RagBackend):
         return [c.text for c in chunks]
 
     async def retrieve(
-        self, query: str, *, tenant_id: str, top_k: int
+        self,
+        query: str,
+        *,
+        tenant_id: str,
+        top_k: int,
+        read_scope: ReadScope | None = None,
     ) -> list[ChunkResult]:
         embedding = (await self._embedding.embed([query]))[0]
         tokens = self._tokenizer(query)
@@ -51,5 +57,6 @@ class NativeRagBackend(RagBackend):
             self._rrf_k,
             as_of=as_of,
             schedule_at=schedule_at,
+            read_scope=read_scope,
         )
         return drop_injected_chunks(hits, keep=top_k)

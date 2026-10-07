@@ -180,7 +180,9 @@ class ChatService:
         """按配置构建检索钩子（未开启 RAG 时返回 None）。"""
         if not settings.RAG_ENABLED:
             return None
-        rag = RAGService(session, user.tenant_id)
+        # 带上鉴权主体，使 uploader 模式的有效读范围贯穿对话检索，
+        # 而不是只按租户召回后再丢弃。
+        rag = RAGService(session, user.tenant_id, reader=user)
         return rag.make_retriever()
 
     async def _build_tools(self) -> ToolRegistry:

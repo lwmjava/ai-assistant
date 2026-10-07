@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from app.rag.access import ReadScope
+
 
 @dataclass
 class ChunkResult:
@@ -52,10 +54,12 @@ class VectorStore(ABC):
         rrf_k: int = 60,
         as_of: datetime | None = None,
         schedule_at: datetime | None = None,
+        read_scope: ReadScope | None = None,
     ) -> list[ChunkResult]:
         """混合检索：融合稠密与稀疏结果，返回按融合分排序的前 top_k 个分块。
 
         ``rrf_k`` 为倒数排名融合常数，须与实现类签名保持一致，避免新后端漏参。
+        ``read_scope`` 为鉴权主体的有效读范围，必须在候选集构造阶段生效。
         """
 
     @abstractmethod

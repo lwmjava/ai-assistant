@@ -18,6 +18,7 @@ from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
+from app.rag.access import ReadScope
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.local import _bm25_scores, _rrf, visible_chunks_with_status
 
@@ -193,6 +194,7 @@ class MilvusVectorStore(VectorStore):
         rrf_k: int = 60,
         as_of: datetime | None = None,
         schedule_at: datetime | None = None,
+        read_scope: ReadScope | None = None,
     ) -> list[ChunkResult]:
         collection = self._connect()
         expr = f'tenant_id == "{tenant_id}"'
@@ -223,6 +225,11 @@ class MilvusVectorStore(VectorStore):
             .where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
         )
         stmt = stmt.where(col(Document.deleted_at).is_(None))
+        # 集合里没有上传者字段，读范围只能在候选回查阶段生效：
+        # 结果尚未成形，因此仍是检索前过滤；但向量候选数不受影响，
+        # 极端情况下可用候选少于本地实现，这一点记录在实现说明里。
+        if read_scope is not None and read_scope.uploader_id is not None:
+            stmt = stmt.where(col(Document.user_id) == read_scope.uploader_id)
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
             stmt = stmt.where(col(Document.is_current).is_(True))
         rows = self.session.exec(stmt).all()

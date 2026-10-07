@@ -12,6 +12,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from app.rag.access import ReadScope
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
@@ -82,12 +83,14 @@ class _ProjectPydanticVectorStore:
         tokenizer: Tokenizer,
         tenant_id: str,
         rrf_k: int,
+        read_scope: ReadScope | None = None,
     ) -> None:
         self._store = store
         self._embedding = embedding
         self._tokenizer = tokenizer
         self._tenant_id = tenant_id
         self._rrf_k = rrf_k
+        self._read_scope = read_scope
         self._impl = self._build_impl(store, embedding, tokenizer, tenant_id, rrf_k)
 
     @staticmethod
@@ -142,6 +145,7 @@ class _ProjectPydanticVectorStore:
             rrf_k=self._rrf_k,
             as_of=as_of,
             schedule_at=schedule_at,
+            read_scope=self._read_scope,
         )
 
 
@@ -198,7 +202,12 @@ class LlamaIndexRagBackend(RagBackend):
         return await asyncio.to_thread(_run)
 
     async def retrieve(
-        self, query: str, *, tenant_id: str, top_k: int
+        self,
+        query: str,
+        *,
+        tenant_id: str,
+        top_k: int,
+        read_scope: ReadScope | None = None,
     ) -> list[ChunkResult]:
         adapter = _ProjectPydanticVectorStore(
             self._store,
@@ -206,6 +215,7 @@ class LlamaIndexRagBackend(RagBackend):
             self._tokenizer,
             tenant_id,
             self._rrf_k,
+            read_scope,
         )
         hits = await adapter.hybrid_search(query, candidate_k(top_k))
         return drop_injected_chunks(hits, keep=top_k)

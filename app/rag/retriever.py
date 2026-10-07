@@ -9,6 +9,7 @@
 import logging
 
 from app.core.config import settings
+from app.rag.access import ReadScope
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import SCHEDULED_NOTICE
 from app.rag.vectorstore.base import ChunkResult
@@ -41,10 +42,18 @@ def format_context(chunks: list[ChunkResult]) -> str:
 class HybridRetriever:
     """面向管线协议的混合检索器：``retrieve(query, plan) -> 上下文文本``。"""
 
-    def __init__(self, backend: RagBackend, tenant_id: str, top_k: int = 5) -> None:
+    def __init__(
+        self,
+        backend: RagBackend,
+        tenant_id: str,
+        top_k: int = 5,
+        read_scope: ReadScope | None = None,
+    ) -> None:
         self.backend = backend
         self.tenant_id = tenant_id
         self.top_k = top_k
+        # 鉴权主体的有效读范围；None 等同同租户全可读，不构成 uploader 隔离。
+        self.read_scope = read_scope
         self.last_hits: list[ChunkResult] = []
 
     async def retrieve(self, query: str, plan: str) -> str:
@@ -58,7 +67,10 @@ class HybridRetriever:
             self.last_hits = []
             return ""
         results = await self.backend.retrieve(
-            search_text, tenant_id=self.tenant_id, top_k=self.top_k
+            search_text,
+            tenant_id=self.tenant_id,
+            top_k=self.top_k,
+            read_scope=self.read_scope,
         )
         threshold = settings.RAG_MIN_SIMILARITY
         kept = [hit for hit in results if hit.similarity >= threshold]

@@ -28,10 +28,12 @@ from app.core.json_logging import JsonLogFormatter
 from app.models.rag import Document, DocumentChunk, DocumentIngestionSnapshot, ImportJob
 from app.models.user import User
 from app.rag.access import (
+    ReadScope,
     can_control_document,
     can_read_document,
     can_write_document,
     is_kb_admin,
+    read_scope_for,
     restrict_list_to_uploader,
 )
 from app.rag.backend.base import RagBackend
@@ -208,6 +210,10 @@ def _source_section(value: object) -> str | None:
 class RAGService:
     """检索增强生成服务（会话级，绑定一个数据库会话与租户）。"""
 
+    # 类级默认值：未提供鉴权主体时沿用仅按租户过滤的历史行为。
+    # 以 ``__new__`` 绕过构造的调用路径也能取到该属性，不会因缺属性而崩溃。
+    _read_scope: ReadScope | None = None
+
     def __init__(
         self,
         session: Session,
@@ -217,9 +223,15 @@ class RAGService:
         *,
         tokenizer: Tokenizer | None = None,
         backend: RagBackend | None = None,
+        reader: User | None = None,
     ) -> None:
         self.session = session
         self.tenant_id = tenant_id
+        # 检索面的鉴权主体。默认不传（None）时等同同租户全可读（历史行为），
+        # 不构成 uploader 隔离；面向终端用户的入口必须显式传入 reader。
+        self._read_scope = read_scope_for(reader)
+        if self._read_scope is not None:
+            self._read_scope.assert_subject_tenant(tenant_id)
         self._embedding = embedding_provider or get_embedding_provider()
         self._vector_store = vector_store or get_vector_store(session)
         self._tokenizer = tokenizer or tokenize
@@ -663,7 +675,7 @@ class RAGService:
             str(requested_backend != rag_backend.name).lower(),
         )
         hits = await rag_backend.retrieve(
-            query, tenant_id=self.tenant_id, top_k=top_k
+            query, tenant_id=self.tenant_id, top_k=top_k, read_scope=self._read_scope
         )
         return await self._expand_parent_chunks(hits, query=query)
 
@@ -690,6 +702,10 @@ class RAGService:
                     col(Document.deleted_at).is_(None),
                 )
             )
+            # uploader 模式下父块与命中块一样按上传者收窄；父块与子块同文档，
+            # 权限仍按文档归属判定，不因子块有权就放行他人父正文。
+            if self._read_scope is not None and self._read_scope.uploader_id is not None:
+                stmt = stmt.where(col(Document.user_id) == self._read_scope.uploader_id)
             if not settings.RAG_EFFECTIVE_DATE_FILTER:
                 stmt = stmt.where(col(Document.is_current).is_(True))
             if parent_links is not None:
@@ -767,6 +783,7 @@ class RAGService:
             self._backend,
             self.tenant_id,
             top_k or settings.RAG_TOP_K,
+            read_scope=self._read_scope,
         )
 
     # ── 文档管理 ────────────────────────────────────

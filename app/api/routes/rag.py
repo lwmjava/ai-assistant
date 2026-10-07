@@ -929,7 +929,9 @@ async def search(
     """按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。"""
     if not req.query.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空")
-    rag = RAGService(session, current_user.tenant_id)
+    # 带上鉴权主体，使 uploader 模式的有效读范围同样贯穿 HTTP 检索面，
+    # 与对话检索保持一致（ADR-0001 §10）。
+    rag = RAGService(session, current_user.tenant_id, reader=current_user)
     results = await rag.search(req.query, req.top_k, backend=req.backend)
     return [
         SearchResultOut(

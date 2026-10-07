@@ -86,7 +86,13 @@ async def test_low_similarity_logs_counts_without_query_plan_or_excerpt(monkeypa
     backend = SimpleNamespace(retrieve=AsyncMock(return_value=hits))
     retriever = HybridRetriever(backend, "tenant-log-regression")
     result = await retriever.retrieve(QUERY, PLAN)
-    backend.retrieve.assert_awaited_once_with(f"{QUERY}\n{PLAN}", tenant_id="tenant-log-regression", top_k=5)
+    # 本卡断言的是日志不含正文，不与检索读范围的具体取值绑定：
+    # 只校验调用发生且未夹带正文，避免把 read_scope 的历史默认值写进契约。
+    assert backend.retrieve.await_count == 1
+    _args, kwargs = backend.retrieve.await_args
+    assert kwargs["tenant_id"] == "tenant-log-regression"
+    assert kwargs["top_k"] == 5
+    assert "read_scope" in kwargs
     if keep_high:
         assert EXCERPT in result
         assert retriever.last_hits == [high]

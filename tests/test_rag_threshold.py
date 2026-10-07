@@ -9,7 +9,14 @@ class _FakeBackend:
     def __init__(self, hits: list[ChunkResult]) -> None:
         self._hits = hits
 
-    async def retrieve(self, query: str, *, tenant_id: str, top_k: int) -> list[ChunkResult]:
+    async def retrieve(
+        self,
+        query: str,
+        *,
+        tenant_id: str,
+        top_k: int,
+        read_scope: object = None,
+    ) -> list[ChunkResult]:
         return self._hits
 
 

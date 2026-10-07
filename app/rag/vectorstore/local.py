@@ -20,6 +20,7 @@ from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk
+from app.rag.access import ReadScope
 from app.rag.effective_date import document_version_status, ensure_utc
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
@@ -144,6 +145,7 @@ class LocalVectorStore(VectorStore):
         rrf_k: int = 60,
         as_of: datetime | None = None,
         schedule_at: datetime | None = None,
+        read_scope: ReadScope | None = None,
     ) -> list[ChunkResult]:
         stmt = (
             select(DocumentChunk)
@@ -151,6 +153,9 @@ class LocalVectorStore(VectorStore):
             .where(DocumentChunk.tenant_id == tenant_id)
         )
         stmt = stmt.where(col(Document.deleted_at).is_(None))
+        # 鉴权主体的有效读范围必须在取候选时就生效，否则他人文档会先占位再被丢弃。
+        if read_scope is not None and read_scope.uploader_id is not None:
+            stmt = stmt.where(col(Document.user_id) == read_scope.uploader_id)
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
             stmt = stmt.where(col(Document.is_current).is_(True))
         rows = self.session.exec(stmt).all()

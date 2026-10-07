@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from app.core.config import settings
@@ -39,9 +40,10 @@ FENCE_CLOSE = "[/UNTRUSTED_SOURCE]"
 MEMORY_HEADING = "## 会话记忆"
 
 _ELLIPSIS = "…"
-_CODE_FENCE = "```"
 _BLOCK_SEP = "\n\n"
 _MEMORY_ENTRY_SEP = re.compile(r"\n{2,}")
+# Markdown 代码围栏行：行首最多三个空格 + 三个及以上反引号或波浪号。
+_FENCE_LINE = re.compile(r"^ {0,3}(?P<marker>`{3,}|~{3,})(?P<info>.*)$")
 
 UNTRUSTED_PREAMBLE = (
     "[UNTRUSTED_SOURCE]\n"
@@ -54,10 +56,12 @@ UNTRUSTED_PREAMBLE = (
 _FENCE_OVERHEAD = len(UNTRUSTED_PREAMBLE) + len("\n") + len(FENCE_CLOSE)
 
 # 裁剪原因（``drop_reasons`` / ``memory_drop_reason`` 取值）
-REASON_BUDGET = "budget"  # 整块未选入：预算被前面的块占满
-REASON_BUDGET_TRUNCATED = "budget_truncated"  # 首块按预算截断后选入，内容不完整
+REASON_BUDGET = "budget"  # 整块未选入：装不下（含首块就装不下的「证据不足」）
 REASON_MEMORY_OLDEST_FIRST = "memory_oldest_first"  # 记忆按条目从旧到新丢弃
 REASON_MEMORY_ENTRY_OVERSIZED = "memory_entry_oversized"  # 最新单条记忆就超预算，整条丢弃
+
+# 预算装不下任何一块证据时给用户的说明。不是拒答：检索跑成了，是资料太长。
+CONTEXT_BUDGET_EXHAUSTED = "检索到的资料超出本次上下文预算，本次未采用任何知识库资料。"
 
 
 def fence_closed(text: str) -> bool:
@@ -68,15 +72,36 @@ def fence_closed(text: str) -> bool:
     return text.rstrip().endswith(FENCE_CLOSE)
 
 
+def unclosed_fence_marker(text: str) -> str | None:
+    """按行扫描 Markdown 代码围栏，返回闭合它所需的标记；全部闭合返回 None。
+
+    闭合要求**同种字符且宽度不小于开围栏**：```` ```` ```` 开的围栏不能用
+    ```` ``` ```` 闭合，``~~~`` 与反引号互不相干。用 ``text.count("```")`` 的
+    奇偶性判断会把四反引号围栏误判为已闭合（审查 M-01）。
+    """
+    opened: str | None = None
+    for line in (text or "").splitlines():
+        matched = _FENCE_LINE.match(line)
+        if matched is None:
+            continue
+        marker = matched.group("marker")
+        if opened is None:
+            opened = marker
+        elif marker[0] == opened[0] and len(marker) >= len(opened):
+            opened = None
+    return opened
+
+
 def _code_fence_balanced(text: str) -> bool:
-    return text.count(_CODE_FENCE) % 2 == 0
+    return unclosed_fence_marker(text) is None
 
 
 def safe_truncate(text: str, limit: int) -> str:
-    """按字符截断到 ``limit`` 内，保证 ```` ``` ```` 围栏成对，不留半截围栏。
+    """按字符截断到 ``limit`` 内，不留半截代码围栏。
 
-    优先「补齐」：把省略标记留在围栏内再闭合围栏；空间不足时退化为「回退到
-    未闭合围栏之前」。两条路径都不会留下奇数个 ```` ``` ````。
+    优先「补齐」：把省略标记留在围栏内，再补一个**宽度足够**的闭合围栏
+    （闭合标记沿用开围栏的原文，四反引号不会被三个反引号糊上）。空间不足时
+    退化为「回退到未闭合围栏之前」。两条路径都不会留下未闭合围栏。
     """
     body = text or ""
     if limit <= 0 or not body:
@@ -87,21 +112,40 @@ def safe_truncate(text: str, limit: int) -> str:
     if room <= 0:
         return _ELLIPSIS[:limit]
     head = body[:room].rstrip()
-    if _code_fence_balanced(head):
+    opened = unclosed_fence_marker(head)
+    if opened is None:
         return head + _ELLIPSIS
-    # 先尝试补齐：省略标记留在代码围栏内，再补一个闭合围栏。
-    closer = _ELLIPSIS + "\n" + _CODE_FENCE
+    # 先尝试补齐：省略标记留在代码围栏内，再按开围栏原文闭合。
+    closer = _ELLIPSIS + "\n" + opened
     room2 = limit - len(closer)
     if room2 > 0:
         head2 = body[:room2].rstrip()
         closed = head2 + closer
-        if _code_fence_balanced(closed) and len(closed) <= limit:
+        if unclosed_fence_marker(closed) is None and len(closed) <= limit:
             return closed
-    # 兜底：回退到最后一个未闭合围栏之前（奇数个围栏时最后一个必是开围栏）。
-    idx = head.rfind(_CODE_FENCE)
-    if idx > 0:
-        return head[:idx].rstrip() + _ELLIPSIS
+    # 兜底：回退到那个未闭合围栏所在行之前，只保留此前已闭合的部分。
+    cut = _unclosed_fence_line(head)
+    if cut > 0:
+        return "\n".join(head.splitlines()[:cut]).rstrip() + _ELLIPSIS
     return _ELLIPSIS
+
+
+def _unclosed_fence_line(text: str) -> int:
+    """返回未闭合围栏所在行的下标；全部闭合返回 -1。"""
+    opened: str | None = None
+    index = -1
+    for number, line in enumerate(text.splitlines()):
+        matched = _FENCE_LINE.match(line)
+        if matched is None:
+            continue
+        marker = matched.group("marker")
+        if opened is None:
+            opened = marker
+            index = number
+        elif marker[0] == opened[0] and len(marker) >= len(opened):
+            opened = None
+            index = -1
+    return index
 
 
 def split_memory_entries(text: str) -> list[str]:
@@ -159,27 +203,42 @@ def _assemble(blocks: list[str]) -> str:
 def _trim_rag_text(text: str, limit: int) -> str:
     """降级路径：已有字符串按预算裁剪，但不可信围栏必须闭合。
 
-    自定义 Retriever 只返回字符串、拿不到结构化命中时用。先给闭合标记留出
-    位置再截断，绝不切掉闭合标记。
+    自定义 Retriever 只返回字符串、拿不到结构化命中时用。
+
+    「没有超预算」不等于「结构有效」：输入可能本身就是半截围栏（只有开标记）。
+    因此**所有出口**都要过一次围栏不变式——要么原样返回已闭合文本，要么补齐
+    闭合标记，要么整段丢弃。绝不把未闭合的不可信围栏送进模型。
     """
     body = (text or "").strip()
-    if not body:
+    if not body or limit <= 0:
         return ""
-    if limit <= 0:
-        return ""
-    if len(body) <= limit:
-        return body
     if FENCE_OPEN in body:
+        if len(body) <= limit and fence_closed(body):
+            return body
         suffix = _ELLIPSIS + "\n" + FENCE_CLOSE
         room = limit - len(suffix)
         if room <= 0:
             return ""
         head = safe_truncate(body, room)
         if FENCE_OPEN not in head:
-            # 连前导说明都留不下：宁可整段丢弃，也不产出没有开标记的闭合标记。
+            # 连开标记都留不下：宁可整段丢弃，也不产出没有开标记的闭合标记。
             return ""
         return head + "\n" + FENCE_CLOSE
     return safe_truncate(body, limit)
+
+
+def structured_hits(retriever: object) -> list[ChunkResult]:
+    """从检索器取结构化命中；只有「非空且全是 ChunkResult 的序列」才算数。
+
+    接受 ``list`` 与 ``tuple`` 等任意 ``Sequence``，但不接受字符串/字节：
+    它们是「只有整段文本」的降级信号，不是命中集合。
+    """
+    raw = getattr(retriever, "last_hits", None)
+    if isinstance(raw, str | bytes) or not isinstance(raw, Sequence):
+        return []
+    if not raw or not all(isinstance(hit, ChunkResult) for hit in raw):
+        return []
+    return list(raw)
 
 
 @dataclass(frozen=True)
@@ -188,9 +247,11 @@ class ContextPayload:
 
     ``selected`` 只表示**实际出现在 ``text`` 里**的命中，不宣称答案引用正确
     （RAG-029 non_goal：不把 selected 宣称成逐答案点 cited）。
-    ``drop_reasons`` 键为分块 id，取值为 :data:`REASON_BUDGET` /
-    :data:`REASON_BUDGET_TRUNCATED`；被截断的块仍在 ``selected`` 里，因为它的
-    前半段确实进了模型，此处记录它「内容不完整」供日志与排障。
+
+    硬不变量：`text` 里出现的每个 ``[资料 N]`` 恰好对应 ``selected[N-1]``，
+    反之亦然——包括「两边都为空」。证据块整块装入或整块丢弃，不存在
+    「selected 里有、text 里却没有正文」的中间态。
+    ``drop_reasons`` 键为分块 id，取值为 :data:`REASON_BUDGET`。
     """
 
     text: str
@@ -209,39 +270,34 @@ class ContextPayload:
 def _select_rag_blocks(
     hits: list[ChunkResult], limit: int
 ) -> tuple[list[str], list[ChunkResult], list[ChunkResult], dict[str, str]]:
-    """按命中顺序逐块累加预算，装不下就停止，不由后面的小块补位。"""
+    """按命中顺序逐块累加预算，装不下就停止，不由后面的小块补位。
+
+    证据块**整块装入或整块丢弃**，绝不截断：ADR-0005 §9 批准的是「完整证据块」，
+    截一半的块会丢掉限定条件或结论后半段，且会破坏
+    「payload 里的 ``[资料 N]`` 与 ``selected`` 完全一致」这条硬不变量
+    （审查 H-02）。装不下即视为本次证据不足。
+
+    ``_FENCE_OVERHEAD`` 是**必须**扣掉的：预算装的是整段（前导说明 + 正文 +
+    闭合标记），只拿正文长度去比会让最终文本超出 ``RAG_CONTEXT_CHARS``。
+    """
     blocks: list[str] = []
     selected: list[ChunkResult] = []
     dropped: list[ChunkResult] = []
     reasons: dict[str, str] = {}
+    room = limit - _FENCE_OVERHEAD
+    used = 0
     for idx, hit in enumerate(hits, 1):
         block = render_block(idx, hit)
-        candidate = blocks + [block]
-        if len(_assemble(candidate)) <= limit:
-            blocks = candidate
-            selected.append(hit)
-            continue
-        if not blocks:
-            # 首块本身就装不下：截断后补齐围栏，不留半截。
-            room = limit - _FENCE_OVERHEAD
-            truncated = safe_truncate(block, room) if room > 0 else ""
-            if truncated:
-                blocks = [truncated]
-                selected.append(hit)
-                reasons[hit.id] = REASON_BUDGET_TRUNCATED
-            else:
-                dropped.append(hit)
-                reasons[hit.id] = REASON_BUDGET
-            # 首块都装不下，后续块更不可能装下，一律丢弃。
-            for rest in hits[idx:]:
+        cost = len(block) + (len(_BLOCK_SEP) if blocks else 0)
+        if used + cost > room:
+            # 装不下：这一块及其后全部丢弃，不补位、不截断。
+            for rest in hits[idx - 1 :]:
                 dropped.append(rest)
                 reasons[rest.id] = REASON_BUDGET
             break
-        # 前面已经装了块，这一块装不下：停止，其后全部丢弃，不补位。
-        for rest in hits[idx - 1 :]:
-            dropped.append(rest)
-            reasons[rest.id] = REASON_BUDGET
-        break
+        blocks.append(block)
+        selected.append(hit)
+        used += cost
     return blocks, selected, dropped, reasons
 
 

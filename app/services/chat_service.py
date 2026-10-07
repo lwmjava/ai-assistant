@@ -516,16 +516,17 @@ class ChatService:
         """对外来源只取**实际进入模型 payload** 的命中。
 
         RAG-029：``last_hits`` 是阈值过滤后的全部命中，预算挤掉的块并不在模型
-        看到的文本里。用它会让展示给用户的来源多于实际证据。管线按块预算组装后
-        回写 ``last_selected``，这里优先用它；``last_selected`` 为 None（还没组装
-        过，如短路径）才回落 ``last_hits``。
+        看到的文本里。用它会让展示给用户的来源多于实际证据，所以**一律不回落**
+        ``last_hits``：三条真实编排路径（自研管线 / Fast RAG 短路径 / Supervisor）
+        组装 payload 后都必须回写 ``last_selected``，拿不到就声明为空来源
+        （欠声明是安全的，夸大来源才是本卡要修的缺陷）。
         """
         if retriever is None:
             return []
         selected = getattr(retriever, "last_selected", None)
-        if isinstance(selected, list):
-            return sources_from_hits(session, selected)
-        return sources_from_hits(session, getattr(retriever, "last_hits", []))
+        if not isinstance(selected, list):
+            return []
+        return sources_from_hits(session, selected)
 
     def _model_name(self) -> str | None:
         return getattr(self.llm, "model", None)

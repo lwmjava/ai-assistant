@@ -12,13 +12,15 @@ import pytest
 
 from app.core.config import settings
 from app.rag.context_builder import (
+    CONTEXT_BUDGET_EXHAUSTED,
     FENCE_CLOSE,
     REASON_BUDGET,
-    REASON_BUDGET_TRUNCATED,
     build_context,
     build_from_rag_text,
     render_rag_section,
     safe_truncate,
+    structured_hits,
+    unclosed_fence_marker,
 )
 from app.rag.context_merge import merge_memory_and_rag
 from app.rag.retriever import HybridRetriever, format_context
@@ -45,15 +47,28 @@ def _markers(text: str) -> list[int]:
 # ── 1. 长 RAG 上下文被截断后围栏必须闭合 ──────────────────────
 
 
-def test_long_rag_truncated_but_fence_still_closed(monkeypatch) -> None:
+def test_long_rag_dropped_but_fence_still_closed(monkeypatch) -> None:
     monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 400)
-    hits = [_hit("c1", "A" * 300), _hit("c2", "B" * 300), _hit("c3", "C" * 300)]
+    hits = [_hit(f"c{i}", chr(64 + i) * 150) for i in range(1, 5)]
     payload = build_context("", hits)
     assert payload.text.rstrip().endswith(FENCE_CLOSE)
     assert payload.fence_closed is True
     assert len(payload.text) <= 400
     assert payload.selected_ids() == ["c1"]  # 只有首块装得下
-    assert [h.id for h in payload.dropped] == ["c2", "c3"]
+    assert [h.id for h in payload.dropped] == ["c2", "c3", "c4"]
+    # 装不下的块不得出现在 payload 里
+    assert "B" * 10 not in payload.text
+
+
+def test_oversized_everything_means_no_evidence(monkeypatch) -> None:
+    """每块都装不下：整段为空、围栏概念上闭合，且不伪造任何 [资料 N]。"""
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 400)
+    hits = [_hit(f"c{i}", "A" * 300) for i in range(1, 4)]
+    payload = build_context("", hits)
+    assert payload.text == ""
+    assert payload.selected == []
+    assert [h.id for h in payload.dropped] == ["c1", "c2", "c3"]
+    assert payload.fence_closed is True
 
 
 def test_every_budget_produces_closed_fence(monkeypatch) -> None:
@@ -71,16 +86,33 @@ def test_every_budget_produces_closed_fence(monkeypatch) -> None:
 # ── 2. 块内 ``` 代码围栏不被切成一半 ───────────────────────────
 
 
-def test_first_block_truncation_keeps_code_fence_balanced(monkeypatch) -> None:
+def test_oversized_first_block_is_dropped_whole_not_truncated(monkeypatch) -> None:
+    """ADR-0005 §9 批准的是完整证据块：首块装不下就整块丢弃，不截成半块。"""
     monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 300)
     code = "```python\n" + "\n".join(f"line_{i} = {i}" for i in range(60)) + "\n```"
     hits = [_hit("c1", code)]
     payload = build_context("", hits)
-    assert payload.text.count("```") % 2 == 0, "代码围栏被切成一半"
-    assert payload.text.rstrip().endswith(FENCE_CLOSE)
-    assert len(payload.text) <= 300
-    assert payload.drop_reasons.get("c1") == REASON_BUDGET_TRUNCATED
-    assert payload.selected_ids() == ["c1"]
+    assert payload.selected == []
+    assert payload.selected_ids() == []
+    assert payload.drop_reasons == {"c1": REASON_BUDGET}
+    assert payload.text == ""
+    # 关键：正文中没有半截证据，也没有 [资料 1]
+    assert _markers(payload.text) == []
+    assert "line_0" not in payload.text
+
+
+def test_complete_block_never_loses_its_tail(monkeypatch) -> None:
+    """选入的块必须完整：尾部哨兵存在，说明没被截半。"""
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 300)
+    body = "BEGIN-" + "X" * 500 + "-END-SENTINEL"
+    hits = [_hit("c1", body)]
+    payload = build_context("", hits)
+    # 要么整块完整进 payload，要么一块都不进；不允许「进了但没有尾部」
+    if payload.selected:
+        assert "BEGIN-" in payload.text and "-END-SENTINEL" in payload.text
+    else:
+        assert payload.text == ""
+        assert "BEGIN-" not in payload.text
 
 
 def test_oversized_code_block_is_dropped_whole_when_not_first(monkeypatch) -> None:
@@ -88,18 +120,42 @@ def test_oversized_code_block_is_dropped_whole_when_not_first(monkeypatch) -> No
     code = "```python\n" + "\n".join(f"line_{i} = {i}" for i in range(60)) + "\n```"
     hits = [_hit("c1", "短资料。"), _hit("c2", code)]
     payload = build_context("", hits)
-    assert payload.text.count("```") % 2 == 0
     assert payload.selected_ids() == ["c1"]
     assert payload.drop_reasons.get("c2") == REASON_BUDGET
     assert code not in payload.text
 
 
-def test_safe_truncate_never_leaves_odd_fences() -> None:
+def test_safe_truncate_never_leaves_unclosed_fence() -> None:
     sample = "前言。\n```python\nx = 1\ny = 2\nz = 3\n```\n尾巴。"
     for limit in range(1, len(sample) + 1):
         out = safe_truncate(sample, limit)
         assert len(out) <= limit
-        assert out.count("```") % 2 == 0, f"limit={limit} 留下奇数个围栏: {out!r}"
+        assert unclosed_fence_marker(out) is None, f"limit={limit} 留下未闭合围栏: {out!r}"
+
+
+def test_four_backtick_fence_is_not_closed_by_three(monkeypatch) -> None:
+    """M-01：四反引号开的围栏不能用三个反引号闭合。"""
+    body = "````markdown\n" + "\n".join(f"第 {i} 行内容" for i in range(60)) + "\n````"
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 200)
+    out = safe_truncate(body, 200)
+    assert len(out) <= 200
+    assert unclosed_fence_marker(out) is None, f"四反引号围栏未正确闭合: {out!r}"
+    # 闭合标记必须按开围栏的宽度来（四个反引号），不能糊三个上去
+    assert out.rstrip().endswith("````"), f"闭合宽度不足: {out!r}"
+    # 明确反例：三个反引号不能闭合四反引号围栏
+    assert unclosed_fence_marker("````\nx\n```") == "````"
+    assert unclosed_fence_marker("````\nx\n````") is None
+
+
+def test_tilde_and_mixed_fences() -> None:
+    assert unclosed_fence_marker("~~~\nx\n~~~") is None
+    assert unclosed_fence_marker("~~~\nx\n```") == "~~~"
+    assert unclosed_fence_marker("`````\nx\n````") == "`````"
+    assert unclosed_fence_marker("`````\nx\n`````") is None
+    # 围栏行允许行首最多三个空格
+    assert unclosed_fence_marker("   ```\nx") == "```"
+    # 行内三个反引号不是围栏（有前导文字）
+    assert unclosed_fence_marker("用 ```code``` 表示代码") is None
 
 
 # ── 3. selected 与文本中的 [资料 N] 数量与顺序一一对应 ──────────
@@ -121,10 +177,33 @@ def test_selected_matches_rendered_markers_one_to_one(monkeypatch) -> None:
 
 def test_marker_count_equals_selected_count_across_budgets(monkeypatch) -> None:
     hits = [_hit(f"c{i}", "正文内容。" * 20) for i in range(1, 7)]
-    for budget in (150, 300, 600, 1200, 5000):
+    for budget in (110, 150, 300, 600, 1200, 5000):
         monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", budget)
         payload = build_context("", hits)
         assert len(_markers(payload.text)) == len(payload.selected), f"budget={budget}"
+
+
+def test_markers_selected_and_sources_agree_even_when_all_empty(monkeypatch) -> None:
+    """硬不变量：payload 里的 [资料 N] == selected == 对外来源，包括「都没有」。
+
+    预算 110 只够放前导说明（_FENCE_OVERHEAD=109），一块都装不下。此前的实现
+    会给出 selected=['c1'] 而 payload 里连 [资料 1] 都没有——对外声称引用了一块
+    根本没进模型的证据（H-02 实测证据 B）。
+    """
+    from app.services.chat_service import ChatService
+
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 110)
+    hits = [_hit(f"c{i}", "资料正文。" * 30) for i in range(1, 4)]
+    retriever = _FakeRetriever()
+    retriever.last_hits = hits
+    payload = build_context("", hits)
+    retriever.last_selected = payload.selected
+
+    assert payload.text == ""
+    assert _markers(payload.text) == []
+    assert payload.selected == []
+    assert payload.dropped == hits
+    assert ChatService._reply_sources(_FakeSession(), retriever) == []
 
 
 # ── 4. 被预算挤掉的块不出现在 selected / 来源里 ────────────────
@@ -172,14 +251,27 @@ def test_reply_sources_prefers_last_selected_when_nothing_selected() -> None:
     assert ChatService._reply_sources(_FakeSession(), retriever) == []
 
 
-def test_reply_sources_falls_back_to_last_hits_when_not_assembled() -> None:
-    """还没组装过 payload（如短路径）时回落 last_hits，行为与改造前一致。"""
+def test_reply_sources_never_falls_back_to_unproven_last_hits() -> None:
+    """H-03：来源无法证明时声明为空，绝不回落全量 last_hits 夸大来源。"""
     from app.services.chat_service import ChatService
 
     retriever = _FakeRetriever()
     retriever.last_selected = None
-    out = ChatService._reply_sources(_FakeSession(), retriever)
-    assert [s["chunk_id"] for s in out] == ["c1", "c2", "c3"]
+    assert ChatService._reply_sources(_FakeSession(), retriever) == []
+
+
+def test_structured_hits_accepts_tuple_and_rejects_string() -> None:
+    """H-03：tuple 也算结构化命中；字符串是降级信号，不是命中集合。"""
+
+    class _TupleRetriever:
+        last_hits = (_hit("c1", "a"), _hit("c2", "b"))
+
+    class _StringRetriever:
+        last_hits = "[UNTRUSTED_SOURCE]\n短内容"
+
+    assert [h.id for h in structured_hits(_TupleRetriever())] == ["c1", "c2"]
+    assert structured_hits(_StringRetriever()) == []
+    assert structured_hits(object()) == []
 
 
 # ── 5. 记忆优先且长历史按条裁剪，保留最新条目，无半条 ────────────
@@ -223,7 +315,7 @@ def test_memory_plus_long_rag_stays_within_budgets(monkeypatch) -> None:
     monkeypatch.setattr(settings, "RAG_MEMORY_CONTEXT_CHARS", 200)
     monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 400)
     memory = "\n\n".join(f"历史条目 {i}: 用户提到过主题 {i}。" for i in range(20))
-    hits = [_hit(f"c{i}", "X" * 300) for i in range(1, 5)]
+    hits = [_hit(f"c{i}", "X" * 150) for i in range(1, 5)]
     payload = build_context(memory, hits)
     head = "## 会话记忆\n"
     assert payload.text.startswith(head)
@@ -232,6 +324,7 @@ def test_memory_plus_long_rag_stays_within_budgets(monkeypatch) -> None:
     assert payload.text.rstrip().endswith(FENCE_CLOSE)
     assert len(payload.text) <= len(head) + 200 + 2 + 400
     assert payload.selected_ids() == ["c1"]
+    assert payload.memory_truncated is True
 
 
 # ── 7. 只有字符串的降级路径，围栏仍闭合 ────────────────────────
@@ -255,6 +348,24 @@ def test_merge_memory_and_rag_keeps_fence_closed(monkeypatch) -> None:
     assert merged.rstrip().endswith(FENCE_CLOSE)
     assert "[/UNTRUSTED_SOURCE]" in merged
     assert len(merged) < len(rag_text)
+
+
+def test_degraded_path_closes_short_unclosed_input(monkeypatch) -> None:
+    """H-03：「没超预算」不等于「结构有效」——短小但缺闭合标记的输入必须补齐。"""
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 6000)
+    payload = build_from_rag_text("", "[UNTRUSTED_SOURCE]\n短内容")
+    assert payload.text.rstrip().endswith(FENCE_CLOSE)
+    assert payload.fence_closed is True
+    assert "短内容" in payload.text
+    assert payload.selected == []
+
+
+def test_degraded_path_leaves_plain_text_untouched(monkeypatch) -> None:
+    """没有不可信围栏的普通字符串不该被凭空加一个闭合标记。"""
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 6000)
+    payload = build_from_rag_text("", "年假 5 天")
+    assert payload.text == "年假 5 天"
+    assert payload.fence_closed is True
 
 
 def test_degraded_path_drops_rag_rather_than_stray_close_tag(monkeypatch) -> None:
@@ -295,6 +406,28 @@ class _EchoLLM:
         return ChatMessage(role=ChatRole.ASSISTANT, content="草稿")
 
     async def stream(self, messages, options=None, **_kw):
+        yield "草稿"
+
+
+class _CaptureLLM:
+    """记录真正送进模型的 user 文本，用于校验真实 payload。"""
+
+    model = "capture"
+
+    def __init__(self) -> None:
+        self.user = ""
+        self.system = ""
+
+    async def chat(self, messages, options=None, **_kw):
+        from app.llm.base import ChatMessage, ChatRole
+
+        self.system = messages[0].content
+        self.user = messages[-1].content
+        return ChatMessage(role=ChatRole.ASSISTANT, content="草稿")
+
+    async def stream_chat(self, messages, options=None, **_kw):
+        self.system = messages[0].content
+        self.user = messages[-1].content
         yield "草稿"
 
 
@@ -362,3 +495,139 @@ async def test_pipeline_reply_sources_excludes_budget_dropped(monkeypatch) -> No
     sources = ChatService._reply_sources(_FakeSession(), retriever)
     assert [s["chunk_id"] for s in sources] == [h.id for h in retriever.last_selected]
     assert len(sources) < len(retriever.last_hits)
+
+
+# ── 9. H-01：Fast RAG 短路径与 Supervisor 路径也必须走 Context Builder ──
+
+
+def _rag_payload_of(user_text: str) -> str:
+    """从短路径送进模型的 user 文本里取出「## 知识库」段的正文。"""
+    head = user_text.split("## 知识库\n", 1)[1]
+    return head.split("\n\n## 用户最新消息")[0]
+
+
+@pytest.mark.asyncio
+async def test_fast_rag_path_applies_block_budget_and_aligns_sources(monkeypatch) -> None:
+    """Fast RAG 是知识库问答的默认路径：预算 + 围栏 + 来源三方一致。"""
+    from app.agents.fast_path import iter_fast_path
+    from app.agents.pipeline import AgentState
+    from app.agents.route import ChatRoute, RouteKind
+    from app.llm.base import LLMOptions
+    from app.services.chat_service import ChatService
+
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 500)
+    hits = [_hit(f"c{i}", "资料正文。" * 30) for i in range(1, 5)]
+    retriever = HybridRetriever(_FakeBackend(hits), tenant_id="t", top_k=5)
+    llm = _CaptureLLM()
+    state = AgentState(user_input="知识库里年假有几天", history=[])
+    async for _event in iter_fast_path(
+        llm, LLMOptions(), state, ChatRoute(kind=RouteKind.RAG), retriever, None
+    ):
+        pass
+
+    assert "## 知识库\n" in llm.user
+    payload = _rag_payload_of(llm.user)
+    assert payload.rstrip().endswith(FENCE_CLOSE), "短路径的不可信围栏未闭合"
+    assert len(payload) <= 500, f"短路径 payload 超预算: {len(payload)}"
+    ids = [h.id for h in retriever.last_selected]
+    assert len(ids) < len(hits)  # 预算确实挤掉了后面的块
+    assert ids == [f"c{i}" for i in range(1, len(ids) + 1)]
+    assert _markers(payload) == list(range(1, len(ids) + 1))
+    sources = ChatService._reply_sources(_FakeSession(), retriever)
+    assert [s["chunk_id"] for s in sources] == ids
+
+
+@pytest.mark.asyncio
+async def test_fast_rag_path_reports_budget_exhausted_not_no_result(monkeypatch) -> None:
+    """一块都装不下时说「超预算」，不能说成「没有可用的检索结果」。"""
+    from app.agents.fast_path import iter_fast_path
+    from app.agents.pipeline import AgentState
+    from app.agents.route import ChatRoute, RouteKind
+    from app.llm.base import LLMOptions
+
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 120)
+    hits = [_hit(f"c{i}", "资料正文。" * 30) for i in range(1, 4)]
+    retriever = HybridRetriever(_FakeBackend(hits), tenant_id="t", top_k=5)
+    llm = _CaptureLLM()
+    state = AgentState(user_input="知识库里年假有几天", history=[])
+    async for _event in iter_fast_path(
+        llm, LLMOptions(), state, ChatRoute(kind=RouteKind.RAG), retriever, None
+    ):
+        pass
+
+    assert CONTEXT_BUDGET_EXHAUSTED in llm.user
+    assert "没有可用的检索结果" not in llm.user
+    assert retriever.last_selected == []
+
+
+@pytest.mark.asyncio
+async def test_supervisor_path_applies_block_budget_and_aligns_sources(monkeypatch) -> None:
+    """Supervisor 路径同样受预算约束，并回写 last_selected。"""
+    from app.agents.pipeline import AgentState
+    from app.agents.supervisor import SupervisorGraph
+    from app.services.chat_service import ChatService
+
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 500)
+    hits = [_hit(f"c{i}", "资料正文。" * 30) for i in range(1, 5)]
+    retriever = HybridRetriever(_FakeBackend(hits), tenant_id="t", top_k=5)
+    graph = SupervisorGraph(_EchoLLM(), retriever=retriever)
+    state = AgentState(user_input="先调研一下年假", history=[])
+    state.context = "用户问过年假。"  # 记忆必须保留，不被检索覆盖
+    await graph._retrieve(state)
+
+    assert "## 知识库检索结果\n" in state.context
+    payload = state.context.split("## 知识库检索结果\n", 1)[1]
+    assert payload.rstrip().endswith(FENCE_CLOSE)
+    assert len(payload) <= 500, f"Supervisor payload 超预算: {len(payload)}"
+    assert "用户问过年假。" in state.context
+    ids = [h.id for h in retriever.last_selected]
+    assert len(ids) < len(hits)
+    assert _markers(payload) == list(range(1, len(ids) + 1))
+    sources = ChatService._reply_sources(_FakeSession(), retriever)
+    assert [s["chunk_id"] for s in sources] == ids
+
+
+@pytest.mark.asyncio
+async def test_supervisor_path_reports_budget_exhausted(monkeypatch) -> None:
+    from app.agents.pipeline import AgentState
+    from app.agents.supervisor import SupervisorGraph
+
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 120)
+    hits = [_hit(f"c{i}", "资料正文。" * 30) for i in range(1, 4)]
+    retriever = HybridRetriever(_FakeBackend(hits), tenant_id="t", top_k=5)
+    graph = SupervisorGraph(_EchoLLM(), retriever=retriever)
+    state = AgentState(user_input="先调研一下年假", history=[])
+    await graph._retrieve(state)
+    assert CONTEXT_BUDGET_EXHAUSTED in state.context
+    assert retriever.last_selected == []
+
+
+@pytest.mark.asyncio
+async def test_fast_rag_custom_string_retriever_stays_fence_closed(monkeypatch) -> None:
+    """短路径上的自定义字符串 Retriever：围栏闭合，来源声明为空而不是全量。"""
+    from app.agents.fast_path import iter_fast_path
+    from app.agents.pipeline import AgentState
+    from app.agents.route import ChatRoute, RouteKind
+    from app.llm.base import LLMOptions
+    from app.services.chat_service import ChatService
+
+    monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 6000)
+
+    class _StringRetriever:
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+        async def retrieve(self, query: str, plan: str) -> str:
+            return self.text
+
+    retriever = _StringRetriever("[UNTRUSTED_SOURCE]\n短内容")
+    llm = _CaptureLLM()
+    state = AgentState(user_input="知识库里年假有几天", history=[])
+    async for _event in iter_fast_path(
+        llm, LLMOptions(), state, ChatRoute(kind=RouteKind.RAG), retriever, None
+    ):
+        pass
+
+    payload = _rag_payload_of(llm.user)
+    assert payload.rstrip().endswith(FENCE_CLOSE)
+    assert ChatService._reply_sources(_FakeSession(), retriever) == []

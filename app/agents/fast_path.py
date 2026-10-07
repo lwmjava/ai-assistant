@@ -10,7 +10,9 @@ from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState, Execution
 from app.agents.route import ChatRoute, RouteKind
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
+from app.rag.retriever import assemble_retrieval
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +116,7 @@ async def iter_fast_path(
     if route.kind is RouteKind.RAG:
         yield AgentEvent("stage", "检索")
         snippet = ""
+        rag_text = ""
         outcome: RetrievalOutcome | None = None
         if retriever is not None:
             try:
@@ -127,6 +130,10 @@ async def iter_fast_path(
             else:
                 last = getattr(retriever, "last_outcome", None)
                 outcome = last if isinstance(last, RetrievalOutcome) else None
+            # RAG-029：检索结果必须过一遍按块预算的 Context Builder，不能把
+            # retrieve() 的原始字符串整段塞进提示词。短路径是知识库问答的默认
+            # 路径，绕过它等于预算与「来源 == 实际证据」在这条路径上全部失效。
+            rag_text = assemble_retrieval(retriever, snippet).text
             if outcome is not None:
                 state.retrieval_status = outcome.status.value
                 # 检索状态要求是给模型的指令，必须进 system，不能塞进
@@ -149,8 +156,12 @@ async def iter_fast_path(
             return
         # 检索失败（unavailable）不能写成「没有可用的检索结果」：
         # 那是把「没跑成」伪装成「查过了、没有」，用户看不出区别。
-        if (snippet or "").strip():
-            extra = f"## 知识库\n{snippet}"
+        if (rag_text or "").strip():
+            extra = f"## 知识库\n{rag_text}"
+        elif (snippet or "").strip():
+            # 检索有结果，但没有一块完整装进预算。这不是「没有资料」，
+            # 说成「没有可用的检索结果」会让用户以为知识库里本来就没有。
+            extra = f"## 知识库\n{CONTEXT_BUDGET_EXHAUSTED}"
         elif state.retrieval_status == "unavailable":
             extra = "## 知识库\n本次检索未完成，没有取得任何知识库资料。"
         else:

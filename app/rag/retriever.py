@@ -14,7 +14,11 @@ from app.rag.backend.base import RagBackend
 from app.rag.context_builder import (
     FENCE_CLOSE,
     UNTRUSTED_PREAMBLE,
+    ContextPayload,
+    build_context,
+    build_from_rag_text,
     render_block,
+    structured_hits,
 )
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus, classify
 from app.rag.vectorstore.base import ChunkResult
@@ -35,6 +39,53 @@ def format_context(chunks: list[ChunkResult]) -> str:
         return ""
     blocks = [render_block(idx, hit) for idx, hit in enumerate(chunks, 1)]
     return _UNTRUSTED_PREAMBLE + "\n\n".join(blocks) + "\n" + FENCE_CLOSE
+
+
+def assemble_retrieval(retriever: object, snippet: str) -> ContextPayload:
+    """把一次检索的结果按块预算组装成送模型的 RAG 段落（**唯一入口**）。
+
+    所有真实编排路径都必须调它，否则「未选块不出现在来源」在那条路径上就是空话：
+
+    - 自研管线 ``AgentPipeline._fill_retrieval``
+    - LangGraph 短路径 ``app.agents.fast_path.iter_fast_path``
+    - LangGraph Supervisor ``SupervisorGraph._retrieve``
+
+    两条分支都写回 ``retriever.last_selected``：能证明就写真实选入列表，证明不了
+    就写空列表——**绝不留下 None**，否则入口会回落全量 ``last_hits``，又变成
+    「展示的来源多于实际证据」。
+
+    结构化命中一块都装不下时记一条明确日志（预算值、块数、最大块长度），
+    调用方据此向用户说明「证据超出预算」，而不是伪装成「没有资料」。
+    """
+    hits = structured_hits(retriever)
+    if hits:
+        payload = build_context("", hits)
+        _set_last_selected(retriever, payload.selected)
+        if not payload.selected:
+            logger.warning(
+                "rag_context_budget_exhausted budget=%s blocks=%s max_block_chars=%s",
+                settings.RAG_CONTEXT_CHARS,
+                len(hits),
+                max(len(hit.content) for hit in hits),
+            )
+        elif payload.dropped:
+            logger.info(
+                "rag_context_budget_dropped selected=%s dropped=%s reasons=%s",
+                len(payload.selected),
+                len(payload.dropped),
+                payload.drop_reasons,
+            )
+        return payload
+    # 降级：拿不到结构化命中（自定义 Retriever 只给字符串）。围栏闭合由
+    # build_from_rag_text 保证；来源无法证明，因此声明为空。
+    payload = build_from_rag_text("", snippet)
+    _set_last_selected(retriever, [])
+    return payload
+
+
+def _set_last_selected(retriever: object, selected: list[ChunkResult]) -> None:
+    """回写「实际进入 payload 的命中」。对象可能没有该字段，用 setattr。"""
+    setattr(retriever, "last_selected", selected)
 
 
 class HybridRetriever:

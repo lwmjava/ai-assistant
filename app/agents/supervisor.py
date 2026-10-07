@@ -20,7 +20,9 @@ from typing import TypedDict
 from app.agents.pipeline import AgentEvent, AgentState, _failure_text
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
+from app.rag.retriever import assemble_retrieval
 
 logger = logging.getLogger(__name__)
 
@@ -265,9 +267,19 @@ class SupervisorGraph:
         state.retrieval_status = outcome.status.value
         state.retrieval_notice = outcome.directive()
         state.retrieval_disclosure = outcome.disclosure_prefix()
-        if snippet.strip():
+        # RAG-029：与自研管线、短路径共用同一个按块预算的 Context Builder，
+        # 否则 Supervisor 路径的模型输入不受 RAG_CONTEXT_CHARS 约束，
+        # last_selected 也不会被回写（来源会回落成全部命中）。
+        rag_text = assemble_retrieval(self.retriever, snippet).text
+        if rag_text.strip():
             state.context = (
-                f"{state.context}\n\n## 知识库检索结果\n{snippet}" if state.context else snippet
+                f"{state.context}\n\n## 知识库检索结果\n{rag_text}" if state.context else rag_text
+            )
+        elif snippet.strip():
+            # 有命中但没有一块完整装进预算：明确说超预算，不能说成「没有资料」。
+            exhausted = f"## 知识库检索结果\n{CONTEXT_BUDGET_EXHAUSTED}"
+            state.context = (
+                f"{state.context}\n\n{exhausted}" if state.context else exhausted
             )
 
     async def run(self, state: AgentState) -> AgentState:

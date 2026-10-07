@@ -1175,7 +1175,10 @@ def _write_report(path: Path, report: dict[str, Any]) -> None:
     if path.resolve() == FROZEN_BASELINE.resolve():
         raise SystemExit(f"拒绝覆盖冻结基线：{FROZEN_BASELINE}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    # 必须按字节写：write_text 在 Windows 上会把 \n 翻成 \r\n，报告每次重生成
+    # 都会制造一次整文件 diff（core.autocrlf=false 时 git 不做归一化）。
+    payload = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+    path.write_bytes(payload.encode("utf-8"))
 
 
 def main() -> int:

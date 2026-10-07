@@ -57,17 +57,21 @@ _CONTENT_BUDGET = 4000
 _PREFLIGHT_WORD = re.compile(r"\s*(YES|NO)\b", re.IGNORECASE)
 
 
-def _failure_text(exc: Exception) -> str:
+def _failure_text(exc: Exception, generic: str | None = None) -> str:
     """全部模型都不可用时用固定句子。其它失败仍用原来的笼统提示。
 
     预算超限单独给一句能照做的提示，但只给固定文案：异常原文里的计数数字、
     模型名与原因码都不出现在用户看到的句子里。
+
+    ``generic`` 让调用方替换笼统提示的措辞（如 Supervisor 需要点明是多 Agent
+    协作失败），**但不替换预算超限那句**——那句的可照做性是刻意设计，任何调用
+    方都不该把它改回「请稍后重试」。
     """
     if isinstance(exc, LLMUnavailableError):
         return str(exc)
     if isinstance(exc, ContextBudgetError):
         return BUDGET_EXCEEDED_MESSAGE
-    return _GENERIC_FAILURE
+    return generic if generic is not None else _GENERIC_FAILURE
 
 
 def _role_label(message: ChatMessage) -> str:

@@ -18,6 +18,7 @@ from app.agents.supervisor import SupervisorGraph
 from app.agents.tools.base import ToolRegistry
 from app.core.config import settings
 from app.llm.base import LLMProvider
+from app.llm.budget import ContextBudgetError
 from app.llm.mock import MockLLMProvider
 from app.services.chat_service import ChatService
 
@@ -323,6 +324,38 @@ def test_supervisor_error_skips_subtask_and_hides_exception() -> None:
     assert all(event.type != "subtask" for event in events)
     assert "sk-" not in blob
     assert "抱歉，多 Agent 协作处理时出现问题，请稍后重试。" in blob
+
+
+def test_supervisor_budget_failure_tells_user_to_shorten_not_retry() -> None:
+    """编排路径的预算超限必须给可照做的提示。
+
+    说「请稍后重试」会诱导用户重试一次必然再被拦的请求，所以这里既要断言
+    出现「请缩短输入」，也要断言**不出现**「请稍后重试」。
+    """
+
+    class _BudgetLLM(LLMProvider):
+        model = "budget"
+
+        async def chat(self, messages, options=None) -> str:
+            raise ContextBudgetError(
+                "output_reserve_exceeded",
+                payload_tokens=999999,
+                reserved_output=2048,
+                margin=512,
+                limit=131072,
+            )
+
+        async def stream_chat(self, messages, options=None):
+            if False:
+                yield ""
+
+    graph = SupervisorGraph(_BudgetLLM())
+    events = asyncio.run(_collect(graph, AgentState(user_input="会超预算")))
+    blob = "".join(event.data for event in events)
+
+    assert "请缩短输入" in blob
+    assert "请稍后重试" not in blob
+    assert "999999" not in blob
 
 
 def test_supervisor_drafts_once_when_model_keeps_asking_to_draft() -> None:

@@ -47,6 +47,29 @@ export function sourceFileFailureMessage(status: number, payload: unknown = null
   return '下载失败，请稍后重试。'
 }
 
+/**
+ * 从 `Content-Disposition` 里取后端给出的文件名。
+ *
+ * 后端 `FileResponse(filename=doc.source or Path(file_path).name)`，所以响应头里的
+ * 名字就是后端的权威取值。优先用它，可以把「前端猜测的文件名」这层分歧彻底消掉
+ * （前端拿不到磁盘文件基名，只有后端知道）。取不到再按 `source` → `title` 兜底。
+ */
+export function contentDispositionFilename(header: string | null): string | null {
+  if (!header) return null
+  // RFC 5987：filename*=UTF-8''%E4%B8%AD%E6%96%87.txt，支持非 ASCII 文件名
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header)
+  if (encoded) {
+    try {
+      const name = decodeURIComponent(encoded[1].trim())
+      if (name) return name
+    } catch {
+      /* 编码异常时退回 filename= */
+    }
+  }
+  const plain = /filename\s*=\s*"?([^";]+)"?/i.exec(header)
+  return plain ? plain[1].trim() : null
+}
+
 /** 把 blob 交给浏览器保存。用完立即释放 object URL，避免内存泄漏。 */
 export function saveBlobAsFile(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)

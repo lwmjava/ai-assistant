@@ -59,14 +59,20 @@
 
 ### 3.1 静态证据
 
-全仓检索 `dangerouslySetInnerHTML`：
+**作用域要写清楚：只查仓库自有源码。** 在仓库根目录直接 grep 会命中 `node_modules/react-dom/*`
+的 291 处（第三方自带），没有任何意义。可复现的命令与真实输出：
 
 ```
-$ grep -rn "dangerouslySetInnerHTML" .     # 仓库根目录
-No matches found
+$ grep -rn "dangerouslySetInnerHTML" frontend/src app/     # 只查自有源码
+frontend/src/components/knowledge/ChunkContent.test.ts:61:test('输出中不出现 dangerouslySetInnerHTML 痕迹', () => {
+frontend/src/components/knowledge/ChunkContent.test.ts:62:  assert.ok(!render(BOX).includes('dangerouslySetInnerHTML'))
+frontend/src/components/knowledge/ChunkContent.test.ts:63:  assert.ok(!render('<script>alert(1)</script>').includes('dangerouslySetInnerHTML'))
+frontend/src/lib/chunk-content.ts:11: * `dangerouslySetInnerHTML`，正文一律作为 React 文本节点渲染（React 默认转义），
 ```
 
-结论：零处。本次改动没有引入 `innerHTML`、没有引入 markdown/富文本渲染器（`react-markdown` 为仓库既有依赖，仅用于对话消息，本次未接入知识库正文）。
+命中只有两类：**注释**与**测试断言**；`frontend/src` 与 `app/` 的**生产代码零处**。
+（早先版本把这行写成「仓库根目录 No matches found」，是当时的检索工具默认排除了 `node_modules`，
+命令本身不可复现，已更正。）
 
 ### 3.2 渲染级证据（不靠人眼）
 
@@ -129,6 +135,18 @@ TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".tsx" for ...\co
 
 下载链路：`api.blob()` → `saveBlobAsFile()`（object URL + `<a download>`，用完 `revokeObjectURL`）。凭据、401 自动刷新、错误归一化全部沿用 `src/lib/http.ts` 既有实现。
 
+**文件名取值**（`frontend/src/api/rag.ts:downloadDocumentSource`）：
+
+1. **后端 `Content-Disposition` 里的名字（权威值）**——后端是 `FileResponse(filename=doc.source or Path(file_path).name)`，
+   响应头就是它自己算出来的结果；前端用 `contentDispositionFilename()` 解析
+   （支持 RFC 5987 的 `filename*=UTF-8''…`，非 ASCII 文件名也能还原）；
+2. 头缺失时退回 `doc.source`；
+3. 再退回 `doc.title`。
+
+> 修订记录：初版是 `doc.source || doc.title`，而后端在 `source` 为空时落的是**磁盘文件基名**
+> `Path(file_path).name`，两者在 `source` 缺省的边界下会不一致（L-02）。改为「优先后端响应头的权威值」后，
+> 前端不再自己造名字，只在连响应头都拿不到（例如被网关剥掉）时才逐级兜底。
+
 **失败反馈**（`frontend/src/lib/download.ts:sourceFileFailureMessage`）：
 
 | 情况 | 提示 |
@@ -188,12 +206,55 @@ $ D:/DepTooL/nodejs/node.exe --test src/components/knowledge/ChunkContent.test.t
 
 6 条断言见第 3.2 节的真实输出（盒图/换行保留、4 与 8 空格列位置、`<script>` 转义、`<img onerror=>` 转义、输出无 `dangerouslySetInnerHTML`、普通段落走非结构化分支）。
 
-**合计 25 条**（19 纯函数 + 6 渲染级）：
+### 5.1c 权限镜像测试（补审查 M-01）
 
 ```
-$ D:/DepTooL/nodejs/node.exe --test src/lib/chunk-content.test.ts src/lib/download.test.ts src/components/knowledge/ChunkContent.test.ts
-# tests 25
-# pass 25
+$ cd frontend
+$ D:/DepTooL/nodejs/node.exe --test src/lib/permissions.test.ts
+# tests 6
+# pass 6
+# fail 0
+```
+
+覆盖后端 `can_control_document` 的五条判定 + 未登录守卫：system_admin（含跨租户）放行、
+跨租户一律拒绝、同租户 tenant_admin 对他人文档放行、成员仅「本人上传且 `is_current`」放行、
+`is_current=false` 拒绝、`user=null` 拒绝。另有一条说明「控制面只看身份关系，`can(read)` 另把关」，
+与 `Knowledge.tsx` 里 `canRead && canControlDocument(...)` 的合取一致。
+
+### 5.1d 下载成功路径（补审查 H-01）
+
+**(a) 前端落盘**（`download.test.ts`，约 40 行最小 DOM 桩替换 `document` / `URL.createObjectURL` /
+`URL.revokeObjectURL`，零新依赖）：文件名取自传入值、点击前必须先挂到 DOM、点击后再移除节点、
+`revokeObjectURL` 与 `createObjectURL` 一一配平；`contentDispositionFilename` 解析三种头格式。
+
+**(b) 服务端往返**（`tests/test_rag_042_download_roundtrip.py`，`TestClient` 为后端既有依赖）：
+
+```
+$ DATABASE_URL="sqlite:///./data/test_rag042.db" /d/DepTooL/anaconda3/python.exe -m pytest \
+      tests/test_rag_042_download_roundtrip.py -q --basetemp=data/pytest-tmp/rag042
+3 passed in 11.85s
+```
+
+- `test_download_returns_uploaded_bytes_and_filename`：上传 `refund-policy.txt` → 下载 200、
+  `resp.content == raw`（**字节完全相同**）、`Content-Disposition` 含原文件名；
+- `test_other_member_cannot_download_others_source_file`：换同租户普通成员下载他人文档 → 404；
+- `test_missing_source_file_returns_404`：删掉落盘源文件后下载 → 404「源文件不存在」。
+
+两条环境注意事项（与改动无关）：
+1. 本机共享测试库 `data/test_ai_assistant.db` 当前有 schema 漂移（缺 `rag_document_chunks.index_id`，
+   由并行任务卡的未提交模型改动引起），**所有**后端用例都会因此报错，故用 `DATABASE_URL` 指向独立库；
+   该库本身也有既有的内容去重行为——上传内容必须每次唯一，否则第二次运行会命中已有文档、
+   新落盘的源文件被丢弃，下载必然 404，测试文件已在 docstring 里写明。
+2. `--basetemp` 指向独立子目录：默认 `data/pytest-tmp/run` 累积够 3 个历史目录后，pytest 的
+   tmp 清理会触发本机 safe-delete 护栏（`SAFE_DELETE_BULK_GUARD_ERROR` → `SystemExit: 1`）。
+
+**合计 34 条**（19 纯函数 + 6 渲染级 + 6 权限镜像 + 3 落盘/头解析 = 34，其中前端 `node --test` 34 条）：
+
+```
+$ D:/DepTooL/nodejs/node.exe --test src/lib/chunk-content.test.ts src/lib/download.test.ts \
+      src/lib/permissions.test.ts src/components/knowledge/ChunkContent.test.ts
+# tests 34
+# pass 34
 # fail 0
 ```
 
@@ -244,39 +305,72 @@ vite v5.4.8 building for production...
 | 5 | `STRUCTURED_CLASS` 去掉 `whitespace-pre` | `盒图正文：盒图字符与换行原样保留，且套上结构化 class`、`缩进与列位置：4 / 8 个前导空格必须还在`、`结构化正文的渲染 class 保留空白…`、`盒图正文拿到结构化 class…` | 4 / 25 |
 | 6 | 组件渲染时把 `\n` 替换成空格 | `盒图正文：盒图字符与换行原样保留…`、`普通自然语言段落：走非结构化分支，但仍保留换行` | 2 / 25 |
 
+第三轮（审查整改，34 条）——**本轮重点是补上此前两个完全逃逸的方向**：
+
+| # | 变异 | 变红的测试 | 失败条数 |
+| --- | --- | --- | --- |
+| 7 | `canControlDocument` 对所有已登录用户返回 `true`（审查变异 5 复现） | `跨租户一律拒绝（系统管理员除外）`、`成员：只有本人上传且为当前版才可控`、`控制面只看身份关系，不看角色权限矩阵（read 权限另由 can() 把关）` | **3 / 34** |
+| 8 | `saveBlobAsFile` 去掉 `URL.revokeObjectURL` | `objectURL 用完即释放，与创建次数配平` | **1 / 34** |
+| 9 | `contentDispositionFilename` 恒返回 `null` | `Content-Disposition 文件名解析：优先后端给的权威取值` | 1 / 34 |
+
 补充：#1/#5 的同一条断言同时覆盖 `font-mono` 与 `overflow-x-auto`（去掉任一个同样变红），故未单列。
+审查发现的**类名拼接**（`${WS}pre …`）逃逸方向仍未守护——它没有单测，
+只能靠构建后 grep 产物 CSS；已列入第 6 节已知取舍与后续项（safelist 或 CI grep）。
 
 ### 5.4 无残留证明
 
 ```
-$ grep -rn "MUTATION" frontend/src/          # 无输出（第二轮后同样无输出）
-$ cd frontend && node --test <三个测试文件>   # pass 25 / fail 0
+$ grep -rn "MUTATION" frontend/src/          # 无输出（三轮后均无输出）
+$ cd frontend && node --test <四个测试文件>   # pass 34 / fail 0
 $ git diff --exit-code HEAD -- frontend/src  # 退出码 0
 $ git status --porcelain -- frontend/src     # 无输出
 ```
 
 工作区零残留：所有改动（含新增文件）均已随 commit 落库。累计改动面为 4 个既有生产文件
-（`api/rag.ts`、`lib/http.ts`、`lib/permissions.ts`、`pages/Knowledge.tsx`）+ 新增 3 个实现/组件文件
-（`lib/chunk-content.ts`、`lib/download.ts`、`components/knowledge/ChunkContent.ts`）+ 3 个测试文件。
+（`api/rag.ts`、`lib/http.ts`、`lib/permissions.ts`、`pages/Knowledge.tsx`）+ 3 个新增实现/组件文件
+（`lib/chunk-content.ts`、`lib/download.ts`、`components/knowledge/ChunkContent.ts`）+ 4 个测试文件
+（3 个前端 + `tests/test_rag_042_download_roundtrip.py`）。
 
 ---
 
 ## 6. 局限与尚未闭合的验收点
 
-1. ~~**没有浏览器端视觉验收**~~ → **已闭合（改为渲染级证据）**：第 3.2 节用 `react-dom/server` 渲染真实组件，
-   直接证明了「盒图字符与换行原样保留」「4/8 空格列位置保留」「HTML/脚本被转义」。
-   **仍未自动化的是 Tailwind 类真正作用到像素的那一步**：`whitespace-pre` / `overflow-x-auto`
-   是否在本项目的 Tailwind 构建里真的产出了对应 CSS（类是否被 purge 掉、窄屏是否真的出现横向滚动条），
-   这条只能靠人工在窄屏浏览器里看一次（上传含盒图文档 → 检索 / 展开分块）。
-   间接证据：`dist/assets/index-*.css` 在构建后为 66.59 kB，且这三个类由 `chunk-content.ts`
-   里的**字面量常量**提供（不是拼出来的动态类名），Tailwind 3.4 的扫描能命中，不会被 purge。
-2. **下载成功路径没有自动化验证**。401/403/404/5xx/网络的文案映射有单测，但「blob 落盘」依赖浏览器
-   `URL.createObjectURL`，未在自动化测试中执行，需人工点一次下载按钮确认文件可保存、文件名与 `source` 一致。
+1. **Tailwind 类是否落进产物 CSS：已自动化验证（不再是「只能人工」）。**
+   做法是构建产物级查证 + 对照实验（关键坑：Tailwind 提取器**也扫注释**，它对文件原文做正则、
+   不剥注释，所以「CSS 里有这个类」本身不能证明是常量被扫到——必须做对照实验）：
+
+   ```
+   $ grep -o '\.whitespace-pre[^{]*{[^}]*}' dist/assets/index-D6SNo6pV.css   # 本次产物
+   .whitespace-pre{white-space:pre}
+   .whitespace-pre-wrap{white-space:pre-wrap}
+
+   $ grep -o '\.whitespace-pre[^{]*{[^}]*}' dist/assets/index-BZr_Fs9Y.css   # 基线产物
+   .whitespace-pre-wrap{white-space:pre-wrap}
+   ```
+
+   基线只有 `whitespace-pre-wrap`，本次产物多出 `.whitespace-pre{white-space:pre}`。
+   **决定性对照实验**：保留 `chunk-content.ts` 的字面量常量不变，仅把注释里的 `whitespace-pre`
+   全部替换掉（使 `src` 下非测试文件中的 `whitespace-pre` 只剩常量本身），重建后产物**仍**含
+   `.whitespace-pre{white-space:pre}` —— 证明该规则由常量编译而来。purge 疑虑解除。
+   `.font-mono` / `.overflow-x-auto` 同样在产物中，基线已被其它页面用到。
+   **仍然只能人眼的部分**：窄屏下是否真的出现可用横向滚动条、盒图是否被压扁（L-01，已知取舍）。
+2. **下载成功路径：已自动化到「字节级 + 落盘动作级」，只剩浏览器保存对话框需人眼。**
+   服务端往返（200 + 字节完全相同 + `Content-Disposition` 文件名）与前端落盘
+   （文件名 / 挂载后 click / `revokeObjectURL` 配平）都已有测试，见第 5.1d 节。
+   仍未自动化的是「浏览器是否真的弹出保存对话框并把文件写进磁盘」——这确实需要人工点一次。
 3. ~~文本摄取型文档显示下载入口~~ → **已裁定**：保留入口 + 明确 404 反馈，理由与后续项见第 4.1 节
    （后端补 `has_source_file` 后可改为隐藏入口，需另开卡）。
 4. **已知取舍（不改）**：等宽长行没有加最大高度。超长代码块会撑高卡片，需要纵向滚动页面本身；
    加 `max-h-*` 反而会让盒图被纵向截断、看不到全貌，因此维持当前行为。
-5. `canControlDocument` 是后端判定镜像。若后端 `can_control_document` 规则变更，本文件需同步（已在注释中标注），
-   否则只会出现「按钮点了报 403」或「该有按钮的没出现」这类体验问题，**不影响后端安全边界**。
+5. `canControlDocument` 是后端判定镜像，**现已由 `permissions.test.ts` 6 条用例守护**
+   （审查变异「放开全部用户」会让其中 3 条变红）。若后端 `can_control_document` 规则变更，
+   本文件需同步（已在注释中标注）；即便不同步，后端仍会独立拦一道，**不影响安全边界**。
 6. `ChunkContent.ts` 用 `createElement` 而非 JSX（原因见第 3.3 节）。这是为了让生产组件能被 Node
    直接加载做渲染级断言而付的代价；若将来仓库引入正式的测试运行器（vitest 等），可改回 JSX 并保留同一套断言。
+   **触发条件已写进组件注释**：一旦这个组件需要第二个元素或条件分支，优先改回 JSX。
+7. **文件名兜底与后端仍有理论分歧**：已改为优先后端 `Content-Disposition` 的权威值，
+   只有在响应头被网关剥掉时才会落到 `source` → `title`。真正彻底的解法是后端补
+   `has_source_file`（第 4.1 节后续项），一并消除入口显隐的猜测。
+8. **类名被改成拼接形式仍会静默失效**（审查 L-03）：单测只验字符串 token，不验产物 CSS。
+   建议后续二选一：Tailwind `safelist: ['whitespace-pre','font-mono','overflow-x-auto']`，
+   或 CI 加一步「构建后 grep 产物 CSS 必须含 `.whitespace-pre{`」。本卡未做（超出允许改动面）。

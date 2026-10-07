@@ -1,7 +1,108 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { SOURCE_FILE_NETWORK_FAILURE, sourceFileFailureMessage } from './download.ts'
+import {
+  SOURCE_FILE_NETWORK_FAILURE,
+  contentDispositionFilename,
+  saveBlobAsFile,
+  sourceFileFailureMessage,
+} from './download.ts'
+
+/** 最小 DOM 桩：不引入任何依赖，只记录 saveBlobAsFile 对浏览器 API 的调用序列。 */
+interface DomProbe {
+  created: string[]
+  revoked: string[]
+  clicked: { href: string; download: string; attachedWhenClicked: boolean }[]
+  restore: () => void
+}
+
+function installDomStub(): DomProbe {
+  const probe: DomProbe = { created: [], revoked: [], clicked: [], restore: () => {} }
+  const g = globalThis as unknown as Record<string, unknown>
+  const savedUrl = g.URL
+  const savedDocument = g.document
+
+  let seq = 0
+  g.URL = {
+    ...(savedUrl as object),
+    createObjectURL: (_blob: Blob) => {
+      const url = `blob:stub/${(seq += 1)}`
+      probe.created.push(url)
+      return url
+    },
+    revokeObjectURL: (url: string) => {
+      probe.revoked.push(url)
+    },
+  }
+
+  const makeAnchor = () => {
+    const node: Record<string, unknown> = {
+      href: '',
+      download: '',
+      attached: false,
+      click() {
+        probe.clicked.push({
+          href: String(node.href),
+          download: String(node.download),
+          attachedWhenClicked: Boolean(node.attached),
+        })
+      },
+      remove() {
+        node.attached = false
+      },
+    }
+    return node
+  }
+
+  g.document = {
+    createElement: () => makeAnchor(),
+    body: {
+      appendChild(node: Record<string, unknown>) {
+        node.attached = true
+      },
+    },
+  }
+
+  probe.restore = () => {
+    g.URL = savedUrl
+    g.document = savedDocument
+  }
+  return probe
+}
+
+test('落盘：文件名取自传入值，点击前已挂到 DOM，点击后节点移除', () => {
+  const probe = installDomStub()
+  try {
+    saveBlobAsFile(new Blob(['x']), 'refund-policy.txt')
+  } finally {
+    probe.restore()
+  }
+  assert.equal(probe.clicked.length, 1, '必须真的触发一次点击')
+  assert.equal(probe.clicked[0].download, 'refund-policy.txt')
+  assert.equal(probe.clicked[0].href, probe.created[0], '点击的 href 应为刚创建的 object URL')
+  assert.equal(probe.clicked[0].attachedWhenClicked, true, '必须在挂到 DOM 之后再 click')
+})
+
+test('objectURL 用完即释放，与创建次数配平', () => {
+  const probe = installDomStub()
+  try {
+    saveBlobAsFile(new Blob(['a']), 'a.txt')
+    saveBlobAsFile(new Blob(['b']), 'b.txt')
+  } finally {
+    probe.restore()
+  }
+  assert.equal(probe.created.length, 2)
+  assert.deepEqual(probe.revoked, probe.created, 'revoke 的 URL 必须与 create 的一一对应')
+})
+
+test('Content-Disposition 文件名解析：优先后端给的权威取值', () => {
+  assert.equal(contentDispositionFilename('attachment; filename="note.txt"'), 'note.txt')
+  assert.equal(contentDispositionFilename("attachment; filename=note.txt"), 'note.txt')
+  assert.equal(contentDispositionFilename("attachment; filename*=UTF-8''%E6%8A%A5%E5%91%8A.txt"), '报告.txt')
+  assert.equal(contentDispositionFilename(null), null)
+  assert.equal(contentDispositionFilename(''), null)
+  assert.equal(contentDispositionFilename('attachment'), null)
+})
 
 test('401：提示会话失效，需要重新登录', () => {
   const msg = sourceFileFailureMessage(401)

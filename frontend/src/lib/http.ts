@@ -192,9 +192,13 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   anonymous?: boolean
   /** 内部标记：重放请求时不再尝试刷新，避免死循环。 */
   _retried?: boolean
-  /** 需要二进制响应（文件下载）时置 true：不做 JSON 解析，直接返回 Blob。 */
-  asBlob?: boolean
   signal?: AbortSignal
+}
+
+/** 二进制响应：除 blob 外一并给出响应头，供调用方取后端给的权威文件名。 */
+export interface BlobResponse {
+  blob: Blob
+  headers: Headers
 }
 
 async function parseError(res: Response): Promise<ApiError> {
@@ -223,8 +227,9 @@ async function parseError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, detail, payload)
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, form, anonymous, _retried, asBlob, headers, ...rest } = options
+/** 拿到已鉴权、已归一错误、且未消费 body 的响应。供需要响应头/二进制体的调用方复用。 */
+async function requestResponse(path: string, options: RequestOptions = {}): Promise<Response> {
+  const { body, form, anonymous, _retried, headers, ...rest } = options
   const finalHeaders = new Headers(headers)
 
   if (!anonymous) {
@@ -249,16 +254,19 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (res.status === 401 && !anonymous && !_retried) {
     const next = await refreshOnce()
     if (next) {
-      return request<T>(path, { ...options, _retried: true })
+      return requestResponse(path, { ...options, _retried: true })
     }
     expireSession()
   }
 
   if (!res.ok) throw await parseError(res)
+  return res
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const res = await requestResponse(path, options)
 
   if (res.status === 204) return undefined as T
-  // 文件下载：二进制响应不能被 JSON.parse 破坏，这里直接返回 Blob
-  if (asBlob) return (await res.blob()) as T
   const text = await res.text()
   if (!text) return undefined as T
   try {
@@ -279,8 +287,10 @@ export const api = {
   delete: <T>(path: string, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'DELETE' }),
   /** 二进制响应（源文件下载）。沿用同一套鉴权、401 刷新与错误归一化。 */
-  blob: (path: string, options?: RequestOptions) =>
-    request<Blob>(path, { ...options, method: 'GET', asBlob: true }),
+  blob: async (path: string, options?: RequestOptions): Promise<BlobResponse> => {
+    const res = await requestResponse(path, { ...options, method: 'GET' })
+    return { blob: await res.blob(), headers: res.headers }
+  },
   upload: <T>(path: string, form: FormData, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'POST', form }),
   /** 供 store 直接写入刷新后的令牌。 */

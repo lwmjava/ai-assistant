@@ -1,7 +1,12 @@
 /** 知识库（RAG）文档摄取、管理与检索。 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, isSessionExpiredError } from '@/lib/http'
-import { saveBlobAsFile, sourceFileFailureMessage, SOURCE_FILE_NETWORK_FAILURE } from '@/lib/download'
+import {
+  saveBlobAsFile,
+  sourceFileFailureMessage,
+  contentDispositionFilename,
+  SOURCE_FILE_NETWORK_FAILURE,
+} from '@/lib/download'
 import type { DocumentChunkOut, DocumentOut, ImportJobOut, SearchResultOut } from '@/types/api'
 export const documentKeys = {
   all: ['documents'] as const,
@@ -89,13 +94,16 @@ export function useSearch() {
 /**
  * 下载文档源文件（走带凭据的 blob 请求，不用 `window.open` 直链，否则丢鉴权头）。
  *
- * 文件名沿用后端 `FileResponse` 的取值来源：文档 `source`，缺失时退回标题。
+ * 文件名优先级：后端 `Content-Disposition` 里的权威取值（服务端是
+ * `doc.source or Path(file_path).name`）→ `doc.source` → 文档标题。
+ * 这样前端不会另造一个与后端不一致的名字。
+ *
  * 失败一律抛 Error（会话失效则原样抛 ApiError，交给上层跳过提示并跳登录）。
  */
 export async function downloadDocumentSource(doc: DocumentOut): Promise<void> {
-  let blob: Blob
+  let payload: { blob: Blob; headers: Headers }
   try {
-    blob = await api.blob(`/rag/documents/${doc.id}/download`)
+    payload = await api.blob(`/rag/documents/${doc.id}/download`)
   } catch (err) {
     if (isSessionExpiredError(err)) throw err
     if (err instanceof ApiError) {
@@ -103,7 +111,11 @@ export async function downloadDocumentSource(doc: DocumentOut): Promise<void> {
     }
     throw new Error(sourceFileFailureMessage(SOURCE_FILE_NETWORK_FAILURE))
   }
-  saveBlobAsFile(blob, doc.source || doc.title)
+  const filename =
+    contentDispositionFilename(payload.headers.get('Content-Disposition')) ??
+    doc.source ??
+    doc.title
+  saveBlobAsFile(payload.blob, filename)
 }
 
 /** 文档分块列表（逐块详情）。 */

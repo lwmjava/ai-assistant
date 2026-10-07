@@ -10,6 +10,10 @@
  * `react-dom/server` 直接渲染，从而在无浏览器环境里证明两件事：
  * 盒图的缩进与列位置真的保留了、上传文本里的 HTML 真的被转义了。
  * 渲染语义与 JSX 版完全一致：正文始终是 React 文本子节点。
+ *
+ * **改回 JSX 的触发条件**：一旦这个组件需要第二个元素或出现条件分支，
+ * `createElement` 的可读性会明显劣于 JSX，届时应先引入正式测试运行器（vitest 等）
+ * 让 `.tsx` 可被测试加载，再改回 JSX，并把本文件的断言整体迁过去。
  */
 
 import { createElement } from 'react'

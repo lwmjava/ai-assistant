@@ -1,9 +1,9 @@
 {
   "schema_version": "rag-015-switch-v1",
-  "run_at": "2026-10-07T14:26:01.207245+00:00",
-  "run_id": "16390b6017",
+  "run_at": "2026-10-07T15:25:25.267289+00:00",
+  "run_id": "9bcab969f2",
   "milvus_uri": "http://127.0.0.1:19530",
-  "collection_prefix": "rag015_switch_check_16390b6017",
+  "collection_prefix": "rag015_switch_check_9bcab969f2",
   "corpus": [
     {
       "logical_id": "cedar-warranty",
@@ -32,9 +32,9 @@
       "status": "pass",
       "configured_backend": "local",
       "uploaded_document_ids": [
-        "5b37025444604d1a8a72fea58eeeaa0f",
-        "bf4fb37a819b4f46a23693abdeaf01fb",
-        "b0d5055740b14789885806eebd1c1c26"
+        "51daa7f01c634c57966ff6ba6521f8a5",
+        "402471df6a864d3ca161840639ce62e5",
+        "02f07ca8b33241db88a07f40377761be"
       ],
       "sql_chunk_count": 3,
       "embedding_normalization": "l2",
@@ -44,17 +44,17 @@
       },
       "retrieval_status": "ok",
       "hit_document_ids": [
-        "5b37025444604d1a8a72fea58eeeaa0f",
-        "b0d5055740b14789885806eebd1c1c26",
-        "bf4fb37a819b4f46a23693abdeaf01fb"
+        "51daa7f01c634c57966ff6ba6521f8a5",
+        "02f07ca8b33241db88a07f40377761be",
+        "402471df6a864d3ca161840639ce62e5"
       ]
     },
     "milvus_upload_visible": {
       "status": "pass",
       "uploaded_document_ids": [
-        "29755887d52e4bcd9f75a84d4771b795",
-        "8bde75d7d39c441faebdd263b5dde8e6",
-        "20eab82438be491aa25f2b3b95db8e24"
+        "3861abd9d3a148108d5d6b29adc690d4",
+        "977f2c7ab82346598cb611b6823fd3dc",
+        "2fd7721714354894a532c7814c236572"
       ],
       "sql_vectorized_chunk_count": 3,
       "embedding_normalization": "l2",
@@ -69,9 +69,9 @@
       "sql_chunk_count": 3,
       "retrieval_status": "ok",
       "hit_document_ids": [
-        "5b37025444604d1a8a72fea58eeeaa0f",
-        "b0d5055740b14789885806eebd1c1c26",
-        "bf4fb37a819b4f46a23693abdeaf01fb"
+        "51daa7f01c634c57966ff6ba6521f8a5",
+        "02f07ca8b33241db88a07f40377761be",
+        "402471df6a864d3ca161840639ce62e5"
       ],
       "data_vs_empty_distinguished": true
     }
@@ -250,7 +250,7 @@
   "pymilvus_version": "2.5.11",
   "milvus_cleanup": {
     "status": "pass",
-    "collection": "rag015_switch_check_16390b6017__v1__0071e24feabb"
+    "collection": "rag015_switch_check_9bcab969f2__v1__0071e24feabb"
   },
   "final_backend": "local",
   "all_acceptance_paths_passed": true,

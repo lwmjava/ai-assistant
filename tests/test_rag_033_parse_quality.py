@@ -6,7 +6,7 @@
    的覆盖率与阅读顺序（样本由 ``scripts/generate_parse_corpus.py`` 真实生成）。
 2. **依赖失败行为**：OCR 依赖缺失时的错误类型与文案、是否影响非 OCR 文档、
    空文件/损坏文件/不支持扩展名的失败行为。
-3. **报告结构**：覆盖率、顺序、失败清单字段齐全，门禁按 gate.v1 已锁定。
+3. **报告结构**：覆盖率、顺序、失败清单字段齐全，门禁按 gate.v2 已锁定。
 
 本机事实：未安装 ``pytesseract`` / ``pdfplumber``，也没有 tesseract 二进制，
 因此**中文 OCR 质量在本机无法用真实依赖验证**，相关断言只验证「依赖缺失时的
@@ -18,7 +18,9 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -739,16 +741,58 @@ def test_write_json_refuses_silent_overwrite(tmp_path: Path, report: dict) -> No
     assert _report_mod.write_json(report, target, force=True).exists()
 
 
+def _committed_report_path() -> Path:
+    """取落盘报告路径；**不存在就是缺陷**，不允许静默跳过（M-01）。"""
+    candidates = sorted((_REPO_ROOT / "evals" / "reports").glob("parse-quality-*.json"))
+    assert candidates, (
+        "evals/reports/ 下没有 parse-quality-*.json，落盘报告缺失："
+        "请先运行 python scripts/parse_quality_report.py --json"
+    )
+    return candidates[-1]
+
+
 def test_committed_report_matches_script_output(report: dict) -> None:
     """落盘报告必须与脚本输出逐字段一致（除 generated_at），防止评审看到过期数据。"""
-    candidates = sorted((_REPO_ROOT / "evals" / "reports").glob("parse-quality-*.json"))
-    if not candidates:  # pragma: no cover - 首次提交前无报告
-        pytest.skip("尚无落盘报告")
-    committed = json.loads(candidates[-1].read_text(encoding="utf-8"))
+    committed = json.loads(_committed_report_path().read_text(encoding="utf-8"))
     committed.pop("generated_at", None)
     fresh = dict(report)
     fresh.pop("generated_at", None)
     assert committed == fresh
+
+
+def test_committed_report_is_bound_to_corpus_and_gate(report: dict, corpus: Path) -> None:
+    """落盘报告必须与语料 manifest、样本文件、门禁判定三者绑定。"""
+    path = _committed_report_path()
+    committed = json.loads(path.read_text(encoding="utf-8"))
+    manifest = json.loads((corpus / "manifest.json").read_text(encoding="utf-8"))
+
+    # ① 样本集合与 manifest 一一对应（顺序与数量）
+    assert [item["name"] for item in committed["samples"]] == [
+        item["name"] for item in manifest["samples"]
+    ]
+    # ② 每个样本文件真实存在（防止「报告里写得好听但文件不存在」）
+    for sample in manifest["samples"]:
+        assert (corpus / sample["name"]).is_file(), f"语料缺失样本文件：{sample['name']}"
+    # ③ known_gap 条目与 manifest 逐条一致
+    assert {item["name"]: item.get("known_gap") for item in committed["samples"]} == {
+        item["name"]: item.get("known_gap") for item in manifest["samples"]
+    }
+    # ④ 门禁版本/状态与锁定值一致
+    assert committed["gate"]["version"] == _report_mod.LOCKED_GATE["version"]
+    assert committed["gate"]["status"] == "locked"
+    # ⑤ 每个样本的 coverage / order_score / status 与脚本输出一致
+    for item in committed["samples"]:
+        fresh_entry = _entry(report, item["name"])
+        assert item["coverage"] == fresh_entry["coverage"], item["name"]
+        assert item["order_score"] == fresh_entry["order_score"], item["name"]
+        assert item["status"] == fresh_entry["status"], item["name"]
+
+
+def test_report_file_name_carries_gate_version() -> None:
+    """L-04：报告文件名必须带门禁版本，门禁升级后不会静默覆盖旧报告。"""
+    name = _report_mod.default_report_name(datetime(2026, 10, 7))
+    assert name == f"parse-quality-20261007-gate-{_report_mod.LOCKED_GATE['version'].split('.')[-1]}.json"
+    assert _committed_report_path().name == _report_mod.default_report_name()
 
 
 def test_manifest_known_limitation_requires_known_gap(corpus: Path) -> None:
@@ -757,6 +801,124 @@ def test_manifest_known_limitation_requires_known_gap(corpus: Path) -> None:
     for sample in manifest["samples"]:
         declared = sample.get("expectation_mode") == "known_limitation"
         assert declared == bool(sample.get("known_gap")), f"{sample['name']} 标注不一致"
+
+
+# ---------------------------------------------------------------------------
+# CE-13 裁定：缺口退役必须可诊断（样本 id + known_gap 条目 + 下一步）
+# ---------------------------------------------------------------------------
+
+
+def test_missing_corpus_file_failure_is_diagnosable(corpus_copy) -> None:
+    """删掉语料文件：判 fail，且报错含样本 id / known_gap 条目 / 下一步。"""
+    def mutate(manifest: dict, dest: Path) -> None:
+        (dest / "docx_headings_table.docx").unlink()
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "docx_headings_table.docx")
+    assert entry["status"] == "fail"
+    assert entry["error_type"] == "CorpusSampleMissing"
+
+    reason = entry["failure_reason"] or ""
+    assert "docx_headings_table.docx" in reason  # ① 样本 id
+    assert "DocxDocumentParser" in reason  # ② known_gap 条目内容
+    assert "下一步" in reason  # ③ 下一步动作
+    assert "docx_headings_table.docx" in report["gate"]["checks"]["G1"]["violations"]
+    assert report["gate"]["checks"]["G1"]["passed"] is False
+
+
+def test_gap_not_reproduced_message_is_diagnosable(corpus_copy) -> None:
+    """缺口未复现：报错同样必须含样本 id / known_gap 条目 / 下一步。"""
+    table_cells = {"角色", "职责", "时限", "实施", "联调", "五个工作日"}
+
+    def mutate(manifest: dict, dest: Path) -> None:
+        sample = _manifest_sample(manifest, "docx_headings_table.docx")
+        sample["expected_fragments"] = [
+            frag for frag in sample["expected_fragments"] if frag not in table_cells
+        ]
+
+    report = _build(corpus_copy, mutate)
+    entry = _entry(report, "docx_headings_table.docx")
+    assert entry["status"] == "gap_not_reproduced"
+
+    reason = entry["failure_reason"] or ""
+    assert "docx_headings_table.docx" in reason
+    assert "DocxDocumentParser" in reason
+    assert "下一步" in reason
+
+
+# ---------------------------------------------------------------------------
+# CE-14：脚本路径不再「静默失效」，必须存在且暴露关键符号
+# ---------------------------------------------------------------------------
+
+
+def test_script_paths_exist_and_expose_symbols() -> None:
+    """脚本迁移/改名必须让测试变红，而不是静默跳过。"""
+    expected = {
+        "scripts/parse_quality_report.py": (
+            "def main(",
+            "def build_report(",
+            "def evaluate_gate(",
+            "def evaluate_sample(",
+            "def measure_coverage(",
+            "def evaluate_order(",
+        ),
+        "scripts/generate_parse_corpus.py": ("def main(", "def generate("),
+    }
+    for relative, symbols in expected.items():
+        path = _REPO_ROOT / relative
+        assert path.is_file(), f"脚本不存在（可能已迁移或改名）：{relative}"
+        source = path.read_text(encoding="utf-8")
+        for symbol in symbols:
+            assert symbol in source, f"{relative} 缺少关键符号 {symbol}"
+
+    for name in (
+        "main",
+        "build_report",
+        "evaluate_gate",
+        "evaluate_sample",
+        "measure_coverage",
+        "evaluate_order",
+        "write_json",
+        "default_report_name",
+    ):
+        assert callable(getattr(_report_mod, name, None)), f"脚本未暴露可调用符号 {name}"
+    assert callable(getattr(_corpus_mod, "generate", None))
+
+
+# ---------------------------------------------------------------------------
+# L-03：CLI 非法参数 / 缺文件的退出码与可诊断性
+# ---------------------------------------------------------------------------
+
+
+def test_cli_rejects_unknown_argument_with_nonzero_exit() -> None:
+    """非法参数必须非 0 退出，不能静默当作正常执行。"""
+    with pytest.raises(SystemExit) as excinfo:
+        _report_mod.main(["--definitely-not-a-flag"])
+    assert excinfo.value.code != 0
+
+
+def test_cli_process_exits_nonzero_with_diagnostic() -> None:
+    """以真实子进程运行 CLI：非法参数必须非 0 退出码 + 可诊断 stderr。"""
+    proc = subprocess.run(
+        [sys.executable, str(_REPO_ROOT / "scripts" / "parse_quality_report.py"),
+         "--definitely-not-a-flag"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=120,
+    )
+    assert proc.returncode != 0, f"CLI 非法参数却返回 0：stdout={proc.stdout[:200]}"
+    combined = proc.stdout + proc.stderr
+    assert "definitely-not-a-flag" in combined, "报错里看不到出错的参数名，不可诊断"
+
+
+def test_missing_corpus_manifest_exits_with_diagnostic(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """语料缺失必须以非 0 退出并给出可执行的修复命令。"""
+    monkeypatch.setattr(_report_mod, "CORPUS_DIR", tmp_path / "no-such-corpus")
+    with pytest.raises(SystemExit) as excinfo:
+        _report_mod.load_manifest()
+    assert excinfo.value.code != 0
+    assert "generate_parse_corpus.py" in str(excinfo.value)
 
 
 def test_g5_scan_detects_forbidden_claim(report: dict) -> None:

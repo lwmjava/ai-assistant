@@ -247,6 +247,32 @@ def classify_error(exc: BaseException) -> tuple[str, str, str | None, str]:
 # ---------------------------------------------------------------------------
 
 
+def _gap_diagnosis(sample: dict, scenario: str) -> str:
+    """生成**可诊断**的失败说明。
+
+    必须包含三要素，否则「样本缺失 / 缺口未复现」这类失败无法定位：
+    ① 样本 id（文件名）；② 需要人工退役的 ``known_gap`` 条目；
+    ③ 下一步该做什么（补预期 or 退役缺口）。
+    """
+    name = sample["name"]
+    gap = sample.get("known_gap")
+    if scenario == "missing_file":
+        head = f"样本文件缺失：{name}（manifest 已登记该样本，但 {CORPUS_DIR / name} 不存在）"
+    else:
+        head = f"样本 {name}：manifest 仍登记 known_gap，但本次阈值突破未复现"
+    if gap:
+        entry = f"· 需人工退役的 known_gap 条目：{gap}"
+        action = (
+            "· 下一步：确认是解析器已改进还是 manifest 期望被削弱；"
+            "若是前者，从 manifest 删除该 known_gap 后重跑；"
+            "若是后者，恢复原有 expected_fragments"
+        )
+    else:
+        entry = "· 该样本未登记 known_gap，属未登记的门禁突破"
+        action = "· 下一步：恢复样本文件并补齐 expected_fragments，或在 manifest 中同步删除该样本条目"
+    return "\n".join((head, entry, action))
+
+
 def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
     """评估单个样本，返回结构化结果。"""
     from app.core.config import settings
@@ -286,6 +312,18 @@ def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
 
     file_bytes = path.read_bytes() if path.exists() else b""
     content_type = CONTENT_TYPE_BY_FORMAT.get(sample["format"])
+
+    # 样本文件缺失：直接判 fail 并给出可诊断信息（不静默当空文件解析）。
+    if not path.exists():
+        reason = _gap_diagnosis(sample, "missing_file")
+        result.update(
+            parsed=False,
+            status="fail",
+            error_type="CorpusSampleMissing",
+            error_message=reason,
+            failure_reason=reason,
+        )
+        return result
 
     # OCR 样本：临时打开 OCR 开关，强制走真实 provider 路径（不是 Mock）。
     original = (settings.RAG_OCR_ENABLED, settings.RAG_OCR_PROVIDER)
@@ -365,10 +403,7 @@ def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
         # 也可能是把 manifest 期望改弱了（削弱期望与改进解析器在实测值上等价）。
         # 因此不得直接 pass，必须判为需人工注销 known_gap 的阻断项（G1）。
         result["status"] = "gap_not_reproduced"
-        result["failure_reason"] = (
-            "manifest 仍登记 known_gap 但本次阈值突破未复现："
-            "需人工确认是解析器已改进还是期望被削弱，并注销 known_gap 后才能回到 pass"
-        )
+        result["failure_reason"] = _gap_diagnosis(sample, "gap_not_reproduced")
         return result
 
     result["status"] = "pass"
@@ -670,6 +705,17 @@ def render_report(report: dict) -> str:
     return "\n".join(lines)
 
 
+def default_report_name(now: datetime | None = None) -> str:
+    """报告文件名：``parse-quality-<日期>-<门禁版本>.json``。
+
+    把门禁版本写进文件名，门禁升级后产出的是新文件，不会静默覆盖旧门禁下
+    已评审的报告，也避免「报告里写得好听但对应文件已被换掉」。
+    """
+    moment = now or datetime.now()
+    gate_tag = LOCKED_GATE["version"].replace(".", "-")
+    return f"parse-quality-{moment.strftime('%Y%m%d')}-{gate_tag}.json"
+
+
 def write_json(report: dict, target: Path, *, force: bool = False) -> Path:
     """写入 JSON 报告。
 
@@ -712,7 +758,7 @@ def main(argv: list[str] | None = None) -> int:
         target = (
             Path(args.json_path)
             if args.json_path
-            else REPORT_DIR / f"parse-quality-{datetime.now().strftime('%Y%m%d')}.json"
+            else REPORT_DIR / default_report_name()
         )
         written = write_json(report, target, force=args.force)
         print(f"\nJSON 报告已写入：{written}")

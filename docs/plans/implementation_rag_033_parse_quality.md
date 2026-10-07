@@ -174,9 +174,9 @@ unsupported.bin                   bin    expected_failure           -       -   
 复现命令：
 
 ```bash
-python scripts/parse_quality_report.py                 # 打印
-python scripts/parse_quality_report.py --json          # 落 evals/reports/parse-quality-<date>.json
-python scripts/parse_quality_report.py --json --force  # 覆盖当天已存在的报告
+python scripts/parse_quality_report.py            # 打印
+python scripts/parse_quality_report.py --json     # 落 evals/reports/parse-quality-<date>-gate-v2.json
+python scripts/parse_quality_report.py --json --force  # 覆盖同名已存在的报告
 ```
 
 > 脚本拒绝写入冻结基线文件名 `rag-v0.1-baseline-20260919.json`；同名报告默认也
@@ -251,18 +251,106 @@ python scripts/parse_quality_report.py --json --force  # 覆盖当天已存在�
 **G4 在补齐 tesseract + chi_sim 语言包后需重跑才能解除，解除前本卡整体不算「质量通过」。**
 修改门槛值必须同时改 `LOCKED_GATE["version"]` 与 `locked_at`，避免静默改写已锁定门禁。
 
-### 8.1 关于「削弱期望」与「改进解析器」的等价性（H-02 收口）
+### 8.1 关于「削弱期望」与「改进解析器」的等价性（H-02 / CE-13 收口）
 
 状态由「实测阈值 + manifest 是否登记 `known_gap`」推导，而实测值同时取决于解析器能力和
 manifest 期望强度。因此只删 manifest 期望片段（解析器一行没动、`known_gap` 也没删）也能让
 覆盖率回到 1.0——这与「真把解析器改好」在实测值上完全等价。
 
-收口方式：manifest 仍登记 `known_gap` 但本次阈值突破未复现时，**不得直接 `pass`**，判为
-`gap_not_reproduced` 并进 **G1 阻断**，需人工确认「是解析器真的改好了」还是「期望被削弱了」
-并注销 `known_gap` 后才能回到 `pass`。这样削弱期望必须伴随「同时删 `known_gap`」这一在 diff
-里看得见的动作。
+**评审裁定（2026-10-07）：保留强制人工退役，不加 `known_gap_retired` 开关。**
 
-### 8.2 `used_mock` 是派生值而非常量（M-02 收口）
+- manifest 仍登记 `known_gap` 但本次阈值突破未复现时，**不得直接 `pass`**，判为
+  `gap_not_reproduced` 并进 **G1 阻断**，需人工注销 `known_gap` 后才能回到 `pass`。
+- 删掉语料文件后门禁报「样本缺失」失败（状态 `fail`、`error_type=CorpusSampleMissing`），
+  **正是我们要的行为**：它强制人工退役 `known_gap` 并补齐预期，避免「升级解析器却忘了
+  退役旧豁免」这种静默退化。
+- **「每次升级解析器要多一步人工退役」是特性不是缺陷。**
+
+**诊断信息要求（裁定附带，已实现）**：上述失败必须带齐三要素，否则无法定位：
+
+1. 缺失/未复现的**样本 id**（文件名）；
+2. 需要人工退役的 **`known_gap` 条目**（原文）；
+3. **下一步该做什么**（补 `expected_fragments` or 退役 `known_gap`）。
+
+实现见 `scripts/parse_quality_report.py::_gap_diagnosis`，输出形如：
+
+```text
+样本 docx_headings_table.docx：manifest 仍登记 known_gap，但本次阈值突破未复现
+· 需人工退役的 known_gap 条目：DocxDocumentParser 只遍历 document.paragraphs，…
+· 下一步：确认是解析器已改进还是 manifest 期望被削弱；若是前者，从 manifest 删除该 known_gap 后重跑；若是后者，恢复原有 expected_fragments
+```
+
+断言见 `test_missing_corpus_file_failure_is_diagnosable` 与
+`test_gap_not_reproduced_message_is_diagnosable`（都断言三要素齐全）。
+
+### 8.3 报告文件命名约定（L-04）
+
+报告固定落在 `evals/reports/`，文件名 `parse-quality-<YYYYMMDD>-<gate版本>.json`
+（当前 `parse-quality-20261007-gate-v2.json`）。把门禁版本写进文件名是因为：门禁升级后
+产出的是**新文件**，不会静默覆盖旧门禁下已评审的报告，也避免「报告里写得好听但对应文件
+已被换掉」。
+
+配合 `write_json()` 默认拒绝覆盖同名文件，只有显式 `--force` 或 `--json-path` 才能覆盖。
+旧的 `parse-quality-20261007.json`（gate.v1 时期产物）已删除，只保留当前门禁版本对应的一份。
+
+### 8.4 关闭前整改：一致性测试与实测报告的绑定（M-01 / CE-14）
+
+**缺陷（复现证据，整改前）**：删掉落盘报告后，一致性测试**静默跳过**，整套测试全绿——
+
+```text
+$ mv evals/reports/parse-quality-20261007.json /tmp/…
+$ pytest tests/test_rag_033_parse_quality.py -q -rs
+..................................................s...                   [100%]
+SKIPPED [1] tests\test_rag_033_parse_quality.py:746: 尚无落盘报告
+53 passed, 1 skipped in 33.66s
+```
+
+对照：**篡改**报告关键键（`gate.version` → `gate.v9-TAMPERED`、`totals.passed` → 99）整改前
+就能被抓到 1 条（`test_committed_report_matches_script_output`）——漏洞只在「文件不存在」这一
+条路径上：测试用 `pytest.skip` 兜底，等于放弃守护。
+
+**整改**：
+
+- 去掉 `skip`，落盘报告不存在即**断言失败**（`_committed_report_path()`）；
+- 一致性测试拆成两条：`test_committed_report_matches_script_output`（全量逐字段比对）与
+  `test_committed_report_is_bound_to_corpus_and_gate`（与 manifest 样本集合、样本文件是否
+  真实存在、`known_gap` 条目、门禁版本/状态、逐样本 coverage/order/status 五项绑定）；
+- 新增 `test_report_file_name_carries_gate_version` 守命名约定。
+
+**整改后变异结果（实测，见 §10.3）**：删除报告 → **3 条变红**；篡改关键键 → **2 条变红**。
+
+**CE-14（硬编码脚本路径）**：`tests/test_rag_033_parse_quality.py:28` 定义 `_REPO_ROOT`，
+`:29` `_SCRIPTS_DIR`，加载脚本时硬编码 `scripts/parse_quality_report.py`。
+整改：新增 `test_script_paths_exist_and_expose_symbols`
+（`tests/test_rag_033_parse_quality.py:854`），两层断言——
+
+1. **文件层**：`scripts/parse_quality_report.py` 与 `scripts/generate_parse_corpus.py`
+   必须存在（`:868`），且源码含 `def main(` / `def build_report(` / `def evaluate_gate(` /
+   `def evaluate_sample(` / `def measure_coverage(` / `def evaluate_order(`（`:870-871`）；
+2. **符号层**：加载后的模块必须暴露可调用的 `main` / `build_report` / `evaluate_gate` /
+   `evaluate_sample` / `measure_coverage` / `evaluate_order` / `write_json` /
+   `default_report_name`（`:883`）。
+
+变异结果（只跑这一条用例的**定向**变异）：把脚本改名 → 收集阶段即 `1 error`；
+删掉源码里的 `def measure_coverage(` → **恰好 1 条变红**，即
+`test_script_paths_exist_and_expose_symbols` 本身；删掉脚本文件 → `1 error`。
+三种变异都是红，且都能用 `git checkout --` / 重命名还原，`sha256` 比对零残留。
+
+### 8.5 CLI 失败行为（L-03）
+
+| 场景 | 行为 | 实测退出码 |
+|---|---|---|
+| 未知参数 `--definitely-not-a-flag` | `argparse` → `SystemExit(2)`，stderr 含出错参数名 | `2` |
+| `--json-path` / `--ocr-provider` 缺实参 | `argparse` → `SystemExit(2)`，stderr 含 `expected one argument` | `2` |
+| 语料 `manifest.json` 缺失 | `load_manifest()` → `SystemExit`，文案含可执行修复命令 `python scripts/generate_parse_corpus.py` | 非 0 |
+| 写冻结基线文件名的报告 | `write_json()` → `SystemExit: 拒绝写入冻结基线报告` | 非 0 |
+| 写已存在的同名报告 | `write_json()` → `SystemExit: 拒绝静默覆盖`（显式 `--force` 才可覆盖） | 非 0 |
+
+断言位置：`test_cli_rejects_unknown_argument_with_nonzero_exit`
+（`tests/test_rag_033_parse_quality.py:893`，进程内）、
+`test_cli_process_exits_nonzero_with_diagnostic`（`:900`，**真实子进程**，同时断言
+`returncode != 0` 且报错里出现出错的参数名）、
+`test_missing_corpus_manifest_exits_with_diagnostic`（`:913`）。
 
 `ocr_probe.used_mock` / `path` 由**实际生效的 provider 对象**派生：
 
@@ -299,9 +387,9 @@ manifest 期望强度。因此只删 manifest 期望片段（解析器一行没�
 |---|---|
 | `scripts/generate_parse_corpus.py` | 新增：样本集生成器 |
 | `evals/corpus/parsing/*` | 新增：13 个样本 + `manifest.json` |
-| `scripts/parse_quality_report.py` | 新增：评估报告脚本（含 gate.v1 门禁判定） |
-| `evals/reports/parse-quality-20261007.json` | 新增：首份报告（非冻结基线） |
-| `tests/test_rag_033_parse_quality.py` | 新增：54 条测试 |
+| `scripts/parse_quality_report.py` | 新增：评估报告脚本（含门禁判定，当前 **gate.v2**） |
+| `evals/reports/parse-quality-<日期>-gate-v2.json` | 新增：首份报告（非冻结基线），文件名带门禁版本 |
+| `tests/test_rag_033_parse_quality.py` | 新增：62 条测试 |
 
 未改动 `app/rag/**` 下的任何产品代码；未改 `.env`；未改 `tasks.yaml` 卡片状态
 （卡片状态与 `progress` / `acceptance_record` 由批次负责人在关闭时统一处理）。
@@ -324,3 +412,50 @@ manifest 期望强度。因此只删 manifest 期望片段（解析器一行没�
 
 审查提出的必修项 H-01 / H-02 / M-01 / M-02 与一并处理项 M-03 / M-04 / L-02 全部落地；
 **L-01（`tasks.yaml` 落记录）按裁定不在本卡做**，由批次负责人关闭时统一处理。
+
+### 10.3 关闭前置整改（2026-10-07，复审判「建议关闭，但关闭前必须完成 2 项」）
+
+| 文件 | 变更 |
+|---|---|
+| `scripts/parse_quality_report.py` | 新增 `_gap_diagnosis()`：CE-13 要求的三要素诊断信息（样本 id / `known_gap` 条目原文 / 下一步）；新增样本文件缺失守卫（状态 `fail`、`error_type=CorpusSampleMissing`）；新增 `default_report_name()` 把门禁版本写进文件名（L-04） |
+| `evals/reports/` | 删除 gate.v1 时期的 `parse-quality-20261007.json`，改为 `parse-quality-20261007-gate-v2.json`（L-04） |
+| `tests/test_rag_033_parse_quality.py` | 54 → 62 条：一致性测试去掉 `skip` 并与 manifest/样本文件/门禁判定绑定（M-01，3 条）、脚本存在性与符号断言（CE-14，1 条）、CLI 退出码含真实子进程断言（L-03，3 条）、CE-13 诊断信息可诊断性（2 条） |
+| `docs/plans/implementation_rag_033_parse_quality.md` | 8.1 补 CE-13 裁定与诊断信息要求；新增 8.3（命名约定）/ 8.4（M-01、CE-14 复现与整改证据）/ 8.5（CLI 失败行为表） |
+
+#### 变异验证表（整改后，全部变红）
+
+| 编号 | 变异动作 | 变红条数 | 变红用例 |
+|---|---|---|---|
+| M-01-a | 删除 `evals/reports/parse-quality-20261007-gate-v2.json` | **3** | `test_committed_report_matches_script_output`、`test_committed_report_is_bound_to_corpus_and_gate`、`test_report_file_name_carries_gate_version` |
+| M-01-b | 篡改 `gate.version` → `gate.v9-TAMPERED`、`totals.passed` → 99 | **2** | `test_committed_report_matches_script_output`、`test_committed_report_is_bound_to_corpus_and_gate` |
+| CE-14-A | `scripts/parse_quality_report.py` 改名 | **1**（收集期 error） | 整个 `tests/test_rag_033_parse_quality.py` |
+| CE-14-B | 源码里 `def measure_coverage(` 改名 | **1**（精确定位） | `test_script_paths_exist_and_expose_symbols` |
+| CE-14-C | `scripts/parse_quality_report.py` 删除 | **1**（收集期 error） | 整个 `tests/test_rag_033_parse_quality.py` |
+
+（CE-14-A/B/C 为只跑 `test_script_paths_exist_and_expose_symbols` 的定向变异；全量跑时
+B 会连带 43 条变红，因为该符号被下游普遍依赖。）
+
+还原证明：三种变异执行后
+`sha256(scripts/parse_quality_report.py) = 7c1cd673e186a285…`（变异前后一致），
+`sha256(evals/reports/parse-quality-20261007-gate-v2.json) = 5067536f1baab5e0…`（一致），
+**零残留**。
+
+#### CE-13 诊断信息改造前后对比
+
+改造前：样本文件缺失时只有一句「样本缺失」，无法知道缺哪个、该退役哪条 `known_gap`。
+
+改造后（`scripts/parse_quality_report.py::_gap_diagnosis`）：
+
+```text
+样本文件缺失：docx_headings_table.docx（manifest 已登记该样本，
+但 evals/corpus/parsing/docx_headings_table.docx 不存在）
+· 需人工退役的 known_gap 条目：DocxDocumentParser 只遍历 document.paragraphs，
+  表格单元格不进入解析结果，故表格片段必然未命中。
+· 下一步：确认是解析器已改进还是 manifest 期望被削弱；若是前者，从 manifest 删除该
+  known_gap 后重跑；若是后者，恢复原有 expected_fragments
+```
+
+`gap_not_reproduced` 分支同样走该函数（首行换成
+「样本 docx_headings_table.docx：manifest 仍登记 known_gap，但本次阈值突破未复现」，
+后两行相同）。断言见 `tests/test_rag_033_parse_quality.py:811` 与 `:829`，两者都断言
+① 样本 id、② `known_gap` 条目内容、③ 「下一步」三要素齐全。

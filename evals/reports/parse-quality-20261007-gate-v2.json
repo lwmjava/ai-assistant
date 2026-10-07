@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T17:21:53+08:00",
+  "generated_at": "2026-10-07T17:59:09+08:00",
   "card": "RAG-033 多格式解析与 OCR 质量基线",
   "corpus_dir": "evals\\corpus\\parsing",
   "corpus_version": "rag-033-parsing-corpus-v1",

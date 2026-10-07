@@ -9,7 +9,8 @@ Supervisor**：由 supervisor 节点决定「先调研」还是「直接撰写�
 - LangGraph 仅覆盖「多 Agent 协作」这一层，不重写五阶段管线；
 - ``langgraph`` 为**可选依赖**，仅在真正构造 `SupervisorGraph` 时懒加载，
   import 失败会抛出带安装指引的 `ImportError`，不影响自研（self）路径；
-- 调研 worker 只做一次模型调用，不进入行动循环，也不检索知识库。
+- 检索在图执行之前由 ``_retrieve`` 统一做一次，调研 worker 只做一次模型调用、
+  不进入行动循环；检索状态与披露要求与自研管线共用同一套契约。
 """
 
 import json
@@ -19,6 +20,7 @@ from typing import TypedDict
 from app.agents.pipeline import AgentEvent, AgentState
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,8 @@ _RESEARCH_SYSTEM = (
 
 _DRAFT_SYSTEM = (
     "你是撰写者。综合「用户目标」「调研记录」「已掌握上下文」，产出面向用户的最终回答。\n"
-    "要求：直接回应用户、语言与用户一致、结构清晰易读。"
+    "要求：直接回应用户、语言与用户一致、结构清晰易读。\n"
+    "上下文中若没有知识库资料，不得声称结论来自知识库或公司内部制度。"
 )
 
 
@@ -106,6 +109,7 @@ class SupervisorGraph:
         self.retriever = retriever
         self.tools = tools
         self.max_revisions = max_revisions
+        self._last_outcome: RetrievalOutcome | None = None
         self._graph = self._build()
 
     # ── 懒加载 LangGraph ──
@@ -187,9 +191,11 @@ class SupervisorGraph:
         user_input = state.get("user_input", "")
         plan = state.get("plan", "")
         research = state.get("research", "")
+        context = state.get("context", "")
         prompt = (
             f"## 用户目标\n{user_input}\n\n"
             f"## 回答计划\n{plan}\n\n"
+            f"## 已掌握上下文\n{context or '（无）'}\n\n"
             f"## 调研记录\n{research}\n\n"
             "请产出最终回答。"
         )
@@ -219,8 +225,45 @@ class SupervisorGraph:
         return "draft"
 
     # ── 对外契约（与 AgentPipeline 对齐）──
+    async def _retrieve(self, state: AgentState) -> None:
+        """图执行前先检索一次，与自研管线「检索在协作之前」的顺序一致。
+
+        Supervisor 此前只保存 retriever 却从不调用，导致 MULTI 路由下知识问答
+        既不检索、也不产生任何检索状态，模型可以凭自身知识冒充知识库结论。
+        """
+        if self.retriever is None:
+            return
+        snippet = ""
+        outcome: RetrievalOutcome | None = None
+        try:
+            snippet = await self.retriever.retrieve(state.user_input, state.plan)
+        except Exception:  # noqa: BLE001 — 检索故障不应变成编排级通用失败
+            logger.exception("Supervisor 检索失败，收敛为 unavailable")
+            outcome = RetrievalOutcome(status=RetrievalStatus.UNAVAILABLE)
+        else:
+            last = getattr(self.retriever, "last_outcome", None)
+            outcome = last if isinstance(last, RetrievalOutcome) else None
+        if outcome is None:
+            return
+        self._last_outcome = outcome
+        state.retrieval_status = outcome.status.value
+        state.retrieval_notice = outcome.directive()
+        state.retrieval_disclosure = outcome.disclosure_prefix()
+        if snippet.strip():
+            state.context = (
+                f"{state.context}\n\n## 知识库检索结果\n{snippet}" if state.context else snippet
+            )
+
     async def run(self, state: AgentState) -> AgentState:
         """以 Supervisor 方式执行一次协作，填充并返回 AgentState。"""
+        await self._retrieve(state)
+        # 全低分是终态拒答：不进图，直接给出拒答语。
+        if self._last_outcome is not None:
+            terminal = self._last_outcome.terminal_reply()
+            if terminal is not None:
+                state.answer = terminal
+                state.draft = terminal
+                return state
         graph_state = {
             "user_input": state.user_input,
             "plan": state.plan,
@@ -241,6 +284,9 @@ class SupervisorGraph:
             return state
         state.draft = final.get("draft", "")
         state.answer = state.draft
+        # 披露语由应用层确定性前置：不依赖模型服从系统提示。
+        if state.retrieval_disclosure:
+            state.answer = f"{state.retrieval_disclosure}\n\n{state.draft}"
         state.delegations = [
             {"name": str(item.get("name", "")), "result": str(item.get("result", ""))}
             for item in (final.get("delegations") or [])

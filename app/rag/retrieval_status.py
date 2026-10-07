@@ -74,6 +74,34 @@ class RetrievalOutcome:
             return ""
         return f"{DISCLOSURE_PREFIX}{text}"
 
+    def terminal_reply(self) -> str | None:
+        """无需再生成的终态回复；``None`` 表示继续正常生成。
+
+        只有「有候选但全低分」才终态拒答：拒答语本身就是面向用户的结论，
+        交给模型改写只会把它变成一段看起来像知识回答的文字。
+        ``unavailable`` / ``no_hit`` 不在这里终态——检索故障时把整个对话
+        掐断是另一种极端，改为由 ``disclosure_prefix`` 确定性前置披露。
+        """
+        if self.status is not RetrievalStatus.BELOW_THRESHOLD:
+            return None
+        if not settings.RAG_STATUS_NOTICE_ENABLED:
+            return None
+        return settings.RAG_REFUSE_MESSAGE
+
+    def disclosure_prefix(self) -> str:
+        """应用层确定性前置到最终回复的披露语；无需披露时返回空串。
+
+        这是「不冒充知识回答」的兜底：模型就算完全忽略 prompt 里的指令，
+        用户看到的第一句话也是确定的。与 ``notice``（给模型）分开设值。
+        """
+        if not settings.RAG_STATUS_NOTICE_ENABLED:
+            return ""
+        if self.status is RetrievalStatus.NO_HIT:
+            return settings.RAG_NO_HIT_REPLY
+        if self.status is RetrievalStatus.UNAVAILABLE:
+            return settings.RAG_UNAVAILABLE_REPLY
+        return ""
+
 
 def classify(
     *,

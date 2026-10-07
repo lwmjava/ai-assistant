@@ -339,14 +339,32 @@ def real_filtered_records(monkeypatch):
     log_context.set_user(previous[1], previous[2])
 
 
+def _stream_of(parts):
+    """构造一个与真实 LLM 同形的 stream_chat：忽略入参，异步产出分片。"""
+
+    async def _gen(*_args, **_kwargs):
+        for part in parts:
+            yield part
+
+    return _gen
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("stream", [False, True])
-async def test_pipeline_retrieval_failure_final_handlers_omit_exception_text(real_filtered_records, stream):
+async def test_pipeline_final_handlers_omit_exception_text(real_filtered_records, stream):
+    """管线级兜底：业务状态照旧保留异常，日志只留异常类型不落正文。
+
+    注入点放在 LLM 而不是检索器——RAG-037 之后检索故障已收敛为终态，
+    不再冒泡到管线级兜底；要守住原来的兜底路径，得让故障发生在别处。
+    """
     from app.agents.pipeline import AgentPipeline, AgentState
 
-    retriever = SimpleNamespace(retrieve=AsyncMock(side_effect=RuntimeError(EXCEPTION)))
-    llm = SimpleNamespace(chat=AsyncMock(return_value="YES"))
-    pipeline = AgentPipeline(llm, retriever=retriever)
+    boom = RuntimeError(EXCEPTION)
+    llm = SimpleNamespace(
+        chat=AsyncMock(side_effect=boom),
+        stream_chat=AsyncMock(side_effect=boom),
+    )
+    pipeline = AgentPipeline(llm, retriever=None)
     state = AgentState(user_input=QUERY)
     if stream:
         events = [event async for event in pipeline.run_stream(state)]
@@ -354,12 +372,41 @@ async def test_pipeline_retrieval_failure_final_handlers_omit_exception_text(rea
         assert events[-1].type == "done"
     else:
         assert await pipeline.run(state) is state
-    retriever.retrieve.assert_awaited_once()
     # Business error state is unchanged; only logging output is minimized.
     assert state.error == EXCEPTION
     assert state.answer
     message = assert_minimized(real_filtered_records, "app.agents.pipeline")
     assert "RuntimeError" in message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream", [False, True])
+async def test_pipeline_retrieval_failure_converges_without_leaking_text(real_filtered_records, stream):
+    """RAG-037：检索失败收敛为 unavailable，收敛点同样不得夹带异常正文。
+
+    「检索没跑成」不能当成请求级失败，也不能退化成「查过了、没有」；
+    但收敛不等于静默——日志里必须还能看出是检索故障、以及故障类型。
+    """
+    from app.agents.pipeline import AgentPipeline, AgentState
+
+    retriever = SimpleNamespace(retrieve=AsyncMock(side_effect=RuntimeError(EXCEPTION)))
+    llm = SimpleNamespace(chat=AsyncMock(return_value="YES"), stream_chat=_stream_of(["YES"]))
+    pipeline = AgentPipeline(llm, retriever=retriever)
+    state = AgentState(user_input=QUERY)
+    if stream:
+        events = [event async for event in pipeline.run_stream(state)]
+        assert not any(event.type == "error" for event in events)
+        assert events[-1].type == "done"
+    else:
+        assert await pipeline.run(state) is state
+    retriever.retrieve.assert_awaited_once()
+    # 收敛后的业务状态：检索终态为 unavailable，管线本身没有失败。
+    assert state.retrieval_status == "unavailable"
+    assert state.error is None
+    assert state.answer
+    message = assert_minimized(real_filtered_records, "app.agents.pipeline")
+    assert "RuntimeError" in message
+    assert "unavailable" in message in message
 
 
 @pytest.mark.asyncio

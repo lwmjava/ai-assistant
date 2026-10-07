@@ -948,7 +948,23 @@ async def search(
     # 带上鉴权主体，使 uploader 模式的有效读范围同样贯穿 HTTP 检索面，
     # 与对话检索保持一致（ADR-0001 §10）。
     rag = RAGService(session, current_user.tenant_id, reader=current_user)
-    results = await rag.search(req.query, req.top_k, backend=req.backend)
+    try:
+        results = await rag.search(req.query, req.top_k, backend=req.backend)
+    except Exception as exc:  # noqa: BLE001 — 显式检索接口的故障必须可见
+        # 不降级为空列表：空列表会被读成「查过了、没有」。用 503 并在响应头
+        # 标出 unavailable，让调用方能区分「知识库没有」与「检索没跑成」。
+        logger.exception("rag_search_unavailable exception_type=%s", type(exc).__name__)
+        response.headers["X-Retrieval-Status"] = "unavailable"
+        response.headers["X-RAG-Backend"] = rag.last_backend_name or "native"
+        # 头必须挂在异常自己的响应上：在异常处理前给 Response 设的头会被丢掉。
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="知识库检索服务当前不可用，未能完成本次检索。",
+            headers={
+                "X-Retrieval-Status": "unavailable",
+                "X-RAG-Backend": rag.last_backend_name or "native",
+            },
+        ) from exc
     response.headers["X-Retrieval-Status"] = "ok" if results else "no_hit"
     response.headers["X-RAG-Backend"] = rag.last_backend_name or "native"
     return [

@@ -23,6 +23,9 @@ _RAG_API_EVENTS = {
 _PIPELINE_FAILURE_EVENTS = {
     "Agent 管线执行失败": "agent_pipeline_failed",
     "Agent 流式管线执行失败": "agent_pipeline_stream_failed",
+    # 检索故障已在管线内收敛为终态，不是管线失败：事件名必须能区分，
+    # 否则运维会把「知识库挂了」读成「整个 Agent 挂了」。
+    "管线检索失败，收敛为 unavailable": "agent_pipeline_retrieval_unavailable",
 }
 _HTTP_METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT"})
 

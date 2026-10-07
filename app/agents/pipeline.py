@@ -37,6 +37,7 @@ from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.routing import LLMUnavailableError
 from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_call
+from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,7 @@ class AgentState:
     context: str = ""  # 检索产出的外部上下文
     retrieval_status: str = ""  # 检索终态：ok / no_hit / below_threshold / unavailable
     retrieval_notice: str = ""  # 非 ok 时必须向用户披露的要求（指令块，非资料）
+    retrieval_disclosure: str = ""  # 应用层确定性前置到最终回复的面向用户披露语
     tool_results: list[str] = field(default_factory=list)  # 工具调用的观测结果
     code_results: list[dict] = field(default_factory=list)  # 代码工具给界面的结果
     draft: str = ""
@@ -275,6 +277,13 @@ _FINAL_ATTR = "answer"
 _FINAL_NAME = "响应"
 _FINAL_SYSTEM = SYSTEM_RESPOND
 _FINAL_BUILDER = "_build_respond"
+
+
+def _chunk_text(text: str, size: int = 24) -> list[str]:
+    """把确定性文本按固定长度切成流式 token 事件，避免一次性巨量事件。"""
+    if not text:
+        return []
+    return [text[index : index + size] for index in range(0, len(text), size)]
 
 
 class AgentPipeline:
@@ -427,13 +436,52 @@ class AgentPipeline:
         """
         memory = state.context or ""
         rag = ""
+        outcome: RetrievalOutcome | None = None
         if self.retriever is not None:
-            rag = await self.retriever.retrieve(state.user_input, state.plan)
-            outcome = getattr(self.retriever, "last_outcome", None)
+            try:
+                rag = await self.retriever.retrieve(state.user_input, state.plan)
+            except Exception:  # noqa: BLE001 — 检索故障不应变成请求级通用失败
+                logger.exception("管线检索失败，收敛为 unavailable")
+                rag = ""
+                # 检索器自身没有收敛异常（不是 HybridRetriever）。这里必须判为
+                # unavailable，不能让「没跑成」退化成「查过了、没有」。
+                outcome = RetrievalOutcome(status=RetrievalStatus.UNAVAILABLE)
+            else:
+                last = getattr(self.retriever, "last_outcome", None)
+                outcome = last if isinstance(last, RetrievalOutcome) else None
             if outcome is not None:
-                state.retrieval_status = outcome.status.value
-                state.retrieval_notice = outcome.directive()
+                self._record_outcome(state, outcome)
         state.context = merge_memory_and_rag(memory, rag)
+
+    @staticmethod
+    def _record_outcome(state: AgentState, outcome: RetrievalOutcome) -> None:
+        """把检索终态写进 state，供后续阶段与最终回复契约使用。"""
+        state.retrieval_status = outcome.status.value
+        state.retrieval_notice = outcome.directive()
+        state.retrieval_disclosure = outcome.disclosure_prefix()
+
+    def _terminal_reply(self, state: AgentState) -> str | None:
+        """全低分时的终态拒答语；其余状态返回 None 表示继续生成。"""
+        outcome = getattr(self.retriever, "last_outcome", None)
+        if outcome is not None:
+            return outcome.terminal_reply()
+        if state.retrieval_status == "below_threshold":
+            return settings.RAG_REFUSE_MESSAGE if settings.RAG_STATUS_NOTICE_ENABLED else None
+        return None
+
+    def _with_disclosure(self, state: AgentState, answer: str) -> str:
+        """把应用层披露语确定性前置到最终回复。
+
+        最终回复的「不冒充」不能只靠模型服从 prompt：即使模型完全忽略指令，
+        用户看到的第一句话也是确定的。
+        """
+        prefix = state.retrieval_disclosure
+        if not prefix:
+            return answer
+        text = (answer or "").strip()
+        if not text:
+            return prefix
+        return f"{prefix}\n\n{text}"
 
     def _build_reflect(self, state: AgentState) -> str:
         return (
@@ -507,6 +555,15 @@ class AgentPipeline:
             await self._fill_retrieval(state)
             if self.trace:
                 self.trace.stage_end("检索")
+            # 4b. 检索终态短路：全低分时拒答语本身就是结论，交给模型改写只会
+            # 把它变成一段看起来像知识回答的文字。不依赖模型服从 prompt。
+            terminal = self._terminal_reply(state)
+            if terminal is not None:
+                state.answer = terminal
+                state.draft = terminal
+                if self.trace:
+                    self.trace.finish()
+                return state
             # 5. 行动 → QualityGate 自纠错
             if self.trace:
                 self.trace.stage_start("行动")
@@ -526,6 +583,7 @@ class AgentPipeline:
             if self.trace:
                 self.trace.stage_start("响应")
             state.answer = await self._stage(_FINAL_SYSTEM, _FINAL_BUILDER, state)
+            state.answer = self._with_disclosure(state, state.answer)
             if self.trace:
                 self.trace.stage_end("响应")
                 self.trace.finish()
@@ -722,6 +780,20 @@ class AgentPipeline:
             if self.retriever is not None:
                 yield AgentEvent("stage", "检索")
             await self._fill_retrieval(state)
+            # 4b. 检索终态短路：全低分直接吐出拒答语，不进入生成
+            terminal = self._terminal_reply(state)
+            if terminal is not None:
+                state.answer = terminal
+                state.draft = terminal
+                for piece in _chunk_text(terminal):
+                    yield AgentEvent("token", piece)
+                yield AgentEvent("done", terminal)
+                return
+            # 4c. 披露语先吐给用户：即使后续模型完全忽略 prompt 里的指令，
+            # 用户看到的第一句话也是确定的
+            if state.retrieval_disclosure:
+                for piece in _chunk_text(state.retrieval_disclosure):
+                    yield AgentEvent("token", piece)
             # 5. 行动
             yield AgentEvent("stage", "行动")
             async for event in self._iter_action_loop(state):
@@ -755,7 +827,9 @@ class AgentPipeline:
             ):
                 response_chunks.append(delta)
                 yield AgentEvent("token", delta)
-            state.answer = "".join(response_chunks)
+            # 披露语已作为 token 先行吐出，这里补回 state.answer，
+            # 保证 state 与用户实际看到的一致。
+            state.answer = self._with_disclosure(state, "".join(response_chunks))
         except Exception as exc:  # noqa: BLE001
             logger.exception("Agent 流式管线执行失败")
             state.error = str(exc)

@@ -60,12 +60,18 @@ async def _stream_reply(
         ChatMessage(role=ChatRole.USER, content=user),
     ]
     parts: list[str] = []
+    # 披露语先吐给用户：即使模型完全忽略 system 里的指令，
+    # 用户看到的第一句话也是确定的。
+    if state.retrieval_disclosure:
+        for piece in _chunk_tokens(state.retrieval_disclosure + "\n\n"):
+            yield AgentEvent("token", piece)
     async for delta in llm.stream_chat(messages, options):
         if not delta:
             continue
         parts.append(delta)
         yield AgentEvent("token", delta)
-    state.answer = "".join(parts)
+    body = "".join(parts).strip()
+    state.answer = f"{state.retrieval_disclosure}\n\n{body}" if state.retrieval_disclosure else body
     state.draft = state.answer
     yield AgentEvent("done", state.answer)
 
@@ -103,9 +109,12 @@ async def iter_fast_path(
 
     extra = ""
     notice = ""
+    disclosure = ""
+    terminal = None
     if route.kind is RouteKind.RAG:
         yield AgentEvent("stage", "检索")
         snippet = ""
+        outcome: RetrievalOutcome | None = None
         if retriever is not None:
             try:
                 snippet = await retriever.retrieve(state.user_input, state.plan or "")
@@ -116,16 +125,28 @@ async def iter_fast_path(
                 # unavailable，不能让「没跑成」退化成「查过了、没有」。
                 outcome = RetrievalOutcome(status=RetrievalStatus.UNAVAILABLE)
             else:
-                outcome = getattr(retriever, "last_outcome", None)
+                last = getattr(retriever, "last_outcome", None)
+                outcome = last if isinstance(last, RetrievalOutcome) else None
             if outcome is not None:
                 state.retrieval_status = outcome.status.value
                 # 检索状态要求是给模型的指令，必须进 system，不能塞进
                 # 「知识库」段里当资料——资料会被当成不可信文本而可能被忽略。
                 notice = outcome.directive()
+                disclosure = outcome.disclosure_prefix()
+                state.retrieval_disclosure = disclosure
+                terminal = outcome.terminal_reply()
         logger.info(
             "rag_fast_path_retrieval status=%s",
             state.retrieval_status or "unknown",
         )
+        # 全低分：拒答语本身就是结论，直接吐给用户，不交给模型改写。
+        if terminal is not None:
+            state.answer = terminal
+            state.draft = terminal
+            for piece in _chunk_tokens(terminal):
+                yield AgentEvent("token", piece)
+            yield AgentEvent("done", terminal)
+            return
         # 检索失败（unavailable）不能写成「没有可用的检索结果」：
         # 那是把「没跑成」伪装成「查过了、没有」，用户看不出区别。
         if (snippet or "").strip():

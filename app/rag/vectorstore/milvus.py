@@ -209,11 +209,14 @@ class MilvusVectorStore(VectorStore):
                 output_fields=["id"],
             )[0]
         except Exception as exc:  # pragma: no cover - 依赖线上 Milvus
-            logger.warning(
-                "rag_vector_search_failed backend=milvus fallback=empty exception_type=%s",
+            # 不能吞成空列表：那会让调用方把「检索服务故障」当成「知识库里没有」，
+            # 用户看到的是一个正常的空结果而不是故障提示。向上抛，由检索状态
+            # 契约统一收敛为 unavailable。
+            logger.error(
+                "rag_vector_search_failed backend=milvus fallback=raise exception_type=%s",
                 type(exc).__name__,
             )
-            return []
+            raise MilvusUnavailableError(f"Milvus 检索失败：{type(exc).__name__}") from exc
 
         candidate_ids = [h.entity.get("id") for h in hits]
         if not candidate_ids:

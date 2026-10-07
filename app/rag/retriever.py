@@ -80,12 +80,16 @@ class HybridRetriever:
         error_type = ""
         results: list[ChunkResult] = []
         try:
-            results = await self.backend.retrieve(
+            raw = await self.backend.retrieve(
                 search_text,
                 tenant_id=self.tenant_id,
                 top_k=self.top_k,
                 read_scope=self.read_scope,
             )
+            # 返回值校验也在收敛边界内：后端违约返回 None / 不可迭代时
+            # list() 抛 TypeError，被同一处收敛为 unavailable。若在边界外迭代，
+            # 状态会停留在一个误导性的旧值上。
+            results = list(raw)
         except Exception as exc:  # noqa: BLE001 — 任何检索故障都收敛为 unavailable
             error_type = type(exc).__name__
             logger.exception(

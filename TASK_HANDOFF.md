@@ -1,9 +1,13 @@
 # 任务交接文档
 
-最后更新：2026-10-07 21:25
+最后更新：2026-10-07 22:10
 
-> 2026-10-07 21:25 更新：原「已知问题 1」的 `index_id` P0 **已修复并验证**（commit `0c756c3`），
-> 并顺带修掉了被它掩盖的第二个缺陷（commit `43d6fa1`，见 §5）。§6 下一步已相应调整。
+> 2026-10-07 22:10 更新：**RAG-015 真实 Milvus 验收已完成并通过**（`result=pass`、脚本退出码 0），
+> 期间抓出并修掉 3 个真缺陷（写入链路零调用点、`similarity` 硬编码 1.0、验收脚本自身取不到维度），
+> 并补了两条不依赖真实服务的守护用例。§2 / §5 / §6 已相应更新；RAG-036 随之解封。
+>
+> 2026-10-07 21:25 更新：原「已知问题 1」的 `index_id` P0 **已修复并验证**（commit `9d61024`），
+> 并顺带修掉了被它掩盖的第二个缺陷（commit `59c1dd6`，见 §5）。
 
 用途：让接手的 AI 无需重新调查即可继续推进 RAG 模块 15 张任务卡的收尾工作。
 本文所有状态均以 `docs/plans/plan_rag_batch_20261007.md`（批次台账）与本机实测为依据；
@@ -81,14 +85,27 @@
 - **RAG-030**：依赖 RAG-016（done）/ RAG-029 / RAG-026。RAG-029 复审关闭后即可开工。
 - **RAG-035**：真实模型调用，需登记模型/样本用途、调用次数与**费用上限**、Gold 人工确认方式。**不自动开工，需用户授权**（详见 §7）。
 
-### 当前阻塞（2 张）
+### 当前阻塞（0 张）
 
-- **RAG-015（Milvus 切换脚本与真实验收）**：原阻塞原因（Docker 守护进程不可用）**已于 2026-10-07 晚消失** —— `docker version` → 28.5.1，12 核 / 约 12GB，`milvusdb/milvus:v2.5.11` 镜像本地已存在（与锁定的 pymilvus 2.5.11 版本对齐）。
-  真实 Milvus 验收已派发，**这是当前最优先的解锁项**。
-  现状：脚本与 local 路径已完成 `ad37b3f`（7 passed）；Milvus 路径此前**一次都没连上**（始终 `ConnectionRefusedError`）。
-  已用**假 Milvus 反例**堵住「脚本恒真」最坏情况（`c8299b4`，8 个场景全部被脚本捕获，新增 5 条判据用例 + 8 条反例用例，变异 2 处已还原）。**假 Milvus 不能替代真实验收**。
-  仍未闭合（需改 `app/`）：`MilvusVectorStore.add()` 无调用点、`milvus.py` similarity=1.0 占位、写入侧 L2 归一化。
-- **RAG-036**：依赖 RAG-015，随 RAG-015 真实验收通过而解封。
+（原 2 张阻塞卡已全部解封，见下方说明。）
+
+#### RAG-015 —— 本轮完成，真实 Milvus 验收通过
+
+原阻塞原因（Docker 守护进程不可用）已于 2026-10-07 晚消失，本轮**跑通真实 Milvus 并首次产出 pass 报告**：
+
+- **环境**：仓库根 `docker-compose.yml` 的单容器方案依赖 Milvus **内嵌 etcd**，在 Docker Desktop(WSL2) 上稳定 SIGSEGV
+  （`etcd.InitEtcdServer`，pc=0x2ba7835；加 `seccomp:unconfined` + 命名卷均无效）。
+  改用**外部 etcd**(`quay.io/coreos/etcd:v3.5.5`) + **MinIO**(`RELEASE.2023-03-20T20-16-18Z`) + `milvusdb/milvus:v2.5.11`
+  三服务后正常起来；pymilvus 2.5.11 ↔ server 2.5.11 对齐，`/healthz` = OK。
+  编排文件：`.workbuddy/tmp/milvus-acceptance-compose.yml`（**未提交**，见 §7 待决事项）。
+- **验收结果**：`all_acceptance_paths_passed=true`、`result=pass`、脚本退出码 0，
+  报告 `evals/reports/rag-015-local-milvus-switch-20261007.json`。四条路径全部通过：
+  `default_local` pass / `milvus_upload_visible` pass（`matching_vector_count=3`）/ `switch_back_local` pass / `cross_backend` completed。
+- **期间抓到并修掉 3 个真缺陷**（详见 §5 已知问题 2~4）：入口写入零调用点、`similarity` 硬编码 1.0、验收脚本自身取不到向量维度。
+- **写入侧 L2 归一化**：经查**不是缺陷**——`app/rag/index_identity.py` 的 `ACTUAL_NORMALIZATION = "l2_at_query_time"` 表明
+  归一化被有意放在查询侧（`vectorstore/local.py:233`），脚本也只是作为 limitation 如实记录，不作为通过条件。**此项无需修复。**
+
+- **RAG-036**：依赖 RAG-015，**已解封**，可开工。
 
 ---
 
@@ -123,7 +140,7 @@
 - 当前分支：`rag-batch-20261007`（基线 `92da115`，前分支 `nightly/rag-20261007` 未推送）
 - 最近提交：`43d6fa1`（fix(agents): 编排失败提示保留多 Agent 协作上下文）
   前一条 `0c756c3`（fix(rag): 为历史库补齐分块索引身份列并建索引）；再前 `a63088a`（docs: 重建 §13 收尾清理项并记录宽提交事故）
-  近期相关提交：`5f05507`（config.py 归一化回 LF）、`3b5fcb1`（RAG-033 C.4.1/C.5）、`6aae8c7`（RAG-029 审查整改）、`60d4293`（RAG-033 N-03）、`21416f1`（RAG-032 复审整改）、`c8299b4`（RAG-015 假 Milvus 反例）
+  近期相关提交：`5f05507`（config.py 归一化回 LF）、`3b5fcb1`（RAG-033 C.4.1/C.5）、`6aae8c7`（RAG-029 审查整改）、`60d4293`（RAG-033 N-03）、`21416f1`（RAG-032 复审整改）、`c8299b4`（RAG-015 假 Milvus 反例）、`9d61024`（index_id 补齐）、`59c1dd6`（Supervisor 文案）、**`08c87d8`（摄取写入外部向量库 + 真实余弦相似度）**、**`48c12cc`（切换校验按实际维度核对）**、**`b7713e5`（两条守护用例）**
 
 - 尚未提交的修改（`git status` 实测）：
 
@@ -172,18 +189,27 @@
   |---|---|---|
   | RAG-029 专项 | `pytest tests/test_rag_029_context_builder.py -q --basetemp <new>` | **34 passed** |
   | RAG-038 专项 | `pytest tests/test_rag_038_deadline_retry.py -q --basetemp <new>` | **51 passed** |
+  | **真实 Milvus 连通性** | `pymilvus 2.5.11` → `127.0.0.1:19530`；`curl -sf localhost:9091/healthz` | server 2.5.11 对齐，`healthz` = OK |
+  | **RAG-015 切换验收（真实服务端）** | `python scripts/milvus_switch_check.py --apply --milvus-uri http://127.0.0.1:19530` | **`result=pass`、退出码 0**（四条路径全过） |
+  | RAG-015 专项 + RAG 子集回归 | `pytest tests/test_rag_015_milvus_switch.py tests/test_rag*.py tests/test_supervisor.py tests/test_p0_regression.py` | **151 passed / 1 skipped / 0 failed** |
+  | 变异验证（写入链路 / 相似度） | `.workbuddy/tmp/mutate_rag015.py`（每次全新 basetemp） | 两处变异**均被精准打红**，各 1 failed / 21 passed |
   | RAG-032 未提交改动内容核对 | `git diff app/rag/index_registry.py` / `app/core/config.py` | 确认 N-01（`retired_at` 三元组还原）与 L-02（注释收紧）均已落地 |
   | `native.py` / `milvus.py` 是否真有改动 | `git diff --quiet` 逐文件 | **内容同 HEAD**，仅 stat 脏；CRLF=0 |
   | `index_id` schema bug 根因 | 读 `migration.py:355-410` + `:267-286` + `alembic/versions/b2c3d4e5f607` | 根因确认，见下 |
 
   **台账记录（本轮未复跑，引用需注明来源）**：RAG-032 专项 71 passed / 1 skipped；RAG-033 专项 71 passed；全量基线 783 passed / 2 skipped / 0 failed（截至 `58da8bf`，799s）。
 
-  ⚠️ 本轮尝试复跑 RAG-032 / RAG-015 专项时**两次因超时被 SIGTERM 中断**，未取得结果，**不要把这些数字当作本轮实测**。
+  ⚠️ 本轮尝试复跑 RAG-032 专项时**因超时被 SIGTERM 中断**，未取得结果，**不要把台账数字当作本轮实测**。
+
+  ⚠️ **工具使用上的两个坑（本轮亲踩，接手者务必避开）**：
+  - 跑 pytest **不要加 `-p no:logging`**：会连 `caplog` fixture 一起卸掉，使 `test_rag.py` 里 4 条 bm25 用例报
+    `fixture 'caplog' not found`，看起来像新增了 4 个 regression，实为工具假象（去掉该 flag 后同一批 151 passed / 0 error）。
+  - 测试默认会打**真实 DashScope 嵌入 API**（本机 `.env` 有真 key，`text-embedding-v3` / 1024 维）。
+    新写测试请注入 `MockEmbeddingProvider(dim=64)`：确定性、无外部调用，也避免意外产生费用。
 
 - 尚未验证的部分：
-  - **RAG-015 真实 Milvus 验收**（Docker 刚可用，尚未跑通；此前 Milvus 路径一次都没连上）。
-  - RAG-036（依赖 RAG-015）。
-  - RAG-030、RAG-035（未开工）。
+  - ~~**RAG-015 真实 Milvus 验收**~~ ✅ 本轮已完成并通过（`result=pass`），见 §5 的 1-ter。
+  - **RAG-030**、**RAG-035**（未开工）、**RAG-036**（刚解封，未开工）。
   - RAG-029 / RAG-038 的**独立复审**（整改已落地但复审未完成，这是关闭它们的前置）。
   - **模块整合回归**（15 卡全关后才执行）。
   - mypy：本机未安装（仅 requirements 可选依赖里有），`mypy app/` 门禁不可执行。
@@ -191,17 +217,38 @@
 
 - 已知问题及复现方法：
 
-  1. **`rag_document_chunks.index_id` 缺失（P0）—— ✅ 已修复（`0c756c3`，2026-10-07 21:25）**
+  1. **`rag_document_chunks.index_id` 缺失（P0）—— ✅ 已修复（`9d61024`，2026-10-07 21:25）**
      - 现象：`tests/test_supervisor.py::test_supervisor_error_skips_subtask_and_hides_exception` 报 `no such column: rag_document_chunks.index_id`。
      - 根因（已确认）：`_stamp_if_schema_already_at_head()`（`migration.py:355-381`）在「后建 RAG 表已存在 + 配额列已存在」时直接 `stamp(head)` 并 `return True`，**跳过其间所有迁移**，包括添加 `index_id` 的 `b2c3d4e5f607`。随后 `auto_migrate()` 见无 pending 迁移即调用 `_ensure_rag_schema_columns()`，而该函数只补 `rag_documents` 各列与 `rag_document_chunks` 的 `parent_id`/`strategy`/`chunk_metadata`，**从不补 `index_id`**。
      - 后果：早于 `b2c3d4e5f607` 的库被静默标记为「已迁移」，且永远修不好。
      - **已实施的修法**：`migration.py` 的 `_ensure_rag_schema_columns()` 中 `chunk_columns` 增补 `"index_id": "ALTER TABLE rag_document_chunks ADD COLUMN index_id VARCHAR"`，并补 `CREATE INDEX IF NOT EXISTS ix_rag_document_chunks_index_id`（与 `b2c3d4e5f607:62-63` 的 DDL 对齐）。
      - **验证证据**：坏库 `data/test_ai_assistant.db` 实测 `alembic_version=b2c3d4e5f607` 但无 `index_id`（而已有 ensure 补的 `parent_id`/`strategy`/`chunk_metadata`，三件事一次坐实）；复制该库跑 `init_db()` → BEFORE `index_id=False` → AFTER `index_id=True` 且索引已建。回归 `test_supervisor.py` + `test_rag_schema_repair.py` + `test_rag.py` = **63 passed**。
      - ⚠️ **修法上的坑**：`migration.py` 工作区是 100% CRLF 而 blob 是纯 LF，`git status` **完全不报**；直接编辑提交会造成 507 行整文件重写。必须先 `read_bytes().replace(b"\r\n", b"\n")` 归一化再改，改完 `assert` 输出无 CRLF（实测 diff 收敛到 8 insertions / 1 deletion）。
-  1-bis. **Supervisor 编排失败文案丢失上下文 —— ✅ 已修复（`43d6fa1`）**
+  1-bis. **Supervisor 编排失败文案丢失上下文 —— ✅ 已修复（`59c1dd6`）**
      - 由上面 `index_id` 修好后**被掩盖的失败暴露出来**：同一条用例不再报 SQL 错，转而断言失败——期望「抱歉，多 Agent 协作处理时出现问题，请稍后重试。」，实际是笼统文案。
      - 根因：`b2432e4` 只改了 `pipeline.py`（给 `_failure_text` 加 `generic` 参数）与 test，**从未改 `supervisor.py`**，它仍调 `_failure_text(exc)`。
      - 修法：`supervisor.py:316` 传入 `generic="抱歉，多 Agent 协作处理时出现问题，请稍后重试。"`。**变异验证**：去掉该参数 → 用例立刻在 `test_supervisor.py:326` 变红（1 failed / 16 passed），已还原。`tests/test_supervisor.py` → **17 passed**。
+  1-ter. **RAG-015 真实 Milvus 验收抓到的 3 个真缺陷 —— ✅ 全部已修复（2026-10-07 22:10）**
+
+  > 这三个缺陷此前用假 Milvus **一个都发现不了**：必须有真实服务端才会暴露。
+
+  | # | 缺陷 | 根因 | 修法 | 提交 |
+  |---|---|---|---|---|
+  | H-08 | **写入链路零调用点（P0）** | 全仓 `app/` 只有 `delete_by_document` 被调用（`service.py:1119`），`MilvusVectorStore.add()` **没有任何调用点**；而本地实现把分块直接落主库、`add` 是空操作，所以缺陷在默认后端下完全不可见 | `_persist_document()` 在 `session.commit()` **之前**调用 `await self._vector_store.add(persisted_rows)`（放在提交前，写失败随事务回滚，不留半截状态）；两条入口 `ingest_text` / `ingest_parsed_document` 均走此路径 | `08c87d8` |
+  | H-09 | **`similarity` 硬编码 1.0** | `milvus.py` 返回相似度是常量占位，`_remote_search` 丢弃了 `h.distance` | 把命中距离按 id 存入 `similarity_by_id`，SQL 回查收窄后按 id 取值；集合度量是 COSINE，distance 即余弦 | `08c87d8` |
+  | H-10 | **验收脚本自身取不到维度** | `scripts/milvus_switch_check.py` 用 `output_fields=["id","document_id"]` 查询，没请求 `embedding`，`dim` 恒算成 0，误报「维度 [0] 与 dim=64 不一致」；原注释称「真实服务端不会回它」是**错的** | 请求 `embedding` 并在结果里补 `dim`；同时修正两条已与实现不符的 limitations 文本 | `48c12cc` |
+
+  **验证证据**：
+  - 真实验收：`all_acceptance_paths_passed=true`、`result=pass`、脚本退出码 0；`milvus_matching_vector_count` 由修前 **0** → 修后 **3**。
+  - 跨库相似度：local `0.15430334996` / Milvus `0.15430335700`，差约 7e-9（float32 精度），跨库 RRF 排序一致。
+  - 探针：`.workbuddy/tmp/probe_milvus_output_fields.py` 实测证明真实 Milvus 的 `query()` 请求 `embedding` 后会回传向量字段（这是 H-10 得以定位的依据）。
+  - 回归：`test_rag_015` + `test_rag*` 子集 + `test_supervisor` + `test_p0_regression` = **151 passed / 1 skipped / 0 failed**。
+
+  1-quater. **变异测试初期的一次误判（已纠正，教训见 §7）**
+  - 首轮变异脚本复用了固定 basetemp → 沙箱 safe-delete 报 error → pytest 退出码非 0 → 我当时把两个修复判成「变异已杀死」。
+  - 实际输出是 `19 passed, 1 error`，**没有任何断言失败**，真相是**两处修复当时都还没有守护**。改回全新 basetemp 重跑后，结论才可信。
+  - 由此补了两条不依赖真实服务的守护用例（`b7713e5`）：`test_ingest_calls_vector_store_add`（注入记录型 store）、`test_milvus_similarity_returns_real_cosine_not_placeholder`（注入假集合返回互异距离）。二者分别精准打红各自对应的变异（各 1 failed / 21 passed）。
+
   2. **SSE 终态事件 `reason` 未修**（RAG-038 溢出项，已判越界另派卡）。
   3. **CRLF 行尾污染（全树级）**：`app/**` + `tests/**` 约 250 个工作区文件是 CRLF，而仓库 blob 应为纯 LF；任何人提交都会造成整文件伪差异。已列入 §13 收尾清理，**现在不动**。
   4. **台账自身有重复行**：§9 的 RAG-032 行与 §11 的「M-05」行各被重复写入一次（内容近似）。接手者以最新一段为准，不必当成两条独立事件。
@@ -210,18 +257,26 @@
 
 ## 6. 下一步
 
-1. ~~**修 `index_id` schema bug**~~ ✅ **已完成**（`0c756c3`）+ 顺带修掉 Supervisor 文案缺陷（`43d6fa1`），见 §5。
-   **当前首先执行的应是：RAG-015 真实 Milvus 验收**（Docker 已可用：28.5.1 / 12 核 / 约 12GB，本地已有 `milvusdb/milvus:v2.5.11` 镜像）—— 这是最高解锁项，通过后 **RAG-036** 随之解封。
+1. ~~**修 `index_id` schema bug**~~ ✅ **已完成**（`9d61024`）+ 顺带修掉 Supervisor 文案缺陷（`59c1dd6`）。
+2. ~~**RAG-015 真实 Milvus 验收**~~ ✅ **已完成并通过**（`result=pass`，退出码 0；期间修掉 H-08/H-09/H-10，见 §5 的 1-ter）。**RAG-036 已解封。**
 
-2. **随后执行（按此顺序）**：
+   **当前首先执行的应是**：沿用已跑起来的三服务 stack（见下方命令）继续推 **RAG-036**（依赖 RAG-015 的最后一张未开工卡，无其他前置）。
+
+3. **真实向量库 stack 若已停**（Milvus 只在 RAG-015 复验 / RAG-036 验收时需要）：
+   `docker compose -f .workbuddy/tmp/milvus-acceptance-compose.yml up -d`
+   含外部 etcd + MinIO + standalone；**不要**用仓库根 `docker-compose.yml` 的单容器方案 —— 内嵌 etcd 必然 SIGSEGV，原因见 §5 的 1-ter。
+   排障：`docker compose ... ps` 确认三个容器 healthy；`docker logs --tail 50 rag015-milvus-standalone` 查 panic。
+
+4. **随后执行（按此顺序）**：
    a. **收口 RAG-032**：把工作区已有的 L-02 / N-01 改动单独提交（**务必带路径限制，不要用宽提交**），确认 N-02 文档化，标记 closed。
+   b. **RAG-036** 开工（RAG-015 已解封，无其他前置）。
    c. **RAG-029 / RAG-038 各派一次独立复审**（审查者须为独立子 Agent 上下文），复审通过后关闭。
    d. **RAG-030** 开工（RAG-029 关闭后）。
    e. **RAG-035**：向用户申请授权（模型/样本用途、调用次数、费用上限、Gold 人工确认方式）后再开工。
    f. **模块整合回归**：RAG 子集全量 + 全量 pytest + ruff + mypy + 前端 typecheck/build。
    g. **§13 收尾清理**：全树 CRLF 归一化（单独提交）、删除 `data/rag015-python-deps`（137M）、`git worktree remove` + `prune` 遗留 worktree、清理 `uutest5.py`。
 
-3. **完成后如何验收**：
+5. **完成后如何验收**：
    - 每卡三件套齐备（实现说明 + 独立审查报告 + 可复现证据）。
    - 15 卡台账状态无 `running` / `blocked` 残留（除用户已授权的 deferred）。
    - 模块整合回归全绿，且与开工基线（全量 783 passed / 2 skipped / 0 failed；RAG 子集 352 passed / 2 skipped / 0 failed）对比无新增失败。
@@ -250,6 +305,13 @@
   2. **删除类操作**：`data/rag015-python-deps`（137M）、仓库根 `uutest5.py`（1117 行 untracked）、遗留 worktree 清理 —— 均属删除，执行前需明确。
   3. **合并 / 推送 / 部署**：用户明确禁止，需另行授权。
   4. §13 全树 CRLF 归一化会产生一次全树级提交，建议在全部卡片收口、worker 停手后执行。
+  5. **要不要把可用的 Milvus 编排纳入仓库**（本轮新增，等待裁决）：仓库根 `docker-compose.yml` 的 Milvus 服务用
+     `ETCD_USE_EMBED=true` 单容器方案，在 Docker Desktop(WSL2) 上**必然 SIGSEGV**（证据见 §5 的 1-ter），
+     等于「本地开发用 Milvus」这条路当前是坏的。本轮用于验收的三服务编排放在
+     `.workbuddy/tmp/milvus-acceptance-compose.yml`（**未提交**）。两种取向需用户选：
+     (a) 把它挪到 `deploy/milvus/` 并让根 compose 引用 / 改用外部 etcd——**推荐**，但会改动已存在的 dev 编排；
+     (b) 维持现状，仅在文档里注明「本地若要跑 Milvus 请用这份临时编排」。
+     注意：线上规划是单容器 + SQLite + `RAG_VECTOR_STORE=local`，**不依赖 Milvus**，所以此项不影响上线。
 
 - ⚠️ 本批质量事件（接手者务必遵守，否则会重演）：
   本批出现过 **3 次**「结论与磁盘事实不符」，其中 **2 次出自 lead 自己**（凭印象写下「Milvus 已跑通并抓到 2 个 P0」「RAG-032 M-05 变异存活」，而 worker 从未如此报过）。由此固化六条校验动作，最关键的三条：
@@ -257,6 +319,14 @@
   2. 报了产物 → 必须 `ls -la` 能看见，否则视为未交付。
   3. **凡是要据此指责某个 worker 的条目，动笔前必须先 `grep` / `sed` 拿到一手输出** —— 指责错人比漏掉问题代价更大。
   另：报「变异存活」前必须先证明变异真的生效（`assert mutated != original`），否则可能是在修一个不存在的缺陷；且要区分「未命中」（没匹配上，测试没跑）与「未变红」（真缺陷）。
+
+- ⚠️ **本轮新增的两条自检（都是我自己踩出来的假信号，代价不小）**：
+  1. **「变异被杀红」不等于「守护成立」** —— 必须看失败的是哪一条、是不是 `error` 而非断言失败。
+     本轮首次变异判定为 KILLED，实际输出是 `19 passed, 1 error`，那个 error 来自**复用 basetemp**
+     触发沙箱 safe-delete，跟产品无关；真实结论是「两处修复都没有守护」。
+     **变异脚本必须每次用全新 basetemp**（用 `uuid.uuid4()` 生成目录名），并核对具体失败用例名。
+  2. **别随手给 pytest 加 `-p no:logging`** —— 会把 `caplog` fixture 一起卸掉，制造 4 条
+     `fixture 'caplog' not found`，看着像 4 个新回归。同理，任何 `-p no:*` 都可能伪造出这种假象。
 
 - ⛔ **专项：`.worktrees/` 是什么、为什么冒出 524 个待提交文件**
 

@@ -420,3 +420,44 @@ M14 的失败输出原文：
 FAILED tests/test_rag_038_deadline_retry.py::test_native_backend_cancellation_propagates_through_real_retrieve
 1 failed, 50 passed in 12.13s
 ```
+
+## 10. 提交窗口被他人宽提交卷入的记录（事实，不粉饰）
+
+本卡第二轮整改**没有产生独立 commit**：7 个文件在本人执行 `git add` 之前，
+已被他人提交 `52769db`（`style: 归一化 scripts/milvus_switch_check.py 行尾回 LF`）
+以宽提交（含 `git add -A` 性质）的方式一并落盘进 HEAD。
+
+证据（都可复现）：
+
+- `git show --stat 52769db` 列出的文件与行数，与本轮应提交的 7 个文件**逐一吻合**
+  （`.env.example` 448 / `README.md` 1472 / `app/core/config.py` 728 /
+  `app/rag/embeddings/openai_compatible.py` 25 / `app/rag/resilience.py` 92 /
+  实现文档 676 / 测试 278）。
+- `git show 52769db -- app/core/config.py | grep RAG_EMBED_BATCH_DEADLINE_SECONDS`
+  命中 1 次——即 High-01 的修复确实在该提交里。
+- 本人随后 `git add <7 文件>` 时，`git diff --cached --stat` 显示这些文件与 HEAD
+  **零差异**（`git hash-object <file>` == `git rev-parse HEAD:<file>`），
+  说明内容已完整入库、无丢失。
+
+影响与处置：
+
+- 改动内容完整，功能与测试不受影响；
+- 但该提交的 message 与内容不符（写的是行尾归一化，实际夹带了一整张卡的整改），
+  历史可读性受损。**建议不改写历史**：其上方已叠了 `6aae8c7`（RAG-029）等提交，
+  rebase 会动到他人工作。是否补一个说明性提交由 team lead 决定。
+- 教训：多人共用同一个主工作树时，本人 `git add <具体文件>` 并不能防御**他人**的
+  宽提交；提交窗口应尽可能短。
+
+补验（在卷入之后的最新 HEAD 上重做， detached worktree `.workbuddy/tmp/wt038final`，
+基线 `6aae8c7`）：
+
+- 专项：`51 passed in 10.01s`
+- 与 RAG-029 交叉的关键子集（`test_rag_038` + `test_rag_029_context_builder` +
+  `test_rag` + `test_rag_backend` + `test_rag_vectorization_api` +
+  `test_embeddings` + `test_retrieval_guard` + `test_chat`）：
+  `158 passed, 1 skipped, 1 warning in 33.65s`
+- `ruff check app tests`（基线 `60d4293` + 本卡改动）→ `All checks passed!`
+- `mypy app` → `Success: no issues found in 185 source files`
+- `tests/test_rag_033_parse_quality.py` 的 2 条失败，在**不含本卡改动**的干净基线
+  `60d4293`（worktree `.workbuddy/tmp/wt038base4`）上同样复现，属 RAG-033 自身，
+  与本卡无关。

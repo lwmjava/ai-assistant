@@ -272,6 +272,26 @@ async def test_pipeline_no_hit_final_text_carries_disclosure() -> None:
     assert "根据知识库" in state.answer
 
 
+async def test_pipeline_stream_disclosure_is_separated_from_body() -> None:
+    """复审 N-12：流式披露语与正文之间必须有分隔，否则会粘连成一句。
+
+    短路径早就有 ``+ "\\n\\n"``，管线流式此前没有。这里守住这条，
+    不然把分隔删掉不会有任何用例变红。
+    """
+    llm = _IgnoreNoticeLLM()
+    pipeline = AgentPipeline(llm, LLMOptions(), retriever=_retriever(_Backend([])))
+    state = AgentState(user_input="年假怎么算")
+    tokens: list[str] = []
+    async for event in pipeline.run_stream(state):
+        if event.type == "token":
+            tokens.append(event.data)
+    streamed = "".join(tokens)
+    assert state.retrieval_status == "no_hit"
+    assert streamed.startswith(settings.RAG_NO_HIT_REPLY)
+    # 披露语之后必须紧跟分隔，再接模型正文
+    assert streamed[len(settings.RAG_NO_HIT_REPLY) :].startswith("\n\n")
+
+
 # ── 3. 短路径入口 ──────────────────────────────────────────
 
 
@@ -451,6 +471,69 @@ async def test_supervisor_retrieves_and_propagates_status() -> None:
     assert state.answer.startswith(settings.RAG_UNAVAILABLE_REPLY)
 
 
+async def test_supervisor_directive_reaches_the_model_prompt() -> None:
+    """复审 N-11：披露要求此前只存进 state，SupervisorState 未声明该键。
+
+    LangGraph 的状态是白名单式的，未声明的键会被静默丢弃——
+    光把值塞进 graph_state 不够，必须证明它真的出现在模型看到的 system 里。
+    """
+    pytest.importorskip("langgraph")
+    from app.agents.supervisor import SupervisorGraph
+
+    class _SystemCaptureLLM(_IgnoreNoticeLLM):
+        def __init__(self) -> None:
+            super().__init__()
+            self.systems: list[str] = []
+
+        async def chat(self, messages, options=None) -> str:
+            for msg in messages:
+                if msg.role.value == "system":
+                    self.systems.append(msg.content)
+            return await super().chat(messages, options)
+
+    retriever = _retriever(_Backend(error=RuntimeError("检索不可用")))
+    llm = _SystemCaptureLLM()
+    graph = SupervisorGraph(llm, LLMOptions(), retriever=retriever)
+    state = await graph.run(AgentState(user_input="年假怎么算"))
+    assert state.retrieval_status == "unavailable"
+    # 终态拒答只在 below_threshold 触发；unavailable 会进图，
+    # 因此这里必须能捕获到编排列的 system 提示。
+    assert llm.systems, "Supervisor 未调用模型，无法验证披露要求是否送达"
+    assert any(settings.RAG_UNAVAILABLE_NOTICE in text for text in llm.systems), (
+        "披露要求没有进入任何一次 Supervisor 调用的 system 提示"
+    )
+
+
+async def test_supervisor_stream_final_text_carries_disclosure() -> None:
+    """复审 N-13：Supervisor 流式此前只验 run()，没验用户实际接收的 token。"""
+    pytest.importorskip("langgraph")
+    from app.agents.supervisor import SupervisorGraph
+
+    retriever = _retriever(_Backend(error=RuntimeError("检索不可用")))
+    graph = SupervisorGraph(_IgnoreNoticeLLM(), LLMOptions(), retriever=retriever)
+    state = AgentState(user_input="年假怎么算")
+    tokens: list[str] = []
+    async for event in graph.run_stream(state):
+        if event.type == "token":
+            tokens.append(event.data)
+    streamed = "".join(tokens)
+    assert state.retrieval_status == "unavailable"
+    assert streamed.startswith(settings.RAG_UNAVAILABLE_REPLY)
+    assert streamed == state.answer
+
+
+async def test_supervisor_state_declares_retrieval_notice() -> None:
+    """复审 N-11 的结构性防线：TypedDict 必须显式声明该键。
+
+    没有这条，将来有人删掉字段声明时，上一条用例可能因为图没跑起来而跳过，
+    缺陷就漏过去了。
+    """
+    pytest.importorskip("langgraph")
+    from app.agents.supervisor import SupervisorState
+
+    assert "retrieval_notice" in SupervisorState.__annotations__
+
+
 async def test_supervisor_low_score_is_terminal_refusal() -> None:
     pytest.importorskip("langgraph")
     from app.agents.supervisor import SupervisorGraph
@@ -520,6 +603,38 @@ async def test_chat_service_stream_persists_disclosure() -> None:
         rows = session.exec(select(Message).where(Message.role == "assistant")).all()
         mine = [r for r in rows if r.content.startswith(settings.RAG_UNAVAILABLE_REPLY)]
         assert mine, f"流式结束必须落库且带披露；实际 {len(rows)} 条助手消息"
+
+
+async def test_chat_service_sync_final_text_carries_disclosure() -> None:
+    """复审 N-14：同步对话入口此前完全没被覆盖，只有流式有断言。"""
+    from sqlmodel import Session, SQLModel
+
+    from app.core.database import engine, init_db
+    from app.core.security import Role
+    from app.models.user import User
+    from app.services.chat_service import ChatService
+
+    SQLModel.metadata.create_all(engine)
+    init_db()
+    tenant = f"rag037-{uuid4().hex[:8]}"
+    with Session(engine) as session:
+        user = User(
+            id=f"u-{uuid4().hex[:8]}",
+            username=f"u{uuid4().hex[:6]}",
+            tenant_id=tenant,
+            role=Role.TENANT_ADMIN.value,
+            hashed_password="x",
+            token_version=0,
+            is_active=True,
+        )
+        session.add(user)
+        session.commit()
+        service = ChatService(_IgnoreNoticeLLM())
+        service._build_retriever = lambda _s, _u: _retriever(  # type: ignore[method-assign]
+            _Backend(error=RuntimeError("检索不可用"))
+        )
+        _conv, answer = await service.chat(session, user, "年假怎么算")
+        assert answer.startswith(settings.RAG_UNAVAILABLE_REPLY)
 
 
 # ── 6. HTTP 检索面 ─────────────────────────────────────────

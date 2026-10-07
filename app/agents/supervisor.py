@@ -88,6 +88,9 @@ class SupervisorState(TypedDict, total=False):
     next: str
     revisions: int  # 已完成的调研轮数，用于收敛循环
     delegations: list[dict[str, str]]  # 本轮图执行内的分派记录，每次写回完整列表
+    # 检索非 ok 时给模型的披露要求。必须在 TypedDict 里声明：
+    # LangGraph 的状态是白名单式的，未声明的键会在传递时被静默丢弃。
+    retrieval_notice: str
 
 
 class SupervisorGraph:
@@ -95,6 +98,9 @@ class SupervisorGraph:
 
     对外暴露与 `AgentPipeline` 一致的 `run(state)` / `run_stream(state)` 契约，
     以便 `chat_service` 按配置切换实现。
+
+    检索不是孤立的：编排前先检索一次，终态为全低分时直接拒答不进图，
+    其余情形把状态与披露要求随图状态传给 research / draft 两个节点。
     """
 
     def __init__(
@@ -169,6 +175,7 @@ class SupervisorGraph:
         """一轮调研只调用一次模型，不进入行动循环。"""
         prompt = (
             f"## 用户目标\n{state.get('user_input', '')}\n\n"
+            f"## 已掌握上下文\n{state.get('context') or '（无）'}\n\n"
             f"## 已有调研\n{state.get('research') or '（尚无调研记录）'}\n\n"
             "请写一段调研记录。"
         )

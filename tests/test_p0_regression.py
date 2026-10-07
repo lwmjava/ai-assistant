@@ -165,10 +165,27 @@ async def test_mcp_sse_transport_connects(monkeypatch) -> None:
 
 
 # ── Milvus 按文档删除 ───────────────────────────────
+def _stub_index_resolution(store) -> None:
+    """桩掉集合解析：这些用例只锁删除计数与 schema 校验，不涉索引登记。
+
+    索引身份决定了操作哪个集合（RAG-032），但本文件的用例没有真实会话，
+    因此显式声明目标索引，避免把身份解析和被测语义耦在一起。
+    """
+
+    class _StubIndex:
+        id = "stub-index"
+        name = "stub_collection"
+        dim = 4
+
+    store._resolve_index = lambda *args, **kwargs: _StubIndex()  # type: ignore[method-assign]
+    store._collection_name = _StubIndex.name
+
+
 def _milvus_store_with(rows: list[dict], fields: list[str] | None = None):
     store = MilvusVectorStore.__new__(MilvusVectorStore)
     store.session = None
     store._collection = _FakeMilvusCollection(rows, fields)
+    _stub_index_resolution(store)
     return store
 
 
@@ -243,6 +260,7 @@ async def test_milvus_rejects_collection_without_document_id(monkeypatch) -> Non
     store = MilvusVectorStore.__new__(MilvusVectorStore)
     store.session = None
     store._collection = None
+    _stub_index_resolution(store)
 
     with pytest.raises(MilvusUnavailableError, match="document_id"):
         await store.delete_by_document("doc-1", "tenant-1")

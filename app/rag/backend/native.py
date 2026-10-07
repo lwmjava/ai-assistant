@@ -6,6 +6,7 @@ from app.rag.access import ReadScope
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.index_identity import EmbeddingIndexIdentity, identity_from_provider
 from app.rag.retrieval_guard import candidate_k, drop_injected_chunks
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
@@ -28,6 +29,14 @@ class NativeRagBackend(RagBackend):
         self._store = vector_store
         self._tokenizer = tokenizer
         self._rrf_k = rrf_k
+        # 当前查询 provider 的完整索引身份：惰性计算并缓存，
+        # 读路径每次都拿它与生效索引核对，阻断同维异模型混用。
+        self._identity: EmbeddingIndexIdentity | None = None
+
+    def _current_identity(self) -> EmbeddingIndexIdentity:
+        if self._identity is None:
+            self._identity = identity_from_provider(self._embedding)
+        return self._identity
 
     async def split(self, text: str, *, chunk_size: int, overlap: int) -> list[str]:
         from app.rag.chunking.base import ChunkParams
@@ -58,5 +67,6 @@ class NativeRagBackend(RagBackend):
             as_of=as_of,
             schedule_at=schedule_at,
             read_scope=read_scope,
+            identity=self._current_identity(),
         )
         return drop_injected_chunks(hits, keep=top_k)

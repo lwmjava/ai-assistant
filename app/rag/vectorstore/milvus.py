@@ -17,8 +17,10 @@ import numpy as np
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
-from app.models.rag import Document, DocumentChunk
+from app.models.rag import Document, DocumentChunk, EmbeddingIndex
 from app.rag.access import ReadScope
+from app.rag.index_identity import EmbeddingIndexIdentity
+from app.rag.index_registry import IndexUnavailableError, resolve_read_index_for
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.local import _bm25_scores, _rrf, visible_chunks_with_status
 
@@ -26,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 # 集合中的分块归属字段：删除分块时用它定位，缺失会导致向量残留。
 _DOCUMENT_ID_FIELD = "document_id"
+# 索引归属字段：身份换了必须换集合，但同一集合内仍要能按索引过滤，
+# 否则 SQL 回查会拿到别的索引名下的分块。
+_INDEX_ID_FIELD = "index_id"
 
 
 class MilvusUnavailableError(RuntimeError):
@@ -38,9 +43,29 @@ class MilvusVectorStore(VectorStore):
     def __init__(self, session: Session) -> None:
         self.session = session
         self._collection = None
+        self._collection_name = ""
 
-    def _connect(self):
-        if self._collection is not None:
+    def _resolve_index(
+        self, identity: EmbeddingIndexIdentity | None = None, *, tenant_id: str | None = None
+    ) -> EmbeddingIndex:
+        """Milvus 访问的集合由**登记的生效索引**决定，不再固定用配置里的集合名。
+
+        身份变了集合名就变（``index_name()`` 带版本与身份指纹），因此不同模型
+        不可能原地混写同一个集合。
+        """
+        index = resolve_read_index_for(
+            self.session, identity, tenant_id=tenant_id, backend="milvus"
+        )
+        if index is None:
+            raise IndexUnavailableError(
+                "Milvus 后端没有生效的 embedding 索引，无法确定操作哪个集合；"
+                "请先登记并激活索引（rebuild/activate）。"
+            )
+        return index
+
+    def _connect(self, identity: EmbeddingIndexIdentity | None = None):
+        target_index = self._resolve_index(identity)
+        if self._collection is not None and self._collection_name == target_index.name:
             return self._collection
         try:
             from pymilvus import (  # type: ignore
@@ -61,15 +86,16 @@ class MilvusVectorStore(VectorStore):
             uri=settings.MILVUS_URI,
             token=settings.MILVUS_TOKEN or None,
         )
-        name = settings.MILVUS_COLLECTION
+        name = target_index.name
         fields = [
             FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=64),
             FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=64),
             FieldSchema(name=_DOCUMENT_ID_FIELD, dtype=DataType.VARCHAR, max_length=64),
+            FieldSchema(name=_INDEX_ID_FIELD, dtype=DataType.VARCHAR, max_length=64),
             FieldSchema(
                 name="embedding",
                 dtype=DataType.FLOAT_VECTOR,
-                dim=settings.EMBEDDING_DIM,
+                dim=target_index.dim,
             ),
         ]
         schema = CollectionSchema(fields, description="ai-assistant 文档分块向量")
@@ -85,26 +111,30 @@ class MilvusVectorStore(VectorStore):
         self._ensure_index(collection)
         collection.load()
         self._collection = collection
+        self._collection_name = name
         return collection
 
     def _verify_schema(self, collection, name: str) -> None:
-        """校验既有集合含有按文档删除所需的字段。
+        """校验既有集合含有按文档删除、按索引过滤所需的字段。
 
         早期版本的集合缺少 ``document_id``，此时删除过滤表达式必然失败，
-        若不显式报错会导致向量永久残留且无任何提示。
+        若不显式报错会导致向量永久残留且无任何提示；缺少 ``index_id`` 则无法
+        把候选限定在当前生效索引内，等价于把旧身份向量重新召回。
 
         Args:
             collection: 已加载的 Milvus 集合。
             name: 集合名，用于错误信息。
 
         Raises:
-            MilvusUnavailableError: 集合缺少 ``document_id`` 字段时抛出。
+            MilvusUnavailableError: 集合缺少 ``document_id`` / ``index_id`` 字段时抛出。
         """
         existing = {f.name for f in (collection.schema.fields or [])}
-        if _DOCUMENT_ID_FIELD not in existing:
+        missing = [f for f in (_DOCUMENT_ID_FIELD, _INDEX_ID_FIELD) if f not in existing]
+        if missing:
             raise MilvusUnavailableError(
-                f"Milvus 集合 {name} 缺少 {_DOCUMENT_ID_FIELD} 字段，无法按文档删除向量。"
-                f"请重建集合或迁移 schema 后重试（当前字段：{sorted(existing)}）。"
+                f"Milvus 集合 {name} 缺少 {', '.join(missing)} 字段，无法按文档删除向量"
+                "或按索引身份过滤。请重建集合或迁移 schema 后重试"
+                f"（当前字段：{sorted(existing)}）。"
             )
 
     def _ensure_index(self, collection) -> None:
@@ -143,13 +173,15 @@ class MilvusVectorStore(VectorStore):
         params = {"nprobe": settings.MILVUS_NPROBE} if "IVF" in index_type.upper() else {}
         return {"metric_type": "COSINE", "params": params}
 
-    async def add(self, chunks: list) -> None:
-        collection = self._connect()
+    async def add(self, chunks: list, identity: EmbeddingIndexIdentity | None = None) -> None:
+        target_index = self._resolve_index(identity)
+        collection = self._connect(identity)
         entities = [
             {
                 "id": c.id,
                 "tenant_id": c.tenant_id,
                 _DOCUMENT_ID_FIELD: c.document_id,
+                _INDEX_ID_FIELD: target_index.id,
                 "embedding": json.loads(c.embedding) if c.embedding else None,
             }
             for c in chunks
@@ -164,8 +196,12 @@ class MilvusVectorStore(VectorStore):
         先按主键查出命中条数再删除，因为 Milvus 的 ``delete`` 返回值不含删除计数，
         早期实现直接 ``return len([document_id])`` 恒为 1，会掩盖删除失败。
         """
+        target_index = self._resolve_index()
         collection = self._connect()
-        expr = f'{_DOCUMENT_ID_FIELD} == "{document_id}" and tenant_id == "{tenant_id}"'
+        expr = (
+            f'{_DOCUMENT_ID_FIELD} == "{document_id}" and tenant_id == "{tenant_id}"'
+            f' and {_INDEX_ID_FIELD} == "{target_index.id}"'
+        )
         try:
             matched = collection.query(expr=expr, output_fields=["id"])
             ids = [row.get("id") for row in matched or []]
@@ -195,9 +231,16 @@ class MilvusVectorStore(VectorStore):
         as_of: datetime | None = None,
         schedule_at: datetime | None = None,
         read_scope: ReadScope | None = None,
+        identity: EmbeddingIndexIdentity | None = None,
     ) -> list[ChunkResult]:
-        collection = self._connect()
-        expr = f'tenant_id == "{tenant_id}"'
+        # 身份核对必须在取候选之前：没有生效索引 → IndexUnavailableError，
+        # 身份不符 → IndexIdentityError（同维异模型靠维度发现不了）。
+        target_index = self._resolve_index(identity, tenant_id=tenant_id)
+        collection = self._connect(identity)
+        expr = (
+            f'tenant_id == "{tenant_id}"'
+            f' and {_INDEX_ID_FIELD} == "{target_index.id}"'
+        )
         expand = max(top_k * 4, 20)
         try:
             hits = collection.search(
@@ -222,10 +265,13 @@ class MilvusVectorStore(VectorStore):
         if not candidate_ids:
             return []
 
+        # 集合里可能残留旧索引的向量，SQL 回查必须再按 index_id 收一次口：
+        # 否则旧身份的分块会被重新召回，身份过滤形同虚设。
         stmt = (
             select(DocumentChunk)
             .join(Document, col(Document.id) == col(DocumentChunk.document_id))
             .where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
+            .where(col(DocumentChunk.index_id) == target_index.id)
         )
         stmt = stmt.where(col(Document.deleted_at).is_(None))
         # 集合里没有上传者字段，读范围只能在候选回查阶段生效：

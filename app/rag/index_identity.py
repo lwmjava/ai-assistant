@@ -12,21 +12,60 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from app.core.config import settings
 from app.models.rag import IndexStatus
 
 __all__ = [
+    "ACTUAL_NORMALIZATION",
+    "ACTUAL_METRIC",
     "EmbeddingIndexIdentity",
     "IndexIdentityError",
     "IndexStatus",
+    "SUPPORTED_METRIC",
+    "SUPPORTED_NORMALIZATION",
     "current_backend",
+    "deployment_from_base_url",
+    "fingerprint_of_key",
     "identity_from_provider",
+    "identity_matches_row",
 ]
+
+# ── 实际生效的检索约定（不是配置项）──────────────────────────
+# Local：检索时对候选矩阵与查询向量做 L2 归一化后点积（= 余弦）。
+# Milvus：建索引与检索固定 COSINE。两者语义都是余弦。
+# 配置里只允许声明这一组；声明其它值一律拒绝，不允许「登记了却不生效」。
+SUPPORTED_NORMALIZATION = "l2"
+SUPPORTED_METRIC = "cosine"
+# 归一化实际发生在查询时，写入侧保存的是 provider 原样向量。
+ACTUAL_NORMALIZATION = "l2_at_query_time"
+ACTUAL_METRIC = "cosine"
 
 
 class IndexIdentityError(RuntimeError):
     """索引身份不匹配：当前模型与索引登记的身份不可混用。"""
+
+
+def deployment_from_base_url(url: str) -> str:
+    """从 ``base_url`` 提取不含凭据的部署标识：``scheme://host[:port]/path``。
+
+    两个 OpenAI 兼容端点即使 model/dim 相同也往往指向完全不同的向量空间，
+    只有把 host/path 纳入身份才能区分。这里**剥离 userinfo 与查询串**——
+    身份里绝不能出现密钥或完整连接串；host 统一小写，去掉结尾斜杠。
+    """
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    parsed = urlsplit(raw)
+    if not parsed.scheme and not parsed.netloc:
+        parsed = urlsplit(f"//{raw}")
+    netloc = parsed.netloc.rpartition("@")[2].strip().lower()
+    if not netloc:
+        return ""
+    scheme = (parsed.scheme or "https").strip().lower()
+    path = (parsed.path or "").rstrip("/")
+    return f"{scheme}://{netloc}{path}"
 
 
 @dataclass(frozen=True)
@@ -48,6 +87,19 @@ class EmbeddingIndexIdentity:
         for name in ("backend", "provider", "model", "index_version"):
             if not getattr(self, name):
                 raise ValueError(f"{name} must not be empty")
+        # 归一化与度量只允许声明真实生效的那一组：登记了却按另一套算法执行，
+        # 会让身份看起来可信而向量实际不可比，比不登记更危险。
+        if self.normalization.strip().lower() != SUPPORTED_NORMALIZATION:
+            raise IndexIdentityError(
+                f"不支持的 normalization={self.normalization!r}："
+                f"当前实现只按 {SUPPORTED_NORMALIZATION} 执行（{ACTUAL_NORMALIZATION}），"
+                "请改为 l2 或先实现对应的写入/检索行为"
+            )
+        if self.metric.strip().lower() != SUPPORTED_METRIC:
+            raise IndexIdentityError(
+                f"不支持的 metric={self.metric!r}："
+                f"当前实现只按 {SUPPORTED_METRIC} 执行，请改为 cosine 或先实现对应度量"
+            )
 
     def key(self) -> str:
         """稳定身份标识。字段以 ``|`` 分隔，避免某个字段含 ``:`` 时产生歧义。"""
@@ -88,6 +140,20 @@ class EmbeddingIndexIdentity:
         }
 
 
+def fingerprint_of_key(identity_key: str) -> str:
+    """登记行里只有完整 ``identity_key``；短指纹由它派生，与 :meth:`fingerprint` 一致。"""
+    return hashlib.sha256((identity_key or "").encode("utf-8")).hexdigest()[:12]
+
+
+def identity_matches_row(identity: EmbeddingIndexIdentity, row: object) -> bool:
+    """完整身份比对：直接比 ``key()``，不做字段挑选。
+
+    只比 model/dim/version 会让「同维异模型 / 异部署 / 异度量」悄悄通过，
+    因此所有核对点都必须走这里。
+    """
+    return identity.key() == str(getattr(row, "identity_key", "") or "")
+
+
 def current_backend() -> str:
     """当前配置生效的向量库后端名。"""
     return "milvus" if settings.RAG_VECTOR_STORE.strip().lower() == "milvus" else "local"
@@ -96,28 +162,38 @@ def current_backend() -> str:
 def identity_from_provider(
     provider: object,
     *,
-    backend: str | None = None,
+    model: str | None = None,
+    dim: int | None = None,
     index_version: str | None = None,
+    backend: str | None = None,
     normalization: str | None = None,
     metric: str | None = None,
 ) -> EmbeddingIndexIdentity:
-    """从嵌入 provider 构造身份。
+    """从嵌入 provider 构造身份。运行时与脚本共用同一个生产函数。
 
-    ``deployment`` 只在 provider 显式给出时才填；**不猜测、不回退到模型名**，
-    否则会把不同部署的同一模型误判为同一索引。
+    ``provider`` 取**配置标签** ``settings.EMBEDDING_PROVIDER``：OpenAI 官方、
+    Ollama 与各类兼容服务都落在同一个实现类上，用 ``type(provider).__name__``
+    无法区分真实服务提供商。真正能区分向量空间的是部署端点，因此
+    ``deployment`` 由 :func:`deployment_from_base_url` 从 ``base_url`` 派生
+    （去凭据），provider 未声明 ``base_url`` 时留空——**不猜测、不回退到模型名**。
     """
-    model = str(getattr(provider, "model", "") or "unknown")
-    dim = int(getattr(provider, "dim", 0) or 0)
-    deployment = str(getattr(provider, "deployment", "") or "")
-    if dim <= 0:
+    resolved_model = model or str(getattr(provider, "model", "") or "unknown")
+    resolved_dim = int(dim or getattr(provider, "dim", 0) or 0)
+    if resolved_dim <= 0:
         raise IndexIdentityError(
             f"嵌入 provider {type(provider).__name__} 未声明有效维度，无法建立索引身份"
         )
+    deployment = str(getattr(provider, "deployment", "") or "") or deployment_from_base_url(
+        str(getattr(provider, "base_url", "") or "")
+    )
+    provider_label = (settings.EMBEDDING_PROVIDER or "").strip().lower() or type(
+        provider
+    ).__name__
     return EmbeddingIndexIdentity(
         backend=backend or current_backend(),
-        provider=type(provider).__name__,
-        model=model,
-        dim=dim,
+        provider=provider_label,
+        model=resolved_model,
+        dim=resolved_dim,
         index_version=index_version or settings.EMBEDDING_INDEX_VERSION,
         deployment=deployment,
         normalization=normalization or settings.EMBEDDING_NORMALIZATION,

@@ -59,8 +59,16 @@ from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
 from app.rag.import_trace import ImportTraceError
-from app.rag.index_identity import identity_from_provider
-from app.rag.index_registry import resolve_write_index
+from app.rag.index_identity import (
+    IndexIdentityError,
+    identity_from_provider,
+    identity_matches_row,
+)
+from app.rag.index_registry import (
+    active_index,
+    resolve_read_index_for,
+    resolve_write_index,
+)
 from app.rag.retrieval_guard import drop_injected_chunks
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
@@ -236,6 +244,7 @@ class RAGService:
         tokenizer: Tokenizer | None = None,
         backend: RagBackend | None = None,
         reader: User | None = None,
+        write_index_id: str | None = None,
     ) -> None:
         self.session = session
         self.tenant_id = tenant_id
@@ -257,6 +266,9 @@ class RAGService:
         )
         # 本次写入归属的索引；惰性解析，读取面不需要它。
         self._index: EmbeddingIndex | None = None
+        # 显式写目标：重建期间写 preparing 索引（旧 active 继续服务）。
+        # None 表示写当前 active 索引。
+        self._write_index_id = write_index_id
 
     def _resolve_backend(self, backend: str | None = None) -> RagBackend:
         """按请求级覆盖或默认配置返回后端实例。"""
@@ -621,12 +633,30 @@ class RAGService:
     def _write_index(self) -> EmbeddingIndex:
         """本次写入所属的向量索引；身份不符时拒绝写入（ADR-0008）。
 
+        ``write_index_id`` 给出时写该目标索引（重建 preparing 索引用），
+        但仍要校验目标身份与当前 provider 一致——写进身份不符的索引
+        等同于把新模型的向量塞进旧向量空间。
+
         结果按实例缓存：一次摄取只核对一次，不每个分块查一遍库。
         """
         if self._index is None:
-            self._index = resolve_write_index(
-                self.session, identity_from_provider(self._embedding), commit=False
-            )
+            identity = identity_from_provider(self._embedding)
+            if self._write_index_id is not None:
+                target = self.session.get(EmbeddingIndex, self._write_index_id)
+                if target is None:
+                    raise IndexIdentityError(
+                        f"写入目标索引 {self._write_index_id} 不存在"
+                    )
+                if not identity_matches_row(identity, target):
+                    raise IndexIdentityError(
+                        f"当前嵌入身份 {identity.key()} 与写入目标索引 {target.name} "
+                        f"的身份 {target.identity_key} 不一致，拒绝写入"
+                    )
+                self._index = target
+            else:
+                self._index = resolve_write_index(
+                    self.session, identity, commit=False
+                )
         return self._index
 
     async def _embed_texts(self, texts: list[str]) -> list[list[float]]:
@@ -704,12 +734,42 @@ class RAGService:
         hits = await rag_backend.retrieve(
             query, tenant_id=self.tenant_id, top_k=top_k, read_scope=self._read_scope
         )
-        return await self._expand_parent_chunks(hits, query=query)
+        # 读路径已经核对过身份；把生效索引带进父块复核，避免复核阶段再查一次库，
+        # 也保证展开用的索引与召回用的索引是同一个。
+        return await self._expand_parent_chunks(hits, query=query, index_id=self._read_index_id())
+
+    def _read_index_id(self) -> str | None:
+        """当前生效索引的 id；没有登记索引时返回 None（不按索引收窄）。
+
+        只为 ``RAGService.__new__`` 这类不带 provider 的单元测桩保留：拿不到
+        provider 就算不出查询身份。此时仍以已登记的 active 索引收窄——
+        只要库里登记过索引，旧索引的 stale hit 一样进不来。
+        """
+        embedding = getattr(self, "_embedding", None)
+        if embedding is None:
+            index = active_index(self.session)
+        else:
+            index = resolve_read_index_for(
+                self.session,
+                identity_from_provider(embedding),
+                tenant_id=self.tenant_id,
+            )
+        return index.id if index is not None else None
 
     async def _expand_parent_chunks(
-        self, hits: list[ChunkResult], *, query: str = ""
+        self,
+        hits: list[ChunkResult],
+        *,
+        query: str = "",
+        index_id: str | None = None,
     ) -> list[ChunkResult]:
-        """批量校验命中与父块；真实命中优先，扩展父块继承评分。"""
+        """批量校验命中与父块；真实命中优先，扩展父块继承评分。
+
+        所有回查都限定在当前生效索引：retired 索引的 stale hit 不得在这里
+        展开出旧父块，否则身份过滤在检索层做了、在展开层又被绕过去。
+        ``index_id`` 由 :meth:`search` 传入（读路径已核对过身份，这里不重复查库）；
+        为 None 表示当前没有登记索引，不按索引收窄。
+        """
         if not hits:
             return []
         as_of, schedule_at = retrieval_window(query)
@@ -729,6 +789,8 @@ class RAGService:
                     col(Document.deleted_at).is_(None),
                 )
             )
+            if index_id is not None:
+                stmt = stmt.where(col(DocumentChunk.index_id) == index_id)
             # uploader 模式下父块与命中块一样按上传者收窄；父块与子块同文档，
             # 权限仍按文档归属判定，不因子块有权就放行他人父正文。
             if self._read_scope is not None and self._read_scope.uploader_id is not None:
@@ -1061,9 +1123,19 @@ class RAGService:
                     stage="external_index_compensation",
                     error_code=type(exc).__name__,
                 ) from exc
-        for chunk in old_chunks:
-            self.session.delete(chunk)
-        self.session.flush()
+        # 写目标不是当前 active 索引（重建期写 preparing 索引）时**不删旧分块**：
+        # 旧索引必须继续可读，回退后旧数据也必须真实存在——就地替换会让回退
+        # 只剩一个空的登记行。
+        target_index_id = self._write_index().id
+        active = active_index(self.session, identity_from_provider(self._embedding).backend)
+        replacing_active = active is not None and active.id == target_index_id
+        if replacing_active:
+            # 即使就地替换，也只动目标索引名下的分块：其它索引（retired / 身份未知）
+            # 的分块属于别人的向量空间，删除它们就是破坏回退能力。
+            for chunk in old_chunks:
+                if chunk.index_id == target_index_id:
+                    self.session.delete(chunk)
+            self.session.flush()
         parent_id_map: dict[str, str] = {}
         for chunk_index, (piece, vector) in enumerate(zip(chunk_objs, embeddings, strict=True)):
             row_id = uuid.uuid4().hex

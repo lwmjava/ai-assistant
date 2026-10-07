@@ -873,16 +873,37 @@ def test_search_empty_query(client: TestClient) -> None:
     assert resp.status_code == 400
 
 
+def _register_local_index(session: Session, dim: int = 4) -> str:
+    """登记并激活一个 local 索引，返回其 id。
+
+    索引治理生效后，身份未知的分块（``index_id`` 为 NULL）**不参与检索**：
+    直接构造分块再检索的用例，若不先登记索引，就会命中「有历史数据但没有生效
+    索引」而被拒绝。因此这些用例必须显式声明自己的分块属于哪个索引。
+    """
+    from app.rag.index_identity import EmbeddingIndexIdentity
+    from app.rag.index_registry import resolve_write_index
+
+    identity = EmbeddingIndexIdentity(
+        backend="local",
+        provider="stub",
+        model="direct-store-test-model",
+        dim=dim,
+    )
+    return resolve_write_index(session, identity).id
+
+
 async def test_hybrid_search_skips_mismatched_embedding_dimensions(
     session: Session,
 ) -> None:
-    """同租户混维向量不得让检索 500，只召回与查询同维的分块。"""
+    """同租户混维向量不得让检索 500，只召回与索引登记同维的分块。"""
     import json
 
     from app.models.rag import Document
+    from app.rag.index_identity import IndexIdentityError
     from app.rag.vectorstore.local import LocalVectorStore
 
     tenant_id = "mix-dim-tenant"
+    index_id = _register_local_index(session, dim=4)
     doc = Document(tenant_id=tenant_id, user_id="mix-user", title="混维", chunk_count=2)
     session.add(doc)
     session.commit()
@@ -897,6 +918,7 @@ async def test_hybrid_search_skips_mismatched_embedding_dimensions(
             source="ok",
             embedding=json.dumps([1.0, 0.0, 0.0, 0.0]),
             tokens=json.dumps(["兼容", "维度"]),
+            index_id=index_id,
         )
     )
     session.add(
@@ -908,6 +930,7 @@ async def test_hybrid_search_skips_mismatched_embedding_dimensions(
             source="old",
             embedding=json.dumps([1.0, 0.0]),
             tokens=json.dumps(["旧", "维度"]),
+            index_id=index_id,
         )
     )
     session.commit()
@@ -922,13 +945,14 @@ async def test_hybrid_search_skips_mismatched_embedding_dimensions(
     assert any("兼容维度" in hit.content for hit in hits)
     assert all("旧维度不应" not in hit.content for hit in hits)
 
-    empty = await LocalVectorStore(session).hybrid_search(
-        query_embedding=[0.0, 1.0, 0.0],
-        query_tokens=["兼容"],
-        tenant_id=tenant_id,
-        top_k=5,
-    )
-    assert empty == []
+    # 查询向量维度与索引登记不符是「混用」，不是「查过了没有」：必须显式报错。
+    with pytest.raises(IndexIdentityError):
+        await LocalVectorStore(session).hybrid_search(
+            query_embedding=[0.0, 1.0, 0.0],
+            query_tokens=["兼容"],
+            tenant_id=tenant_id,
+            top_k=5,
+        )
 
 
 def _seed_hybrid_chunks(
@@ -941,11 +965,13 @@ def _seed_hybrid_chunks(
     """写入同租户当前文档分块，返回 document_id。
 
     chunks 为 (content, embedding, tokens)，按给定顺序插入。
+    分块挂到本用例登记的 local 索引名下——否则身份未知的分块不参与检索。
     """
     import json
 
     from app.models.rag import Document
 
+    index_id = _register_local_index(session, dim=len(chunks[0][1]))
     doc = Document(
         tenant_id=tenant_id,
         user_id=f"{tenant_id}-user",
@@ -965,6 +991,7 @@ def _seed_hybrid_chunks(
                 source=f"src-{index}",
                 embedding=json.dumps(embedding),
                 tokens=json.dumps(tokens),
+                index_id=index_id,
             )
         )
     session.commit()

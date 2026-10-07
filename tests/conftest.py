@@ -52,15 +52,27 @@ def _reset_embedding_index_registry():
     之后的检索只读该索引名下的分块。而不同用例故意使用不同维度的 Mock 嵌入，
     共享测试库时会互相冲突（后一个用例的写入被判为身份不符而拒绝）。
     这在生产不是问题——生产只有一套固定的模型配置——但测试必须隔离。
+
+    清理不留孤儿分块：索引行一旦删掉，挂在它名下的分块的 ``index_id`` 就变成
+    悬空引用——检索不到，还会让下游的严格判定误触发。索引行清空后所有带
+    ``index_id`` 的分块都是孤儿，一并清理。
     """
-    from sqlmodel import Session, select
+    from sqlmodel import Session, col, select
 
     from app.core.database import engine
-    from app.models.rag import EmbeddingIndex
+    from app.models.rag import DocumentChunk, EmbeddingIndex
 
     with Session(engine) as session:
         for row in session.exec(select(EmbeddingIndex)).all():
             session.delete(row)
+        # 清空后不存在任何索引行，凡带 index_id 的分块都成了悬空引用：既检索不到，
+        # 又会让「库里有数据却没有生效索引」的严格判定在别的用例里误触发
+        # （曾让 test_health_ok 因残留分块被判 degraded）。这里连同清理。
+        # 身份未知的分块（index_id 为 NULL）不动，它们是历史隔离用例的被测对象。
+        for chunk in session.exec(
+            select(DocumentChunk).where(col(DocumentChunk.index_id).is_not(None))
+        ).all():
+            session.delete(chunk)
         session.commit()
     yield
 

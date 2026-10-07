@@ -20,6 +20,7 @@ from app.rag.access import ReadScope
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.index_identity import EmbeddingIndexIdentity, identity_from_provider
 from app.rag.retrieval_guard import candidate_k, drop_injected_chunks
 from app.rag.vectorstore.base import ChunkResult
 from app.rag.vectorstore.base import VectorStore as ProjectVectorStore
@@ -81,6 +82,7 @@ class _ProjectVectorStoreAdapter(VectorStore):
         tenant_id: str,
         rrf_k: int,
         read_scope: ReadScope | None = None,
+        identity: EmbeddingIndexIdentity | None = None,
     ) -> None:
         self._store = store
         self._embedding = embedding
@@ -88,6 +90,7 @@ class _ProjectVectorStoreAdapter(VectorStore):
         self._tenant_id = tenant_id
         self._rrf_k = rrf_k
         self._read_scope = read_scope
+        self._identity = identity
 
     def add_texts(
         self,
@@ -136,6 +139,7 @@ class _ProjectVectorStoreAdapter(VectorStore):
             as_of=as_of,
             schedule_at=schedule_at,
             read_scope=self._read_scope,
+            identity=self._identity,
         )
         return [
             (
@@ -197,6 +201,13 @@ class LangChainRagBackend(RagBackend):
         self._tokenizer = tokenizer
         self._rrf_k = rrf_k
         self._splitter_name = splitter
+        self._identity: EmbeddingIndexIdentity | None = None
+
+    def _current_identity(self) -> EmbeddingIndexIdentity:
+        """当前查询 provider 的完整索引身份（惰性计算并缓存）。"""
+        if self._identity is None:
+            self._identity = identity_from_provider(self._embedding)
+        return self._identity
 
     async def split(self, text: str, *, chunk_size: int, overlap: int) -> list[str]:
         splitter = _build_text_splitter(chunk_size, overlap, self._splitter_name)
@@ -221,6 +232,7 @@ class LangChainRagBackend(RagBackend):
             tenant_id,
             self._rrf_k,
             read_scope,
+            self._current_identity(),
         )
         pairs = await adapter.asimilarity_search_with_score(query, k=candidate_k(top_k))
         results: list[ChunkResult] = []

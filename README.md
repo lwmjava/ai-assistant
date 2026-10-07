@@ -409,8 +409,8 @@ docker compose up -d --build
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |
 | `EMBEDDING_BATCH_SIZE` | 单次嵌入请求的文本条数（DashScope v3/v4 上限 10） | `10` |
 | `EMBEDDING_INDEX_VERSION` | 向量索引版本。换模型或改归一化/度量时递增，配合重建脚本切换 | `1` |
-| `EMBEDDING_NORMALIZATION` | 写入前的向量归一化：`l2` / `none`，属索引身份的一部分 | `l2` |
-| `EMBEDDING_METRIC` | 相似度度量：`cosine` / `ip` / `l2`，属索引身份的一部分 | `cosine` |
+| `EMBEDDING_NORMALIZATION` | 索引身份声明的归一化方式。**当前只支持 `l2`**，其它值在构造身份时直接报错 | `l2` |
+| `EMBEDDING_METRIC` | 索引身份声明的相似度度量。**当前只支持 `cosine`**，其它值在构造身份时直接报错 | `cosine` |
 | `MCP_ENABLED` | 是否启用 MCP 客户端 | `false` |
 | `MCP_SERVERS` | MCP 服务器清单（JSON 数组） | — |
 | `WORKFLOW_ENABLED` | 是否启用工作流引擎 | `false` |
@@ -426,6 +426,55 @@ docker compose up -d --build
 | `CORS_ORIGINS` | 允许的跨域来源（前后端分离部署时必填） | `*` |
 
 完整配置项见 [`.env.example`](.env.example)。
+
+## 升级提示：历史知识库会检索不到（RAG-032 / ADR-0008）
+
+向量现在绑定「索引身份」：`provider / deployment / model / dim / index_version /
+normalization / metric` 全部一致才算同一套索引。**同维度不同模型的向量不可比**，
+因此升级到含本卡的版本后：
+
+- 升级前已写入、但身份未知的历史分块（`index_id` 为 `NULL`）**默认不参与检索**；
+- 没有生效索引却存在历史分块时，检索会报 `unavailable`，而不是返回空结果冒充
+  「知识库里没有」；
+- 因此**升级后必须先登记或重建，否则老知识库会查不到东西**——这是预期行为，不是故障。
+
+先看现状：
+
+```bash
+python scripts/rebuild_embedding_index.py status
+curl -s localhost:8000/api/health | python -c "import sys,json;print(json.load(sys.stdin)['checks']['vector_store']['embedding_index'])"
+```
+
+`legacy_chunks > 0` 或 `status` 为 `unavailable` / `legacy_quarantined` 时按下面二选一处理。
+
+**A. 能举证历史向量确由当前模型产出 → 登记（不调用嵌入接口，不产生费用）**
+
+```bash
+python scripts/rebuild_embedding_index.py adopt \
+  --confirm \
+  --evidence "声明人=张三; 依据=部署记录 2026-09; 原模型=text-embedding-v3" \
+  --declared-model text-embedding-v3
+```
+
+维度相同**不能**证明向量空间相同：命令会校验声明的原模型与目标索引一致，并要求全部
+历史分块维度抽样匹配，任一条不符就整体拒绝；证据会写入索引的 `notes` 以便追溯。
+
+**B. 无法举证 → 重建（会调用嵌入接口，产生费用）**
+
+```bash
+python scripts/rebuild_embedding_index.py rebuild            # 默认只打印计划
+python scripts/rebuild_embedding_index.py rebuild --apply     # 真正执行
+python scripts/rebuild_embedding_index.py activate --index-id <新索引 id>
+```
+
+重建期间旧索引继续服务；失败时旧索引数据完全不变。回退：
+
+```bash
+python scripts/rebuild_embedding_index.py rollback --index-id <旧索引 id>
+```
+
+回退会校验当前模型配置与目标索引身份完全一致——只改索引名而仍用新模型查旧向量会被拒绝。
+详见 [`docs/rag/索引身份与切换.md`](docs/rag/索引身份与切换.md)。
 
 ## 模型能力契约与预算护栏（RAG-028）
 

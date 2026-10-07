@@ -16,6 +16,7 @@ from app.rag.access import ReadScope
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.index_identity import EmbeddingIndexIdentity, identity_from_provider
 from app.rag.retrieval_guard import candidate_k, drop_injected_chunks
 from app.rag.vectorstore.base import ChunkResult
 from app.rag.vectorstore.base import VectorStore as ProjectVectorStore
@@ -84,6 +85,7 @@ class _ProjectPydanticVectorStore:
         tenant_id: str,
         rrf_k: int,
         read_scope: ReadScope | None = None,
+        identity: EmbeddingIndexIdentity | None = None,
     ) -> None:
         self._store = store
         self._embedding = embedding
@@ -91,6 +93,7 @@ class _ProjectPydanticVectorStore:
         self._tenant_id = tenant_id
         self._rrf_k = rrf_k
         self._read_scope = read_scope
+        self._identity = identity
         self._impl = self._build_impl(store, embedding, tokenizer, tenant_id, rrf_k)
 
     @staticmethod
@@ -146,6 +149,7 @@ class _ProjectPydanticVectorStore:
             as_of=as_of,
             schedule_at=schedule_at,
             read_scope=self._read_scope,
+            identity=self._identity,
         )
 
 
@@ -184,11 +188,18 @@ class LlamaIndexRagBackend(RagBackend):
         self._tokenizer = tokenizer
         self._rrf_k = rrf_k
         self._splitter_name = splitter
+        self._identity: EmbeddingIndexIdentity | None = None
         # 预构造适配器，验证 LlamaIndex 依赖可用且接口对称
         _ProjectLlamaEmbedding(embedding)
         self._vector_adapter = _ProjectPydanticVectorStore(
             vector_store, embedding, tokenizer, tenant_id="", rrf_k=rrf_k
         )
+
+    def _current_identity(self) -> EmbeddingIndexIdentity:
+        """当前查询 provider 的完整索引身份（惰性计算并缓存）。"""
+        if self._identity is None:
+            self._identity = identity_from_provider(self._embedding)
+        return self._identity
 
     async def split(self, text: str, *, chunk_size: int, overlap: int) -> list[str]:
         from llama_index.core.schema import Document as LIDocument
@@ -216,6 +227,7 @@ class LlamaIndexRagBackend(RagBackend):
             tenant_id,
             self._rrf_k,
             read_scope,
+            self._current_identity(),
         )
         hits = await adapter.hybrid_search(query, candidate_k(top_k))
         return drop_injected_chunks(hits, keep=top_k)

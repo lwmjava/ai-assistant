@@ -65,7 +65,14 @@ def _retriever(backend: _Backend) -> HybridRetriever:
 
 
 class _NullEmbedding:
-    """不真正算向量的嵌入替身；Milvus 用例在到达嵌入前就会失败。"""
+    """不真正算向量的嵌入替身；Milvus 用例在到达嵌入前就会失败。
+
+    必须声明 model / dim：索引身份由 provider 派生，缺维度会被判为「无法建立身份」，
+    那样测到的就不是 Milvus 的故障语义了。这里返回的确实是 8 维零向量。
+    """
+
+    model = "null-embedding"
+    dim = 8
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         return [[0.0] * 8 for _ in texts]
@@ -427,10 +434,19 @@ async def test_milvus_search_failure_is_unavailable_not_no_hit() -> None:
         def search(self, *_args, **_kwargs):  # noqa: ANN002, ANN003
             raise RuntimeError("milvus-search-down")
 
+    # 本用例只锁「搜索异常必须冒泡」：集合解析由索引登记决定，这里桩掉，
+    # 否则需要先建库建索引，会把故障语义和身份解析耦在一起。
+    class _StubIndex:
+        id = "stub-index"
+        name = "stub_collection"
+        dim = 4
+
     store = MilvusVectorStore.__new__(MilvusVectorStore)
     store.session = None
     store._collection = _ExplodingCollection()  # type: ignore[attr-defined]
-    store._connect = lambda: _ExplodingCollection()  # type: ignore[method-assign]
+    store._connect = lambda *args, **kwargs: _ExplodingCollection()  # type: ignore[method-assign]
+    store._resolve_index = lambda *args, **kwargs: _StubIndex()  # type: ignore[method-assign]
+    store._collection_name = _StubIndex.name
 
     backend = NativeRagBackend(_NullEmbedding(), store, lambda text: [text])
     retriever = HybridRetriever(backend, tenant_id="t", top_k=5)

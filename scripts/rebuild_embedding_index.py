@@ -58,10 +58,14 @@ from app.rag.index_registry import (  # noqa: E402
 
 
 def _identity(model: str | None, dim: int | None, version: str | None) -> EmbeddingIndexIdentity:
-    """构造目标索引身份。model/dim 未给时沿用当前配置。"""
+    """构造目标索引身份。model/dim 未给时沿用当前配置。
+
+    与运行时共用 :func:`identity_from_provider` 的字段来源（provider 标签、
+    deployment、normalization、metric），避免脚本登记的 provider 与运行时不一致。
+    """
     return EmbeddingIndexIdentity(
         backend=current_backend(),
-        provider=settings.EMBEDDING_PROVIDER,
+        provider=settings.EMBEDDING_PROVIDER.strip().lower(),
         model=model or settings.EMBEDDING_MODEL,
         dim=int(dim or settings.EMBEDDING_DIM),
         index_version=version or settings.EMBEDDING_INDEX_VERSION,
@@ -71,23 +75,26 @@ def _identity(model: str | None, dim: int | None, version: str | None) -> Embedd
     )
 
 
+def _current_runtime_identity() -> EmbeddingIndexIdentity:
+    """当前真实生效 provider 的完整身份（与运行时写入/检索用的是同一个函数）。"""
+    from app.rag.embeddings.factory import get_embedding_provider
+
+    return identity_from_provider(get_embedding_provider())
+
+
 def _assert_config_matches(index: EmbeddingIndex) -> None:
-    """回退/激活前的硬性校验：模型配置必须与目标索引身份一致。
+    """回退/激活前的硬性校验：**完整身份**必须与当前配置一致。
 
     ADR-0008：回退路径必须具有对应模型能力配置，
-    不能只改 collection 名称后仍用新模型查询旧向量。
+    不能只改集合名而仍用新模型查旧向量。只比较 model/dim/version 会让
+    provider、部署端点、归一化或度量变了也查不出来，因此这里比较完整 key。
     """
-    expected = _identity(None, None, None)
-    if (index.model, index.dim, index.index_version) != (
-        expected.model,
-        expected.dim,
-        expected.index_version,
-    ):
+    expected = _current_runtime_identity()
+    if expected.key() != index.identity_key:
         raise IndexIdentityError(
-            f"当前配置 model={expected.model} dim={expected.dim} version={expected.index_version} "
-            f"与目标索引 {index.name}（model={index.model} dim={index.dim} "
-            f"version={index.index_version}）不一致。"
-            f"请先改配置再切换，不要只改索引名——那等于用新模型查旧向量。"
+            f"当前配置身份 {expected.key()} 与目标索引 {index.name} 的身份 "
+            f"{index.identity_key} 不一致。"
+            "请先改配置再切换，不要只改索引名——那等于用新模型查旧向量。"
         )
 
 
@@ -134,7 +141,12 @@ def cmd_activate(args: argparse.Namespace) -> int:
             print(f"索引不存在：{args.index_id}", file=sys.stderr)
             return 2
         _assert_config_matches(index)
-        activate_index(session, index.id)
+        # 校验下沉到领域入口 activate_index：脚本只是调用者，不再自己判一次。
+        activate_index(
+            session,
+            index.id,
+            expected_identity=_current_runtime_identity(),
+        )
         print(f"已激活 {index.name}；同后端其它 active 索引已转 retired（保留未删）。")
     return 0
 
@@ -147,7 +159,11 @@ def cmd_rollback(args: argparse.Namespace) -> int:
             print(f"索引不存在：{args.index_id}", file=sys.stderr)
             return 2
         _assert_config_matches(index)
-        activate_index(session, index.id)
+        activate_index(
+            session,
+            index.id,
+            expected_identity=_current_runtime_identity(),
+        )
         print(f"已回退到 {index.name}。注意：模型配置需与该索引身份一致，本命令已在激活前校验。")
     return 0
 
@@ -155,7 +171,8 @@ def cmd_rollback(args: argparse.Namespace) -> int:
 def cmd_adopt(args: argparse.Namespace) -> int:
     """把身份未知的历史分块登记到当前索引。
 
-    必须显式 --confirm，且维度抽样全部匹配才写；任何一条不匹配就整体拒绝。
+    必须显式 ``--confirm``，并给出**证据**（声明人/依据/原模型）；维度抽样全部
+    匹配且原模型声明与目标索引一致才写，任何一条不满足就整体拒绝。
     """
     init_db()
     with Session(engine) as session:
@@ -163,17 +180,37 @@ def cmd_adopt(args: argparse.Namespace) -> int:
         if index is None:
             print("没有生效索引，无法登记。先执行一次摄取或 prepare。", file=sys.stderr)
             return 2
-        count = legacy_chunk_count(session)
-        print(f"待登记历史分块：{count}；目标索引：{index.name}（dim={index.dim}）")
-        if not args.confirm:
-            print("这是把历史数据认定与当前模型兼容，必须人工确认后加 --confirm。")
-            return 1
+        # 先核对当前配置与目标索引身份：配置已经换了模型就不能把历史数据认成新模型。
         try:
-            adopted = adopt_legacy_chunks(session, index)
+            _assert_config_matches(index)
         except IndexIdentityError as exc:
             print(f"拒绝登记：{exc}", file=sys.stderr)
             return 3
-        print(f"已登记 {adopted} 条历史分块到 {index.name}。")
+        count = legacy_chunk_count(session)
+        runtime = _current_runtime_identity()
+        print(f"待登记历史分块：{count}")
+        print(f"目标索引：{index.name}")
+        print(f"目标索引完整身份：{index.identity_key}")
+        print(f"当前配置完整身份：{runtime.key()}")
+        print(
+            "注意：维度相同不能证明向量空间相同。只有在能举证这些向量确由"
+            f"{index.model}（{index.deployment or '默认部署'}）产生时才能登记。"
+        )
+        if not args.confirm:
+            print("这是把历史数据认定与当前模型兼容，必须人工确认后加 --confirm。")
+            return 1
+        evidence = (args.evidence or "").strip()
+        if not evidence:
+            print("缺少 --evidence（声明人 / 依据 / 原模型与版本），拒绝登记。", file=sys.stderr)
+            return 3
+        try:
+            adopted = adopt_legacy_chunks(
+                session, index, evidence=evidence, declared_model=args.declared_model
+            )
+        except IndexIdentityError as exc:
+            print(f"拒绝登记：{exc}", file=sys.stderr)
+            return 3
+        print(f"已登记 {adopted} 条历史分块到 {index.name}，证据已写入索引 notes。")
     return 0
 
 
@@ -229,7 +266,14 @@ def cmd_rebuild(args: argparse.Namespace) -> int:
                 blocks=blocks,
             )
             try:
-                service = RAGService(session, doc.tenant_id, embedding_provider=provider)
+                # 显式把 preparing 目标传给写入链路：旧 active 继续服务，
+                # 新分块写到目标索引名下，失败时旧索引数据完全不变。
+                service = RAGService(
+                    session,
+                    doc.tenant_id,
+                    embedding_provider=provider,
+                    write_index_id=index.id,
+                )
                 asyncio.run(
                     service.reindex_document_in_place(
                         doc, parsed, content_hash=doc.content_hash or ""
@@ -288,6 +332,8 @@ def main() -> int:
 
     p_adopt = sub.add_parser("adopt", help="把身份未知的历史分块登记到当前索引")
     p_adopt.add_argument("--confirm", action="store_true")
+    p_adopt.add_argument("--evidence", default="", help="登记证据：声明人 / 依据 / 原模型与版本")
+    p_adopt.add_argument("--declared-model", default=None, dest="declared_model")
     p_adopt.set_defaults(func=cmd_adopt)
 
     p_rebuild = sub.add_parser("rebuild", help="按目标身份全量重建")

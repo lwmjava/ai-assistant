@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Literal
 
 from app.rag.access import ReadScope
+from app.rag.index_identity import EmbeddingIndexIdentity
 
 
 @dataclass
@@ -55,11 +56,15 @@ class VectorStore(ABC):
         as_of: datetime | None = None,
         schedule_at: datetime | None = None,
         read_scope: ReadScope | None = None,
+        identity: EmbeddingIndexIdentity | None = None,
     ) -> list[ChunkResult]:
         """混合检索：融合稠密与稀疏结果，返回按融合分排序的前 top_k 个分块。
 
         ``rrf_k`` 为倒数排名融合常数，须与实现类签名保持一致，避免新后端漏参。
         ``read_scope`` 为鉴权主体的有效读范围，必须在候选集构造阶段生效。
+        ``identity`` 是**当前查询 provider 的完整索引身份**；实现类必须在取候选
+        前拿它与生效索引核对（同维异模型靠维度发现不了）。默认 None 只为兼容
+        测试里的假实现——真实读路径不允许省略。
         """
 
     @abstractmethod

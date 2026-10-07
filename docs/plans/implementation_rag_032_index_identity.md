@@ -46,21 +46,24 @@
 @dataclass(frozen=True)
 class EmbeddingIndexIdentity:
     backend: str          # local | milvus
-    provider: str         # OpenAICompatibleEmbeddingProvider | MockEmbeddingProvider ...
+    provider: str         # EMBEDDING_PROVIDER 配置标签（不是实现类名）
     model: str            # text-embedding-v3
-    deployment: str       # 部署/修订标识；不存在时为空串，不猜
+    deployment: str       # 由 base_url 派生，去凭据；无则留空，不猜
     dim: int
     index_version: str    # 显式版本，默认 "1"
-    normalization: str    # l2 | none —— 影响向量值，必须绑定
-    metric: str           # cosine | ip | l2
+    normalization: str    # 只允许 l2（当前实现的真实约定）
+    metric: str           # 只允许 cosine（当前实现的真实约定）
 
-    def key(self) -> str: ...          # 稳定标识，不含密钥/连接串
+    def key(self) -> str: ...          # 稳定标识，不含密钥/凭据
     def collection_name(self) -> str:  # Milvus 集合名；Local 不用
 ```
 
-`EmbeddingProvider` 新增 `index_identity()` 默认实现（从 `model` / `dim` 构造，
-`deployment` 留空），各 provider 可覆写。这样身份的**唯一生产点**是 provider，
-避免各处拼字符串。
+> **实现结果修正（第二轮）**：`EmbeddingProvider` 最终**没有**新增 `index_identity()`。
+> 身份的唯一生产点是 `app/rag/index_identity.py::identity_from_provider(provider)`，
+> 运行时与脚本共用它。原因是 `provider` 若取 `type(provider).__name__`，OpenAI
+> 官方 / Ollama / 各类兼容服务都会落成同一个 `OpenAICompatibleEmbeddingProvider`，
+> 两个不同端点、相同 model/dim 会得到**完全相同**的身份键；改用配置标签
+> `EMBEDDING_PROVIDER` + 由 `base_url` 派生的 `deployment` 才能区分真实向量空间。
 
 ### 3.2 存储（新表 + 迁移）
 
@@ -91,8 +94,8 @@ class EmbeddingIndexIdentity:
 |---|---|---|
 | 写入 `service.py:423`（摄取）与 `:1060`（重解析） | 无校验 | 写 `embedding` 时同时落当前 active 索引的 `index_id`；若目标索引 `status != active` → 抛错 |
 | 查询 `local.py:170,183` | 按**查询向量长度**跳过 | 改为按 **active 索引的 `index_id`** 过滤；维度校验以索引登记的 `dim` 为准，不以查询向量为准 |
-| 查询 `milvus.py:90 _verify_schema` | 只校验有没有 `document_id` 字段 | 扩展：校验集合名对应的索引身份与当前 active 一致（dim / metric / provider / model），不一致 → `MilvusUnavailableError` |
-| 工厂 `factory.py:13` | 字符串 switch | 取 store 时校验目标索引已 `active` 且身份匹配；失败保留旧读路径 |
+| 查询 `milvus.py` | 集合名固定 `MILVUS_COLLECTION`，检索不过滤身份 | **实现结果修正**：集合名改为取生效索引的 `name`；`_verify_schema` 仍只校验字段存在性（新增 `index_id`）；身份校验发生在 `_resolve_index()`（无 active 或身份不符 → 抛错），检索表达式与 SQL 回查都按 `index_id` 过滤 |
+| 工厂 `factory.py:13` | 字符串 switch | **未按计划改动**：身份校验落在 `MilvusVectorStore._resolve_index()` 与各 backend 调用点，工厂只做后端选择。把校验放在工厂会让直接构造 store 的路径绕过 |
 
 **历史数据处理（ADR-0008:22 要求的「登记路径」）**：
 `index_id IS NULL` 的 chunk **默认不参与检索**（拒绝混用，而不是静默 skip）。
@@ -172,7 +175,42 @@ rollback --index-id
 
 ---
 
-## 7. 待确认（如与已批准决定冲突才升级）
+## 7. 实现结果对账（2026-10-07 第二轮，独立审查后修正）
 
-无。ADR-0008 已裁定方案边界、禁止项与验证项；本计划只落实现细节。
-唯一需要人工执行的是「历史数据登记」——属业务判断，Agent 不自动执行。
+首轮提交 `671901f` 经独立审查（`docs/reviews/2026-10-07-RAG-032索引身份与切换独立审查.md`）
+判为「不建议关闭」（High 6 / Medium 5 / Low 1），本轮按审查结论修正，并补 §5.4 的最低补测。
+
+### 7.1 与 §5 文件清单的差异（以实际提交为准）
+
+| 计划文件 | 实际情况 |
+|---|---|
+| `app/rag/embeddings/base.py` 加 `index_identity()` | **未做**。身份统一由 `identity_from_provider()` 生产，理由见 §3.1 修正 |
+| `app/rag/vectorstore/factory.py` 校验 active 索引 | **未做**，校验点改在 store 与 backend，理由见 §3.3 |
+| `app/api/routes/admin_system.py` / `app/schemas/admin.py` 展示身份 | **未做**。管理页不在 RAG-032 的 `allowed_paths` 内，本卡只改已授权的 `app/api/routes/health.py`（并已在 `tasks.yaml` 显式扩展边界并记录原因） |
+| `app/rag/vectorstore/milvus.py` 只改 `_verify_schema` | 实际改了集合解析、`_resolve_index`、检索表达式、SQL 回查与父块复核 |
+
+### 7.2 审查项关闭情况
+
+| 编号 | 处置 |
+|---|---|
+| H-01 查询侧同维异模型混用 | 已修：`VectorStore.hybrid_search` 增加 `identity` 参数，三个 backend 传入，Local/Milvus 共用 `resolve_read_index_for()` |
+| H-02 无法写 preparing 目标 / 旧分块被删 | 已修：`RAGService(write_index_id=...)`；写目标 ≠ active 时不删旧分块；父块复核限定同一 `index_id` |
+| H-03 激活/回退可绕过 | 已修：校验下沉到 `activate_index`（failed / 空 / 身份全字段比对），脚本只传完整 identity |
+| H-04 Milvus 未接入身份治理 | 已修：集合名取生效索引 `name`、schema 要求 `index_id`、检索与回查按 `index_id` 过滤，并以假 pymilvus 覆盖 |
+| H-05 无 active 时读历史块 | 已修：改为 `IndexUnavailableError`；空库才走 no_hit |
+| H-06 provider 取实现类名 | 已修：配置标签 + `base_url` 派生 deployment，运行时与脚本共用同一函数 |
+| M-01 adopt 无证据 | 已修：`--evidence` / `--declared-model`，证据落 `notes`，同维异模型拒绝 |
+| M-02 normalization/metric 不生效 | 已修：只接受 `l2` / `cosine`，其它值构造即报错；health 报告实际行为 |
+| M-03 可观察性不足 | 已修：health 的向量库检查项在 unknown / legacy 隔离 / 不支持配置时为 `degraded` 并带 `reason`；Local 过滤后为空且存在被隔离数据时记 `warning`；README 补升级影响与操作步骤 |
+| M-04 测试固化了错误行为 | 已修：修订为严格隔离断言，专项用例 18 → 55 条 |
+| M-05 越过 allowed_paths | 已修：`tasks.yaml` 显式加入 `app/api/routes/health.py` 并在 `execution.progress` 记录原因 |
+| L-01 文档与字段漂移 | 已修：条数更正、`fingerprint` / `identity_key` 分列、实现说明与计划同步 |
+
+### 7.3 本轮仍未关闭（需后续卡承接）
+
+- **Milvus 真实写入闭环**：`MilvusVectorStore.add()` 在 `app/` 下仍无调用点，
+  真实 Milvus 连通性验证仍属 RAG-015。
+- **检索结果缓存绑定索引身份**：仓库尚无检索缓存，ADR-0008:25 由 RAG-019 承接，
+  届时缓存键必须包含 active index identity。
+- **激活前的抽样检索 / 权限 / 完成度校验**：本轮只做了「实际分块数 > 0」与完整身份
+  比对；抽样检索命中校验与人工授权门仍缺，**真实重要数据重建仍需另获授权**。

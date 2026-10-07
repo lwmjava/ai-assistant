@@ -9762,6 +9762,10 @@ tasks:
       - "tests/"
       - "docs/"
       - "tasks.yaml"
+      # 因可观察性需求经本轮扩展：健康接口必须暴露「没有生效索引 / 历史分块被隔离 /
+      # 登记了不支持的归一化或度量」，否则升级后查不到数据时运维无从发现。
+      # 见 docs/reviews/2026-10-07-RAG-032索引身份与切换独立审查.md M-03 / M-05。
+      - "app/api/routes/health.py"
       forbidden_paths:
       - ".env"
       - "生产数据"
@@ -9786,7 +9790,7 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "ADR-0008 Accepted，新索引准备/验证/切换与旧索引回退方向已批准；先用临时库/测试collection细化验证，真实重要数据重建和生产切换另获授权。"
-      progress: "2026-10-06：用户批准索引身份及新旧索引切换治理；见 docs/adr/0008-embedding-index-identity-and-switching.md。不得原地覆盖或同维异模型混用。"
+      progress: "2026-10-06：用户批准索引身份及新旧索引切换治理；见 docs/adr/0008-embedding-index-identity-and-switching.md。不得原地覆盖或同维异模型混用。2026-10-07：首轮实现（671901f）经独立审查判为不建议关闭（High 6 / Medium 5 / Low 1），第二轮按审查结论修完全部 High 与 Medium，并按 §5.4 补齐 10 项最低补测与 5 处变异验证；详见 docs/reviews/2026-10-07-RAG-032索引身份与切换独立审查.md 与 docs/plans/implementation_rag_032_index_identity.md §7。因可观察性需求（health 必须暴露 unknown / legacy 隔离 / 不支持配置），allowed_paths 本轮显式扩展 app/api/routes/health.py。仍未关闭：Milvus 真实写入闭环（RAG-015）、检索缓存绑定索引身份（RAG-019）、激活前的抽样检索命中校验与人工授权门，真实重要数据重建仍需另获授权。"
       nightly:
         eligible: false
         production_access: false

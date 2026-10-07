@@ -42,6 +42,7 @@ from app.rag.index_registry import (
     chunk_count_for,
     ensure_index,
     legacy_chunk_count,
+    probe_retrieval_hits,
     resolve_read_index,
     resolve_read_index_for,
     resolve_write_index,
@@ -381,11 +382,20 @@ async def test_same_dim_different_model_service_search_is_refused(db: Session) -
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend_name", ["native", "langchain", "llamaindex"])
-async def test_all_backends_carry_query_identity(db: Session, backend_name: str) -> None:
-    """§5.4-1：三种 backend 都把查询身份带进检索，不能只靠某一条路径拦。"""
+async def test_all_backends_carry_query_identity(
+    db: Session, backend_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§5.4-1：三种 backend 都把查询身份带进检索，不能只靠某一条路径拦。
+
+    M-07 复核补测：此前这条用例只断言「最终会抛 IndexIdentityError」，而该异常
+    还会被 ``RAGService._read_index_id()`` 这道第二道检查兜住——变异「Local 不再
+    接收 identity」时它依旧是绿的，等于锁的不是它声称的东西。这里直接对
+    ``LocalVectorStore.hybrid_search`` 的入参断言。
+    """
     from app.rag.backend.factory import get_rag_backend
     from app.rag.embeddings.mock import tokenize
     from app.rag.service import RAGService
+    from app.rag.vectorstore import local as local_module
 
     # 工厂在依赖缺失时会静默降级为 native；先确认请求的后端真的生效，
     # 否则「覆盖了三种后端」是假的，不如显式跳过。
@@ -399,6 +409,23 @@ async def test_all_backends_carry_query_identity(db: Session, backend_name: str)
     if probe.name != backend_name:
         pytest.skip(f"{backend_name} 依赖缺失，实际生效后端为 {probe.name}")
 
+    passed_into_store: list = []
+    passed_into_read_check: list = []
+    real_search = LocalVectorStore.hybrid_search
+    real_resolve = local_module.resolve_read_index_for
+
+    async def spy_search(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        passed_into_store.append(kwargs.get("identity"))
+        return await real_search(self, *args, **kwargs)
+
+    def spy_resolve(session, identity, **kwargs):  # type: ignore[no-untyped-def]
+        """记录 Local 真正交给读侧身份校验的值——这才「三种 backend 都传身份」的落点。"""
+        passed_into_read_check.append(identity)
+        return real_resolve(session, identity, **kwargs)
+
+    monkeypatch.setattr(LocalVectorStore, "hybrid_search", spy_search)
+    monkeypatch.setattr(local_module, "resolve_read_index_for", spy_resolve)
+
     tenant = f"bk-{uuid4().hex[:8]}"
     service_a = RAGService(db, tenant, embedding_provider=_FixedProvider("model-a", 8))
     await service_a.ingest_text("甲内容乙内容", title="甲文档", source="s", user_id="u1")
@@ -407,6 +434,14 @@ async def test_all_backends_carry_query_identity(db: Session, backend_name: str)
     with pytest.raises(IndexIdentityError):
         await service_b.search("甲", backend=backend_name)
     assert service_b.last_backend_name == backend_name
+
+    expected = identity_from_provider(_FixedProvider("model-b", 8))
+    assert passed_into_store, "前提：检索必须真的走到 LocalVectorStore"
+    assert passed_into_store[-1] is not None, "backend 必须把查询身份交给向量库"
+    assert passed_into_store[-1].key() == expected.key()
+    assert passed_into_read_check, "前提：Local 必须走读侧身份校验"
+    assert passed_into_read_check[-1] is not None, "Local 必须把 identity 传进读侧校验"
+    assert passed_into_read_check[-1].key() == expected.key()
 
 
 @pytest.mark.asyncio
@@ -886,6 +921,16 @@ class _FakeCollection:
 _CANDIDATE_IDS: list[str] = []
 
 
+def _milvus_serves(*chunk_ids: str) -> None:
+    """让假集合像「向量已真的写入 Milvus」那样返回候选。
+
+    激活前的抽样检索校验（ADR-0008:23 / M-09）要求目标索引的向量能被召回；
+    假集合默认返回空候选，那等于「Milvus 里根本没有这些向量」，激活当然要拒绝。
+    """
+    _CANDIDATE_IDS.clear()
+    _CANDIDATE_IDS.extend(chunk_ids)
+
+
 @pytest.fixture
 def fake_pymilvus(monkeypatch: pytest.MonkeyPatch):
     """注入假 pymilvus，使 Milvus 路径可在本机无 docker 时被测试覆盖。"""
@@ -922,7 +967,8 @@ def test_milvus_collection_name_comes_from_active_index(
 
     identity = _identity("model-a", 8, backend="milvus")
     index = ensure_index(db, identity)
-    _chunk(db, index_id=index.id, dim=8)
+    ready = _chunk(db, index_id=index.id, dim=8)
+    _milvus_serves(ready.id)
     activate_index(db, index.id)
 
     store = MilvusVectorStore(db)
@@ -939,6 +985,7 @@ def test_milvus_search_filters_by_index_id(db: Session, fake_pymilvus) -> None:
     active_identity = _identity("model-a", 8, backend="milvus")
     active = ensure_index(db, active_identity)
     mine = _chunk(db, index_id=active.id, dim=8, text="甲")
+    _milvus_serves(mine.id)
     activate_index(db, active.id)
 
     # 另一个（已退役）索引名下的同名分块：不该被当前索引召回
@@ -970,7 +1017,8 @@ def test_milvus_rejects_mismatched_query_identity(db: Session, fake_pymilvus) ->
 
     identity = _identity("model-a", 8, backend="milvus")
     index = ensure_index(db, identity)
-    _chunk(db, index_id=index.id, dim=8)
+    ready = _chunk(db, index_id=index.id, dim=8)
+    _milvus_serves(ready.id)
     activate_index(db, index.id)
 
     store = MilvusVectorStore(db)
@@ -989,10 +1037,13 @@ def test_milvus_verify_schema_requires_index_id_field(db: Session, fake_pymilvus
 
     identity = _identity("model-a", 8, backend="milvus")
     index = ensure_index(db, identity)
-    _chunk(db, index_id=index.id, dim=8)
+    ready = _chunk(db, index_id=index.id, dim=8)
+    _milvus_serves(ready.id)
     activate_index(db, index.id)
 
-    # 手工造一个只有旧字段（无 index_id）的集合
+    # 激活时的检索抽样会让 store 建出一个合规集合；这里刻意换成一个缺 index_id
+    # 的旧集合：既有集合升级前就是这个样子，必须显式报错而不是当作已实现控制。
+    _FakeCollection.reset()
     _FakeCollection(
         index.name,
         _FakeSchema([
@@ -1083,15 +1134,43 @@ def test_health_reports_actual_behaviour_not_config(db: Session) -> None:
 
 
 def test_identity_exposes_no_secret_material() -> None:
-    identity = identity_from_provider(_Provider())
+    """身份要能落库、进日志与 health：绝不能夹带凭据或查询串。
+
+    L-03：此前这里的桩 ``_Provider()`` 没有 ``base_url``，``deployment`` 恒为空串，
+    ``if identity.deployment:`` 里的断言**永不执行**——变异「去掉凭据剥离」时
+    这条用例仍是绿的。换用带凭据端点的真实 provider 后它才真的锁住这件事。
+    """
+    from app.rag.embeddings.openai_compatible import OpenAICompatibleEmbeddingProvider
+
+    provider = OpenAICompatibleEmbeddingProvider(
+        base_url="https://svc-user:s3cr3t@example.com/v1?timeout=30",
+        api_key="k",
+        model="m",
+        dim=8,
+    )
+    identity = identity_from_provider(provider)
     rendered = json.dumps(identity.describe(), ensure_ascii=False)
+    assert identity.deployment, "前提：本用例必须走进 deployment 分支"
+    for secret in ("s3cr3t", "svc-user", "timeout=30"):
+        assert secret not in rendered
+        assert secret not in identity.key()
     for secret in (settings.EMBEDDING_API_KEY, settings.MILVUS_TOKEN):
         if secret:
             assert secret not in rendered
     # 部署标识可以含 host/path，但绝不能含凭据或查询串
-    if identity.deployment:
-        assert "@" not in identity.deployment
-        assert "?" not in identity.deployment
+    assert "@" not in identity.deployment
+    assert "?" not in identity.deployment
+
+
+def test_normalization_and_metric_are_stored_normalized() -> None:
+    """L-04：只按小写校验却**原样入库**，会让登记的 ``L2`` 与运行时的 ``l2``
+    成为两个永远对不上的索引，且 health 的小写判定还会把它报成 supported。"""
+    loose = _identity("m", 8, normalization="L2", metric="Cosine")
+    strict = _identity("m", 8)
+    assert loose.normalization == "l2"
+    assert loose.metric == "cosine"
+    assert loose.key() == strict.key()
+    assert loose.fingerprint() == strict.fingerprint()
 
 
 def test_identity_matches_row_compares_full_key() -> None:
@@ -1105,3 +1184,126 @@ def test_resolve_read_index_for_returns_none_only_for_empty_library(db: Session)
     assert resolve_read_index_for(db, None, tenant_id=f"n-{uuid4().hex[:8]}") is None
     index = resolve_write_index(db, _identity("m", 8))
     assert resolve_read_index_for(db, identity_from_provider(_Provider("m", 8))).id == index.id
+
+
+# ── 9. 第二轮复审补测（H-07 / M-08 / M-09）──────────────────
+
+
+@pytest.mark.asyncio
+async def test_search_narrows_parent_expansion_by_read_index_id(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """M-08：``search()`` → ``_read_index_id()`` 这条真实生产链路的父块收窄。
+
+    既有的父块用例都显式传 ``index_id`` 直接调 ``_expand_parent_chunks``，绕过了
+    生产侧唯一的取值来源 ``_read_index_id()``；变异「``_read_index_id()`` 恒返回
+    None」时它们一条都不红。这里从 ``search()`` 进入，并用 sideways 注入一个
+    retired 索引名下的 stale hit（backend 在切换前拿到的结果就该长这样）。
+    """
+    from app.rag.service import RAGService
+    from app.rag.vectorstore.base import ChunkResult
+
+    tenant = f"rid-{uuid4().hex[:8]}"
+    service = RAGService(db, tenant, embedding_provider=_FixedProvider("model-a", 8))
+    await service.ingest_text(
+        "父块内容。子块内容A。", title="父子", source="s", user_id="u1", strategy="parent_child"
+    )
+    active = active_index(db)
+    assert active is not None
+    assert service._read_index_id() == active.id, "前提：收窄用的索引来自 _read_index_id()"
+
+    stale = db.exec(
+        select(DocumentChunk).where(col(DocumentChunk.index_id) == active.id)
+    ).first()
+    assert stale is not None
+    retired = ensure_index(db, _identity("model-a", 8, index_version="0"))
+    stale.index_id = retired.id
+    db.add(stale)
+    db.commit()
+
+    class _StaleHitBackend:
+        """模拟「命中在切换前算出」：命中的分块已经不在生效索引名下。"""
+
+        name = "native"
+
+        async def retrieve(self, *args, **kwargs):  # noqa: ANN002,ANN003
+            return [
+                ChunkResult(
+                    id=stale.id,
+                    content="旧内容",
+                    source="s",
+                    document_id=stale.document_id,
+                    score=0.9,
+                )
+            ]
+
+    monkeypatch.setattr(service, "_resolve_backend", lambda backend=None: _StaleHitBackend())
+    result = await service.search("父块", backend="native")
+    assert stale.id not in [h.id for h in result], (
+        "retired 索引的 stale hit 不得经 _read_index_id() 的收窄被展开"
+    )
+
+
+def test_activate_is_accepted_when_target_chunks_are_reachable(db: Session) -> None:
+    """M-09 正例：目标索引的分块能被真实检索命中 → 允许切换。
+
+    ADR-0008:23 要求的五项校验里，「检索」此前没有实现，一个有几万条分块但永远
+    0 命中的索引照样能激活，激活后表现为正常 no_hit——与空索引是同类静默丢失。
+    """
+    old = resolve_write_index(db, _identity("model-a", 8))
+    _chunk(db, index_id=old.id)
+    target = ensure_index(db, _identity("model-b", 8))
+    _chunk(db, index_id=target.id, text="乙")
+
+    activate_index(db, target.id)
+
+    assert active_index(db).id == target.id
+    db.refresh(old)
+    assert old.status == IndexStatus.RETIRED.value
+    assert probe_retrieval_hits(db, target) >= 1, "激活后切换完成的索引必须真的能召回自己"
+
+
+def test_activate_refuses_index_whose_chunks_are_unreachable(db: Session) -> None:
+    """M-09 反例：名下有分块、但检索一条都命中不了 → 拒绝激活且**原样撤销切换**。"""
+    old = resolve_write_index(db, _identity("model-a", 8))
+    _chunk(db, index_id=old.id)
+    target = ensure_index(db, _identity("model-b", 8))
+    _chunk(db, index_id=target.id, text="乙")
+    # 目标分块挂在已下线文档上：行数存在，检索一条都出不来
+    row = db.exec(
+        select(DocumentChunk).where(col(DocumentChunk.index_id) == target.id)
+    ).first()
+    assert row is not None
+    doc = db.get(Document, row.document_id)
+    assert doc is not None
+    doc.is_current = False
+    db.add(doc)
+    db.commit()
+
+    with pytest.raises(IndexIdentityError) as exc:
+        activate_index(db, target.id)
+    assert "抽样检索命中数为 0" in str(exc.value)
+
+    # 会话内（还没 refresh）就不该留下半切换：状态写入后是同一批 ORM 对象，
+    # 回滚不干净的话后续任何一次 commit 都会把它落库。
+    assert old.status == IndexStatus.ACTIVE.value
+    assert target.status == IndexStatus.PREPARING.value
+    assert active_index(db).id == old.id, "拒绝后读路径必须还是旧索引"
+    db.refresh(target)
+    assert target.status == IndexStatus.PREPARING.value, "不得留下半切换的中间态"
+    db.refresh(old)
+    assert old.status == IndexStatus.ACTIVE.value
+
+
+def test_activate_refuses_index_whose_vectors_dim_drift(db: Session) -> None:
+    """M-09 反例 2：登记 dim=16 却写进了 8 维向量，检索必然读不出来。"""
+    old = resolve_write_index(db, _identity("model-a", 8))
+    _chunk(db, index_id=old.id)
+    target = ensure_index(db, _identity("model-b", 16))
+    _chunk(db, index_id=target.id, dim=8, text="乙")
+
+    with pytest.raises(IndexIdentityError):
+        activate_index(db, target.id)
+    assert active_index(db).id == old.id
+    db.refresh(target)
+    assert target.status == IndexStatus.PREPARING.value

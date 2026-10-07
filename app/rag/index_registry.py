@@ -11,8 +11,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 from sqlmodel import Session, col, select
@@ -26,6 +28,11 @@ from app.rag.index_identity import (
 )
 
 logger = logging.getLogger(__name__)
+
+# 激活前的抽样检索规模：取这几条分块各自的向量做自匹配检索，
+# 命中 1 条就足以证明读路径是通的（不需要逐条证明）。
+RETRIEVAL_PROBE_SAMPLE_SIZE = 5
+RETRIEVAL_PROBE_TOP_K = 5
 
 
 class IndexUnavailableError(RuntimeError):
@@ -135,7 +142,9 @@ def activate_index(
     - 给了 ``expected_identity`` 就必须**全字段**相等（不能只比 model/dim/version，
       否则 provider、部署端点、归一化或度量变了也查不出来）；
     - 实际分块数为 0 且未显式 ``allow_empty``：拒绝——空索引一旦激活，
-      整个知识库会表现为正常 no_hit，是静默的数据丢失。
+      整个知识库会表现为正常 no_hit，是静默的数据丢失；
+    - ADR-0008:23 的**检索校验**：名下确实有分块、但抽样检索一条都命中不了时拒绝，
+      并把已经写下的状态切换**原样撤销**（详 :func:`probe_retrieval_hits`）。
 
     ``commit=False`` 用于写入事务内部：索引记录随业务提交一起落库，
     避免中途提交半个事务。
@@ -168,21 +177,30 @@ def activate_index(
         )
         target.chunk_count = actual
     now = _now()
-    for row in session.exec(
-        select(EmbeddingIndex).where(
-            col(EmbeddingIndex.backend) == target.backend,
-            col(EmbeddingIndex.status) == IndexStatus.ACTIVE.value,
-        )
-    ).all():
-        if row.id == target.id:
-            continue
-        row.status = IndexStatus.RETIRED.value
-        row.retired_at = now
-        session.add(row)
-    target.status = IndexStatus.ACTIVE.value
-    target.activated_at = now
-    target.retired_at = None
-    session.add(target)
+    retired_rows = [
+        row
+        for row in session.exec(
+            select(EmbeddingIndex).where(
+                col(EmbeddingIndex.backend) == target.backend,
+                col(EmbeddingIndex.status) == IndexStatus.ACTIVE.value,
+            )
+        ).all()
+        if row.id != target.id
+    ]
+    # 先落状态再校验检索：``hybrid_search`` 只认 active 索引，抽样必须在切换之后
+    # 才能真正走一遍生产读路径。校验不通过时 _revert_switch 把它恢复原样。
+    previous = _apply_switch(session, target, retired_rows, now)
+    try:
+        if chunk_count_for(session, target.id) > 0 and probe_retrieval_hits(session, target) == 0:
+            raise IndexIdentityError(
+                f"索引 {target.name} 名下有分块，但抽样检索命中数为 0，拒绝激活"
+                "（读了等于没读：向量维度异常、文档已下线或读路径未接通都会这样表现，"
+                "激活后知识库静默退化为 no_hit，与空索引是同一类数据丢失）。"
+                "已撤销本次切换，请检查重建结果后重试。"
+            )
+    except Exception:
+        _revert_switch(session, target, previous, retired_rows)
+        raise
     if commit:
         session.commit()
     else:
@@ -192,6 +210,111 @@ def activate_index(
         target.name, target.backend, target.model, target.dim,
     )
     return target
+
+
+def _apply_switch(
+    session: Session,
+    target: EmbeddingIndex,
+    retired_rows: list[EmbeddingIndex],
+    now: datetime,
+) -> tuple[str, datetime | None]:
+    """把 target 切成 active、同后端其它 active 切成 retired。返回原状态以便撤销。"""
+    for row in retired_rows:
+        row.status = IndexStatus.RETIRED.value
+        row.retired_at = now
+        session.add(row)
+    previous = (target.status, target.activated_at)
+    target.status = IndexStatus.ACTIVE.value
+    target.activated_at = now
+    target.retired_at = None
+    session.add(target)
+    session.flush()
+    return previous
+
+
+def _revert_switch(
+    session: Session,
+    target: EmbeddingIndex,
+    previous: tuple[str, datetime | None],
+    retired_rows: list[EmbeddingIndex],
+) -> None:
+    """撤销 :func:`_apply_switch`：校验不通过时不留半切换的中间态。"""
+    for row in retired_rows:
+        row.status = IndexStatus.ACTIVE.value
+        row.retired_at = None
+        session.add(row)
+    target.status, target.activated_at = previous
+    session.add(target)
+    session.flush()
+
+
+def identity_of_row(row: EmbeddingIndex) -> EmbeddingIndexIdentity:
+    """把登记行还原成身份对象，用于读路径比对与检索校验。"""
+    return EmbeddingIndexIdentity(
+        backend=row.backend,
+        provider=row.provider,
+        model=row.model,
+        dim=row.dim,
+        index_version=row.index_version,
+        deployment=row.deployment or "",
+        normalization=row.normalization,
+        metric=row.metric,
+    )
+
+
+async def _probe_retrieval_hits(session: Session, target: EmbeddingIndex) -> int:
+    """对每个采样分块，**用它自己的向量**跑一次真实检索，返回能命中自己的条数。
+
+    自匹配不需要调用嵌入接口，也不需要假设查询文本怎么切分：查不回来说明这批
+    向量根本不在当前读路径上（维度与索引登记不符、文档已下线、集合没接通等）。
+    """
+    from app.rag.vectorstore.factory import get_vector_store
+
+    store = get_vector_store(session)
+    identity = identity_of_row(target)
+    samples = session.exec(
+        select(DocumentChunk)
+        .where(col(DocumentChunk.index_id) == target.id)
+        .limit(RETRIEVAL_PROBE_SAMPLE_SIZE)
+    ).all()
+    hits = 0
+    for row in samples:
+        vector = _loads_list(row.embedding)
+        tokens = _loads_list(row.tokens)
+        if not vector:
+            continue
+        found = await store.hybrid_search(
+            vector, tokens, row.tenant_id, RETRIEVAL_PROBE_TOP_K, identity=identity
+        )
+        if any(hit.id == row.id and hit.similarity > 0 for hit in found):
+            hits += 1
+    return hits
+
+
+def _loads_list(raw: str | None) -> list:
+    """读分块行的 JSON 列；缺失、损坏或非列表一律按空处理——不可用就不比。"""
+    if not raw:
+        return []
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError):
+        return []
+    return value if isinstance(value, list) else []
+
+
+def probe_retrieval_hits(session: Session, target: EmbeddingIndex) -> int:
+    """:func:`_probe_retrieval_hits` 的同步入口。
+
+    激活是同步操作，而向量检索是协程。调用方可能已经在事件循环里（摄取路径与
+    异步用例），此时 ``asyncio.run`` 会直接抛 RuntimeError，因此放到独立线程
+    的新循环里跑；没有运行中的循环时直接在当前线程跑。
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(_probe_retrieval_hits(session, target))
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="index-probe") as pool:
+        return pool.submit(asyncio.run, _probe_retrieval_hits(session, target)).result()
 
 
 def resolve_write_index(

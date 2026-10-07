@@ -4,13 +4,17 @@
 
 用法::
 
-    # 1) 准备新索引（不切换，旧索引继续服务）
-    python scripts/rebuild_embedding_index.py prepare --model text-embedding-v4 --dim 1024
-    # 2) 校验通过后显式激活（旧索引自动转 retired，不删）
+    # 0) 先把配置切到目标模型（EMBEDDING_MODEL / EMBEDDING_DIM / base_url …），
+    #    旧配置继续服务；没有这一步就没有「新索引」可言。
+    # 1) 登记当前配置对应的新索引（不切换，旧索引继续服务）
+    python scripts/rebuild_embedding_index.py prepare
+    # 2) 按当前配置把所有 is_current 文档重建到 1) 登记的索引
+    python scripts/rebuild_embedding_index.py rebuild --apply
+    # 3) 校验通过（数量 / 身份 / 检索）后显式激活（旧索引自动转 retired，不删）
     python scripts/rebuild_embedding_index.py activate --index-id <id>
-    # 3) 出问题回退（会校验当前模型配置与目标索引身份一致）
+    # 4) 出问题回退（会校验当前模型配置与目标索引身份一致）
     python scripts/rebuild_embedding_index.py rollback --index-id <id>
-    # 4) 把身份未知的历史分块登记到当前索引（需 --confirm，且维度抽样必须全对）
+    # 5) 把身份未知的历史分块登记到当前索引（需 --confirm，且维度抽样必须全对）
     python scripts/rebuild_embedding_index.py adopt --confirm
     # 查看现状
     python scripts/rebuild_embedding_index.py status
@@ -19,6 +23,9 @@
 - 不重建真实索引以外的东西；**默认只打印计划**，写操作需要显式子命令。
 - 回退必须配套模型配置：只改集合名而仍用新模型查旧向量是 ADR-0008 明令禁止的，
   因此 activate / rollback 都会校验 settings 与目标索引身份一致，不一致直接拒绝。
+- **目标身份只能来自当前生效的 provider**（见 :func:`_identity`）：脚本不会
+  凭命令行另造身份，``--model`` / ``--dim`` / ``--version`` 是对当前配置的断言。
+  否则写出来的索引身份证部署端点是空的，activate 必然被自己写的身份挡住。
 """
 
 from __future__ import annotations
@@ -33,7 +40,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlmodel import Session, select  # noqa: E402
 
-from app.core.config import settings  # noqa: E402
 from app.core.database import engine, init_db  # noqa: E402
 from app.models.rag import (  # noqa: E402
     Document,
@@ -46,6 +52,7 @@ from app.rag.index_identity import (  # noqa: E402
     EmbeddingIndexIdentity,
     IndexIdentityError,
     current_backend,
+    fingerprint_of_key,
     identity_from_provider,
 )
 from app.rag.index_registry import (  # noqa: E402
@@ -53,26 +60,46 @@ from app.rag.index_registry import (  # noqa: E402
     active_index,
     adopt_legacy_chunks,
     ensure_index,
+    identity_of_row,
     legacy_chunk_count,
 )
 
 
 def _identity(model: str | None, dim: int | None, version: str | None) -> EmbeddingIndexIdentity:
-    """构造目标索引身份。model/dim 未给时沿用当前配置。
+    """目标索引身份：**只能来自当前真实生效的 provider**。
 
-    与运行时共用 :func:`identity_from_provider` 的字段来源（provider 标签、
-    deployment、normalization、metric），避免脚本登记的 provider 与运行时不一致。
+    此前这里手工拼身份，并把 ``deployment`` 写死成空串，而运行时身份的
+    ``deployment`` 由 ``base_url`` 派生（默认配置非空）。于是 ``prepare`` /
+    ``rebuild --model`` 登记出来的行与运行时永远差一个 deployment，
+    ``activate`` 必然 rc=3——尽管当时这个函数的 docstring 正写着
+    「与运行时共用 identity_from_provider 的字段来源」，自相矛盾。
+
+    现在它与 :func:`_current_runtime_identity` 共用同一个生产函数，
+    ``--model`` / ``--dim`` / ``--version`` 从「覆盖」改为**断言**：脚本拿不到
+    provider 之外的信息，凭命令行补出来的部署端点、归一化与度量只会是假的，
+    而「假身份 + 真写入」会把当前模型的向量写进标着另一个模型的索引。
     """
-    return EmbeddingIndexIdentity(
-        backend=current_backend(),
-        provider=settings.EMBEDDING_PROVIDER.strip().lower(),
-        model=model or settings.EMBEDDING_MODEL,
-        dim=int(dim or settings.EMBEDDING_DIM),
-        index_version=version or settings.EMBEDDING_INDEX_VERSION,
-        deployment="",
-        normalization=settings.EMBEDDING_NORMALIZATION,
-        metric=settings.EMBEDDING_METRIC,
-    )
+    identity = _current_runtime_identity()
+    given = {"--model": model, "--dim": dim, "--version": version}
+    for flag, value in given.items():
+        if value is None:
+            continue
+        actual = getattr(identity, _FLAG_TO_FIELD[flag])
+        if str(value) != str(actual):
+            raise IndexIdentityError(
+                f"目标身份与当前生效 provider 不一致：{flag}={value}，"
+                f"当前 provider 实际为 {actual}（完整身份 {identity.key()}）。"
+                "脚本不会凭命令行另造身份：请先把配置切到目标模型，再 prepare / rebuild，"
+                "否则等于拿旧模型的向量盖上一个写着新模型的索引名。"
+            )
+    return identity
+
+
+_FLAG_TO_FIELD = {
+    "--model": "model",
+    "--dim": "dim",
+    "--version": "index_version",
+}
 
 
 def _current_runtime_identity() -> EmbeddingIndexIdentity:
@@ -80,6 +107,24 @@ def _current_runtime_identity() -> EmbeddingIndexIdentity:
     from app.rag.embeddings.factory import get_embedding_provider
 
     return identity_from_provider(get_embedding_provider())
+
+
+def _describe_index(index: EmbeddingIndex) -> dict[str, object]:
+    """登记行序列化，供 ``prepare --json`` 消费。
+
+    此前这里写的是 ``index.describe() if hasattr(index, "describe") else {}``，
+    而 ``describe()`` 只存在于 ``EmbeddingIndexIdentity`` 上，``EmbeddingIndex``
+    并没有——``hasattr`` 兜底把这个输出变成了恒定的 ``{}``。
+    """
+    return {
+        "id": index.id,
+        "name": index.name,
+        "status": index.status,
+        "chunk_count": index.chunk_count,
+        "identity_key": index.identity_key,
+        "fingerprint": fingerprint_of_key(index.identity_key),
+        "identity": identity_of_row(index).describe(),
+    }
 
 
 def _assert_config_matches(index: EmbeddingIndex) -> None:
@@ -127,9 +172,9 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         session.commit()
         print(f"已登记新索引 {index.name}（status=preparing）")
         print("旧索引仍为 active，读路径不受影响。")
-        print("下一步：用该模型重新摄取全部当前文档，再执行 activate。")
+        print("下一步：用该配置重新摄取全部当前文档（rebuild --apply），再执行 activate。")
         if args.json:
-            print(json.dumps(index.describe() if hasattr(index, "describe") else {}, ensure_ascii=False))
+            print(json.dumps(_describe_index(index), ensure_ascii=False))
     return 0
 
 
@@ -226,9 +271,8 @@ def cmd_rebuild(args: argparse.Namespace) -> int:
     from app.rag.service import RAGService
 
     provider = get_embedding_provider()
-    identity = identity_from_provider(provider)
-    if args.model or args.dim:
-        identity = _identity(args.model, args.dim, args.version)
+    # 与 prepare 同源：目标身份就是当前生效 provider 的身份，覆盖参数只做断言。
+    identity = _identity(args.model, args.dim, args.version)
 
     with Session(engine) as session:
         docs = session.exec(select(Document).where(Document.is_current.is_(True))).all()

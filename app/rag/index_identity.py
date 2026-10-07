@@ -87,15 +87,20 @@ class EmbeddingIndexIdentity:
         for name in ("backend", "provider", "model", "index_version"):
             if not getattr(self, name):
                 raise ValueError(f"{name} must not be empty")
+        # 归一化与度量先整理成形再去校验与入库：只按小写比较却原样存进 key()，
+        # 会把登记成 ``L2`` 的行与运行时的 ``l2`` 永久判为不同索引，
+        # 而且 health 的小写判定还会把它报成 supported——双重误导。
+        object.__setattr__(self, "normalization", self.normalization.strip().lower())
+        object.__setattr__(self, "metric", self.metric.strip().lower())
         # 归一化与度量只允许声明真实生效的那一组：登记了却按另一套算法执行，
         # 会让身份看起来可信而向量实际不可比，比不登记更危险。
-        if self.normalization.strip().lower() != SUPPORTED_NORMALIZATION:
+        if self.normalization != SUPPORTED_NORMALIZATION:
             raise IndexIdentityError(
                 f"不支持的 normalization={self.normalization!r}："
                 f"当前实现只按 {SUPPORTED_NORMALIZATION} 执行（{ACTUAL_NORMALIZATION}），"
                 "请改为 l2 或先实现对应的写入/检索行为"
             )
-        if self.metric.strip().lower() != SUPPORTED_METRIC:
+        if self.metric != SUPPORTED_METRIC:
             raise IndexIdentityError(
                 f"不支持的 metric={self.metric!r}："
                 f"当前实现只按 {SUPPORTED_METRIC} 执行，请改为 cosine 或先实现对应度量"

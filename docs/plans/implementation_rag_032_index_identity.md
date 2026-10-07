@@ -206,11 +206,118 @@ rollback --index-id
 | M-05 越过 allowed_paths | 已修：`tasks.yaml` 显式加入 `app/api/routes/health.py` 并在 `execution.progress` 记录原因 |
 | L-01 文档与字段漂移 | 已修：条数更正、`fingerprint` / `identity_key` 分列、实现说明与计划同步 |
 
-### 7.3 本轮仍未关闭（需后续卡承接）
+### 7.3 第二轮复审（2026-10-07）后的整改 —— 见 §7.4
+
+第二轮复审报告（`docs/reviews/2026-10-07-RAG-032索引身份与切换复审-第二轮.md`）
+判「仍不建议关闭」：H-01～H-05 与 M-01/M-02/M-03/M-05 确认真修，但新增
+**H-07 功能缺陷** 与 M-06～M-09。§7.2 里的「H-06 已修」在本轮被降级为「部分修」，
+根因与修法写在 §7.4。
+
+### 7.4 H-07 的根因、裁定与落地（本批）
+
+#### 7.4.1 根因：两套身份来源 + 一句自相矛盾的 docstring
+
+`scripts/rebuild_embedding_index.py` 此前有两个取身份的函数：
+
+| 函数 | 身份来源 | `deployment` |
+|---|---|---|
+| `_identity(model, dim, version)`（脚本自造，`prepare` / `rebuild` 用） | 手工拼 `EmbeddingIndexIdentity(...)` | **写死 `""`** |
+| `_current_runtime_identity()`（`activate` / `rollback` / `adopt` 用） | `identity_from_provider(get_embedding_provider())` | 由 `base_url` 派生 |
+
+默认配置 `EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`
+非空，于是运行时身份带着 `https://dashscope.aliyuncs.com/compatible-mode/v1`，
+脚本登记出来的是空串——两者**永不相等**。
+
+- `prepare` 自己 rc=0（登记了个错身份的行，成了库里的垃圾），`activate` 必然 rc=3；
+- `rebuild --model X --dim N --apply` 更糟：`RAGService(write_index_id=...)`
+  用运行时身份核对目标索引，`deployment` 不符 → 每篇文档都抛 `IndexIdentityError`
+  → `rebuilt=0`、索引标 `failed`。运维看到的是「重建全部失败」，而不是「目标身份写错」；
+- **该函数的 docstring 当时正写着**「与运行时共用 `identity_from_provider` 的字段来源
+  （provider 标签、deployment、normalization、metric）」——注释与实现直接矛盾，
+  这也是它没被第一轮的 H-06 整改发现的原因。
+
+#### 7.4.2 裁定：`--model` / `--dim` / `--version` 改为**断言**，保留「覆盖语义」会造成真实的静默错误
+
+团队裁定：以 `identity_from_provider(get_embedding_provider())` 为**基底**，覆盖参数改为
+对真实 provider 的断言（不一致就打印期望值与实际值并 rc=3）。未采用「保留覆盖语义、
+只把 deployment/provider/normalization/metric 取自运行时」的备选，理由是：
+
+- 脚本拿不到 provider 之外的任何信息，凭命令行补出来的字段只能是假的；
+- 备选方案在 `rebuild --model X --dim N --apply` 上会**写出错误数据**：
+  嵌入仍由当前 provider（旧模型）产生，却登记到标着 X 的索引名下，
+  激活时身份校验还会通过（因为激活时配置也已切成 X）——这是**静默的跨平台混用**，
+  比 H-07 原本「失败得很响」的缺陷更危险。
+
+复核过是否存在「依赖覆盖语义的文档化换模型流程」：README 与脚本文档里的步骤
+`prepare → rebuild --apply → activate` 中，`rebuild` 用当前 provider 做嵌入，
+因此整个流程本来就要求**先改配置**；改为断言与该流程一致，只是把「先改配置」
+从隐含要求变成显式报错。
+
+#### 7.4.3 本批实际改动
+
+| 文件 | 改动 |
+|---|---|
+| `scripts/rebuild_embedding_index.py` | `_identity()` 以运行时身份为基底 + 参数断言；`cmd_rebuild` 不再有「两套来源」分支；`prepare --json` 改为 `_describe_index()`（原先取 `EmbeddingIndex.describe()`，该方法只存在于 `EmbeddingIndexIdentity` 上，`hasattr` 兜底让它恒输出 `{}`）；模块 docstring 的用法改写、「硬约束」加一条目标身份来源约束，删掉不再可用的 `prepare --model X` 示例 |
+| `app/rag/index_registry.py` | ADR-0008:23 的第 4 项**检索校验**：`activate_index()` 先落状态、再抽样检索、失败则 `_revert_switch()` 原样撤销后抛 `IndexIdentityError`；新增 `probe_retrieval_hits()`（用它自己分块的向量做自匹配，不调用嵌入接口）、`identity_of_row()`、`_apply_switch()` / `_revert_switch()` |
+| `app/rag/index_identity.py` | `__post_init__` 把 `normalization` / `metric` 归一化后再入库（此前只按小写比较却原样存进 `key()`，登记的 `L2` 会与运行时的 `l2` 永久不匹配，且 health 的小写判定会把它误报成 supported） |
+| `tests/test_rag_032_rebuild_cli.py`（新增） | 6 个子命令各 ≥1 条 CLI 级用例；含全链路 `prepare → rebuild --apply → activate → rollback` |
+| `tests/test_rag_032_index_identity.py` | 新增 M-08（`search()` → `_read_index_id()` 真实链路收窄）、M-09 正例 + 2 个反例、L-04 归一化用例；重写 L-03 的凭据用例（换带 `base_url` 的真实 provider 桩，使 `if identity.deployment:` 分支真正执行）；给 `test_all_backends_carry_query_identity` 加「Local 必须把 identity 传进 `resolve_read_index_for`」的断言 |
+
+#### 7.4.4 CLI 实证（整改前后同一套探针脚本，均不连外部服务）
+
+整改前（`fbf5730` 干净工作树）：
+
+```text
+$ prepare --model text-embedding-v3 --dim 1024
+  rc=0   已登记新索引 local__v1__164f09ccfc9f（status=preparing）
+         identity_key = local|openai|text-embedding-v3||1024|1|l2|cosine   ← deployment 为空
+$ activate --index-id <id>
+  rc=3   索引身份错误：当前配置身份 local|openai|text-embedding-v3|https://dashscope.aliyuncs.com/compatible-mode/v1|1024|1|l2|cosine
+                      与目标索引 local__v1__164f09ccfc9f 的身份 local|openai|text-embedding-v3||1024|1|l2|cosine 不一致。
+```
+
+整改后（HEAD + 本批改动的干净工作树）：
+
+```text
+$ prepare --model text-embedding-v3 --dim 1024 --json
+  rc=0   identity_key = local|openai|text-embedding-v3|https://dashscope.aliyuncs.com/compatible-mode/v1|1024|1|l2|cosine
+         {"id": "63edbcb4…", "identity_key": "local|openai|…", "fingerprint": "19144ea9057c", "identity": {…}}   ← --json 不再恒为 {}
+$ activate --index-id <id>
+  rc=0   已激活 local__v1__19144ea9057c；同后端其它 active 索引已转 retired（保留未删）。
+```
+
+#### 7.4.5 变异清单（9 处，每处均有对应用例变红，改后立即按字节还原并校验 md5）
+
+| # | 变异点 | 变红用例数 |
+|---|---|---|
+| H-07 | 脚本 `_identity()` 恢复自造身份（`deployment=""`） | 8 |
+| M-06 | 关掉 `--model/--dim/--version` 断言（`if False:`） | 1 |
+| M-07 | Local 不再把 `identity` 传进 `resolve_read_index_for` | 3（含 `[native]` / `[langchain]`） |
+| M-08 | `_read_index_id()` 恒返回 `None` | 1（新增的那条，修订前官方用例全绿） |
+| M-09 | 去掉激活前的抽样检索校验 | 3（含 1 条 CLI） |
+| 新增 | 检索校验失败后不调用 `_revert_switch` | 2 |
+| L-03 | `deployment_from_base_url` 不剥离 userinfo | 2（含原先装饰性的那条） |
+| L-04 | `normalization` / `metric` 不再归一化入库 | 1 |
+| L-05 | `prepare --json` 恒输出 `{}` | 6 |
+
+变异全部在干净 git worktree 中执行（不在主工作树动手，避免与其它卡并发改动互相覆盖），
+每次都用「备份 md5 → 变异 → 跑测试 → 还原 → 比对 md5」的方式确认**零残留**。
+
+### 7.5 本轮仍未关闭（需后续卡承接）
 
 - **Milvus 真实写入闭环**：`MilvusVectorStore.add()` 在 `app/` 下仍无调用点，
   真实 Milvus 连通性验证仍属 RAG-015。
+- **Milvus `index_id` 的写入分支**：本卡只覆盖了检索侧（检索表达式 + SQL 回查）的
+  `index_id` 过滤，`add()` 里 `index_id` 的**写入**既没有真实调用点也没有桩级用例。
+  **移交 RAG-015 时必须显式验收这一条。**
 - **检索结果缓存绑定索引身份**：仓库尚无检索缓存，ADR-0008:25 由 RAG-019 承接，
   届时缓存键必须包含 active index identity。
-- **激活前的抽样检索 / 权限 / 完成度校验**：本轮只做了「实际分块数 > 0」与完整身份
-  比对；抽样检索命中校验与人工授权门仍缺，**真实重要数据重建仍需另获授权**。
+- **人工授权门**：保留为运维流程（脚本是显式命令，不自动切换；生产重要数据重建与
+  切换仍需另获授权）。
+- **llamaindex backend 的身份传递只有静态依据**：本机缺 `llama_index`，
+  `test_all_backends_carry_query_identity[llamaindex]` 显式 skip，未获运行时证明。
+- **L-02 配置注释与 `.env.example` 未对齐**：`app/core/config.py:120-121` 仍声明
+  `l2 | none` / `cosine | ip | l2`，而 `EmbeddingIndexIdentity.__post_init__` 对非
+  l2 / 非 cosine 构造即报错。二者当前分别被 RAG-029（config.py）与并发批次
+  （`.env.example`）占用，**本批不做**，待它们落地后单独处理。
+- Milvus 命中 `similarity=1.0` 占位 → RAG-015；管理页展示身份 → 超出 `allowed_paths`。

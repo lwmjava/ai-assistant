@@ -35,6 +35,9 @@ services:
       - milvusdata:/var/lib/milvus
       - ./deploy/milvus/embedEtcd.yaml:/milvus/configs/embedEtcd.yaml:ro
       - ./deploy/milvus/user.yaml:/milvus/configs/user.yaml:ro
+    ports:
+      - "${MILVUS_PORT:-19530}:19530"
+      - "${MILVUS_HEALTH_PORT:-9091}:9091"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 30s

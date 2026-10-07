@@ -1,0 +1,85 @@
+{
+  "schema_version": "rag-015-switch-v1",
+  "run_at": "2026-10-07T09:10:57.036690+00:00",
+  "run_id": "e901299c9d",
+  "milvus_uri": "http://127.0.0.1:19530",
+  "collection_prefix": "rag015_switch_check_e901299c9d",
+  "corpus": [
+    {
+      "logical_id": "cedar-warranty",
+      "filename": "cedar-warranty.txt",
+      "text": "Cedar orchard warranty requires an amber receipt and lunar serial number."
+    },
+    {
+      "logical_id": "harbor-maintenance",
+      "filename": "harbor-maintenance.txt",
+      "text": "Harbor turbine maintenance uses a cobalt wrench and a weekly pressure log."
+    },
+    {
+      "logical_id": "alpine-calibration",
+      "filename": "alpine-calibration.txt",
+      "text": "Alpine sensor calibration uses a violet beacon and a quartz reference."
+    }
+  ],
+  "queries": [
+    "amber receipt warranty",
+    "cobalt wrench maintenance",
+    "quartz beacon calibration",
+    "unseen neutral phrase"
+  ],
+  "paths": {
+    "default_local": {
+      "status": "pass",
+      "configured_backend": "local",
+      "uploaded_document_ids": [
+        "c14e0d8046b04e158353ba030847f63d",
+        "4b9f2d1f746e428692f39ca92ecc6764",
+        "a04d9f8c79b84ca5bb4e7d0ceadaea85"
+      ],
+      "sql_chunk_count": 3,
+      "embedding_normalization": "l2",
+      "embedding_norm_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "retrieval_status": "ok",
+      "hit_document_ids": [
+        "c14e0d8046b04e158353ba030847f63d",
+        "a04d9f8c79b84ca5bb4e7d0ceadaea85",
+        "4b9f2d1f746e428692f39ca92ecc6764"
+      ]
+    },
+    "milvus_upload_visible": {
+      "status": "blocked",
+      "error": "ConnectionRefusedError: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"
+    },
+    "switch_back_local": {
+      "status": "pass",
+      "sql_chunk_count": 3,
+      "retrieval_status": "ok",
+      "hit_document_ids": [
+        "c14e0d8046b04e158353ba030847f63d",
+        "a04d9f8c79b84ca5bb4e7d0ceadaea85",
+        "4b9f2d1f746e428692f39ca92ecc6764"
+      ],
+      "data_vs_empty_distinguished": true
+    }
+  },
+  "cross_backend": {
+    "status": "blocked",
+    "error": "ConnectionRefusedError: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"
+  },
+  "limitations": [
+    "MockEmbeddingProvider 仅用于确定性链路对照，不代表生产语义质量。",
+    "范数检查证明本次 Mock 样本为单位向量，不等同于生产写入路径已主动执行 L2 归一化。",
+    "Milvus 跨库样本在记录自动写入失败后显式补种；补种不计作上传写链路通过证据。",
+    "当前 app/rag/vectorstore/milvus.py 返回 similarity=1.0 占位，本报告会如实暴露该范围。"
+  ],
+  "milvus_preflight": {
+    "status": "blocked",
+    "error": "ConnectionRefusedError: [WinError 10061] 由于目标计算机积极拒绝，无法连接。"
+  },
+  "final_backend": "local",
+  "all_acceptance_paths_passed": false,
+  "result": "fail_or_blocked"
+}

@@ -101,7 +101,21 @@
 > `OSError: [WinError 10106]`，6 个「红」全部是假红。改为继承 `os.environ`
 > 并加基线校验后重跑，结论才成立。
 
-## 6. 已知边界
+## 6. 回归与静态检查
+
+| 项 | 命令 | 结果 |
+|---|---|---|
+| 专项 + 归口测试 | `pytest tests/test_rag_029_context_builder.py tests/test_context_merge.py -q` | `25 passed` |
+| 关联回归（10 个文件） | `pytest tests/test_context_merge.py test_rag_threshold.py test_rag_037_retrieval_status.py test_rag_langchain_score_contract.py test_rag_log_minimization.py test_rag_sources.py test_retrieval_guard.py test_fast_route.py test_agent.py test_agent_chain.py -q` | `135 passed` |
+| 全量回归 | `pytest -q`（`DATABASE_URL=sqlite:////.../rag029-full-002.db`） | `1 failed, 1037 passed, 3 skipped` |
+| ruff | `python -m ruff check app/` | 我改动的 5 个文件 `All checks passed`；`app/` 全量剩 3 条告警，均出自并行卡 RAG-038 的 `backend/native.py`、`embeddings/openai_compatible.py`、`resilience.py`，非本卡引入 |
+| mypy | `python -m mypy app/rag/` | `Success: no issues found in 71 source files`；`mypy app/agents/pipeline.py` 亦通过 |
+
+全量回归唯一的失败 `tests/test_supervisor.py::test_supervisor_error_skips_subtask_and_hides_exception`
+与本卡无关：在 `git worktree add --detach HEAD`（3aaa310）里单独跑同一测试同样失败
+（`1 failed, 15 passed`），属既有缺陷。本卡未触碰 `app/agents/supervisor.py`。
+
+## 7. 已知边界
 
 - `selected` **不等于**「答案引用了它」。逐答案点的引用核验属于 RAG-030，本卡不做。
 - 被截断的首块仍在 `selected` 里（它的前半段确实进了模型），`drop_reasons[id] = "budget_truncated"`

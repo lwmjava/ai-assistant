@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from sqlmodel import Session
 
+from app.core.database import engine, init_db
 from scripts.milvus_switch_check import (
     AcceptanceCheckError,
     _diagnostic,
@@ -22,6 +24,13 @@ from scripts.milvus_switch_check import (
 )
 
 _FAKE_PORT = 19531
+
+
+@pytest.fixture()
+def session():
+    init_db()
+    with Session(engine) as s:
+        yield s
 
 
 def test_dry_run_only_prints_plan_and_does_not_create_report(tmp_path: Path) -> None:
@@ -135,3 +144,120 @@ def test_fake_milvus_counterexample_must_not_pass(scenario: str) -> None:
     assert exit_code != 0, f"反例 {scenario} 被脚本判为通过（exit=0），脚本存在恒真风险"
     diagnostic = _diagnostic(report)
     assert diagnostic != "no_failure_reported", f"反例 {scenario} 非 0 退出但没有留下可诊断错误"
+
+
+# ── 真实代码路径的守护（不依赖真实 Milvus） ────────────────────────────
+# 上面一组用例验的是「脚本里的断言助手」，这一次验的是 app 侧真实实现。
+# 缺了它们，下面两处缺陷只有在**真实 Milvus 可用**时才能被发现，
+# 日常 CI（无 Milvus）会一路放行——变异测试已证明这两处此前均无守护。
+
+
+@pytest.mark.asyncio
+async def test_ingest_calls_vector_store_add(session, monkeypatch) -> None:
+    """摄取必须真正调用向量库的 ``add()``。
+
+    外部向量库的写入长期没有调用点：本地实现把分块直接落在主库、``add`` 是空操作，
+    因此「Milvus 集合里一根向量都没有」在默认后端下完全不可见；这里注入一个记录型
+    store，让该缺陷在没有真实 Milvus 时也能被抓到。
+    """
+
+    class _RecordingStore:
+        def __init__(self) -> None:
+            self.added: list[list] = []
+
+        async def add(self, chunks: list) -> None:
+            self.added.append(list(chunks))
+
+        async def hybrid_search(self, *args, **kwargs):
+            return []
+
+        async def delete_by_document(self, document_id: str, tenant_id: str) -> int:
+            return 0
+
+        async def count(self, tenant_id: str) -> int:
+            return 0
+
+    from app.rag.embeddings.mock import MockEmbeddingProvider
+    from app.rag.service import RAGService
+
+    store = _RecordingStore()
+    rag = RAGService(
+        session,
+        "rag015-write",
+        embedding_provider=MockEmbeddingProvider(dim=64),
+        vector_store=store,
+    )
+    doc = await rag.ingest_text(
+        "写入链路必须被真正调用，否则外部向量库里一根向量都不会有。" * 20,
+        title="写入守护",
+        source="rag015",
+        user_id="rag015-user",
+    )
+
+    assert store.added, "摄取没有调用向量库 add()，外部向量库将永远是空集合"
+    rows = store.added[-1]
+    assert len(rows) == doc.chunk_count
+    assert rows, "没有分块被交给向量库"
+    assert all(getattr(row, "embedding", None) for row in rows), "只有带向量的分块该被写入"
+
+
+@pytest.mark.asyncio
+async def test_milvus_similarity_returns_real_cosine_not_placeholder(session, monkeypatch) -> None:
+    """Milvus 命中必须携带真实余弦相似度，而不是 1.0 占位。
+
+    占位值会让「所有候选同样相关」这种假信息流向下游排序与检索解释。距离为
+    Milvus 在 COSINE 度量下返回的值，由注入的假集合给出互不相同的三个数字。
+    """
+    from types import SimpleNamespace
+
+    from sqlmodel import select
+
+    from app.models.rag import DocumentChunk
+    from app.rag.embeddings.mock import MockEmbeddingProvider
+    from app.rag.service import RAGService
+    from app.rag.vectorstore import milvus as milvus_module
+    from app.rag.vectorstore.milvus import MilvusVectorStore
+
+    tenant = "rag015-sim"
+    rag = RAGService(session, tenant, embedding_provider=MockEmbeddingProvider(dim=64))
+    doc = await rag.ingest_text(
+        "相似度必须来自向量距离。占位会让排序失去意义。三者互不相同便于检测。" * 20,
+        title="相似度守护",
+        source="rag015",
+        user_id="rag015-user",
+    )
+    chunks = session.exec(
+        select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
+    ).all()
+    assert len(chunks) >= 2, f"期望多块样本以区分真实距离与占位值，实际 {len(chunks)} 块"
+    expected = {chunk.id: 0.2 + 0.3 * index for index, chunk in enumerate(chunks)}
+    index_id = chunks[0].index_id
+
+    class _FakeCollection:
+        indexes: list = []
+
+        def search(self, **kwargs):
+            return [[
+                SimpleNamespace(entity={"id": chunk_id}, distance=distance)
+                for chunk_id, distance in expected.items()
+            ]]
+
+    async def _passthrough(fn, *args, **kwargs):
+        return fn(*args)
+
+    monkeypatch.setattr(milvus_module, "run_blocking_with_deadline", _passthrough)
+
+    store = MilvusVectorStore(session)
+    monkeypatch.setattr(store, "_connect", lambda *a, **k: _FakeCollection())
+    monkeypatch.setattr(store, "_resolve_index", lambda *a, **k: SimpleNamespace(id=index_id, name="fake"))
+
+    results = await store.hybrid_search(
+        [0.1, 0.2], ["向量"], tenant, len(chunks), identity=None
+    )
+
+    assert results, "没有命中，无法检验相似度取值"
+    similarities = {result.id: result.similarity for result in results}
+    assert len({round(value, 6) for value in similarities.values()}) > 1, (
+        "相似度彼此相同，疑似仍是占位值"
+    )
+    assert similarities == pytest.approx({key: expected[key] for key in similarities})

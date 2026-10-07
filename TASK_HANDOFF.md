@@ -1,7 +1,13 @@
 # 任务交接文档
 
-最后更新：2026-10-07 22:10
+最后更新：2026-10-07 23:40
 
+> 2026-10-07 23:40 更新：**仓库根 `docker-compose.yml` 的 Milvus 方案已修正**（§7 原待决事项 5 已裁决）。
+> 单容器 + 内嵌 etcd 的写法被证实必然 SIGSEGV，已替换为「外部 etcd + MinIO + standalone」三件套；
+> 用根 compose 起服务重跑验收，`result=pass`、退出码 0。同时清理了失效的 `deploy/milvus/embedEtcd.yaml`，
+> 并在 `.gitignore` 里发现并移除一行 shell 变量未展开的残留 `/%SystemDrive%/`。
+> **`.worktrees/` 已加入 `.gitignore`** —— 那 524 条「未跟踪文件」不再出现在 `git status`。
+>
 > 2026-10-07 22:10 更新：**RAG-015 真实 Milvus 验收已完成并通过**（`result=pass`、脚本退出码 0），
 > 期间抓出并修掉 3 个真缺陷（写入链路零调用点、`similarity` 硬编码 1.0、验收脚本自身取不到维度），
 > 并补了两条不依赖真实服务的守护用例。§2 / §5 / §6 已相应更新；RAG-036 随之解封。
@@ -138,23 +144,36 @@
 
 - 项目路径：`E:\culture\SmartCustomerServiceSystem\ai-assistant`
 - 当前分支：`rag-batch-20261007`（基线 `92da115`，前分支 `nightly/rag-20261007` 未推送）
-- 最近提交：`43d6fa1`（fix(agents): 编排失败提示保留多 Agent 协作上下文）
-  前一条 `0c756c3`（fix(rag): 为历史库补齐分块索引身份列并建索引）；再前 `a63088a`（docs: 重建 §13 收尾清理项并记录宽提交事故）
-  近期相关提交：`5f05507`（config.py 归一化回 LF）、`3b5fcb1`（RAG-033 C.4.1/C.5）、`6aae8c7`（RAG-029 审查整改）、`60d4293`（RAG-033 N-03）、`21416f1`（RAG-032 复审整改）、`c8299b4`（RAG-015 假 Milvus 反例）、`9d61024`（index_id 补齐）、`59c1dd6`（Supervisor 文案）、**`08c87d8`（摄取写入外部向量库 + 真实余弦相似度）**、**`48c12cc`（切换校验按实际维度核对）**、**`b7713e5`（两条守护用例）**
+- 最近提交：**`4e40f78`**（docs: 归档 RAG-032/033/038 独立审查报告）
+  - ⚠️ 上一版文档这里写的是 `43d6fa1` / `0c756c3`，**那两个哈希已经不存在**（因宽提交被 `--soft` 撤销重做）。
+    凡是 §4/§5 里出现的哈希，都以 `git log -1 --format=%s <hash>` 能查到为准。
 
-- 尚未提交的修改（`git status` 实测）：
+  **本轮（2026-10-07 22:10–23:40）新增的 6 条提交，按此顺序**：
+
+  | 哈希 | 提交标题 | 涉及文件 |
+  |---|---|---|
+  | `5e02604` | fix(docker): 开发用向量库改用外部 etcd 与对象存储三件套 | `.gitignore`、`docker-compose.yml`、`deploy/milvus/user.yaml`、~~`deploy/milvus/embedEtcd.yaml`~~（删除） |
+  | `687ce69` | docs: 同步切换实施记录到可运行的向量库方案与缺陷处置结果 | `docs/plans/implementation_rag_015_milvus_switch.md` |
+  | `dd33c33` | test(rag): 刷新切换验收报告为根编排复跑结果 | `evals/reports/rag-015-local-milvus-switch-20261007.json` |
+  | `5434797` | fix(rag): 收紧索引身份的可选取值并在撤销时还原退役时间戳 | `app/core/config.py`、`app/rag/index_registry.py`、`tests/test_rag_032_index_identity.py`、`.env.example` |
+  | `4e40f78` | docs: 归档 RAG-032/033/038 独立审查报告 | `docs/reviews/` 下 3 份（含 1 份新增） |
+  | `fa49d70` | test(rag): 补齐假向量库的检索距离并按持久化语义核对退役时间戳 | `tests/test_rag_032_index_identity.py` |
+  | `待提交` | docs: 本文档 | `TASK_HANDOFF.md` |
+
+  更早的相关提交：`9d61024`（index_id 补齐）、`59c1dd6`（Supervisor 文案）、`08c87d8`（摄取写入外部向量库 + 真实余弦相似度）、
+  `48c12cc`（切换校验按实际维度核对）、`b7713e5`（两条守护用例）、`21416f1`（RAG-032 复审整改）、
+  `c8299b4`（RAG-015 假 Milvus 反例）、`6aae8c7`（RAG-029 审查整改）、`60d4293`（RAG-033 N-03）。
+
+- 尚未提交的修改（`git status` 实测，2026-10-07 23:40）：
+
+  **已清空** —— 除 `TASK_HANDOFF.md` 本身（即本文件，紧随其后提交）之外，工作区没有未提交的内容。
 
   | 文件 | 性质 |
   |---|---|
-  | `app/core/config.py` | **真实改动**（7 行）— RAG-032 L-02：`EMBEDDING_NORMALIZATION` / `EMBEDDING_METRIC` 注释改为只接受 `l2` / `cosine`，其余取值在索引身份构造时直接抛 `IndexIdentityError` |
-  | `app/rag/index_registry.py` | **真实改动**（14 行）— RAG-032 N-01：`_apply_switch` / `_revert_switch` 的 `previous` 元组增补 `retired_at`，撤销时连退役时间戳一起还原 |
-  | `tests/test_rag_032_index_identity.py` | **真实改动**（+85 行）— RAG-032 新增测试 |
-  | `.env.example` | **真实改动**（4 行） |
-  | `docs/reviews/2026-10-07-RAG-033…复审-第二轮.md` | 审查报告（+68） |
-  | `docs/reviews/2026-10-07-RAG-038…独立审查.md` | 审查报告（+116） |
-  | `docs/reviews/2026-10-07-RAG-032…复审-第三轮.md` | **未跟踪**（新增审查报告） |
-  | `.worktrees/` | **未跟踪**（遗留 worktree：`r3-21416f1`、`r3-verify`）。⛔ **绝不可提交**，详见 §7 说明 |
-  | `app/rag/backend/native.py`、`app/rag/vectorstore/milvus.py` | ⚠️ **内容实际与 HEAD 完全一致**，仅 stat 脏（mtime 被改动）。经 `git diff --quiet` 逐文件确认，字节级 CRLF 计数均为 0。**不要误判为 CRLF 污染，也不要觉得这里有未保存的工作** |
+  | `TASK_HANDOFF.md` | 本文档，随本轮最后一条提交入库 |
+  | `app/rag/backend/native.py` | ⚠️ `git status` 仍显示 `M`，但经 `git diff --quiet` 确认**内容与 HEAD 逐字节相同**，只是 mtime 被改动（stat 脏）。**这里没有未保存的工作，不要试图提交或"抢救"它** |
+
+  另：`.worktrees/` 已从 524 条未跟踪变为 0 条 —— 本轮把它加进了 `.gitignore`，详见 §7。
 
 - 关键文件路径及用途：
 
@@ -166,7 +185,10 @@
   | `app/rag/context_builder.py` | RAG-029 按块预算组装（`assemble_retrieval()` 入口） |
   | `app/rag/index_registry.py` | RAG-032 索引身份与切换治理（`:194` 激活前检索校验、`:202` `_revert_switch`） |
   | `app/rag/resilience.py` | RAG-038 `Deadline` / `retry_async` / `bind_deadline` / `ensure_budget` |
-  | `app/core/migration.py` | **待修**：`_ensure_rag_schema_columns`（`:267-286`）缺 `index_id`（见 §5 已知问题） |
+  | `app/core/migration.py` | ✅ `index_id` P0 **已修**（commit `9d61024`）：`_ensure_rag_schema_columns` 的 `chunk_columns` 增补该列及索引 |
+  | `docker-compose.yml` | ✅ **本轮修正**：Milvus 由「单容器 + 内嵌 etcd（必然 SIGSEGV）」改为 **etcd + MinIO + standalone** 三件套 |
+  | `deploy/milvus/user.yaml` | Milvus 配置覆盖挂载点（通常为空） |
+  | `deploy/milvus/embedEtcd.yaml` | ❌ **本轮已删** —— 专为内嵌 etcd 而设，改造后无任何引用 |
   | `app/core/config.py` | `:182` `RAG_EMBED_BATCH_DEADLINE_SECONDS`；`:28` `retrieval_retry_effectively_disabled()` |
   | `scripts/milvus_switch_check.py` | RAG-015 切换校验脚本（20 条测试） |
   | `scripts/rebuild_embedding_index.py` | RAG-032 重建脚本（`:68-93` 身份来源已与运行时对齐） |
@@ -191,7 +213,10 @@
   | RAG-038 专项 | `pytest tests/test_rag_038_deadline_retry.py -q --basetemp <new>` | **51 passed** |
   | **真实 Milvus 连通性** | `pymilvus 2.5.11` → `127.0.0.1:19530`；`curl -sf localhost:9091/healthz` | server 2.5.11 对齐，`healthz` = OK |
   | **RAG-015 切换验收（真实服务端）** | `python scripts/milvus_switch_check.py --apply --milvus-uri http://127.0.0.1:19530` | **`result=pass`、退出码 0**（四条路径全过） |
-  | RAG-015 专项 + RAG 子集回归 | `pytest tests/test_rag_015_milvus_switch.py tests/test_rag*.py tests/test_supervisor.py tests/test_p0_regression.py` | **151 passed / 1 skipped / 0 failed** |
+  | **compose 修正后的根编排复验** | `docker compose up -d milvus` → 重跑同一 `--apply` 命令 | **`result=pass`、退出码 0**；`ai-assistant-{etcd,minio,milvus}-1` 三容器 healthy，pymilvus ↔ server 均 2.5.11 |
+  | compose 语法与解析校验 | `docker compose config --quiet` / `--services` | 退出码 0；解析出 `etcd` / `minio` / `milvus` / `db` / `app` |
+  | **RAG-032 两个测试文件** | `pytest tests/test_rag_032_index_identity.py tests/test_rag_032_rebuild_cli.py -q --basetemp <new>` | **74 passed / 1 skipped**（修完下面两条后） |
+  | N-01 变异验证 | 让 `_revert_switch` 不再还原 `retired_at` | **被杀红**（1 failed），已还原 |
   | 变异验证（写入链路 / 相似度） | `.workbuddy/tmp/mutate_rag015.py`（每次全新 basetemp） | 两处变异**均被精准打红**，各 1 failed / 21 passed |
   | RAG-032 未提交改动内容核对 | `git diff app/rag/index_registry.py` / `app/core/config.py` | 确认 N-01（`retired_at` 三元组还原）与 L-02（注释收紧）均已落地 |
   | `native.py` / `milvus.py` 是否真有改动 | `git diff --quiet` 逐文件 | **内容同 HEAD**，仅 stat 脏；CRLF=0 |
@@ -239,7 +264,9 @@
   | H-10 | **验收脚本自身取不到维度** | `scripts/milvus_switch_check.py` 用 `output_fields=["id","document_id"]` 查询，没请求 `embedding`，`dim` 恒算成 0，误报「维度 [0] 与 dim=64 不一致」；原注释称「真实服务端不会回它」是**错的** | 请求 `embedding` 并在结果里补 `dim`；同时修正两条已与实现不符的 limitations 文本 | `48c12cc` |
 
   **验证证据**：
-  - 真实验收：`all_acceptance_paths_passed=true`、`result=pass`、脚本退出码 0；`milvus_matching_vector_count` 由修前 **0** → 修后 **3**。
+  - 真实验收：`all_acceptance_paths_passed=true`、`result=pass`、脚本退出码 0；
+    Milvus 侧向量条数由修前 **0** → 修后 **3**（报告字段名是 `cross_backend.milvus_indexed_chunk_count`，
+    ⚠️ 上一版文档写成了 `milvus_matching_vector_count`，**该字段在报告里并不存在**，以此为准）。
   - 跨库相似度：local `0.15430334996` / Milvus `0.15430335700`，差约 7e-9（float32 精度），跨库 RRF 排序一致。
   - 探针：`.workbuddy/tmp/probe_milvus_output_fields.py` 实测证明真实 Milvus 的 `query()` 请求 `embedding` 后会回传向量字段（这是 H-10 得以定位的依据）。
   - 回归：`test_rag_015` + `test_rag*` 子集 + `test_supervisor` + `test_p0_regression` = **151 passed / 1 skipped / 0 failed**。
@@ -248,6 +275,17 @@
   - 首轮变异脚本复用了固定 basetemp → 沙箱 safe-delete 报 error → pytest 退出码非 0 → 我当时把两个修复判成「变异已杀死」。
   - 实际输出是 `19 passed, 1 error`，**没有任何断言失败**，真相是**两处修复当时都还没有守护**。改回全新 basetemp 重跑后，结论才可信。
   - 由此补了两条不依赖真实服务的守护用例（`b7713e5`）：`test_ingest_calls_vector_store_add`（注入记录型 store）、`test_milvus_similarity_returns_real_cosine_not_placeholder`（注入假集合返回互异距离）。二者分别精准打红各自对应的变异（各 1 failed / 21 passed）。
+
+  1-quinquies. **验证已提交的 RAG-032 测试时又发现 2 个问题 —— ✅ 已修并做变异验证（2026-10-07 23:50）**
+
+  起因：为了不把红灯留在仓库里，我对刚提交的 `tests/test_rag_032_index_identity.py` 跑了一次实测，结果 **5 failed / 69 passed**。逐条定位后定性如下：
+
+  | 类型 | 现象 | 根因 | 处置 |
+  |---|---|---|---|
+  | **测试替身过时**（4 条 `test_milvus_*`） | `AttributeError: 'SimpleNamespace' object has no attribute 'distance'`，崩在 `milvus.py:315` | `_FakeCollection.search()` 返回的命中只有 `entity={"id": cid}`。**真实 pymilvus 的 COSINE 检索命中一定带 `distance`**，我的守护用例（`tests/test_rag_015_milvus_switch.py`）也是按 `(entity=…, distance=…)` 构造的，两者契约本就一致；是 032 的替身没跟上 | 给替身补 `distance`（按序递减的真实型数值，故意不用 1.0，避免与副作用占位值混淆）。**没有改生产代码去迁就测试** |
+  | **测试断言假设错**（1 条 `test_revert_switch_restores_retired_timestamp`） | `assert datetime(…,15:44:46.760508) == datetime(…,15:44:46.760508, tzinfo=UTC)` | **产品没问题**：`_revert_switch` 确实把同一时刻还原回来了（`5434797` 里 `previous` 三元组包含 `retired_at` 那行生效）。失败是因为 **SQLite 往返会剥离 `tzinfo`**，而测试拿内存里的 tz-aware 对象做相等比较 | 改为先断言非空（保留守护力），再按 naive 时刻对齐比较。并做了变异验证：让 `_revert_switch` 不再还原 `retired_at` → 该用例**立刻变红**，文件已还原干净 |
+
+  **教训**：这两类都不是产品缺陷，但**都属于「提交前没跑过」**就会一路放行的问题。接手者遇到 worker 说「71 passed」时，仍应自己跑一遍再合入。
 
   2. **SSE 终态事件 `reason` 未修**（RAG-038 溢出项，已判越界另派卡）。
   3. **CRLF 行尾污染（全树级）**：`app/**` + `tests/**` 约 250 个工作区文件是 CRLF，而仓库 blob 应为纯 LF；任何人提交都会造成整文件伪差异。已列入 §13 收尾清理，**现在不动**。
@@ -262,13 +300,23 @@
 
    **当前首先执行的应是**：沿用已跑起来的三服务 stack（见下方命令）继续推 **RAG-036**（依赖 RAG-015 的最后一张未开工卡，无其他前置）。
 
-3. **真实向量库 stack 若已停**（Milvus 只在 RAG-015 复验 / RAG-036 验收时需要）：
-   `docker compose -f .workbuddy/tmp/milvus-acceptance-compose.yml up -d`
-   含外部 etcd + MinIO + standalone；**不要**用仓库根 `docker-compose.yml` 的单容器方案 —— 内嵌 etcd 必然 SIGSEGV，原因见 §5 的 1-ter。
-   排障：`docker compose ... ps` 确认三个容器 healthy；`docker logs --tail 50 rag015-milvus-standalone` 查 panic。
+3. **真实向量库启动方式（已修正，直接用根 compose）**：
+
+   ```bash
+   docker compose up -d milvus          # 按 depends_on 自动带起 etcd 与 minio
+   docker compose ps                    # 三个容器都应 healthy（冷启动约 60–90 秒）
+   docker compose down                  # 停止；数据保留在命名卷
+   ```
+
+   ✅ **不要再禁用或绕开根 `docker-compose.yml`** —— 本轮已把原先「单容器 + 内嵌 etcd」的坏方案换成
+   「外部 etcd + MinIO + standalone」三件套，并用它复跑验收通过。
+   `.workbuddy/tmp/milvus-acceptance-compose.yml` 只是当年的临时替代品，现已无存在价值，**不要再用**。
+   排障：`docker compose ps` 看 healthy 状态；`docker logs --tail 50 ai-assistant-milvus-1` 查 panic。
+   注意：etcd 与 MinIO **未向宿主机发布端口**，只在编排网络内可达；对外仍只有 `19530` / `9091`。
 
 4. **随后执行（按此顺序）**：
-   a. **收口 RAG-032**：把工作区已有的 L-02 / N-01 改动单独提交（**务必带路径限制，不要用宽提交**），确认 N-02 文档化，标记 closed。
+   a. ~~**收口 RAG-032**（提交 L-02 / N-01 改动）~~ ✅ **已完成**：`5434797`（严格带路径限制，4 个文件）。
+      **剩余一步**：确认 N-02 已文档化后在台账 §9 标记 `closed`（三轮复审已于早前给出「建议关闭」）。
    b. **RAG-036** 开工（RAG-015 已解封，无其他前置）。
    c. **RAG-029 / RAG-038 各派一次独立复审**（审查者须为独立子 Agent 上下文），复审通过后关闭。
    d. **RAG-030** 开工（RAG-029 关闭后）。
@@ -290,9 +338,11 @@
   - `.env`、生产数据、**冻结基线报告** `evals/reports/rag-v0.1-baseline-20260919.json`。
   - **已 done 前卡的产品语义**（发现漂移只上报，不顺手改）。
   - **不要进入第二个 worktree** `C:/Users/123/.codex/worktrees/92a2/ai-assistant`（分支 `codex/rag-021`，commit `16308e7`）—— 不是本批的。
-  - ⛔ **`.worktrees/` 下那 524 个「未跟踪文件」绝对不能提交**（专项说明见本节末尾）。
+  - ✅ ~~`.worktrees/` 下那 524 个「未跟踪文件」绝对不能提交~~ —— **本轮已加入 `.gitignore`（`/.worktrees/`），
+    `git status` 里已归零，不会再被 `git add -A` 卷入。**删除该目录本身仍属删除操作，需用户确认**（见下方专项说明）。
   - 不要以提交标题判断内容：RAG-038 有 7 个文件被宽提交 `52769db` 卷入，它自己只提交了 `9c73082` 记录此事。
-  - 未提交的工作区改动（§4 表格）是 RAG-032 的收尾成果，**提交时务必带路径限制**，避免重演宽提交事故。
+  - ⚠️ **提交纪律（本批次血泪教训，务必执行）**：`git add` 必须带路径，且**提交完成后必须 `git show --stat HEAD` 复核文件清单**。
+    「我只 add 了一个文件」不构成干净的证据 —— 宽提交事故 `52769db` 与我自己的 `0c756c3` 都是这么来的。
 
 - 必须先阅读的文件：
   1. `AGENTS.md`（AI 开发规则的权威来源：模块边界、分层依赖、命名、安全红线、文档同步）
@@ -305,13 +355,12 @@
   2. **删除类操作**：`data/rag015-python-deps`（137M）、仓库根 `uutest5.py`（1117 行 untracked）、遗留 worktree 清理 —— 均属删除，执行前需明确。
   3. **合并 / 推送 / 部署**：用户明确禁止，需另行授权。
   4. §13 全树 CRLF 归一化会产生一次全树级提交，建议在全部卡片收口、worker 停手后执行。
-  5. **要不要把可用的 Milvus 编排纳入仓库**（本轮新增，等待裁决）：仓库根 `docker-compose.yml` 的 Milvus 服务用
-     `ETCD_USE_EMBED=true` 单容器方案，在 Docker Desktop(WSL2) 上**必然 SIGSEGV**（证据见 §5 的 1-ter），
-     等于「本地开发用 Milvus」这条路当前是坏的。本轮用于验收的三服务编排放在
-     `.workbuddy/tmp/milvus-acceptance-compose.yml`（**未提交**）。两种取向需用户选：
-     (a) 把它挪到 `deploy/milvus/` 并让根 compose 引用 / 改用外部 etcd——**推荐**，但会改动已存在的 dev 编排；
-     (b) 维持现状，仅在文档里注明「本地若要跑 Milvus 请用这份临时编排」。
-     注意：线上规划是单容器 + SQLite + `RAG_VECTOR_STORE=local`，**不依赖 Milvus**，所以此项不影响上线。
+  5. ~~**要不要把可用的 Milvus 编排纳入仓库**~~ ✅ **已裁决并落地（2026-10-07 23:40，取向 a）**。
+     根 `docker-compose.yml` 的 Milvus 已从「`ETCD_USE_EMBED=true` 单容器」改为
+     **外部 etcd + MinIO + standalone** 三件套，且用根 compose 起服务复跑验收通过（`result=pass`、退出码 0）。
+     非 bug：线上规划是单容器 + SQLite + `RAG_VECTOR_STORE=local`，**不依赖 Milvus**，因此此项始终不影响上线。
+     附带清理：删除失效的 `deploy/milvus/embedEtcd.yaml`（已无引用）、更新 `deploy/milvus/user.yaml` 注释
+     与 `docs/plans/implementation_rag_015_milvus_switch.md` 的第 2/4/6 节（旧内容会把人带回 SIGSEGV 老路）。
 
 - ⚠️ 本批质量事件（接手者务必遵守，否则会重演）：
   本批出现过 **3 次**「结论与磁盘事实不符」，其中 **2 次出自 lead 自己**（凭印象写下「Milvus 已跑通并抓到 2 个 P0」「RAG-032 M-05 变异存活」，而 worker 从未如此报过）。由此固化六条校验动作，最关键的三条：
@@ -342,6 +391,8 @@
 
   **风险**：此时若执行 `git add -A` / `git add .` 或任何不带路径限制的提交，会把整份源码副本灌进仓库 ——
   正是本批 `52769db` 宽提交事故的放大版。
+  ✅ **已加保险**：`.gitignore` 已新增 `/.worktrees/`，这些条目不再出现在 `git status`，
+  `git add -A` 也不会再卷入。下方删除步骤（仍属操作，需用户确认）只剩「清理磁盘占用」的意义。
 
   **正确处置**（属删除操作，执行前需用户确认）：
   1. 先确认里面没有未提交的唯一成果（正常情况没有，它们只是检出副本）。
@@ -349,7 +400,8 @@
   3. `r3-21416f1` 是孤儿，用 `git worktree prune` 清注册后直接删目录。
   4. 同理处理 `.workbuddy/tmp/wt029r`、`.workbuddy/tmp/wt038v`（这两个也是注册的 worktree）。
   5. **不要动** `C:/Users/123/.codex/worktrees/92a2/ai-assistant`。
-  6. 建议事后把 `.worktrees/` 加进 `.gitignore`，避免复发。
+  6. ~~把 `.worktrees/` 加进 `.gitignore`~~ ✅ **本轮已完成**（同时顺手移除了一行 shell 变量未展开的残留 `/%SystemDrive%/`，
+     并把文件从 CRLF 归一回 LF —— 否则那 93 处行尾差异会造成整文件伪重写）。
 
 - 环境事实（开工实测，影响证据解释）：
   - 解释器必须用 `D:/DepTooL/anaconda3/envs/ai-assistant/python.exe`（Python 3.12.0）。

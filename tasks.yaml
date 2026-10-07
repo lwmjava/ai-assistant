@@ -9473,7 +9473,7 @@ tasks:
 
   - id: "RAG-027"
     title: "授权引用原文只读核验"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -9517,7 +9517,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "ADR-0007 Accepted，引用核验范围已批准；RAG-026完成后按单卡计划实施，不开放整章/整文件或管理权限。"
-      progress: "2026-10-06：用户批准受控块级只读核验，权限决定见 docs/adr/0007-rag-source-verification-permission.md；功能仍Planned，未以批准登记关闭卡。"
+      acceptance_record: "2026-10-07：首轮独立审查因引用行号与函数名在磁盘上不可复现已驳回重做（见 docs/plans/plan_rag_batch_20261007.md §11）；重做审查 docs/reviews/2026-10-07-RAG-027授权引用原文只读核验独立审查.md 结论为建议关闭（Medium 3、无 High），整改 c625925 后由审查者自行复跑变异：M1b 红 1、M3 红 4、M6 红 2、M5 红 1，仅 M2/M2b 存活（已裁定为文档化未修，不阻断关闭）。"
+      progress: "2026-10-07：实现 dbe2686——新增 app/rag/evidence.py（EvidenceDeniedError / ChunkEvidence / ChunkLocator / load_chunk_evidence）与 GET /api/rag/chunks/{chunk_id}/evidence，逐块鉴权、越权统一返回 404 引用原文不可用或无权核验（不泄露资源是否存在），前端新增 ChunkEvidence.tsx 做原文定位展示；整改 c625925 后专项用例 21→30 passed。核验面与检索面逐项对齐：TENANT_ADMIN 在 uploader 模式下不豁免（app/rag/access.py:80 显式默认受限），SYSTEM_ADMIN 豁免、与 read_scope_for 既有行为一致（沿用 RAG-026 CE-1）。未做：审计记录与 Chat 侧引用来源挂载（均不在本卡契约，记为后续项）。"
       nightly:
         eligible: false
         production_access: false

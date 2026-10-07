@@ -260,7 +260,6 @@ async def test_external_index_cleanup_then_main_db_failure_is_recorded(
     session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """外部删除已不可逆地发生后主库失败：两边发散，必须登记补偿。"""
-    import app.rag.service as service_mod
     from app.rag.import_jobs import create_reparse_job
 
     _configure(monkeypatch, tmp_path)
@@ -329,6 +328,89 @@ async def test_reparse_success_with_external_store_records_compensation(
     assert any(t.stage == "external_index_compensation" for t in traces), [
         t.stage for t in traces
     ]
+
+
+async def test_compensation_probe_failure_does_not_flip_successful_publish(
+    session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """取向量库判定本身抛错，也不能把已提交且不可回滚的发布翻成失败任务。
+
+    复审第二轮 F-03 残余窗口：``_uses_external_vector_store`` 在 try 之外时，
+    它一抖动就会让「新版已 published/is_current」的任务报 failed。
+    """
+    _configure(monkeypatch, tmp_path)
+    tenant = f"rag024-probe-{uuid4().hex[:8]}"
+    user = _user(tenant)
+    source = f"rag024-probe-{uuid4().hex[:6]}.txt"
+
+    old = await _seed_current_version(
+        session, tenant, user, source, "rag024 旧版本正文，判定时取库失败场景。"
+    )
+    raw = "rag024 新版本正文，发布后取向量库抖动。".encode()
+    path = save_source_file(tenant, raw, source)
+    job = create_upload_import_job(
+        session, user, storage_path=path, filename=source, content_type="text/plain"
+    )
+    monkeypatch.setattr("app.rag.service.get_embedding_provider", lambda: MockEmbeddingProvider())
+    monkeypatch.setattr("app.rag.service.get_vector_store", lambda _s: _ExternalStore())
+
+    def _explode(_session):  # noqa: ANN001 — 只服务 import_jobs 内部的判定调用
+        raise RuntimeError("注入的取向量库抖动")
+
+    monkeypatch.setattr("app.rag.vectorstore.factory.get_vector_store", _explode)
+
+    await run_import_jobs_once(limit=10)
+    session.expire_all()
+
+    completed = session.get(ImportJob, job.id)
+    assert completed is not None
+    assert completed.status == ImportJobStatus.SUCCESS.value, completed.error
+    # 新版真实发布且是唯一 current：发布不可回滚，报失败就是撒谎
+    docs = list(
+        session.exec(
+            select(Document).where(Document.version_group_id == old.version_group_id)
+        ).all()
+    )
+    current = [d for d in docs if d.is_current]
+    assert len(current) == 1, [(d.version_number, d.is_current) for d in docs]
+    assert current[0].id != old.id
+
+
+async def test_reparse_compensation_record_failure_does_not_flip_success(
+    session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """重解析成功路径的补偿登记失败，同样不能把成功翻成失败。
+
+    复审第二轮 S11：外部清理已发生且不可回滚，登记只能尽力而为。
+    """
+    import app.rag.import_jobs as ij
+
+    _configure(monkeypatch, tmp_path)
+    tenant = f"rag024-rec-{uuid4().hex[:8]}"
+    user = _user(tenant)
+    source = f"rag024-rec-{uuid4().hex[:6]}.txt"
+
+    old = await _seed_current_version(
+        session, tenant, user, source, "rag024 正文，重解析登记失败场景。"
+    )
+    monkeypatch.setattr("app.rag.service.get_embedding_provider", lambda: MockEmbeddingProvider())
+    monkeypatch.setattr("app.rag.service.get_vector_store", lambda _s: _ExternalStore())
+    monkeypatch.setattr(
+        "app.rag.vectorstore.factory.get_vector_store", lambda _s: _ExternalStore()
+    )
+
+    def _explode(*_args, **_kwargs):  # noqa: ANN002, ANN003
+        raise RuntimeError("注入的补偿登记故障")
+
+    monkeypatch.setattr(ij, "_record_external_index_compensation", _explode)
+
+    job = ij.create_reparse_job(session, user, old.id)
+    await run_import_jobs_once(limit=10)
+    session.expire_all()
+
+    completed = session.get(ImportJob, job.id)
+    assert completed is not None
+    assert completed.status == ImportJobStatus.SUCCESS.value, completed.error
 
 
 async def test_local_store_publish_records_no_compensation_noise(

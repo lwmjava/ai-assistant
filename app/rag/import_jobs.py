@@ -573,13 +573,20 @@ async def _process_job(session: Session, job: ImportJob) -> None:
             job.status = ImportJobStatus.SUCCESS.value
             # 重解析同样不共享事务：外部索引已清理旧向量，主库才写入新分块。
             if external:
-                _record_external_index_compensation(
-                    session,
-                    job,
-                    doc.id,
-                    "重解析已清理外部索引旧向量，新分块缺少对应向量（补齐即可）",
-                    error_code=EXTERNAL_INDEX_MISSING_CHUNKS,
-                )
+                # 与发布路径同源：此处外部清理已发生且不可回滚，登记失败不能
+                # 把一次成功的重解析翻成失败任务。
+                try:
+                    _record_external_index_compensation(
+                        session,
+                        job,
+                        doc.id,
+                        "重解析已清理外部索引旧向量，新分块缺少对应向量（补齐即可）",
+                        error_code=EXTERNAL_INDEX_MISSING_CHUNKS,
+                    )
+                except Exception:  # noqa: BLE001 — 已提交，不能因登记失败而报任务失败
+                    logger.warning(
+                        "rag_external_index_compensation_record_failed job=%s", job.id
+                    )
             session.add(job)
             session.commit()
             return
@@ -610,8 +617,10 @@ async def _process_job(session: Session, job: ImportJob) -> None:
         # 不把「主库已发布」当成「外部索引也已就绪」。
         # 此时发布已提交且不可回滚，登记只能尽力而为：失败只记录告警，
         # 绝不能把一次成功的发布翻成失败任务。
-        if _uses_external_vector_store(session):
-            try:
+        try:
+            # 判定本身也包在 try 内：``_uses_external_vector_store`` 会去取向量库，
+            # 它一旦抖动抛错，就会让一次「已提交且不可回滚的发布」被翻成失败任务。
+            if _uses_external_vector_store(session):
                 _record_external_index_compensation(
                     session,
                     job,
@@ -619,10 +628,8 @@ async def _process_job(session: Session, job: ImportJob) -> None:
                     "主库已发布新版分块，外部向量索引缺少对应向量（补齐即可）",
                     error_code=EXTERNAL_INDEX_MISSING_CHUNKS,
                 )
-            except Exception:  # noqa: BLE001 — 已提交，不能因登记失败而报任务失败
-                logger.warning(
-                    "rag_external_index_compensation_record_failed job=%s", job.id
-                )
+        except Exception:  # noqa: BLE001 — 已提交，不能因登记失败而报任务失败
+            logger.warning("rag_external_index_compensation_record_failed job=%s", job.id)
     except (
         UnsupportedDocumentTypeError,
         DocumentParseError,

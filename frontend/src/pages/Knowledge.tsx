@@ -17,7 +17,7 @@ import { useToast } from '@/components/ui/Toast'
 import { createConfirmation, downloadDocumentSource, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useDocumentChunks, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
 import { ApiError, hideStackTrace, isSessionExpiredError } from '@/lib/http'
 import { can, canControlDocument } from '@/lib/permissions'
-import { chunkContentClassName } from '@/lib/chunk-content'
+import { ChunkContent } from '@/components/knowledge/ChunkContent'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
 import type { DocumentOut, SearchResultOut } from '@/types/api'
@@ -230,8 +230,7 @@ function SearchResultRow({ result, index }: { result: SearchResultOut; index: nu
           父块 score 继承子块 <span className="font-mono">{result.score_inherited_from_chunk_id}</span>，未单独计算。
         </p>
       )}
-      {/* 盒图/代码正文改为等宽 + 保留空白 + 横向滚动；普通段落保持自动换行 */}
-      <p className={chunkContentClassName(result.content)}>{result.content}</p>
+      <ChunkContent content={result.content} />
     </li>
   )
 }
@@ -252,7 +251,7 @@ function DocumentChunkList({ documentId }: { documentId: string }) {
             {c.section && <span>· {c.section}</span>}
             {c.strategy && <span>· {c.strategy}</span>}
           </div>
-          <p className={chunkContentClassName(c.content)}>{c.content}</p>
+          <ChunkContent content={c.content} />
         </li>
       ))}
     </ul>

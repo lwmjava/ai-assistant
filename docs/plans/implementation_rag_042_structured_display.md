@@ -45,14 +45,19 @@
 | 结构化 | `whitespace-pre font-mono overflow-x-auto text-sm leading-relaxed text-text-muted` |
 | 普通 | `whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted`（与改动前完全一致） |
 
-应用位置（两处）：
+应用位置（两处，共用同一个展示组件 `frontend/src/components/knowledge/ChunkContent.ts`）：
 
-- `frontend/src/pages/Knowledge.tsx:234` 搜索结果正文（`useSearch`）；
-- `frontend/src/pages/Knowledge.tsx:255` 文档分块正文（`useDocumentChunks`）。
+- `frontend/src/pages/Knowledge.tsx` 搜索结果正文（`SearchResultRow`，`useSearch`）；
+- `frontend/src/pages/Knowledge.tsx` 文档分块正文（`DocumentChunkList`，`useDocumentChunks`）。
+
+抽组件而不是在两处各写一遍 `className={chunkContentClassName(...)}`，是为了让渲染级测试能直接渲染
+生产组件本身（见第 3.2 / 3.3 节），也让「两处行为一致」由构造而非约定来保证。
 
 ---
 
 ## 3. 不执行上传文本中的 HTML/脚本 —— 证据
+
+### 3.1 静态证据
 
 全仓检索 `dangerouslySetInnerHTML`：
 
@@ -61,7 +66,47 @@ $ grep -rn "dangerouslySetInnerHTML" .     # 仓库根目录
 No matches found
 ```
 
-结论：零处。两处正文均作为 JSX 文本子节点 `{result.content}` / `{c.content}` 渲染，React 默认做 HTML 转义，上传文本里的 `<script>alert(1)</script>` 只会以字符串形式显示。本次改动没有引入 `innerHTML`、没有引入 markdown/富文本渲染器（`react-markdown` 为仓库既有依赖，仅用于对话消息，本次未接入知识库正文）。
+结论：零处。本次改动没有引入 `innerHTML`、没有引入 markdown/富文本渲染器（`react-markdown` 为仓库既有依赖，仅用于对话消息，本次未接入知识库正文）。
+
+### 3.2 渲染级证据（不靠人眼）
+
+静态 grep 只能证明「没写那行代码」，证明不了「输出真的被转义」。因此补了渲染级测试：
+`frontend/src/components/knowledge/ChunkContent.test.ts` 用 `react-dom/server` 的
+`renderToStaticMarkup` 渲染**真实的** `ChunkContent` 组件（不是复制品），断言最终 HTML 字符串。
+`react-dom` 是本仓库既有依赖，未新增任何依赖。
+
+真实输出片段（`node --input-type=module -e` 直接渲染组件后打印）：
+
+```
+[盒图] <p class="whitespace-pre font-mono overflow-x-auto text-sm leading-relaxed text-text-muted">┌─────┐
+│ 订单 │
+└─────┘</p>
+[缩进] <p class="whitespace-pre font-mono overflow-x-auto text-sm leading-relaxed text-text-muted">    def f():
+        pass</p>
+[脚本] <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">&lt;script&gt;alert(1)&lt;/script&gt;</p>
+[属性] <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">&lt;img src=x onerror=alert(1)&gt;</p>
+[普通] <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">退款政策如下。
+七日内可申请。</p>
+```
+
+读出来的结论：
+
+1. **盒图字符与换行原样保留**：`┌─────┐ / │ 订单 │ / └─────┘` 三行连同 `\n` 一字不差出现在输出里；
+2. **列位置保留**：`    def f():`（4 空格）与 `        pass`（8 空格）的前导空格完整保留；
+3. **HTML/脚本不执行**：`<script>` 变成 `&lt;script&gt;`，`<img ... onerror=...>` 整段被转义成文本，输出里不存在未转义的 `<script` / `<img` 标签起始；
+4. 输出中不含 `dangerouslySetInnerHTML` 痕迹（同时对渲染结果做字符串断言，并再次 grep 全仓确认零处）；
+5. 普通自然语言走非结构化分支（无 `whitespace-pre`），但仍保留换行。
+
+### 3.3 为什么组件用 `createElement` 而不是 JSX
+
+Node 内置的类型擦除只认 `.ts`，加载 `.tsx` 直接失败（实测，Node v22.20.0）：
+
+```
+TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".tsx" for ...\comp.tsx
+    at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:219:9)
+```
+
+（`--experimental-transform-types` 同样报此错。）为了让**生产组件本身**能被 `node --test` 直接加载并做渲染级断言，`frontend/src/components/knowledge/ChunkContent.ts` 用 `createElement` 表达、以 `.ts` 结尾。渲染语义与 JSX 版完全一致（正文始终是 React 文本子节点），代价只是这一个单元素组件不写 JSX 标签。另一条路（挂 esbuild loader 钩子把 `.tsx` 转译后再给 Node 加载）会往仓库里塞测试基建，且依赖 `esbuild` 这个传递依赖，不划算。
 
 ---
 
@@ -97,6 +142,21 @@ No matches found
 
 失败一律经 `toast.error('下载失败', …)` 呈现，**不静默吞掉**。
 
+### 4.1 已知取舍：文本摄取型文档也会显示下载入口
+
+**取舍：保留入口 + 明确 404 反馈，而不是靠 `source` 猜着隐藏。**
+
+- 原因一：`DocumentOut` 不带「是否有源文件」字段，前端无从判断。
+- 原因二：按 `source` 猜不可靠——文本摄取接口在 `source` 缺省时会写入 `"text"`，而上传文档
+  `source` 才是文件名，两者无法用前端可见字段稳定区分（手工摄取时填了文件名也一样混淆）。
+- 原因三：`app/` 不在本卡范围，不能补字段。
+
+保留入口后，点击这类文档会得到 404 的明确中文提示（"源文件不存在：该文档可能不是通过文件上传创建的，或源文件已被清理"），
+正好落在验收条款「源文件缺失有明确反馈」上，比悄悄藏掉按钮更诚实。
+
+**后续项（需另开卡）**：后端 `DocumentOut` 补 `has_source_file`（或等价字段）后，前端可改为
+`canDownload && doc.has_source_file` 隐藏入口。本卡不做。
+
 ---
 
 ## 5. 验证
@@ -115,6 +175,27 @@ $ D:/DepTooL/nodejs/node.exe --test src/lib/chunk-content.test.ts src/lib/downlo
 单文件（`chunk-content.test.ts`）12 条 + `download.test.ts` 7 条 = **19 条，全部通过**。
 
 覆盖：盒图正文、单个制表符、代码围栏、空格缩进、制表符缩进、普通自然语言、单行缩进误判、空串/全空白、单行、超长行、超长行带盒图、结构化 class 三要素、两类 class 互斥；下载映射 401 / 403 / 404 / 5xx / 网络 / 其它状态码 / 文案互不相同。
+
+### 5.1b 渲染级测试（`react-dom/server`，既有依赖）
+
+```
+$ cd frontend
+$ D:/DepTooL/nodejs/node.exe --test src/components/knowledge/ChunkContent.test.ts
+# tests 6
+# pass 6
+# fail 0
+```
+
+6 条断言见第 3.2 节的真实输出（盒图/换行保留、4 与 8 空格列位置、`<script>` 转义、`<img onerror=>` 转义、输出无 `dangerouslySetInnerHTML`、普通段落走非结构化分支）。
+
+**合计 25 条**（19 纯函数 + 6 渲染级）：
+
+```
+$ D:/DepTooL/nodejs/node.exe --test src/lib/chunk-content.test.ts src/lib/download.test.ts src/components/knowledge/ChunkContent.test.ts
+# tests 25
+# pass 25
+# fail 0
+```
 
 ### 5.2 类型检查与构建
 
@@ -145,7 +226,9 @@ vite v5.4.8 building for production...
 
 ### 5.3 变异验证
 
-每处变异后立刻还原，最后 `grep -rn "MUTATION" frontend/src/` 无输出、19/19 全绿。
+每处变异后立刻还原，最后 `grep -rn "MUTATION\|dangerouslySetInnerHTML" frontend/src/` 只剩测试断言与注释、25/25 全绿。
+
+第一轮（纯函数阶段，19 条）：
 
 | # | 变异 | 变红的测试 | 失败条数 |
 | --- | --- | --- | --- |
@@ -153,32 +236,47 @@ vite v5.4.8 building for production...
 | 2 | `isStructuredBlock` 恒 `false` | `盒图正文判定为结构化`、`只含一个制表符也算结构化`、`三反引号代码围栏判定为结构化`、`缩进结构…`、`制表符缩进同样算结构化`、`边界：超长行带上盒图字符仍然是结构化`、`盒图正文拿到结构化 class…` | 7 / 19 |
 | 3 | 404 不再区分源文件缺失（退回兜底文案） | `404：提示源文件不存在（后端 detail 带「源文件」时原样带上）` | 1 / 19 |
 
-补充：#1 的同一条断言同时覆盖 `font-mono` 与 `overflow-x-auto`（去掉任一个同样变红），故未单列。
+第二轮（渲染级阶段，25 条）：
+
+| # | 变异 | 变红的测试 | 失败条数 |
+| --- | --- | --- | --- |
+| 4 | 组件改用 `dangerouslySetInnerHTML` | `脚本注入：<script> 被转义，输出里没有可执行的标签`、`属性注入：<img onerror=...> 整段作为文本转义，没有真的标签` | 2 / 25 |
+| 5 | `STRUCTURED_CLASS` 去掉 `whitespace-pre` | `盒图正文：盒图字符与换行原样保留，且套上结构化 class`、`缩进与列位置：4 / 8 个前导空格必须还在`、`结构化正文的渲染 class 保留空白…`、`盒图正文拿到结构化 class…` | 4 / 25 |
+| 6 | 组件渲染时把 `\n` 替换成空格 | `盒图正文：盒图字符与换行原样保留…`、`普通自然语言段落：走非结构化分支，但仍保留换行` | 2 / 25 |
+
+补充：#1/#5 的同一条断言同时覆盖 `font-mono` 与 `overflow-x-auto`（去掉任一个同样变红），故未单列。
 
 ### 5.4 无残留证明
 
 ```
-$ grep -rn "MUTATION" frontend/src/          # 无输出
-$ cd frontend && node --test src/lib/*.test.ts   # pass 19 / fail 0
-$ git status --porcelain -- frontend/src
- M frontend/src/api/rag.ts
- M frontend/src/lib/http.ts
- M frontend/src/lib/permissions.ts
- M frontend/src/pages/Knowledge.tsx
-?? frontend/src/lib/chunk-content.ts        ← 新增
-?? frontend/src/lib/chunk-content.test.ts   ← 新增
-?? frontend/src/lib/download.ts             ← 新增
-?? frontend/src/lib/download.test.ts        ← 新增
+$ grep -rn "MUTATION" frontend/src/          # 无输出（第二轮后同样无输出）
+$ cd frontend && node --test <三个测试文件>   # pass 25 / fail 0
+$ git diff --exit-code HEAD -- frontend/src  # 退出码 0
+$ git status --porcelain -- frontend/src     # 无输出
 ```
 
-`git diff HEAD -- frontend/src` 只剩 4 个既有的生产文件（95 insertions / 11 deletions），且全部是本次任务所需改动；新增文件只有 2 个实现 + 2 个测试。
+工作区零残留：所有改动（含新增文件）均已随 commit 落库。累计改动面为 4 个既有生产文件
+（`api/rag.ts`、`lib/http.ts`、`lib/permissions.ts`、`pages/Knowledge.tsx`）+ 新增 3 个实现/组件文件
+（`lib/chunk-content.ts`、`lib/download.ts`、`components/knowledge/ChunkContent.ts`）+ 3 个测试文件。
 
 ---
 
 ## 6. 局限与尚未闭合的验收点
 
-1. **没有浏览器端视觉验收**。前端仓库没有测试运行器，non_goal 禁止新增渲染依赖，因此没有 jsdom/RTL/Playwright 截图。验收点「盒图缩进与列位置保留、窄屏横向滚动」目前的证据链是：`chunkContentClassName()` 的 class 契约单测 + `tsc -b` + `vite build` 通过 + Tailwind 3.4 原生支持这三个类。**真实观感需要人工在浏览器窄屏下确认一次**（上传一份含盒图的文档 → 知识库页检索 / 展开分块 → 观察是否等宽、是否出现横向滚动条）。
-2. **下载成功路径没有自动化验证**。401/403/404/5xx/网络的文案映射有单测，但「blob 落盘成功」依赖浏览器 `URL.createObjectURL`，未在自动化测试中执行，需人工点一次下载按钮确认文件可保存、文件名与 `source` 一致。
-3. **文本摄取的文档也会显示下载入口，点击会得到 404 提示**。`DocumentOut` 没有「是否有源文件」字段（摄取接口对缺省 source 会写 `"text"`，无法据 `source` 可靠区分），且本次不允许改后端。选择保留入口 + 明确 404 反馈（符合验收点「源文件缺失有明确反馈」），而非靠 `source` 猜测隐藏。
-4. **等宽字体下的长行没有最大高度限制**。超长代码块会撑高卡片，需要纵向滚动页面本身；如需限制高度可后续加 `max-h-*`。
-5. `canControlDocument` 是后端判定镜像。若后端 `can_control_document` 规则变更，本文件需同步（已在注释中标注），否则只会出现「按钮点了报 403」或「该有按钮的没出现」这类体验问题，**不影响后端安全边界**。
+1. ~~**没有浏览器端视觉验收**~~ → **已闭合（改为渲染级证据）**：第 3.2 节用 `react-dom/server` 渲染真实组件，
+   直接证明了「盒图字符与换行原样保留」「4/8 空格列位置保留」「HTML/脚本被转义」。
+   **仍未自动化的是 Tailwind 类真正作用到像素的那一步**：`whitespace-pre` / `overflow-x-auto`
+   是否在本项目的 Tailwind 构建里真的产出了对应 CSS（类是否被 purge 掉、窄屏是否真的出现横向滚动条），
+   这条只能靠人工在窄屏浏览器里看一次（上传含盒图文档 → 检索 / 展开分块）。
+   间接证据：`dist/assets/index-*.css` 在构建后为 66.59 kB，且这三个类由 `chunk-content.ts`
+   里的**字面量常量**提供（不是拼出来的动态类名），Tailwind 3.4 的扫描能命中，不会被 purge。
+2. **下载成功路径没有自动化验证**。401/403/404/5xx/网络的文案映射有单测，但「blob 落盘」依赖浏览器
+   `URL.createObjectURL`，未在自动化测试中执行，需人工点一次下载按钮确认文件可保存、文件名与 `source` 一致。
+3. ~~文本摄取型文档显示下载入口~~ → **已裁定**：保留入口 + 明确 404 反馈，理由与后续项见第 4.1 节
+   （后端补 `has_source_file` 后可改为隐藏入口，需另开卡）。
+4. **已知取舍（不改）**：等宽长行没有加最大高度。超长代码块会撑高卡片，需要纵向滚动页面本身；
+   加 `max-h-*` 反而会让盒图被纵向截断、看不到全貌，因此维持当前行为。
+5. `canControlDocument` 是后端判定镜像。若后端 `can_control_document` 规则变更，本文件需同步（已在注释中标注），
+   否则只会出现「按钮点了报 403」或「该有按钮的没出现」这类体验问题，**不影响后端安全边界**。
+6. `ChunkContent.ts` 用 `createElement` 而非 JSX（原因见第 3.3 节）。这是为了让生产组件能被 Node
+   直接加载做渲染级断言而付的代价；若将来仓库引入正式的测试运行器（vitest 等），可改回 JSX 并保留同一套断言。

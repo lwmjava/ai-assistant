@@ -248,7 +248,17 @@ python scripts/parse_quality_report.py --json --force  # 覆盖同名已存在�
 规则顺序与派生顺序的唯一来源是 `GATE_RULE_ORDER`。
 
 版本沿革：v1 初版五条规则 → v2 补 G6 与 `gap_not_reproduced` → **v3 把原 G5 拆成
-G5a / G5b / G5c 各自独立判定（门槛值未改）**。
+G5a / G5b / G5c 各自独立判定**。
+
+> **gate.v2 → gate.v3 的升级理由：规则集合变更（G5 拆分），门槛值未变。**
+> 门禁「锁定」的意义在于**定义可复现**：三个门槛值没动只说明严格程度没变，但规则定义
+> 已经不是同一份了。且报告文件名带版本号，若留在 v2 就会出现「两份不同定义共用同一个
+> 版本号」——这与「不加 `known_gap_retired` 开关」是同一条逻辑：**让变化显式、可追溯**。
+
+**`measured_failure_rate` 的取值口径**（N-02 R13 要求写明确）：
+分母是 `status ∈ {pass, fail}` 的样本数，**不含** `dependency_missing`、
+`known_limitation`、`gap_not_reproduced`、`expected_failure` 四类。
+即 `measured_failure_rate = len(fail) / (len(pass) + len(fail))`，空集时为 `0.0`。
 
 | 规则 | 内容 | 判定位置 | 当前 |
 |---|---|---|---|
@@ -469,7 +479,7 @@ SKIPPED [1] tests\test_rag_033_parse_quality.py:746: 尚无落盘报告
 | `evals/corpus/parsing/*` | 新增：13 个样本 + `manifest.json` |
 | `scripts/parse_quality_report.py` | 新增：评估报告脚本（含门禁判定，当前 **gate.v3**） |
 | `evals/reports/parse-quality-<日期>-gate-v3.json` | 新增：首份报告（非冻结基线），文件名带门禁版本 |
-| `tests/test_rag_033_parse_quality.py` | 新增：66 条测试 |
+| `tests/test_rag_033_parse_quality.py` | 新增：67 条测试 |
 
 未改动 `app/rag/**` 下的任何产品代码；未改 `.env`；未改 `tasks.yaml` 卡片状态
 （卡片状态与 `progress` / `acceptance_record` 由批次负责人在关闭时统一处理）。
@@ -563,10 +573,15 @@ B 会连带 43 条变红，因为该符号被下游普遍依赖。）
 还原证明：四条变异执行后
 `sha256(scripts/parse_quality_report.py) = 5ff19bb42355de8e…`（与变异前一致），**零残留**。
 
-> 坑记录：本轮变异驱动一开始用 `read_bytes().decode("utf-8")` 匹配源码行，工作副本是
-> **CRLF** 行尾，导致 `...\n` 永远匹配不上、变异「假生效」。改用
-> `.replace("\r\n", "\n")` 归一化后再匹配才真正生效。**变异必须先用 assert 确认
-> `mutated != original`，否则会误把「没改成功」当成「改了还是绿的」。**
+> 坑记录（**方向很重要**）：本轮变异驱动一开始用 `read_bytes().decode("utf-8")` 按 `\n`
+> 匹配源码行，工作副本是 **CRLF** 行尾，导致 `...\n` 永远匹配不上、变异**假生效**——
+> 前两次跑出来是「没改成功」，而不是「改了还是绿的」。改用 `.replace("\r\n", "\n")`
+> 归一化后才真正生效。
+>
+> **因此：变异必须先 `assert mutated != original`。** 结论方向是——**变异报「存活」
+> 有可能是根本没改成功**，会让整条链去修一个不存在的缺陷；反过来，报「存活」时如果
+> 没有这个断言，我们无法区分「规则真的不可证伪」和「我根本没改到」。
+> 顺带：把已验证结论贴给下游前，也值得确认一次变异确实生效过。
 
 #### N-04 残留路径确认
 
@@ -578,3 +593,25 @@ B 会连带 43 条变红，因为该符号被下游普遍依赖。）
 
 全仓 `grep -rn "未损坏\|未加密"` 在 `scripts/` 与 `tests/` 下**已无命中**；`docs/` 下只剩
 本节与审查报告里的引用性文字，不再是运行时会输出给用户的路径。
+
+### 10.5 N-02：`measured_failure_rate` 补构造性断言（2026-10-07）
+
+复审判 N-02 为 Low 不阻断，但它和 N-01 是同一类（R13 / R21 存活）：**报告对外展示的
+「实测失败率」这个数字错了，没有任何测试会发现**。根因是 G6 的阻断能力被 G1 完全覆盖
+（`failure_rate > 0` ⟺ 存在 `status=fail` ⟺ G1 违规），所以「G1 红了」不代表这个数字对。
+
+补 `test_measured_failure_rate_is_guarded_by_constructive_case`
+（`tests/test_rag_033_parse_quality.py:505`）：用 `corpus_copy` 删掉 docx 的 `known_gap`
+造出 1 个 `fail`，断言分母口径下的**精确值** `1/8 = 0.125`（同时断言 `totals.passed == 7`、
+`totals.failed == 1`、`G6.passed is False`、`"G6" in blocking_rules`）。
+
+分母口径写进 §8（`pass + fail`，不含其它四类状态），R13 因此从「不可判定」变成可判定。
+
+| 变异 | 整改前 | 整改后 |
+|---|---|---|
+| R21 `failure_rate = 0.0` | **存活**（0 红） | **1 条红** |
+| R13 分母只算 `pass` | **存活**（0 红） | **1 条红** |
+
+两条都命中 `test_measured_failure_rate_is_guarded_by_constructive_case`。
+还原后 `sha256(scripts/parse_quality_report.py)=5ff19bb42355de8e…` 与变异前一致，**零残留**。
+专项测试 66 → **67 passed**。

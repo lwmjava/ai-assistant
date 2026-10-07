@@ -502,6 +502,28 @@ def test_unregistered_order_break_blocks_gate(corpus_copy) -> None:
     assert report["gate"]["meets_gate"] is False
 
 
+def test_measured_failure_rate_is_guarded_by_constructive_case(corpus_copy) -> None:
+    """N-02：报告对外展示的「实测失败率」必须有构造性断言盯着（杀 R21 / R13）。
+
+    G6 的阻断能力被 G1 完全覆盖（`failure_rate > 0` ⟺ 存在 `status=fail`），
+    所以「G1 红了」不等于「这个数字是对的」。这里直接断言数字本身：
+    删掉 docx 的 known_gap 造出 1 个 fail，分母 `pass + fail` = 7 + 1 = 8，
+    故 `measured_failure_rate` 必须恰好是 1/8 = 0.125。
+    """
+    def mutate(manifest: dict, dest: Path) -> None:
+        _manifest_sample(manifest, "docx_headings_table.docx")["known_gap"] = None
+
+    report = _build(corpus_copy, mutate)
+    gate = report["gate"]
+    assert report["totals"]["passed"] == 7
+    assert report["totals"]["failed"] == 1
+    # 恒 0.0（R21）与分母退化成只算 pass（R13）都会让它不成立。
+    assert gate["measured_failure_rate"] == round(1 / 8, 4)
+    assert gate["checks"]["G6"]["passed"] is False
+    assert "G6" in gate["blocking_rules"]
+    assert gate["meets_gate"] is False
+
+
 def test_injected_unreachable_fragment_blocks_gate(corpus_copy) -> None:
     """给表格 PDF 加一个不可能命中的期望片段 → 未登记覆盖失败。"""
     def mutate(manifest: dict, dest: Path) -> None:

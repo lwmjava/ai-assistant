@@ -206,6 +206,8 @@ class AgentState:
     understanding: str = ""
     plan: str = ""
     context: str = ""  # 检索产出的外部上下文
+    retrieval_status: str = ""  # 检索终态：ok / no_hit / below_threshold / unavailable
+    retrieval_notice: str = ""  # 非 ok 时必须向用户披露的要求（指令块，非资料）
     tool_results: list[str] = field(default_factory=list)  # 工具调用的观测结果
     code_results: list[dict] = field(default_factory=list)  # 代码工具给界面的结果
     draft: str = ""
@@ -383,6 +385,7 @@ class AgentPipeline:
         tool_results = ""
         if state.tool_results:
             tool_results = "## 已调用工具结果\n" + "\n".join(state.tool_results)
+        notice = f"\n\n{state.retrieval_notice}\n\n" if state.retrieval_notice else ""
         return (
             f"## 回答计划\n{state.plan}\n\n"
             f"## 外部上下文\n{context}\n\n"
@@ -390,6 +393,7 @@ class AgentPipeline:
             f"{tool_results}\n\n"
             f"## 最近对话\n{recent_dialogue(state.history)}\n\n"
             f"## 用户消息\n{state.user_input}\n\n"
+            f"{notice}"
             "请按系统要求撰写回答草稿，或输出工具调用指令。"
         )
 
@@ -416,11 +420,19 @@ class AgentPipeline:
         return fresh
 
     async def _fill_retrieval(self, state: AgentState) -> None:
-        """检索后与已有记忆合并，互不覆盖。"""
+        """检索后与已有记忆合并，互不覆盖。
+
+        同时把检索终态写进 state。状态从 ``last_outcome`` 读，不靠解析检索文本
+        反推：检索失败与「知识库里确实没有」必须区分开。
+        """
         memory = state.context or ""
         rag = ""
         if self.retriever is not None:
             rag = await self.retriever.retrieve(state.user_input, state.plan)
+            outcome = getattr(self.retriever, "last_outcome", None)
+            if outcome is not None:
+                state.retrieval_status = outcome.status.value
+                state.retrieval_notice = outcome.directive()
         state.context = merge_memory_and_rag(memory, rag)
 
     def _build_reflect(self, state: AgentState) -> str:
@@ -436,11 +448,13 @@ class AgentPipeline:
             if state.reflection and "无需修正" not in state.reflection
             else "（审查认为无需修正）"
         )
+        notice = f"\n\n{state.retrieval_notice}\n\n" if state.retrieval_notice else ""
         return (
             f"## 最近对话\n{recent_dialogue(state.history)}\n\n"
             f"## 用户消息\n{state.user_input}\n\n"
             f"## 回答草稿\n{state.draft}\n\n"
             f"## 审查意见\n{reflection}\n\n"
+            f"{notice}"
             "请按系统要求产出最终回复。"
         )
 

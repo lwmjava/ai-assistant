@@ -166,7 +166,11 @@ def test_rag_without_retriever_or_on_failure_still_answers_once() -> None:
     _events(llm2, state2, route_message(state2.user_input), failed)
     assert failed.calls == 1
     assert llm2.stream_calls == 1
-    assert "没有可用的检索结果" in llm2.users[0]
+    # RAG-037：检索故障与「查过了、没有」必须区分开。故障不能再写成
+    # 「没有可用的检索结果」——那会让模型用自身知识冒充知识库结论。
+    assert state2.retrieval_status == "unavailable"
+    assert "没有可用的检索结果" not in llm2.users[0]
+    assert "本次检索未完成" in llm2.users[0]
 
 
 def test_service_fast_route_only_when_langgraph(monkeypatch: pytest.MonkeyPatch) -> None:

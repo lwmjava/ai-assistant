@@ -116,6 +116,20 @@ class Settings(BaseSettings):
         "未检索到足够相关的知识库资料，未能给出可靠答案。"
         "请补充关键词，或确认相关资料已上传至知识库。"
     )
+    # 检索状态（ok / no_hit / below_threshold / unavailable）是否向模型注入
+    # 「必须向用户披露」的指令。关闭即回退到不注入披露要求的旧行为，
+    # 状态本身仍记录与暴露。
+    RAG_STATUS_NOTICE_ENABLED: bool = True
+    # 零候选时的披露语：允许基于模型知识作答，但须声明未使用知识库内容。
+    RAG_NO_HIT_NOTICE: str = (
+        "知识库中没有检索到与问题相关的资料。"
+        "本次回答未使用知识库内容，属于模型自身知识，不能当作知识库结论引用。"
+    )
+    # 检索未完成（嵌入 / 向量库 / 后端异常）时的披露语：必须说明检索不可用。
+    RAG_UNAVAILABLE_NOTICE: str = (
+        "知识库检索服务当前不可用，本次没有取得任何知识库资料。"
+        "必须明确告知用户检索失败，不得把模型自身知识包装成知识库结论。"
+    )
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
     # 检索过取倍数：先取 top_k * N，再剔除注入块后截断到 top_k。
     RAG_RETRIEVAL_CANDIDATE_MULTIPLIER: int = 3

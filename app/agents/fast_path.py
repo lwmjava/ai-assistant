@@ -10,6 +10,7 @@ from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState, Execution
 from app.agents.route import ChatRoute, RouteKind
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
 
 logger = logging.getLogger(__name__)
 
@@ -101,17 +102,36 @@ async def iter_fast_path(
         return
 
     extra = ""
+    notice = ""
     if route.kind is RouteKind.RAG:
         yield AgentEvent("stage", "检索")
         snippet = ""
         if retriever is not None:
             try:
                 snippet = await retriever.retrieve(state.user_input, state.plan or "")
-            except Exception:
-                logger.exception("检索失败，改为直接回答")
+            except Exception:  # noqa: BLE001 — 检索故障不应中断对话
+                logger.exception("短路径检索失败")
                 snippet = ""
+                # 检索器自身没有收敛异常（不是 HybridRetriever）。这里必须判为
+                # unavailable，不能让「没跑成」退化成「查过了、没有」。
+                outcome = RetrievalOutcome(status=RetrievalStatus.UNAVAILABLE)
+            else:
+                outcome = getattr(retriever, "last_outcome", None)
+            if outcome is not None:
+                state.retrieval_status = outcome.status.value
+                # 检索状态要求是给模型的指令，必须进 system，不能塞进
+                # 「知识库」段里当资料——资料会被当成不可信文本而可能被忽略。
+                notice = outcome.directive()
+        logger.info(
+            "rag_fast_path_retrieval status=%s",
+            state.retrieval_status or "unknown",
+        )
+        # 检索失败（unavailable）不能写成「没有可用的检索结果」：
+        # 那是把「没跑成」伪装成「查过了、没有」，用户看不出区别。
         if (snippet or "").strip():
             extra = f"## 知识库\n{snippet}"
+        elif state.retrieval_status == "unavailable":
+            extra = "## 知识库\n本次检索未完成，没有取得任何知识库资料。"
         else:
             extra = "## 知识库\n没有可用的检索结果。"
 
@@ -119,7 +139,7 @@ async def iter_fast_path(
         llm,
         options,
         state,
-        _system(_DIRECT_SYSTEM, skill_prompt),
+        _system(_DIRECT_SYSTEM + ("\n\n" + notice if notice else ""), skill_prompt),
         _user_block(state, extra),
     ):
         yield event

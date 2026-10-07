@@ -214,6 +214,9 @@ class RAGService:
     # 类级默认值：未提供鉴权主体时沿用仅按租户过滤的历史行为。
     # 以 ``__new__`` 绕过构造的调用路径也能取到该属性，不会因缺属性而崩溃。
     _read_scope: ReadScope | None = None
+    # 上一次 search 实际生效的后端名。后端工厂会静默降级（缺依赖时
+    # langchain/llamaindex → native），调用方需要能看到真实生效值。
+    last_backend_name: str = ""
 
     def __init__(
         self,
@@ -668,6 +671,7 @@ class RAGService:
             handler = logging.StreamHandler()
             handler.setFormatter(JsonLogFormatter())
             logger.addHandler(handler)
+        self.last_backend_name = rag_backend.name
         logger.info(
             "rag_search_backend requested=%s effective=%s implementation=%s fallback=%s",
             requested_backend,

@@ -10,7 +10,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
@@ -923,16 +932,25 @@ def list_operation_confirmations(
 @router.post("/search", response_model=list[SearchResultOut])
 async def search(
     req: SearchRequest,
+    response: Response,
     current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> list[SearchResultOut]:
-    """按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。"""
+    """按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。
+
+    检索状态与「实际生效后端」通过响应头暴露：后端工厂会在缺依赖时把
+    langchain / llamaindex 静默降级为 native，调用方需要能观察到真实生效值。
+    本端点不做相似度阈值过滤，因此状态只有 ok / no_hit 两种；检索失败仍以
+    5xx 呈现——显式检索接口不应把故障伪装成空结果。
+    """
     if not req.query.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空")
     # 带上鉴权主体，使 uploader 模式的有效读范围同样贯穿 HTTP 检索面，
     # 与对话检索保持一致（ADR-0001 §10）。
     rag = RAGService(session, current_user.tenant_id, reader=current_user)
     results = await rag.search(req.query, req.top_k, backend=req.backend)
+    response.headers["X-Retrieval-Status"] = "ok" if results else "no_hit"
+    response.headers["X-RAG-Backend"] = rag.last_backend_name or "native"
     return [
         SearchResultOut(
             document_id=r.document_id,

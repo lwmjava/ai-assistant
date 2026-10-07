@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from fastapi import Response
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
@@ -80,6 +81,7 @@ async def test_search_api_preserves_explanation_fields(monkeypatch, service):
     monkeypatch.setattr(route.RAGService, "search", fake_search)
     output = await route.search(
         route.SearchRequest(query="test"),
+        Response(),
         current_user=cast(Any, SimpleNamespace(tenant_id="tenant")),
         session=cast(Any, SimpleNamespace()),
     )

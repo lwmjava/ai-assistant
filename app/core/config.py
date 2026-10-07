@@ -157,8 +157,11 @@ class Settings(BaseSettings):
     EMBEDDING_TIMEOUT_SECONDS: float = 15.0
     # 索引身份（ADR-0008）：换模型或改归一化/度量都要换索引，不能原地混写。
     EMBEDDING_INDEX_VERSION: str = "1"  # 显式索引版本，重建新索引时递增
-    EMBEDDING_NORMALIZATION: str = "l2"  # l2 | none：影响向量数值，必须绑定进身份
-    EMBEDDING_METRIC: str = "cosine"  # cosine | ip | l2：沿用已批准的 Milvus cosine
+    # 下面两项**只接受当前真实生效的那一组**（l2 / cosine）：实现固定按它们执行，
+    # 其它取值会在索引身份构造时直接报 IndexIdentityError（摄取与检索一起失败），
+    # 不存在「登记了一套、实际按另一套算」的中间态。要支持别的值，先实现对应行为。
+    EMBEDDING_NORMALIZATION: str = "l2"
+    EMBEDDING_METRIC: str = "cosine"
 
     # ── 检索调用韧性（RAG-038）：总时限 + 有限退避 + 取消传播 ──
     # 一次检索 = 嵌入 + 向量检索，**共用**这一个总预算，而不是每个子调用各一个。

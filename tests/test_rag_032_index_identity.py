@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 import types
 from collections.abc import Sequence
 from dataclasses import replace
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -27,6 +29,8 @@ from app.models.rag import Document, DocumentChunk, EmbeddingIndex, IndexStatus
 from app.rag.document_parsers.base import ParsedDocument
 from app.rag.embeddings.base import EmbeddingInputPolicy, EmbeddingProvider
 from app.rag.index_identity import (
+    SUPPORTED_METRIC,
+    SUPPORTED_NORMALIZATION,
     EmbeddingIndexIdentity,
     IndexIdentityError,
     current_backend,
@@ -1173,6 +1177,47 @@ def test_normalization_and_metric_are_stored_normalized() -> None:
     assert loose.fingerprint() == strict.fingerprint()
 
 
+def _documented_choices(field: str) -> set[str]:
+    """抓配置项注释里「用 | 列举」的可选值，供下面的文档一致性用例消费。
+
+    只看配置项所在行与前两行注释——那里才是给运维看的可选值清单。
+    """
+    hints: set[str] = set()
+    root = Path(__file__).resolve().parents[1]
+    for rel in ("app/core/config.py", ".env.example"):
+        lines = (root / rel).read_text(encoding="utf-8").splitlines()
+        for idx, line in enumerate(lines):
+            if field not in line:
+                continue
+            for row in lines[max(0, idx - 2): idx + 1]:
+                if "|" not in row:
+                    continue
+                for part in row.split("|"):
+                    token = re.match(r"[^a-z0-9_]*([a-z0-9_]+)", part.strip())
+                    if token and re.fullmatch(r"[a-z0-9_]+", token.group(1)):
+                        hints.add(token.group(1))
+    return hints
+
+
+@pytest.mark.parametrize("field", ["normalization", "metric"])
+def test_config_docs_never_advertise_unsupported_values(field: str) -> None:
+    """L-02：注释里声明的可选值必须真的构造得出来。
+
+    `app/core/config.py` 与 `.env.example` 一度写着 ``l2 | none`` / ``cosine | ip | l2``，
+    而实现只按 l2 + cosine 执行、其它值构造即报错——运维照注释配 `EMBEDDING_METRIC=ip`
+    会让摄取与检索直接失败。这里把「注释声明」与「构造器接受」绑在一起：
+    注释里敢列的值，必须能被 ``EmbeddingIndexIdentity`` 接受。
+    """
+    supported = {"normalization": SUPPORTED_NORMALIZATION, "metric": SUPPORTED_METRIC}[field]
+    for value in _documented_choices(f"EMBEDDING_{field.upper()}"):
+        assert value == supported, (
+            f"配置注释把 {field}={value} 列成了可选值，但实现只支持 {supported}"
+        )
+    # 前提：当前实现确实只接受这一组，注释收紧后仍要保持一致
+    with pytest.raises(IndexIdentityError):
+        _identity("m", 8, **{field: "something-else"})
+
+
 def test_identity_matches_row_compares_full_key() -> None:
     row = EmbeddingIndex(name="r", identity_key=_identity("m", 8).key())
     assert identity_matches_row(_identity("m", 8), row) is True
@@ -1293,6 +1338,46 @@ def test_activate_refuses_index_whose_chunks_are_unreachable(db: Session) -> Non
     assert target.status == IndexStatus.PREPARING.value, "不得留下半切换的中间态"
     db.refresh(old)
     assert old.status == IndexStatus.ACTIVE.value
+
+
+def test_revert_switch_restores_retired_timestamp(db: Session) -> None:
+    """N-01：撤销切换必须连退役时间戳一起还回去，只还 status 会断掉切换历史。
+
+    现场是「对一个已退役的索引做激活/回退，且检索校验不通过」：状态正确回到
+    retired，但 ``retired_at`` 被 ``_apply_switch`` 清成了 None 却没还原，
+    审计上这一截就丢了。
+    """
+    old = resolve_write_index(db, _identity("model-a", 8))
+    _chunk(db, index_id=old.id)
+    target = ensure_index(db, _identity("model-b", 8))
+    _chunk(db, index_id=target.id, text="乙")
+    from datetime import UTC, datetime
+
+    retired_at = datetime.now(UTC)
+    target.status = IndexStatus.RETIRED.value
+    target.retired_at = retired_at
+    target.activated_at = retired_at
+    db.add(target)
+    db.commit()
+    # 让检索校验必然失败：目标分块挂在已下线文档上
+    row = db.exec(
+        select(DocumentChunk).where(col(DocumentChunk.index_id) == target.id)
+    ).first()
+    assert row is not None
+    doc = db.get(Document, row.document_id)
+    assert doc is not None
+    doc.is_current = False
+    db.add(doc)
+    db.commit()
+
+    with pytest.raises(IndexIdentityError):
+        activate_index(db, target.id)
+
+    assert target.status == IndexStatus.RETIRED.value
+    assert target.retired_at == retired_at, "撤销后退役时间戳必须还在"
+    db.refresh(target)
+    assert target.retired_at == retired_at
+    assert active_index(db).id == old.id
 
 
 def test_activate_refuses_index_whose_vectors_dim_drift(db: Session) -> None:

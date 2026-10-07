@@ -217,13 +217,17 @@ def _apply_switch(
     target: EmbeddingIndex,
     retired_rows: list[EmbeddingIndex],
     now: datetime,
-) -> tuple[str, datetime | None]:
-    """把 target 切成 active、同后端其它 active 切成 retired。返回原状态以便撤销。"""
+) -> tuple[str, datetime | None, datetime | None]:
+    """把 target 切成 active、同后端其它 active 切成 retired。返回原状态以便撤销。
+
+    ``retired_at`` 也要进 previous：对已退役索引做激活/回退时，撤销必须连退役
+    时间戳一起还回去——状态对了而时间戳丢了，切换历史就断了一截。
+    """
     for row in retired_rows:
         row.status = IndexStatus.RETIRED.value
         row.retired_at = now
         session.add(row)
-    previous = (target.status, target.activated_at)
+    previous = (target.status, target.activated_at, target.retired_at)
     target.status = IndexStatus.ACTIVE.value
     target.activated_at = now
     target.retired_at = None
@@ -235,7 +239,7 @@ def _apply_switch(
 def _revert_switch(
     session: Session,
     target: EmbeddingIndex,
-    previous: tuple[str, datetime | None],
+    previous: tuple[str, datetime | None, datetime | None],
     retired_rows: list[EmbeddingIndex],
 ) -> None:
     """撤销 :func:`_apply_switch`：校验不通过时不留半切换的中间态。"""
@@ -243,7 +247,7 @@ def _revert_switch(
         row.status = IndexStatus.ACTIVE.value
         row.retired_at = None
         session.add(row)
-    target.status, target.activated_at = previous
+    target.status, target.activated_at, target.retired_at = previous
     session.add(target)
     session.flush()
 

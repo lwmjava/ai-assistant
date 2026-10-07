@@ -426,6 +426,7 @@ class RAGService:
                 )
 
             parent_id_map: dict[str, str] = {}
+            persisted_rows: list[DocumentChunk] = []
             for chunk_index, (chunk, vector) in enumerate(zip(chunk_objs, embeddings, strict=True)):
                 # 手动生成主键，便于父块落库后直接回填子块的 parent_id，无需逐块 flush。
                 row_id = uuid.uuid4().hex
@@ -452,6 +453,12 @@ class RAGService:
                 if metadata.get("kind") == "parent":
                     parent_id_map[str(metadata.get("parent_key"))] = row_id
                 self.session.add(row)
+                persisted_rows.append(row)
+
+            # 必须在提交之前写：外部向量库写失败要随事务一起回滚，否则会留下
+            # 「SQL 里有分块、向量库里查不到」的半截状态。本地向量库的 add 是
+            # 空操作（分块已随主库持久化），Milvus 实现才真正把向量同步进集合。
+            await self._vector_store.add(persisted_rows)
 
             if document.is_current:
                 demote_other_current_versions(self.session, document.version_group_id, keep_id=document.id)

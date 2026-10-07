@@ -310,6 +310,9 @@ class MilvusVectorStore(VectorStore):
             raise MilvusUnavailableError(f"Milvus 检索失败：{type(exc).__name__}") from exc
 
         candidate_ids = [h.entity.get("id") for h in hits]
+        # 候选集下面还会被 SQL 回查收窄（旧索引残留、读范围、可见性），
+        # 因此先把 Milvus 的距离按 id 留存，避免收窄后拿不到真实相似度。
+        similarity_by_id = {h.entity.get("id"): float(h.distance) for h in hits}
         if not candidate_ids:
             return []
 
@@ -356,7 +359,8 @@ class MilvusVectorStore(VectorStore):
                     document_id=row.document_id,
                     score=float(score),
                     version_status=version_by_chunk.get(row.id, "current"),
-    similarity=1.0,  # milvus 为 Partial：RRF 命中即为效激候选，真实余弦待 RAG-015 补齐
+                    # 集合以 COSINE 为检索度量，Milvus 返回的 distance 即余弦相似度（越大越近）。
+                    similarity=similarity_by_id.get(row.id, 0.0),
                 )
             )
         return results

@@ -48,11 +48,12 @@ DEPENDENCY_MISSING_ERROR_CODES = frozenset(
 )
 DEPENDENCY_MISSING_MESSAGE_MARK = "依赖缺失"
 
-# 质量门禁（gate.v2，2026-10-07 由批次评审锁定；v2 在 v1 基础上补 G6 与
-# gap_not_reproduced，并把 G1/G5 的覆盖范围写明确）。
-# 修改门槛值必须同时改 version 与 locked_at，避免静默改写已锁定门禁。
+# 质量门禁（gate.v3，2026-10-07 由批次评审锁定）。
+# 版本沿革：v1 初版五条规则；v2 补 G6 与 gap_not_reproduced 并写明确 G1/G5 覆盖范围；
+# v3 把原 G5（一条文本对应三处实现）拆成 G5a/G5b/G5c 各自独立判定，**门槛值未改**。
+# 修改门槛值或规则集合必须同时改 version 与 locked_at，避免静默改写已锁定门禁。
 LOCKED_GATE = {
-    "version": "gate.v2",
+    "version": "gate.v3",
     "status": "locked",
     "locked_by": "批次评审（Agent 代执行人工评审）",
     "locked_at": "2026-10-07",
@@ -67,20 +68,28 @@ LOCKED_GATE = {
         "known_limitations 中，登记后状态为 known_limitation（豁免门槛，但不得计入 passed）。",
         "G3": "阅读顺序 order_score ≥ 0.95，豁免规则同 G2。",
         "G4": "依赖缺失：存在任何 dependency_missing 样本时整份报告 meets_gate=False（即使其它全绿）。",
-        "G5": "不得声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的表述；"
-        "dependency_missing 样本不得计入覆盖率或顺序统计；"
-        "未走真实 provider 路径（used_mock=True）时不得声明走了真实路径。",
+        "G5a": "不得用数据暗示验证过：dependency_missing 样本不得带 coverage / order_score "
+        "数值（不得计入覆盖率或顺序统计）。判定在 evaluate_gate（样本级）。",
+        "G5b": "不得用表述声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的禁用表述。"
+        "判定在 apply_report_level_checks（报告级，scan_forbidden_phrases）。",
+        "G5c": "不得声称走了真实路径：ocr_probe.used_mock 必须为 False，未走真实 provider "
+        "路径时不得声明走了真实路径。判定在 apply_report_level_checks（报告级）。",
         "G6": "失败率 measured_failure_rate ≤ 0.0（分母为 pass+fail 样本）。",
     },
     "note": (
-        "本门禁已锁定（gate.v2）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后"
+        "本门禁已锁定（gate.v3）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后"
         "才能解除，解除前本卡整体不算「质量通过」。"
+        "v3 相对 v2 只把 G5 拆成 G5a/G5b/G5c（各自独立判定），门槛值未变。"
         "另：本报告中不含任何宣称 OCR 已被真实依赖验证的表述，"
         "中文 OCR 质量在本机未经验证。"
     ),
 }
 
-# G5 禁止出现的表述（在整份报告序列化结果里扫描）。
+# 规则展示与派生顺序的唯一来源。blocking_rules / meets_gate 都按此顺序派生，
+# 避免「checks 里多一条规则但没人重算结论」这类静默失效。
+GATE_RULE_ORDER = ("G1", "G2", "G3", "G4", "G5a", "G5b", "G5c", "G6")
+
+# G5b 禁止出现的表述（在整份报告序列化结果里扫描）。
 FORBIDDEN_VERIFICATION_PHRASES = (
     "OCR 质量已验证",
     "已验证 OCR",
@@ -420,12 +429,20 @@ def evaluate_sample(sample: dict, *, ocr_provider: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _derive_blocking_rules(checks: dict) -> list[str]:
+    """从 checks 派生阻断规则名（顺序固定为 :data:`GATE_RULE_ORDER`）。"""
+    return [name for name in GATE_RULE_ORDER if name in checks and not checks[name]["passed"]]
+
+
 def evaluate_gate(results: list[dict], *, failure_rate: float) -> dict:
-    """按 gate.v2 的六条规则逐条判定，返回门禁结果。
+    """按 gate.v3 的样本级规则逐条判定，返回门禁结果。
 
     G1 未登记的失败 + 未注销的缺口必须为 0；G2/G3 覆盖率与顺序门槛（登记
     known_gap 则豁免，但豁免项不得计入 passed）；G4 存在依赖缺失即整份不通过；
-    G5 不得声称验证过，依赖缺失样本不得计入覆盖/顺序统计；G6 失败率门槛。
+    G5a 依赖缺失样本不得计入覆盖/顺序统计；G6 失败率门槛。
+
+    G5b（表述扫描）与 G5c（used_mock）是报告级规则，由
+    :func:`apply_report_level_checks` 判定——**最终结论必须经它派生后才可发布**。
     """
     coverage_min = LOCKED_GATE["coverage_min"]
     order_min = LOCKED_GATE["order_score_min"]
@@ -465,14 +482,14 @@ def evaluate_gate(results: list[dict], *, failure_rate: float) -> dict:
     g4_items = [item for item in results if item["status"] == "dependency_missing"]
     g4_passed = not g4_items
 
-    # G5：不得声称验证过；依赖缺失样本不得带覆盖率/顺序数值。
+    # G5a：不得用数据暗示验证过——依赖缺失样本不得带覆盖率/顺序数值。
     claimed = [
         item["name"]
         for item in results
         if item["status"] == "dependency_missing"
         and (item["coverage"] is not None or item["order_score"] is not None)
     ]
-    g5_passed = not claimed
+    g5a_passed = not claimed
 
     # G6：失败率门槛（分母为 pass + fail）。
     g6_passed = failure_rate <= failure_rate_max
@@ -483,21 +500,23 @@ def evaluate_gate(results: list[dict], *, failure_rate: float) -> dict:
         "G2": {"passed": g2_passed, "violations": names(g2_violations)},
         "G3": {"passed": g3_passed, "violations": names(g3_violations)},
         "G4": {"passed": g4_passed, "violations": names(g4_items)},
-        "G5": {"passed": g5_passed, "violations": claimed},
+        "G5a": {"passed": g5a_passed, "violations": claimed},
         "G6": {"passed": g6_passed, "violations": g6_violations},
     }
-    blocking = [name for name, check in checks.items() if not check["passed"]]
+    # G5b（表述扫描）与 G5c（used_mock）是报告级规则，只在 apply_report_level_checks 判定。
+    # 结论（blocking_rules / meets_gate）同样由 apply_report_level_checks 统一派生，
+    # 这里给出的仅是样本级规则的中间结果，不作为最终结论对外发布。
     return {
         **LOCKED_GATE,
         "measured_failure_rate": failure_rate,
         "checks": checks,
-        "blocking_rules": blocking,
-        "meets_gate": not blocking,
+        "blocking_rules": _derive_blocking_rules(checks),
+        "meets_gate": not _derive_blocking_rules(checks),
     }
 
 
 def scan_forbidden_phrases(report: dict) -> list[str]:
-    """扫描整份报告，返回出现的禁用表述（G5）。"""
+    """扫描整份报告，返回出现的禁用表述（G5b）。"""
     serialized = json.dumps(report, ensure_ascii=False)
     return [phrase for phrase in FORBIDDEN_VERIFICATION_PHRASES if phrase in serialized]
 
@@ -563,20 +582,34 @@ def build_ocr_probe(results: list[dict], *, ocr_provider: str) -> dict:
 
 
 def apply_report_level_checks(report: dict) -> dict:
-    """把「报告级」的 G5 检查（禁用表述扫描 + used_mock）结果写回门禁。"""
+    """判定报告级规则（G5b / G5c），并**派生**门禁最终结论。
+
+    这里是门禁结论的**唯一出口**：``blocking_rules`` 与 ``meets_gate`` 都由
+    ``checks`` 重新算出来，不在别处单独维护。理由见 N-01——第 1 步「在统一入口
+    重算」只有在有测试盯着 ``meets_gate`` 时才产生守护，因此这里无条件重算
+    （不再是「只有出现违规才重算」），任何一处改了 checks 都会反映到结论上。
+    """
     gate = report["gate"]
-    violations = list(gate["checks"]["G5"]["violations"])
-    violations.extend(scan_forbidden_phrases(report))
-    if report["ocr_probe"]["used_mock"]:
-        violations.append(
-            "ocr_probe.used_mock=True：未走真实 provider 路径，不得声明走了真实路径"
-        )
-    if violations:
-        gate["checks"]["G5"] = {"passed": False, "violations": violations}
-        gate["blocking_rules"] = [
-            name for name, check in gate["checks"].items() if not check["passed"]
-        ]
-        gate["meets_gate"] = not gate["blocking_rules"]
+    checks = gate["checks"]
+
+    # G5b（表述层面）：整份报告不得出现宣称「OCR 质量已经过验证」的禁用表述。
+    forbidden = scan_forbidden_phrases(report)
+    checks["G5b"] = {"passed": not forbidden, "violations": forbidden}
+
+    # G5c（路径层面）：未走真实 provider 路径时，不得声明走了真实路径。
+    used_mock = report["ocr_probe"]["used_mock"]
+    checks["G5c"] = {
+        "passed": not used_mock,
+        "violations": (
+            ["ocr_probe.used_mock=True：未走真实 provider 路径，不得声明走了真实路径"]
+            if used_mock
+            else []
+        ),
+    }
+
+    gate["checks"] = {name: checks[name] for name in GATE_RULE_ORDER if name in checks}
+    gate["blocking_rules"] = _derive_blocking_rules(gate["checks"])
+    gate["meets_gate"] = not gate["blocking_rules"]
     return report
 
 
@@ -691,7 +724,7 @@ def render_report(report: dict) -> str:
         f"锁定日期={gate['locked_at']}）：覆盖率≥{gate['coverage_min']}、"
         f"顺序得分≥{gate['order_score_min']}、失败率≤{gate['failure_rate_max']}"
     )
-    for rule_name in ("G1", "G2", "G3", "G4", "G5", "G6"):
+    for rule_name in GATE_RULE_ORDER:
         check = gate["checks"][rule_name]
         lines.append(
             f"  {rule_name} {'通过' if check['passed'] else '不通过'}："

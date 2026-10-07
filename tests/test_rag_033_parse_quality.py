@@ -456,13 +456,13 @@ def test_dependency_inventory_records_missing_items(report: dict) -> None:
 
 
 def test_quality_gate_is_locked(report: dict) -> None:
-    """门禁必须为已锁定的 gate.v2，并带齐锁定人/日期/六条规则。"""
+    """门禁必须为已锁定的 gate.v3，并带齐锁定人/日期/全部规则。"""
     gate = report["gate"]
     assert gate["status"] == "locked"
-    assert gate["version"] == "gate.v2"
+    assert gate["version"] == "gate.v3"
     assert gate["locked_by"] == "批次评审（Agent 代执行人工评审）"
     assert gate["locked_at"] == "2026-10-07"
-    assert set(gate["rules"]) == {"G1", "G2", "G3", "G4", "G5", "G6"}
+    assert set(gate["rules"]) == set(_report_mod.GATE_RULE_ORDER)
     assert gate["coverage_min"] == 0.95
     assert gate["order_score_min"] == 0.95
     assert gate["failure_rate_max"] == 0.0
@@ -626,27 +626,17 @@ def test_gate_g4_blocks_while_dependency_missing(report: dict) -> None:
         assert "pdf_scanned.pdf" in gate["checks"]["G4"]["violations"]
 
 
-def test_gate_g5_no_verification_claims(report: dict) -> None:
-    """G5：报告不得出现「OCR 质量已验证」类表述；依赖缺失样本不得计入覆盖/顺序统计。"""
+def test_gate_g5a_no_verification_claims_in_stats(report: dict) -> None:
+    """G5a：依赖缺失样本不得带覆盖率/顺序数值（不得计入统计）。"""
     gate = report["gate"]
-    assert gate["checks"]["G5"]["passed"] is True
-    assert _report_mod.scan_forbidden_phrases(report) == []
+    assert gate["checks"]["G5a"]["passed"] is True
     for item in report["dependency_missing_list"]:
         assert item["coverage"] is None
         assert item["order_score"] is None
 
 
-def test_gate_g5_blocks_when_report_claims_verification(monkeypatch: pytest.MonkeyPatch) -> None:
-    """M-01：报告里出现禁用表述时，必须走到门禁并阻断（端到端，不只测扫描函数）。"""
-    monkeypatch.setitem(_report_mod.LOCKED_GATE, "note", "OCR 质量已验证")
-    polluted = _report_mod.build_report(ocr_provider="tesseract")
-    assert polluted["gate"]["checks"]["G5"]["passed"] is False
-    assert "G5" in polluted["gate"]["blocking_rules"]
-    assert polluted["gate"]["meets_gate"] is False
-
-
-def test_gate_g5_unit_flags_dependency_missing_with_stats() -> None:
-    """M-04：门禁层直接判定「dependency_missing 却带覆盖率/顺序」为违规。"""
+def test_gate_g5a_unit_flags_dependency_missing_with_stats() -> None:
+    """M-04：门禁层直接判定「dependency_missing 却带覆盖率/顺序」为违规（G5a）。"""
     results = [
         {
             "name": "pdf_scanned.pdf",
@@ -658,9 +648,30 @@ def test_gate_g5_unit_flags_dependency_missing_with_stats() -> None:
         }
     ]
     gate = _report_mod.evaluate_gate(results, failure_rate=0.0)
-    assert gate["checks"]["G5"]["passed"] is False
-    assert gate["checks"]["G5"]["violations"] == ["pdf_scanned.pdf"]
-    assert "G5" in gate["blocking_rules"]
+    assert gate["checks"]["G5a"]["passed"] is False
+    assert gate["checks"]["G5a"]["violations"] == ["pdf_scanned.pdf"]
+    assert "G5a" in gate["blocking_rules"]
+
+
+def test_gate_g5b_no_verification_claims(report: dict) -> None:
+    """G5b：报告不得出现「OCR 质量已验证」类表述。"""
+    assert report["gate"]["checks"]["G5b"]["passed"] is True
+    assert _report_mod.scan_forbidden_phrases(report) == []
+
+
+def test_gate_g5b_blocks_when_report_claims_verification(monkeypatch: pytest.MonkeyPatch) -> None:
+    """M-01：报告里出现禁用表述时，必须走到门禁并阻断（端到端，不只测扫描函数）。"""
+    monkeypatch.setitem(_report_mod.LOCKED_GATE, "note", "OCR 质量已验证")
+    polluted = _report_mod.build_report(ocr_provider="tesseract")
+    assert polluted["gate"]["checks"]["G5b"]["passed"] is False
+    assert "G5b" in polluted["gate"]["blocking_rules"]
+    assert polluted["gate"]["meets_gate"] is False
+
+
+def test_gate_g5c_passes_on_real_provider_path(report: dict) -> None:
+    """G5c：真实运行下 used_mock=False，路径声明成立。"""
+    assert report["gate"]["checks"]["G5c"]["passed"] is True
+    assert report["ocr_probe"]["used_mock"] is False
 
 
 def test_gate_g6_uses_measured_failure_rate() -> None:
@@ -716,15 +727,31 @@ def test_used_mock_is_true_when_observed_provider_is_faked() -> None:
     assert probe["used_mock"] is True
 
 
-def test_used_mock_true_blocks_gate_via_g5() -> None:
-    """used_mock=True 必须落到门禁（G5），不能只是个字段。"""
+def test_used_mock_true_blocks_gate_via_g5c() -> None:
+    """used_mock=True 必须落到门禁（G5c），且**必须翻掉 meets_gate**（N-01 第 2 步）。"""
     report = {
         "ocr_probe": {"used_mock": True, "provider_class": "fake.FakeProvider"},
         "gate": _report_mod.evaluate_gate([], failure_rate=0.0),
     }
+    assert report["gate"]["meets_gate"] is True  # 前置：初始结论是通过的
     _report_mod.apply_report_level_checks(report)
-    assert report["gate"]["checks"]["G5"]["passed"] is False
-    assert "G5" in report["gate"]["blocking_rules"]
+    assert report["gate"]["checks"]["G5c"]["passed"] is False
+    assert "G5c" in report["gate"]["blocking_rules"]
+    # N-01：结论是派生值——G5c 一旦阻断，meets_gate 必须翻成 False。
+    assert report["gate"]["meets_gate"] is False
+
+
+def test_meets_gate_is_derived_from_checks(report: dict) -> None:
+    """N-01 不变式：meets_gate / blocking_rules 必须与 checks 一致，不得独立维护。"""
+    gate = report["gate"]
+    expected_blocking = [n for n, c in gate["checks"].items() if not c["passed"]]
+    assert gate["blocking_rules"] == expected_blocking
+    assert gate["meets_gate"] == (not expected_blocking)
+
+
+def test_gate_checks_cover_all_locked_rules(report: dict) -> None:
+    """N-05：每条锁定规则都必须有独立判定结果，缺一条就是漏判。"""
+    assert list(report["gate"]["checks"]) == list(_report_mod.GATE_RULE_ORDER)
 
 
 # ---------------------------------------------------------------------------
@@ -822,6 +849,10 @@ def test_missing_corpus_file_failure_is_diagnosable(corpus_copy) -> None:
     assert "docx_headings_table.docx" in reason  # ① 样本 id
     assert "DocxDocumentParser" in reason  # ② known_gap 条目内容
     assert "下一步" in reason  # ③ 下一步动作
+    # N-04：缺失不得再说成「损坏/加密」，否则按错误的方向排查。
+    assert "缺失" in reason
+    assert "未损坏" not in reason
+    assert "未加密" not in reason
     assert "docx_headings_table.docx" in report["gate"]["checks"]["G1"]["violations"]
     assert report["gate"]["checks"]["G1"]["passed"] is False
 
@@ -922,7 +953,7 @@ def test_missing_corpus_manifest_exits_with_diagnostic(
 
 
 def test_g5_scan_detects_forbidden_claim(report: dict) -> None:
-    """G5 扫描函数本身必须能识别禁用表述（防止扫描恒空）。"""
+    """G5b 扫描函数本身必须能识别禁用表述（防止扫描恒空）。"""
     polluted = json.loads(json.dumps(report))
     polluted["samples"][0]["failure_reason"] = "OCR 质量已验证"
     assert _report_mod.scan_forbidden_phrases(polluted) == ["OCR 质量已验证"]

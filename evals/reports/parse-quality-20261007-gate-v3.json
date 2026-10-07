@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T17:59:09+08:00",
+  "generated_at": "2026-10-07T18:30:29+08:00",
   "card": "RAG-033 多格式解析与 OCR 质量基线",
   "corpus_dir": "evals\\corpus\\parsing",
   "corpus_version": "rag-033-parsing-corpus-v1",
@@ -567,7 +567,7 @@
   ],
   "gap_not_reproduced_list": [],
   "gate": {
-    "version": "gate.v2",
+    "version": "gate.v3",
     "status": "locked",
     "locked_by": "批次评审（Agent 代执行人工评审）",
     "locked_at": "2026-10-07",
@@ -579,10 +579,12 @@
       "G2": "覆盖率 coverage ≥ 0.95；低于门槛的样本必须登记在 manifest 的 known_gap 并出现在报告 known_limitations 中，登记后状态为 known_limitation（豁免门槛，但不得计入 passed）。",
       "G3": "阅读顺序 order_score ≥ 0.95，豁免规则同 G2。",
       "G4": "依赖缺失：存在任何 dependency_missing 样本时整份报告 meets_gate=False（即使其它全绿）。",
-      "G5": "不得声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的表述；dependency_missing 样本不得计入覆盖率或顺序统计；未走真实 provider 路径（used_mock=True）时不得声明走了真实路径。",
+      "G5a": "不得用数据暗示验证过：dependency_missing 样本不得带 coverage / order_score 数值（不得计入覆盖率或顺序统计）。判定在 evaluate_gate（样本级）。",
+      "G5b": "不得用表述声称验证过：报告任何位置不得出现宣称 OCR 质量已经过验证的禁用表述。判定在 apply_report_level_checks（报告级，scan_forbidden_phrases）。",
+      "G5c": "不得声称走了真实路径：ocr_probe.used_mock 必须为 False，未走真实 provider 路径时不得声明走了真实路径。判定在 apply_report_level_checks（报告级）。",
       "G6": "失败率 measured_failure_rate ≤ 0.0（分母为 pass+fail 样本）。"
     },
-    "note": "本门禁已锁定（gate.v2）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后才能解除，解除前本卡整体不算「质量通过」。另：本报告中不含任何宣称 OCR 已被真实依赖验证的表述，中文 OCR 质量在本机未经验证。",
+    "note": "本门禁已锁定（gate.v3）。G4 为阻断项：补齐 tesseract + chi_sim 语言包并重跑后才能解除，解除前本卡整体不算「质量通过」。v3 相对 v2 只把 G5 拆成 G5a/G5b/G5c（各自独立判定），门槛值未变。另：本报告中不含任何宣称 OCR 已被真实依赖验证的表述，中文 OCR 质量在本机未经验证。",
     "measured_failure_rate": 0.0,
     "checks": {
       "G1": {
@@ -603,7 +605,15 @@
           "pdf_scanned.pdf"
         ]
       },
-      "G5": {
+      "G5a": {
+        "passed": true,
+        "violations": []
+      },
+      "G5b": {
+        "passed": true,
+        "violations": []
+      },
+      "G5c": {
         "passed": true,
         "violations": []
       },

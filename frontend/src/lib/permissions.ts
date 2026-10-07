@@ -7,7 +7,7 @@
  * 后端矩阵若变更，本文件必须同步。
  */
 
-import type { Role } from '@/types/api'
+import type { DocumentOut, Role, UserInfo } from '@/types/api'
 
 type Action = 'read' | 'write' | 'delete'
 
@@ -59,6 +59,23 @@ export function can(role: Role | undefined, resource: string, action: Action): b
   const perms = ROLE_PERMISSIONS[resource]
   if (!perms) return false
   return (perms[action] ?? []).includes(role)
+}
+
+/**
+ * 文档控制面镜像：与后端 `app/rag/access.py::can_control_document` 逐条对齐
+ * （系统管理员 → 同租户租户管理员 → 本人上传且为当前版）。
+ *
+ * **只用于决定「要不要展示下载源文件入口」**。后端
+ * `GET /rag/documents/{id}/download` 自己还要过一遍 `can_control_document`，
+ * 所以这里的显隐既不放宽也不收紧后端判定：看不见入口的人本来就下不下来，
+ * 看得见入口的人本来就有权下载。
+ */
+export function canControlDocument(doc: DocumentOut, user: UserInfo | null): boolean {
+  if (!user) return false
+  if (user.role === 'system_admin') return true
+  if (doc.tenant_id !== user.tenant_id) return false
+  if (user.role === 'tenant_admin') return true
+  return doc.user_id === user.id && doc.is_current
 }
 
 /** 审计日志入口：后端限定 system_admin / system_viewer。 */

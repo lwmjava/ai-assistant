@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { FileText, FileUp, Plus, RotateCw, Search, Trash2 } from 'lucide-react'
+import { Download, FileText, FileUp, Plus, RotateCw, Search, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -14,9 +14,10 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
-import { createConfirmation, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useDocumentChunks, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
+import { createConfirmation, downloadDocumentSource, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useDocumentChunks, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
 import { ApiError, hideStackTrace, isSessionExpiredError } from '@/lib/http'
-import { can } from '@/lib/permissions'
+import { can, canControlDocument } from '@/lib/permissions'
+import { chunkContentClassName } from '@/lib/chunk-content'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
 import type { DocumentOut, SearchResultOut } from '@/types/api'
@@ -229,9 +230,8 @@ function SearchResultRow({ result, index }: { result: SearchResultOut; index: nu
           父块 score 继承子块 <span className="font-mono">{result.score_inherited_from_chunk_id}</span>，未单独计算。
         </p>
       )}
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">
-        {result.content}
-      </p>
+      {/* 盒图/代码正文改为等宽 + 保留空白 + 横向滚动；普通段落保持自动换行 */}
+      <p className={chunkContentClassName(result.content)}>{result.content}</p>
     </li>
   )
 }
@@ -252,7 +252,7 @@ function DocumentChunkList({ documentId }: { documentId: string }) {
             {c.section && <span>· {c.section}</span>}
             {c.strategy && <span>· {c.strategy}</span>}
           </div>
-          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">{c.content}</p>
+          <p className={chunkContentClassName(c.content)}>{c.content}</p>
         </li>
       ))}
     </ul>
@@ -264,10 +264,13 @@ function DocumentRow({
   canDelete,
   canPublish,
   canRebuild,
+  canDownload,
   rebuilding,
+  downloading,
   onDelete,
   onPublish,
   onRebuild,
+  onDownload,
   expanded = false,
   onToggle,
   highlight = false,
@@ -276,10 +279,13 @@ function DocumentRow({
   canDelete: boolean
   canPublish: boolean
   canRebuild: boolean
+  canDownload: boolean
   rebuilding: boolean
+  downloading: boolean
   onDelete: (doc: DocumentOut) => void
   onPublish: (doc: DocumentOut) => void
   onRebuild: (doc: DocumentOut) => void
+  onDownload: (doc: DocumentOut) => void
   expanded?: boolean
   onToggle: () => void
   highlight?: boolean
@@ -327,7 +333,7 @@ function DocumentRow({
           </button>
         </div>
         <p className="hidden text-xs text-text-faint sm:block">{timeAgo(doc.updated_at)}</p>
-        <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && !canRebuild && 'invisible')}>
+        <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && !canRebuild && !canDownload && 'invisible')}>
           {canPublish && !doc.deleted_at && ['draft', 'scheduled', 'replaced'].includes(doc.version_state) && (
             <button
               type="button"
@@ -346,6 +352,18 @@ function DocumentRow({
               className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
             >
               <RotateCw className={cn('size-3.5', rebuilding && 'animate-spin')} aria-hidden />
+            </button>
+          )}
+          {canDownload && !doc.deleted_at && (
+            <button
+              type="button"
+              onClick={() => onDownload(doc)}
+              disabled={downloading}
+              aria-label={`下载源文件 ${doc.title}`}
+              title="下载原始上传文件"
+              className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
+            >
+              <Download className={cn('size-3.5', downloading && 'animate-pulse')} aria-hidden />
             </button>
           )}
           {canDelete && !doc.deleted_at && (
@@ -373,6 +391,8 @@ function DocumentRow({
 export default function KnowledgePage() {
   const toast = useToast()
   const role = useAuthStore((s) => s.user?.role)
+  const user = useAuthStore((s) => s.user)
+  const canRead = can(role, 'knowledge_bases', 'read')
   const [searchParams] = useSearchParams()
   const focusDocId = searchParams.get('doc')
   const userTenantId = useAuthStore((s) => s.user?.tenant_id)
@@ -385,6 +405,7 @@ export default function KnowledgePage() {
   const [pendingRebuild, setPendingRebuild] = useState<DocumentOut | null>(null)
   const [rebuildingId, setRebuildingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(false)
   const [versionState, setVersionState] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -465,6 +486,21 @@ export default function KnowledgePage() {
       toast.error('重建失败', err instanceof ApiError ? err.detail : undefined)
     } finally {
       setRebuildingId(null)
+    }
+  }
+
+  /** 源文件下载入口只在「后端也判定为可控」的文档上出现，见 canControlDocument 的注释。 */
+  async function handleDownload(doc: DocumentOut) {
+    if (downloadingId) return
+    setDownloadingId(doc.id)
+    try {
+      await downloadDocumentSource(doc)
+      toast.success('已开始下载', doc.source ? `源文件：${doc.source}` : undefined)
+    } catch (err) {
+      if (isSessionExpiredError(err)) return
+      toast.error('下载失败', err instanceof Error ? err.message : undefined)
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -579,12 +615,15 @@ export default function KnowledgePage() {
                 canDelete={canDelete}
                 canPublish={canSeeDeleted}
                 canRebuild={canWrite}
+                canDownload={canRead && canControlDocument(doc, user)}
                 rebuilding={rebuildingId === doc.id}
+                downloading={downloadingId === doc.id}
                 onDelete={setPendingDelete}
                 expanded={expandedId === doc.id}
                 onToggle={() => setExpandedId(expandedId === doc.id ? null : doc.id)}
                 onPublish={(item) => void handlePublish(item)}
                 onRebuild={setPendingRebuild}
+                onDownload={(item) => void handleDownload(item)}
               />
             ))}
           </ul>

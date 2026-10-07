@@ -192,6 +192,8 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   anonymous?: boolean
   /** 内部标记：重放请求时不再尝试刷新，避免死循环。 */
   _retried?: boolean
+  /** 需要二进制响应（文件下载）时置 true：不做 JSON 解析，直接返回 Blob。 */
+  asBlob?: boolean
   signal?: AbortSignal
 }
 
@@ -222,7 +224,7 @@ async function parseError(res: Response): Promise<ApiError> {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, form, anonymous, _retried, headers, ...rest } = options
+  const { body, form, anonymous, _retried, asBlob, headers, ...rest } = options
   const finalHeaders = new Headers(headers)
 
   if (!anonymous) {
@@ -255,6 +257,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (!res.ok) throw await parseError(res)
 
   if (res.status === 204) return undefined as T
+  // 文件下载：二进制响应不能被 JSON.parse 破坏，这里直接返回 Blob
+  if (asBlob) return (await res.blob()) as T
   const text = await res.text()
   if (!text) return undefined as T
   try {
@@ -274,6 +278,9 @@ export const api = {
     request<T>(path, { ...options, method: 'PATCH', body }),
   delete: <T>(path: string, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'DELETE' }),
+  /** 二进制响应（源文件下载）。沿用同一套鉴权、401 刷新与错误归一化。 */
+  blob: (path: string, options?: RequestOptions) =>
+    request<Blob>(path, { ...options, method: 'GET', asBlob: true }),
   upload: <T>(path: string, form: FormData, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'POST', form }),
   /** 供 store 直接写入刷新后的令牌。 */

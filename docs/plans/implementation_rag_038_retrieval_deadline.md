@@ -57,10 +57,18 @@ OCR 里有零星实现）。
 
 `EmbeddingProvider.embed` 与 `VectorStore.hybrid_search` 是两个被多张卡共用的
 协议方法，给它们加形参会牵动一堆调用方。因此用 `ContextVar` 传播
-（`bind_deadline` / `current_deadline` / `current_or_new_deadline`）：
-组合点（后端 `retrieve`）绑定一次，子调用读取；没被绑定时（例如导入任务单独
-算一次嵌入）按配置自己新起一个，不会退化成「无人管超时」。
-语义与 Go 的 `context` 传播一致，且 `bind_deadline` 退出即复位，不跨检索泄漏。
+（`bind_deadline` / `current_deadline`）：组合点（后端 `retrieve`）绑定一次，
+子调用读取；语义与 Go 的 `context` 传播一致，且 `bind_deadline` 退出即复位，
+不跨检索泄漏。
+
+两条**粒度**规则（复审后补，第一版在这里写错了，见 §8 High-01）：
+
+- **一次调用 = 一次远程往返**（Milvus 检索）：未绑定时用
+  `current_or_new_deadline()` 按 `RAG_RETRIEVAL_DEADLINE_SECONDS` 新起一个即可，
+  上界覆盖的就是这一次调用。
+- **一次调用 = N 次远程往返**（`embed()` 的 N 批）：**不能**用它。未绑定时每批
+  各拿一个 `RAG_EMBED_BATCH_DEADLINE_SECONDS`，否则 N 批共用一个 8s 检索预算，
+  正常导入会被中途打断。
 
 ### 2.3 为什么只对部分故障重试
 
@@ -115,7 +123,10 @@ Milvus 只加 deadline、不加重试：向量检索重试收益不确定，重�
 每次失败 attempt 记一条 `rag_call_failed`：
 `attempt / elapsed_ms / error_type / backend / tenant / outcome`
 （`outcome` ∈ `retry` | `give_up_not_retryable` | `give_up_attempts_exhausted` |
-`give_up_budget`）。预算耗尽（还没开始调用就没时间了）单独记
+`give_up_budget`）。每次成功记一条 `rag_call_succeeded`
+（`attempt / elapsed_ms / backend / tenant / outcome=ok`）——**含首次成功**，
+否则依赖方抖动期不可观测：看不到「重试了几次才成功」，也分不清「一直很稳」和
+「抖完自己好了」。预算耗尽（还没开始调用就没时间了）单独记
 `rag_deadline_exhausted`。**严禁**写入 Authorization、api key、请求正文或命中
 正文——日志一旦落盘就是第二份密钥库，专项测试对「密钥与正文都不出现」有断言。
 
@@ -130,7 +141,15 @@ Milvus 只加 deadline、不加重试：向量检索重试收益不确定，重�
 | `RAG_RETRIEVAL_MAX_ATTEMPTS` | `3` | **含首次**（最多 2 次重试）。>3 的收益递减且放大尾部延迟；3 次 + 0.2/1.5 退避的最坏退避等待为 0.6s，远小于 8s 总时限 |
 | `RAG_RETRIEVAL_BACKOFF_BASE_SECONDS` | `0.2` | 太小对短暂抖动无效，太长浪费总预算；第 1 次退避 0.2s 足以覆盖毫秒级的瞬时故障 |
 | `RAG_RETRIEVAL_BACKOFF_MAX_SECONDS` | `1.5` | 单次等待不超过总时限的 20%，避免一次退避吃掉大半个预算；剩余预算不足时直接放弃等待 |
-| `EMBEDDING_TIMEOUT_SECONDS` | `15.0` | 新增。纠正「嵌入复用 `LLM_TIMEOUT=60`」的语义错位：嵌入是短请求，不该按长输出生成留 60s；且它必须能被总时限夹住（实际生效值是 `min(15.0, 剩余预算)`） |
+| `RAG_EMBED_BATCH_DEADLINE_SECONDS` | `20.0` | 复审后新增。嵌入**单批**的写入侧预算，未绑定检索 deadline 时每批各拿一个。远大于单批实测耗时（0.3~1s 量级）但不等于不限时：单批真挂住时仍能自救。`0` = 不限时 |
+| `EMBEDDING_TIMEOUT_SECONDS` | `15.0` | 新增。纠正「嵌入复用 `LLM_TIMEOUT=60`」的语义错位：嵌入是短请求，不该按长输出生成留 60s；且它必须能被 deadline 夹住（实际生效值是 `min(15.0, 剩余预算)`）。写入 / 导入 / 重建索引路径同样使用这个超时 |
+
+**约束（启动校验）**：`RAG_RETRIEVAL_DEADLINE_SECONDS` 必须**严格大于**
+`min(BACKOFF_BASE, BACKOFF_MAX) × (1 + RETRY_BACKOFF_JITTER_RATIO)`，否则第一次
+失败后剩余预算就不够等退避，一次重试都不会发生。判据实现在
+`app.core.config.retrieval_retry_effectively_disabled`，`Settings` 装载时打一条
+`rag_retry_effectively_disabled` 告警说明「重试实际已禁用」。默认 8.0 / 0.2 / 1.5
+满足该约束（`min(0.2,1.5)×1.2 = 0.24 < 8.0`）。
 
 三处同步：`app/core/config.py`（字段与注释）、`.env.example`（带注释）、
 `README.md`（关键配置项表 + 独立章节）。
@@ -233,10 +252,9 @@ with bind_deadline(Deadline(settings.RAG_RETRIEVAL_DEADLINE_SECONDS)):
     raw = await self.backend.retrieve(...)
 ```
 
-反向地，如果某条链路**不要**被外层 deadline 约束（例如后台导入的批量嵌入，
-它有自己的任务级超时），不绑定即可：子调用会走
-`current_or_new_deadline()` 的「新起一个」分支，按
-`RAG_RETRIEVAL_DEADLINE_SECONDS` 自管。
+反向地，如果某条链路**不要**被外层 deadline 约束（例如后台导入的批量嵌入），
+不绑定即可：嵌入会走「每批各拿一个 `RAG_EMBED_BATCH_DEADLINE_SECONDS`」分支
+（见 §8 High-01），Milvus 检索会按 `RAG_RETRIEVAL_DEADLINE_SECONDS` 自管。
 
 ---
 
@@ -252,3 +270,153 @@ with bind_deadline(Deadline(settings.RAG_RETRIEVAL_DEADLINE_SECONDS)):
    避免为不存在的场景增加复杂度。
 5. **退避抖动用 `random.uniform`**，未做可复现播种；测试把 `jitter` 置 0 或用
    区间断言。
+6. **「总时限」的粒度是「一次检索」**：一次用户请求触发 N 次 `retrieve` 时总耗时
+   按 `N × deadline` 累加（详见 2.2 与 README）。当前三条线上路径每请求只调一次
+   检索，因此现网不受影响；若将来出现「一请求多检索」，需由调用方显式绑定。
+7. **SSE 终态事件不带 `reason` 字段**：审查提出的 Low 项涉及
+   `app/services/chat_service.py` / `app/agents/*` 的终态事件结构，不在本卡文件
+   边界内（本卡只允许改 `app/rag/**`、`app/core/config.py`、`.env.example`、
+   `README.md`、`tests/`、`docs/`），已回报 team-lead 待指派。
+
+---
+
+## 8. 复审整改（第二轮，基于 `docs/reviews/2026-10-07-RAG-038检索调用时限重试取消独立审查.md`）
+
+### High-01　写入 / 导入路径拿到 8s 检索总预算（P0，本卡自己引入的回归）
+
+**机制**：`openai_compatible.embed()` 在批次循环**之前**调用
+`current_or_new_deadline()`，只创建一次 `Deadline`。写入路径不绑定，于是拿到
+`RAG_RETRIEVAL_DEADLINE_SECONDS=8.0`，且这 8s 覆盖**整通调用的所有批次**。
+
+**我在磁盘上亲手复现的改前 / 改后对照**（脚本
+`data/pytest-tmp/rag038_h1_repro.py`，每批真实 1.0s、全部成功、无故障注入）：
+
+```
+# e978819^（本卡之前，无 deadline 机制）
+RAG_RETRIEVAL_DEADLINE_SECONDS = <未定义：改前无此项>
+[60 块 / 6 批 × 1.0s] 耗时 6.06s 请求数=6 向量数=60 → ok
+[100 块 / 10 批 × 1.0s] 耗时 10.11s 请求数=10 向量数=100 → ok
+
+# e978819（本卡提交后，回归）
+RAG_RETRIEVAL_DEADLINE_SECONDS = 8.0
+[60 块 / 6 批 × 1.0s] 耗时 6.06s 请求数=6 向量数=60 → ok
+[100 块 / 10 批 × 1.0s] 耗时 8.08s 请求数=8 向量数=0
+      → DeadlineExceededError: 检索总时限 8.000s 已耗尽，不再发起后续子调用
+      → WARNING app.rag.resilience rag_deadline_exhausted elapsed_ms=8078 backend=embedding
+```
+
+**修法**（采纳审查者方案 A）：
+
+1. 新增 `RAG_EMBED_BATCH_DEADLINE_SECONDS`（默认 `20.0`，写入侧**单批**预算）。
+2. `embed()` 改为：循环外只读一次 `shared = current_deadline()`；循环内
+   `deadline = shared or Deadline(settings.RAG_EMBED_BATCH_DEADLINE_SECONDS)`。
+   已绑定（检索）→ 各批共享总预算，语义不变；未绑定（写入）→ 每批各拿一个。
+3. `app/rag/vectorstore/milvus.py` 的 `current_or_new_deadline()` 我逐个核对过调用
+   方：`hybrid_search` 只在**读**路径上（`add` / `delete_by_document` / `count`
+   都不含 deadline），一次调用 = 一次远程往返，因此保持原样。
+4. `resilience.current_or_new_deadline()` 的 docstring 已改写，明确「上界覆盖的是
+   这一次调用本身」，并点名 `embed()` 这类多批入口不得直接用它。
+
+**修后复现**（同一脚本、同一参数）：
+
+```
+[100 块 / 10 批 × 1.0s] 耗时 10.08s 请求数=10 向量数=100 → ok
+```
+
+### Medium-01　总时限偏小时「有限退避重试」永不生效
+
+**机制**：`retry_async` 在退避前比较 `wait` 与 `deadline.remaining()`，预算不够就
+放弃。当 `deadline` 小到放不下**第一次**退避时，每一次可重试故障都直接走
+`give_up_budget`，一次都不重试——配置看起来启用着重试，实际等价于
+`MAX_ATTEMPTS=1`。
+
+**修法**：
+
+1. `app.core.config.retrieval_retry_effectively_disabled()`：单一判据实现
+   ——第一次退避等待的上界 `min(base, max) × (1 + jitter)` 必须**严格小于**总时限；
+   总开关关闭 / `MAX_ATTEMPTS<=1` 同样算「重试实际已禁用」。
+2. `Settings` 加 `model_validator(mode="after")`，装载时（即启动）打一条
+   `rag_retry_effectively_disabled` 告警，写明 `reason` 与处置提示。
+3. 抖动比例收敛为单一来源 `RETRY_BACKOFF_JITTER_RATIO`（`config.py`），
+   `RetryPolicy.jitter` 默认值与启动校验都取自它，避免两处常量漂移。
+4. `resilience.py` 模块 docstring 与 README 都写清这条约束。
+
+### Medium-01'（审查者编号）　取消未穿过真实 `NativeRagBackend.retrieve`
+
+审查者的变异 M14（`native.py` 的 `except TimeoutError` 扩成
+`except (TimeoutError, asyncio.CancelledError)`）曾存活，说明最吃重的那处没有
+守护。lead 已裁定**代码行为成立、不改**，但覆盖缺口是真缺口，因此补了
+`test_native_backend_cancellation_propagates_through_real_retrieve`：嵌入替身直接
+`raise asyncio.CancelledError()`，经真实 `NativeRagBackend.retrieve` 后断言
+`CancelledError` 上抛且 `store.calls == 0`。M14 现已变红。
+
+### Medium-02　「总时限」粒度
+
+lead 裁定 ① 成立（ContextVar + asyncio 任务 context 的语义），不改代码。按审查者
+方案二落地文档：粒度结论写进 `resilience.py` 模块 docstring、README 与本文档 §2.2 / §7。
+
+### Low / Info
+
+| 项 | 处置 |
+|----|------|
+| Low-01 多批次嵌入无测试守护 | 补 `test_embedding_read_path_batches_share_one_deadline`（绑定 1.0s、4 批，断言读超时被剩余预算逐批压缩且单调不增） |
+| Low-02 `EMBEDDING_TIMEOUT_SECONDS` 缺写入路径影响说明 | `.env.example` 注释补「写入 / 导入 / 重建索引 / 语义切分同样使用这个超时」 |
+| Low-03 Milvus 复用共享 deadline 无独立断言 | 补 `test_milvus_reuses_bound_deadline_not_settings`：配置给 3.0s、绑定给 0.2s，实测耗时必须 ≈0.2s |
+| Low 抖动期不可观测 / 首次成功无 `attempt=1` | 新增 `rag_call_succeeded` 成功事件（含 `attempt=1`），补 `test_success_event_records_attempt` 与 `test_embedding_success_logs_attempt_one` |
+| Low SSE 终态事件无 `reason` | **不在本卡文件边界**（`app/services/chat_service.py` 等禁改），已回报 team-lead |
+| Info 配置默认值重复 | `RetryPolicy` 的默认 `max_attempts / backoff_base / backoff_max / enabled` 改为读 `settings`，`jitter` 读 `RETRY_BACKOFF_JITTER_RATIO`，不再各写一份数字 |
+| Info 实现说明表格漏字段 | §2.7 已补 `tenant` / `outcome` 字段说明 |
+| Info 部署耦合 | §3 补「写入路径同样吃 `EMBEDDING_TIMEOUT_SECONDS`」与 deadline/退避约束说明 |
+
+---
+
+## 9. 第二轮验证记录（全部在 detached `git worktree` 内完成）
+
+工作树：`.workbuddy/tmp/wt038fix`（`git worktree add --detach <path> e978819`），
+主工作树只在提交时刻被改动；对照基线：`.workbuddy/tmp/wt038base`（`e978819^`）。
+
+- 专项测试：`51 passed in 11.16s`（原 42 条全绿 + 新增 9 条）
+- 受影响子集回归（审查者那组 + 我这组并集）：
+  `260 passed, 2 skipped in 85.51s`
+- `ruff check app/ tests/test_rag_038_deadline_retry.py` → `All checks passed!`
+- `mypy app/rag/ app/core/config.py` → `Success: no issues found in 72 source files`
+
+### 变异验证（15 个，全部 RED）
+
+脚本 `data/pytest-tmp/rag038_mutate_r2.py`。每个变异都先
+`assert mutated != original`（本批已多次踩到 CRLF 导致替换静默失效、却报告存活的坑），
+跑完 `finally` 还原后再断言文件内容 == 原文。
+
+| # | 变异 | 结果 | 抓住它的用例 |
+|---|------|------|--------------|
+| H1 | 整通调用共用一个检索 deadline（High-01 原写法） | **RED** | `test_embedding_write_path_many_batches_are_not_cut_off` |
+| a2 | 嵌入侧不复用共享 deadline | **RED** | `test_embedding_reuses_the_bound_deadline` |
+| M14 | `except TimeoutError` → `except (TimeoutError, CancelledError)` | **RED** | `test_native_backend_cancellation_propagates_through_real_retrieve` |
+| S1 | 成功事件 `attempt` 写死为 1 | **RED** | `test_success_event_records_attempt` |
+| S2 | 成功事件降到 `debug`（等于不记） | **RED** | `test_success_event_records_attempt`、`test_embedding_success_logs_attempt_one` |
+| S3 | 「重试实际已禁用」判据恒为假 | **RED** | `test_retry_effectively_disabled_predicate`、`test_startup_warns_when_retry_effectively_disabled` |
+| a | 每个子调用各起一个 deadline | **RED** | `test_native_backend_shares_one_deadline_between_embed_and_search` |
+| b | 4xx 也重试 | **RED** | `test_4xx_is_not_retried[400]` |
+| c | 退避不检查剩余预算 | **RED** | `test_backoff_does_not_sleep_past_deadline` |
+| d | 重试次数不设上限 | **RED** | `test_429_retries_up_to_configured_attempts` |
+| e | 取消被改写成 unavailable | **RED** | `test_cancellation_propagates_from_retry_async` |
+| f | 失败后返回空列表 | **RED** | `test_milvus_slow_search_is_bounded_and_never_empty` |
+| g | 日志带 api key / 正文 | **RED** | `test_embedding_failure_log_has_no_key_or_body` |
+| h | `ensure_budget` 变空操作 | **RED** | `test_shared_deadline_aborts_second_subcall_before_running` |
+| i | 单次超时不夹进剩余预算 | **RED** | `test_deadline_helpers` |
+
+H1 的失败输出原文：
+
+```
+=== H1 整通调用共用一个检索 deadline（High-01 回归写法） -> RED（被抓住） ===
+FAILED tests/test_rag_038_deadline_retry.py::test_embedding_write_path_many_batches_are_not_cut_off
+1 failed, 50 passed in 10.85s
+```
+
+M14 的失败输出原文：
+
+```
+=== M14 native 把取消也改写成 unavailable -> RED（被抓住） ===
+FAILED tests/test_rag_038_deadline_retry.py::test_native_backend_cancellation_propagates_through_real_retrieve
+1 failed, 50 passed in 12.13s
+```

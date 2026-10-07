@@ -414,6 +414,7 @@ docker compose up -d --build
 | `RAG_RETRIEVAL_MAX_ATTEMPTS` | 单个子调用最多打几次（**含首次**）。只对连接错误/读超时/429/5xx 重试 | `3` |
 | `RAG_RETRIEVAL_BACKOFF_BASE_SECONDS` | 退避基数：第 n 次失败等待 `base * 2**(n-1)` | `0.2` |
 | `RAG_RETRIEVAL_BACKOFF_MAX_SECONDS` | 退避上限；剩余预算不够时直接放弃，不睡过总时限 | `1.5` |
+| `RAG_EMBED_BATCH_DEADLINE_SECONDS` | 嵌入**单批**的写入侧预算（秒）。未绑定检索 deadline 时每批各拿一个，`0` 不限时 | `20.0` |
 | `EMBEDDING_INDEX_VERSION` | 向量索引版本。换模型或改归一化/度量时递增，配合重建脚本切换 | `1` |
 | `EMBEDDING_NORMALIZATION` | 索引身份声明的归一化方式。**当前只支持 `l2`**，其它值在构造身份时直接报错 | `l2` |
 | `EMBEDDING_METRIC` | 索引身份声明的相似度度量。**当前只支持 `cosine`**，其它值在构造身份时直接报错 | `cosine` |
@@ -544,7 +545,18 @@ LLM_CAPABILITY_DECLARED_SOURCE=厂商文档 URL 或内部依据
 - **取消不改写。** `asyncio.CancelledError` 一律原样上抛，不写成「检索不可用」，也不记成一次调用失败。
 - **失败不伪造空知识。** 重试耗尽 / 超时一律向上抛，由 RAG-037 的检索状态契约收敛为 `unavailable` 并强制披露；绝不返回空列表让上层以为「查过了、没有」。
 
-每次失败 attempt 记一条 `rag_call_failed`（attempt / elapsed / error_type / backend / tenant），预算耗尽记 `rag_deadline_exhausted`。日志里**不写** Authorization、api key、请求正文或命中正文。
+每次失败 attempt 记一条 `rag_call_failed`（attempt / elapsed_ms / error_type / backend / tenant / outcome），每次成功记一条 `rag_call_succeeded`（含 `attempt=1` 的首次成功——只记失败会让依赖方抖动期不可观测，分不清「一直很稳」和「抖完自己好了」），预算耗尽记 `rag_deadline_exhausted`。日志里**不写** Authorization、api key、请求正文或命中正文。
+
+### 三条必须说清的边界
+
+**1. 「总时限」的粒度是「一次检索」，不是「一次用户请求」。**
+deadline 用 `ContextVar` 传播：`asyncio` 每次 `create_task` 会复制当前 context，因此后端 `retrieve` 内的绑定只影响**该次调用**派生的子协程；`asyncio.gather` 并发的多个子调用共享父任务的 deadline，这正是「一次检索一个总预算」的预期语义。但调用方不绑定时，每调一次 `retrieve` 就新起一个预算——**一次用户请求触发 N 次检索，总耗时按 `N × deadline` 累加**。当前三条线上路径（fast_path / pipeline / supervisor）每请求只调一次检索，因此现网不受影响；将来若出现「一请求多检索」，需要由调用方显式 `bind_deadline` 包一层。
+
+**2. 写入路径不复用检索预算。**
+`embed()` 一次调用可能含几十批。检索路径（已绑定）各批共享总预算；**写入 / 导入 / 重建索引 / 语义切分路径没有绑定，每批各拿一个 `RAG_EMBED_BATCH_DEADLINE_SECONDS`（默认 20s）**。若让整通调用共用一个 8s 的检索预算，一篇 200 分块的文档会在第 16 批被 `DeadlineExceededError` 打断——哪怕每一批都在自己的超时内成功返回。写入侧单次超时同样用 `EMBEDDING_TIMEOUT_SECONDS`。
+
+**3. 总时限必须大于第一次退避，否则重试实际不会发生。**
+判据是 `RAG_RETRIEVAL_DEADLINE_SECONDS > min(BASE, MAX) × 1.2`（1.2 = 抖动上界）。不满足时第一次失败后剩余预算就不够等退避，直接走「放弃」，一次都不重试——配置看起来启用着重试，实际等价于 `MAX_ATTEMPTS=1`。启动时会打一条 `rag_retry_effectively_disabled` 告警说明「重试实际已禁用」。默认 8.0 / 0.2 / 1.5 满足该约束。
 
 ### pymilvus 同步调用的取消边界
 

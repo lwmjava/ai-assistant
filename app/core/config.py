@@ -8,13 +8,49 @@
 """
 
 import functools
+import logging
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 项目根目录下的 .env（相对路径会随进程工作目录变化，这里固定为绝对路径）
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _ENV_FILE = _PROJECT_ROOT / ".env"
+
+logger = logging.getLogger(__name__)
+
+#: 退避抖动的默认比例（±）。``RetryPolicy.jitter`` 的默认值与「总时限能否放下一次
+#: 退避」的启动校验都取自这里，避免两处常量漂移。
+RETRY_BACKOFF_JITTER_RATIO = 0.2
+
+
+def retrieval_retry_effectively_disabled(
+    *,
+    deadline_seconds: float,
+    max_attempts: int,
+    backoff_base: float,
+    backoff_max: float,
+    enabled: bool = True,
+    jitter: float = RETRY_BACKOFF_JITTER_RATIO,
+) -> bool:
+    """判断在当前配置下「有限退避重试」是否**实际不会发生**。
+
+    判据（写死在这里，别处不得另算）：第一次退避等待的上界
+    ``min(base, max) * (1 + jitter)`` 必须**严格小于**总时限，否则第一次失败后
+    必然走进「预算不够等 → 放弃」分支，一次重试都不会发生。
+
+    这是配置层的静态判据，与运行期 ``retry_async`` 的 ``give_up_budget`` 分支
+    同源：后者比较的是「实际剩余预算」，这里比较的是「最坏情况下的初始预算」。
+    二者由 ``test_deadline_backoff_constraint_*`` 一致性用例守护。
+    """
+    if not enabled or max(1, int(max_attempts)) <= 1:
+        return True
+    if deadline_seconds <= 0:
+        # 关闭时限时每次 attempt 都能打出去，重试本身有效（只是不再限时）。
+        return False
+    first_wait_upper = min(backoff_base, backoff_max) * (1.0 + jitter)
+    return first_wait_upper >= deadline_seconds
 
 
 class Settings(BaseSettings):
@@ -117,6 +153,7 @@ class Settings(BaseSettings):
     EMBEDDING_BATCH_SIZE: int = 10
     # 单次嵌入 HTTP 超时（秒）。嵌入是短请求，不该复用 LLM_TIMEOUT（对话生成
     # 需要长输出，60s 合理）；且它必须能被下面的检索总时限夹住。
+    # 注意：写入 / 导入 / 重建索引路径同样使用这个超时（它们是同一个 provider）。
     EMBEDDING_TIMEOUT_SECONDS: float = 15.0
     # 索引身份（ADR-0008）：换模型或改归一化/度量都要换索引，不能原地混写。
     EMBEDDING_INDEX_VERSION: str = "1"  # 显式索引版本，重建新索引时递增
@@ -132,9 +169,17 @@ class Settings(BaseSettings):
     # 单个子调用的最大尝试次数（**含首次**）。3 = 最多 2 次重试；
     # 只对连接错误 / 读超时 / 429 / 5xx 重试，4xx 与业务错误一律只打一次。
     RAG_RETRIEVAL_MAX_ATTEMPTS: int = 3
-    # 退避基数与上限（秒）：第 n 次失败等 base * 2**(n-1)，夹到 max，再叠 ±20% 抖动。
+    # 退避基数与上限（秒）：第 n 次失败等 base * 2**(n-1)，夹到 max，再叠抖动。
+    # ⚠️ 约束：总时限必须**严格大于**「第一次退避等待的上界」
+    # min(base, max) * (1 + RETRY_BACKOFF_JITTER_RATIO)，否则第一次失败后必然走
+    # 「预算不够等 → 放弃」，一次重试都不会发生（启动告警会明确指出）。
     RAG_RETRIEVAL_BACKOFF_BASE_SECONDS: float = 0.2
     RAG_RETRIEVAL_BACKOFF_MAX_SECONDS: float = 1.5
+    # 嵌入**单批**的写入侧预算（秒）。未绑定检索 deadline 时（导入 / 重建索引 /
+    # 语义切分等写入路径）每批各拿一个，不复用上面的检索总时限——写入一通调用
+    # 可能含几十批，用 8s 的检索预算覆盖整通会把正常导入打断（RAG-038 复审 High-01）。
+    # 0 或负数 = 写入侧不限时（只受 EMBEDDING_TIMEOUT_SECONDS 约束）。
+    RAG_EMBED_BATCH_DEADLINE_SECONDS: float = 20.0
 
     # ── 向量库与检索 ──
     RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus
@@ -311,6 +356,43 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         """解析 CORS_ORIGINS 为列表。"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def _warn_if_retry_effectively_disabled(self) -> "Settings":
+        """总时限小到放不下一次退避时，启动即告警。
+
+        「有限退避重试」是 RAG-038 的承诺之一，但它在总时限偏小时会被静默禁用：
+        第一次失败后剩余预算不够等退避，直接走 ``give_up_budget``，一次都不重试。
+        这时配置看起来启用着重试，实际等价于 ``MAX_ATTEMPTS=1``。与其让人从日志里
+        猜，不如在配置装载时就说清楚。
+        """
+        if not retrieval_retry_effectively_disabled(
+            deadline_seconds=self.RAG_RETRIEVAL_DEADLINE_SECONDS,
+            max_attempts=self.RAG_RETRIEVAL_MAX_ATTEMPTS,
+            backoff_base=self.RAG_RETRIEVAL_BACKOFF_BASE_SECONDS,
+            backoff_max=self.RAG_RETRIEVAL_BACKOFF_MAX_SECONDS,
+            enabled=self.RAG_RETRIEVAL_RESILIENCE_ENABLED,
+        ):
+            return self
+        reason = (
+            "总开关关闭"
+            if not self.RAG_RETRIEVAL_RESILIENCE_ENABLED
+            else f"MAX_ATTEMPTS={self.RAG_RETRIEVAL_MAX_ATTEMPTS}"
+            if self.RAG_RETRIEVAL_MAX_ATTEMPTS <= 1
+            else "总时限放不下第一次退避等待"
+        )
+        logger.warning(
+            "rag_retry_effectively_disabled deadline=%.3f backoff_base=%.3f "
+            "backoff_max=%.3f max_attempts=%s reason=%s hint=%s",
+            self.RAG_RETRIEVAL_DEADLINE_SECONDS,
+            self.RAG_RETRIEVAL_BACKOFF_BASE_SECONDS,
+            self.RAG_RETRIEVAL_BACKOFF_MAX_SECONDS,
+            self.RAG_RETRIEVAL_MAX_ATTEMPTS,
+            reason,
+            "重试实际已禁用：请调大 RAG_RETRIEVAL_DEADLINE_SECONDS，"
+            "或调小 RAG_RETRIEVAL_BACKOFF_BASE_SECONDS",
+        )
+        return self
 
 
 @functools.lru_cache(maxsize=1)

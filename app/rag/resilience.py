@@ -25,6 +25,27 @@
 2. **故障不伪造空知识。** 重试耗尽 / 超时一律向上抛，绝不返回空列表让上层
    以为「查过了、没有」。收敛为 ``unavailable`` 由 RAG-037 的检索状态契约负责，
    本模块只保证不吞错、不造假。
+
+两条必须说清的**粒度**（复审后补，避免被字面意思误导）：
+
+1. **「总时限」的粒度是「一次检索」，不是「一次用户请求」。**
+   :func:`bind_deadline` 用的是 ``ContextVar``：``asyncio`` 每次
+   ``create_task`` 会复制当前 context，因此 ``NativeRagBackend.retrieve`` 内
+   的绑定只影响**该次调用**派生的子协程（嵌入、向量检索）；``asyncio.gather``
+   并发的多个子调用共享父任务的 deadline，这正是「一次检索一个总预算」的预期
+   语义。但调用方不绑定时，每调一次 ``retrieve`` 就新起一个预算——一次用户请求
+   触发 N 次检索，总耗时按 ``N × deadline`` 累加。当前三条线上路径
+   （fast_path / pipeline / supervisor）每请求只调一次检索，因此现网不受影响；
+   若将来出现「一请求多检索」，需要由调用方显式 :func:`bind_deadline` 包一层。
+2. **写入路径不复用检索预算。** :func:`current_or_new_deadline` 新起的那个
+   deadline 覆盖的是**这一次调用本身**。``embed()`` 一次调用可能含几十批，
+   因此嵌入入口**不能**直接用它：未绑定时每批各拿一个
+   ``RAG_EMBED_BATCH_DEADLINE_SECONDS``，详见
+   ``app/rag/embeddings/openai_compatible.py``。
+
+另外一条运行期约束：总时限必须**严格大于**第一次退避等待的上界，否则第一次
+失败后必然走进「预算不够等 → 放弃」，一次重试都不会发生。配置层
+（``app.core.config.retrieval_retry_effectively_disabled``）在启动时会校验并告警。
 """
 
 from __future__ import annotations
@@ -40,7 +61,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TypeVar
 
-from app.core.config import settings
+from app.core.config import RETRY_BACKOFF_JITTER_RATIO, settings
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +69,9 @@ T = TypeVar("T")
 
 #: 失败 attempt 的统一事件名。字段固定，便于按 attempt / backend 聚合与告警。
 FAILED_EVENT = "rag_call_failed"
+#: 成功 attempt 的统一事件名。抖动期只有失败日志是看不见「重试后好了」的，
+#: 首次就成功（attempt=1）也记一条，否则无法区分「没抖动」和「抖了又好了」。
+SUCCEEDED_EVENT = "rag_call_succeeded"
 #: 预算耗尽（还没开始调用就已经没有时间了）的事件名，独立于「某次调用失败」。
 DEADLINE_EXHAUSTED_EVENT = "rag_deadline_exhausted"
 
@@ -153,8 +177,12 @@ def deadline_from_settings() -> Deadline:
 def current_or_new_deadline() -> Deadline:
     """优先复用当前检索共享的 deadline，没有则按配置新起一个。
 
-    子调用入口统一走这里：被组合点包裹时共享总预算，独立调用（如导入任务
-    单独算一次嵌入）时也有自己的上界，不会出现「无人管超时」。
+    ⚠️ 这里新起的 deadline 覆盖的是**这一次调用本身**，不是「一次业务操作」。
+    仅适用于「一次调用 = 一次远程往返」的入口（如 Milvus 检索）。
+
+    ``embed()`` 这类「一次调用含 N 批往返」的入口**不要**直接用它：那会让
+    N 批共用一个 8s 的**检索**预算，正常导入也会被中途打断（复审 High-01）。
+    那里应当每批各拿一个 ``RAG_EMBED_BATCH_DEADLINE_SECONDS``。
     """
     return current_deadline() or deadline_from_settings()
 
@@ -165,13 +193,17 @@ class RetryPolicy:
 
     ``max_attempts`` **含首次**：3 表示「最多打 3 次」，即最多 2 次重试。
     ``jitter`` 为退避抖动比例，置 0 可让测试完全确定。
+
+    默认值直接取自配置（``RAG_RETRIEVAL_*``），避免在两处各写一份默认数字。
     """
 
-    max_attempts: int = 3
-    backoff_base: float = 0.2
-    backoff_max: float = 1.5
-    jitter: float = 0.2
-    enabled: bool = True
+    # 默认值读的是**导入时**的配置快照；运行期改配置请走
+    # ``retry_policy_from_settings()``，它每次都重读。
+    max_attempts: int = settings.RAG_RETRIEVAL_MAX_ATTEMPTS
+    backoff_base: float = settings.RAG_RETRIEVAL_BACKOFF_BASE_SECONDS
+    backoff_max: float = settings.RAG_RETRIEVAL_BACKOFF_MAX_SECONDS
+    jitter: float = RETRY_BACKOFF_JITTER_RATIO
+    enabled: bool = settings.RAG_RETRIEVAL_RESILIENCE_ENABLED
 
     def attempts(self) -> int:
         """实际允许的 attempt 总数；关闭重试时为 1。"""
@@ -251,6 +283,29 @@ def _log_failure(
     )
 
 
+def _log_success(
+    *,
+    attempt: int,
+    elapsed: float,
+    backend: str,
+    tenant: str,
+) -> None:
+    """记一条成功调用，字段与失败事件对齐（只差 outcome / error_type）。
+
+    只记失败 attempt 会让依赖方抖动期不可观测：看不到「重试了几次才成功」，
+    也分不清「一直很稳」和「抖完自己好了」。首次就成功同样记一条
+    ``attempt=1``，作为抖动期的基线。
+    """
+    logger.info(
+        "%s attempt=%s elapsed_ms=%s backend=%s tenant=%s outcome=ok",
+        SUCCEEDED_EVENT,
+        attempt,
+        int(elapsed * 1000),
+        backend or "-",
+        tenant or "-",
+    )
+
+
 def _log_deadline_exhausted(*, backend: str, tenant: str, elapsed: float) -> None:
     logger.warning(
         "%s elapsed_ms=%s backend=%s tenant=%s",
@@ -313,7 +368,7 @@ async def retry_async(
         attempt += 1
         started = deadline.elapsed()
         try:
-            return await operation()
+            result = await operation()
         except asyncio.CancelledError:
             # 取消不是「检索失败」：原样上抛，绝不收敛成 unavailable。
             raise
@@ -348,6 +403,14 @@ async def retry_async(
                 await sleeper(wait)
             except asyncio.CancelledError:
                 raise
+            continue
+        _log_success(
+            attempt=attempt,
+            elapsed=deadline.elapsed() - started,
+            backend=backend,
+            tenant=tenant,
+        )
+        return result
 
 
 async def run_blocking_with_deadline(
@@ -373,7 +436,9 @@ async def run_blocking_with_deadline(
     # 关闭时限时（total <= 0）传 None 而不是 inf：inf 会让 wait_for 的定时器溢出。
     timeout = deadline.remaining() if deadline.enforced else None
     try:
-        return await asyncio.wait_for(asyncio.to_thread(func, *args, **kwargs), timeout=timeout)
+        raw = await asyncio.wait_for(
+            asyncio.to_thread(func, *args, **kwargs), timeout=timeout
+        )
     except asyncio.CancelledError:
         raise
     except TimeoutError as exc:
@@ -398,3 +463,10 @@ async def run_blocking_with_deadline(
             outcome="give_up_not_retryable",
         )
         raise
+    _log_success(
+        attempt=1,
+        elapsed=deadline.elapsed() - started,
+        backend=backend,
+        tenant=tenant,
+    )
+    return raw

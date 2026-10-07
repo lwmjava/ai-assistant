@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import Callable
@@ -22,12 +23,18 @@ from collections.abc import Callable
 import httpx
 import pytest
 
-from app.core.config import settings
+from app.core.config import (
+    RETRY_BACKOFF_JITTER_RATIO,
+    Settings,
+    retrieval_retry_effectively_disabled,
+    settings,
+)
 from app.rag.embeddings.base import EmbeddingInputPolicy
 from app.rag.embeddings.openai_compatible import OpenAICompatibleEmbeddingProvider
 from app.rag.resilience import (
     DEADLINE_EXHAUSTED_EVENT,
     FAILED_EVENT,
+    SUCCEEDED_EVENT,
     Deadline,
     DeadlineExceededError,
     RetryPolicy,
@@ -565,6 +572,7 @@ def _embedding_provider(
     *,
     dim: int = 2,
     timeout: float = 15.0,
+    batch_size: int = 10,
 ) -> tuple[OpenAICompatibleEmbeddingProvider, list[httpx.Request]]:
     """构造走 MockTransport 的真实 provider，并返回请求记录。
 
@@ -589,6 +597,7 @@ def _embedding_provider(
         "text-embedding-v3",
         dim=dim,
         timeout=timeout,
+        batch_size=batch_size,
         input_policy=EmbeddingInputPolicy(
             max_input_tokens=8192,
             counter=len,
@@ -626,6 +635,245 @@ class _RecordingStore:
     async def hybrid_search(self, *args, **kwargs):
         self.calls += 1
         return []
+
+
+@pytest.mark.asyncio
+async def test_embedding_write_path_many_batches_are_not_cut_off(monkeypatch, caplog):
+    """写入 / 导入路径：100 块分 10 批、每批都成功，不得被**检索**总时限打断。
+
+    写入路径不绑定 deadline，因此每批各拿一个 ``RAG_EMBED_BATCH_DEADLINE_SECONDS``。
+    若按 High-01 的写法（整通调用共用一个检索总时限），这里会在第 4 批左右抛
+    ``DeadlineExceededError`` 并刷 ``rag_deadline_exhausted``，正常导入失败。
+
+    实测（改前 ``e978819``）：100 块 / 10 批 × 1.0s → 8.08s 抛错、0 向量；
+    父提交 ``e978819^`` 同场景 10.11s、100 向量成功。
+    """
+    caplog.set_level(logging.WARNING)
+    # 检索总时限故意设成远小于整通耗时（1.0s）：一旦被误用就会立刻暴露。
+    monkeypatch.setattr(settings, "RAG_RETRIEVAL_DEADLINE_SECONDS", 1.0)
+    monkeypatch.setattr(settings, "RAG_EMBED_BATCH_DEADLINE_SECONDS", 20.0)
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.3)  # 每批都成功，只是不快
+        size = len(json.loads(request.content)["input"])
+        return httpx.Response(
+            200, json={"data": [{"index": i, "embedding": [0.1, 0.9]} for i in range(size)]}
+        )
+
+    provider, requests = _embedding_provider(monkeypatch, respond)
+    vectors = await provider.embed([f"块-{i}" for i in range(100)])
+
+    assert len(requests) == 10, f"应发出 10 批，实际 {len(requests)}"
+    assert len(vectors) == 100
+    exhausted = [r for r in caplog.records if DEADLINE_EXHAUSTED_EVENT in r.getMessage()]
+    assert exhausted == [], "写入路径不该出现预算耗尽事件"
+
+
+@pytest.mark.asyncio
+async def test_embedding_read_path_batches_share_one_deadline(monkeypatch):
+    """检索路径：绑定 1.0s 后各批必须**共享**同一个预算。
+
+    判据是每批的读超时被剩余预算逐批压缩（单调不增且最后一批明显变小），
+    而不是每批都拿到完整的 ``self.timeout``。
+    """
+    read_timeouts: list[float] = []
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        read_timeouts.append(float((request.extensions.get("timeout") or {}).get("read")))
+        await asyncio.sleep(0.2)  # 每批都成功，但会吃掉共享预算
+        size = len(json.loads(request.content)["input"])
+        return httpx.Response(
+            200, json={"data": [{"index": i, "embedding": [0.1, 0.9]} for i in range(size)]}
+        )
+
+    provider, requests = _embedding_provider(monkeypatch, respond, batch_size=1)
+    with bind_deadline(Deadline(1.0)):
+        vectors = await provider.embed(["a", "b", "c", "d"])
+
+    assert len(requests) == 4
+    assert len(vectors) == 4
+    assert read_timeouts, "必须真的带着超时发出请求"
+    assert max(read_timeouts) <= 1.0, f"读超时未被共享 deadline 夹住：{read_timeouts}"
+    assert read_timeouts == sorted(read_timeouts, reverse=True), (
+        f"后续批次的读超时应被剩余预算压缩：{read_timeouts}"
+    )
+    assert read_timeouts[-1] < read_timeouts[0], f"末批未被压缩：{read_timeouts}"
+
+
+@pytest.mark.asyncio
+async def test_native_backend_cancellation_propagates_through_real_retrieve():
+    """取消注入必须穿过**真实**的 ``NativeRagBackend.retrieve``。
+
+    这里同时存在「超时改写」与「取消上抛」两种语义（``asyncio.wait_for`` +
+    ``except TimeoutError``），是全链路最容易被顺手改写取消的地方；
+    复审的变异 M14（把 ``except TimeoutError`` 扩成
+    ``except (TimeoutError, CancelledError)``）曾存活，说明此前没有守护。
+    """
+    from app.rag.backend.native import NativeRagBackend
+
+    class CancellingEmbedding:
+        model = "cancel-embedding"
+        dim = 2
+
+        async def embed(self, texts: list[str]) -> list[list[float]]:
+            raise asyncio.CancelledError()
+
+    store = _RecordingStore()
+    backend = NativeRagBackend(CancellingEmbedding(), store, tokenizer=lambda q: [])  # type: ignore[arg-type]
+    with pytest.raises(asyncio.CancelledError):
+        await backend.retrieve("查一下", tenant_id="t1", top_k=5)
+    assert store.calls == 0, "取消后不该再发起向量检索"
+
+
+@pytest.mark.asyncio
+async def test_milvus_reuses_bound_deadline_not_settings(monkeypatch):
+    """Milvus 必须用**绑定**的 deadline，而不是按配置新起一个。"""
+    from app.rag.vectorstore.milvus import MilvusUnavailableError, MilvusVectorStore
+
+    # 配置给 3.0s，绑定给 0.2s：若用了配置值，实测耗时会接近 3s 而不是 0.2s。
+    monkeypatch.setattr(settings, "RAG_RETRIEVAL_DEADLINE_SECONDS", 3.0)
+
+    class FakeIndex:
+        id = "idx-1"
+        name = "coll-1"
+        dim = 2
+
+    class HangingCollection:
+        indexes: list = []
+
+        def search(self, **kwargs):
+            time.sleep(5.0)
+            return [[]]
+
+    store = MilvusVectorStore(session=None)  # type: ignore[arg-type]
+    monkeypatch.setattr(store, "_resolve_index", lambda *a, **k: FakeIndex())
+    monkeypatch.setattr(store, "_connect", lambda *a, **k: HangingCollection())
+
+    started = time.monotonic()
+    with bind_deadline(Deadline(0.2)):
+        with pytest.raises(MilvusUnavailableError):
+            await store.hybrid_search([0.1, 0.9], ["查"], "t1", 5)
+    elapsed = time.monotonic() - started
+    assert elapsed <= 0.2 + _TOLERANCE, f"实测 {elapsed:.3f}s 说明用的是配置值而非绑定值"
+
+
+@pytest.mark.asyncio
+async def test_success_event_records_attempt(caplog):
+    """成功也要记一条：首次成功 attempt=1，重试后成功 attempt=N。
+
+    只记失败 attempt 会让依赖方抖动期不可观测——看不到「重试了几次才成功」，
+    也分不清「一直很稳」和「抖完自己好了」。
+    """
+    caplog.set_level(logging.INFO)
+    policy = _policy(max_attempts=3)
+
+    await retry_async(
+        ScriptedOp(["ok"]),
+        deadline=Deadline(8.0, clock=FakeClock()),
+        policy=policy,
+        backend="embedding",
+        tenant="t9",
+        sleep=_sleeper([]),
+    )
+    await retry_async(
+        ScriptedOp([_http_error(429), _http_error(503), "ok"]),
+        deadline=Deadline(8.0, clock=FakeClock()),
+        policy=policy,
+        backend="embedding",
+        tenant="t9",
+        sleep=_sleeper([]),
+    )
+    ok_events = [r for r in caplog.records if SUCCEEDED_EVENT in r.getMessage()]
+    assert len(ok_events) == 2
+    attempts = [r.getMessage().split("attempt=")[1].split()[0] for r in ok_events]
+    assert attempts == ["1", "3"]
+    for record in ok_events:
+        assert "backend=embedding" in record.getMessage()
+        assert "tenant=t9" in record.getMessage()
+
+
+@pytest.mark.asyncio
+async def test_embedding_success_logs_attempt_one(monkeypatch, caplog):
+    """真实嵌入链路：首次就成功也记 ``rag_call_succeeded attempt=1``。"""
+    caplog.set_level(logging.INFO)
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        size = len(json.loads(request.content)["input"])
+        return httpx.Response(
+            200, json={"data": [{"index": i, "embedding": [0.1, 0.9]} for i in range(size)]}
+        )
+
+    provider, requests = _embedding_provider(monkeypatch, respond)
+    await provider.embed(["合成文本"])
+    assert len(requests) == 1
+    ok_events = [r for r in caplog.records if SUCCEEDED_EVENT in r.getMessage()]
+    assert len(ok_events) == 1
+    assert "attempt=1" in ok_events[0].getMessage()
+
+
+def test_retry_effectively_disabled_predicate():
+    """「重试实际已禁用」的判据：第一次退避等待的上界必须严格小于总时限。"""
+    assert retrieval_retry_effectively_disabled(
+        deadline_seconds=0.5, max_attempts=3, backoff_base=0.5, backoff_max=2.0
+    ), "0.5s 放不下 min(0.5,2.0)*1.2=0.6s 的退避"
+    assert not retrieval_retry_effectively_disabled(
+        deadline_seconds=8.0, max_attempts=3, backoff_base=0.2, backoff_max=1.5
+    ), "默认配置下重试必须有效"
+    assert retrieval_retry_effectively_disabled(
+        deadline_seconds=8.0, max_attempts=1, backoff_base=0.2, backoff_max=1.5
+    ), "MAX_ATTEMPTS=1 等价于不重试"
+    assert retrieval_retry_effectively_disabled(
+        deadline_seconds=8.0, max_attempts=3, backoff_base=0.2, backoff_max=1.5, enabled=False
+    ), "总开关关闭等价于不重试"
+    # 关闭时限（0）时每次 attempt 都能打出去，重试本身仍有效
+    assert not retrieval_retry_effectively_disabled(
+        deadline_seconds=0, max_attempts=3, backoff_base=0.2, backoff_max=1.5
+    )
+    # 判据用的是抖动后的上界：退避基数略小于 deadline/1.2 时仍算放得下
+    ratio = 1.0 + RETRY_BACKOFF_JITTER_RATIO
+    assert not retrieval_retry_effectively_disabled(
+        deadline_seconds=1.0, max_attempts=3, backoff_base=1.0 / ratio - 0.01, backoff_max=2.0
+    )
+    assert retrieval_retry_effectively_disabled(
+        deadline_seconds=1.0, max_attempts=3, backoff_base=1.0 / ratio + 0.01, backoff_max=2.0
+    )
+
+
+def test_startup_warns_when_retry_effectively_disabled(caplog):
+    """启动即告警：总时限放不下一次退避时，配置装载必须说清楚。"""
+    caplog.set_level(logging.WARNING)
+    bad = Settings(
+        RAG_RETRIEVAL_DEADLINE_SECONDS=0.5,
+        RAG_RETRIEVAL_BACKOFF_BASE_SECONDS=0.5,
+        RAG_RETRIEVAL_BACKOFF_MAX_SECONDS=2.0,
+        RAG_RETRIEVAL_MAX_ATTEMPTS=3,
+        RAG_RETRIEVAL_RESILIENCE_ENABLED=True,
+    )
+    assert retrieval_retry_effectively_disabled(
+        deadline_seconds=bad.RAG_RETRIEVAL_DEADLINE_SECONDS,
+        max_attempts=bad.RAG_RETRIEVAL_MAX_ATTEMPTS,
+        backoff_base=bad.RAG_RETRIEVAL_BACKOFF_BASE_SECONDS,
+        backoff_max=bad.RAG_RETRIEVAL_BACKOFF_MAX_SECONDS,
+    )
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("rag_retry_effectively_disabled" in m for m in messages), messages
+    assert any("重试实际已禁用" in m for m in messages), messages
+
+    caplog.clear()
+    good = Settings(
+        RAG_RETRIEVAL_DEADLINE_SECONDS=8.0,
+        RAG_RETRIEVAL_BACKOFF_BASE_SECONDS=0.2,
+        RAG_RETRIEVAL_BACKOFF_MAX_SECONDS=1.5,
+        RAG_RETRIEVAL_MAX_ATTEMPTS=3,
+        RAG_RETRIEVAL_RESILIENCE_ENABLED=True,
+    )
+    assert not retrieval_retry_effectively_disabled(
+        deadline_seconds=good.RAG_RETRIEVAL_DEADLINE_SECONDS,
+        max_attempts=good.RAG_RETRIEVAL_MAX_ATTEMPTS,
+        backoff_base=good.RAG_RETRIEVAL_BACKOFF_BASE_SECONDS,
+        backoff_max=good.RAG_RETRIEVAL_BACKOFF_MAX_SECONDS,
+    )
+    assert not [r for r in caplog.records if "rag_retry_effectively_disabled" in r.getMessage()]
 
 
 @pytest.mark.asyncio
@@ -694,7 +942,10 @@ async def test_embedding_5xx_exhausts_then_raises(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_embedding_slow_query_aborts_at_deadline(monkeypatch):
-    """慢查询：单次超时被剩余预算夹住，实测等待 ≤ deadline + 容差。
+    """慢查询：**写入侧单批预算**把单次超时夹住，实测等待 ≤ deadline + 容差。
+
+    这条走的是未绑定（写入 / 导入）路径，因此夹的是
+    ``RAG_EMBED_BATCH_DEADLINE_SECONDS``；检索路径见下一个用例。
 
     ``httpx.MockTransport`` 不走真实传输层、也不会自己应用 timeout，所以这里
     由 handler 读取 httpx 写入 ``request.extensions["timeout"]`` 的读超时，
@@ -702,6 +953,7 @@ async def test_embedding_slow_query_aborts_at_deadline(monkeypatch):
     这样既断言了「超时值被 deadline 夹住」，也断言了「实测耗时有界」。
     """
     monkeypatch.setattr(settings, "RAG_RETRIEVAL_DEADLINE_SECONDS", 0.3)
+    monkeypatch.setattr(settings, "RAG_EMBED_BATCH_DEADLINE_SECONDS", 0.3)
     monkeypatch.setattr(settings, "RAG_RETRIEVAL_MAX_ATTEMPTS", 3)
     monkeypatch.setattr(settings, "RAG_RETRIEVAL_BACKOFF_BASE_SECONDS", 0.01)
     monkeypatch.setattr(settings, "RAG_RETRIEVAL_BACKOFF_MAX_SECONDS", 0.02)
@@ -729,6 +981,28 @@ async def test_embedding_slow_query_aborts_at_deadline(monkeypatch):
     assert max(read_timeouts) <= 0.3, f"单次读超时 {max(read_timeouts)} 未被总时限夹住"
     assert elapsed <= 0.3 + _TOLERANCE, f"实测 {elapsed:.3f}s 超过总时限 0.3s"
     # 预算耗尽后不再重试：慢查询不能靠「多试几次」把时间翻倍。
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_embedding_slow_query_aborts_at_bound_deadline(monkeypatch):
+    """检索路径的慢查询：绑定 0.3s 后单次超时被夹住，实测等待 ≤ 0.3 + 容差。"""
+    read_timeouts: list[float] = []
+
+    async def slow(request: httpx.Request) -> httpx.Response:
+        read_timeouts.append(float((request.extensions.get("timeout") or {}).get("read")))
+        await asyncio.sleep(min(float(read_timeouts[-1]) + 0.01, 1.0))
+        raise httpx.ReadTimeout("read timeout", request=request)
+
+    provider, requests = _embedding_provider(monkeypatch, slow)
+    started = time.monotonic()
+    with bind_deadline(Deadline(0.3)):
+        with pytest.raises((httpx.ReadTimeout, DeadlineExceededError)):
+            await provider.embed(["合成文本"])
+    elapsed = time.monotonic() - started
+
+    assert read_timeouts and max(read_timeouts) <= 0.3, f"读超时未被夹住：{read_timeouts}"
+    assert elapsed <= 0.3 + _TOLERANCE, f"实测 {elapsed:.3f}s 超过总时限 0.3s"
     assert len(requests) == 1
 
 

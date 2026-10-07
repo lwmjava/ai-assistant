@@ -4,10 +4,16 @@ OpenAI 官方嵌入接口与 Ollama 暴露的 ``/v1/embeddings`` 接口格式一
 因此同一实现即可覆盖两者，通过 ``EMBEDDING_BASE_URL`` / ``EMBEDDING_API_KEY`` /
 ``EMBEDDING_MODEL`` 切换目标服务。
 
-调用韧性（RAG-038）：每批请求都走 ``retry_async``，并复用当前检索的**共享**
-deadline（``current_or_new_deadline()``）——嵌入只是检索链路的一环，不能自己
-另起一个完整的预算。可重试故障（连接错误 / 读超时 / 429 / 5xx）才重试，
-4xx 与业务错误只打一次；失败一律向上抛，绝不返回空向量冒充「查过了」。
+调用韧性（RAG-038）：每批请求都走 ``retry_async``。deadline 的取法分两种情形：
+
+- **检索路径**（后端组合点已 ``bind_deadline``）：复用那个**共享**总预算，
+  一次检索内所有批次的耗时累加受它约束——「批 1 慢」会压缩批 2 与后续向量检索。
+- **写入 / 导入 / 重建索引 / 语义切分路径**（没有绑定）：**每批各拿一个**
+  ``RAG_EMBED_BATCH_DEADLINE_SECONDS``。这里绝不能让整通调用共用一个检索
+  总时限：一通 ``embed()`` 可能含几十批，正常导入也会被中途打断（复审 High-01）。
+
+可重试故障（连接错误 / 读超时 / 429 / 5xx）才重试，4xx 与业务错误只打一次；
+失败一律向上抛，绝不返回空向量冒充「查过了」。
 """
 
 import logging
@@ -15,11 +21,12 @@ from collections.abc import Sequence
 
 import httpx
 
+from app.core.config import settings
 from app.rag.embeddings.base import EmbeddingDimensionError, EmbeddingInputPolicy, EmbeddingProvider
 from app.rag.embeddings.input_limits import resolve_input_policy
 from app.rag.resilience import (
     Deadline,
-    current_or_new_deadline,
+    current_deadline,
     retry_async,
     retry_policy_from_settings,
 )
@@ -67,12 +74,16 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
             if reason:
                 raise ValueError(f"embedding_{reason}")
         vectors: list[list[float]] = []
-        # 共享 deadline：被后端组合点包裹时复用总预算，独立调用时按配置新起一个。
-        deadline = current_or_new_deadline()
         policy = retry_policy_from_settings()
+        # 检索链路已经绑定了共享 deadline 就复用它；没绑定（写入 / 导入 / 重建
+        # 索引 / 语义切分）则**每批**各起一个写入侧预算。
+        # 不能写成「整通调用共用一个 current_or_new_deadline()」：那会让几十批
+        # 共用一个 8s 的检索预算，正常的长导入在第 N 批就被打断（复审 High-01）。
+        shared = current_deadline()
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             for start in range(0, len(payload_texts), self.batch_size):
                 batch = payload_texts[start : start + self.batch_size]
+                deadline = shared or Deadline(settings.RAG_EMBED_BATCH_DEADLINE_SECONDS)
                 vectors.extend(
                     await retry_async(
                         lambda: self._post_batch(client, batch, deadline),

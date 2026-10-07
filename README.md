@@ -408,6 +408,12 @@ docker compose up -d --build
 | `RAG_OCR_MODEL` | 云 OCR 模型名（优先于 LLM 配置） | — |
 | `EMBEDDING_PROVIDER` | 嵌入模型提供商 | `openai` |
 | `EMBEDDING_BATCH_SIZE` | 单次嵌入请求的文本条数（DashScope v3/v4 上限 10） | `10` |
+| `EMBEDDING_TIMEOUT_SECONDS` | 单次嵌入 HTTP 超时（秒），会被检索总时限夹住 | `15.0` |
+| `RAG_RETRIEVAL_RESILIENCE_ENABLED` | 检索韧性总开关。关闭后不重试（休眠/无网排障用） | `true` |
+| `RAG_RETRIEVAL_DEADLINE_SECONDS` | 一次检索（嵌入 + 向量检索）的**总**时限（秒）。`0` 关闭 | `8.0` |
+| `RAG_RETRIEVAL_MAX_ATTEMPTS` | 单个子调用最多打几次（**含首次**）。只对连接错误/读超时/429/5xx 重试 | `3` |
+| `RAG_RETRIEVAL_BACKOFF_BASE_SECONDS` | 退避基数：第 n 次失败等待 `base * 2**(n-1)` | `0.2` |
+| `RAG_RETRIEVAL_BACKOFF_MAX_SECONDS` | 退避上限；剩余预算不够时直接放弃，不睡过总时限 | `1.5` |
 | `EMBEDDING_INDEX_VERSION` | 向量索引版本。换模型或改归一化/度量时递增，配合重建脚本切换 | `1` |
 | `EMBEDDING_NORMALIZATION` | 索引身份声明的归一化方式。**当前只支持 `l2`**，其它值在构造身份时直接报错 | `l2` |
 | `EMBEDDING_METRIC` | 索引身份声明的相似度度量。**当前只支持 `cosine`**，其它值在构造身份时直接报错 | `cosine` |
@@ -527,6 +533,30 @@ LLM_CAPABILITY_DECLARED_SOURCE=厂商文档 URL 或内部依据
 ### 关闭护栏
 
 `LLM_CAPABILITY_GUARD_ENABLED=false` 会完全跳过核对，行为与 RAG-028 之前一致。仅在排查护栏本身时临时关闭。
+
+## 检索调用时限与重试（RAG-038）
+
+一次检索由「嵌入 + 向量检索」两个外部调用串成。改之前只有**逐次** HTTP 超时：嵌入与向量检索各拿一个 60s 预算，一次检索最坏能拖 120s，429/5xx 也不重试，慢查询没有上界。现在两者装进**同一个总时限**：
+
+- **总 deadline，不是逐次 timeout。** 子调用按剩余预算夹自己的单次超时（`Deadline.subcall_timeout`），任何一环拖沓都会压缩后面所有环节；预算用完就直接拒绝发起下一个子调用（`ensure_budget`）。逐次 timeout 的 N 个子调用最坏是 `N × timeout`，总 deadline 最坏就是 `deadline`。
+- **有限退避，只对可重试故障。** 连接错误 / 读超时 / `429` / `5xx` 才重试；`4xx`（除 429）与业务错误只打一次——重试一个错误的请求只会再错一次。退避是 `base * 2**(n-1)` 夹到 `max` 再叠 ±20% 抖动，次数上界来自 `RAG_RETRIEVAL_MAX_ATTEMPTS`（**含首次**）。
+- **耗时有界的关键在退避前检查预算。** 剩余时间不够等下一次就**直接放弃**，不睡过 deadline；否则「有界」名存实亡。
+- **取消不改写。** `asyncio.CancelledError` 一律原样上抛，不写成「检索不可用」，也不记成一次调用失败。
+- **失败不伪造空知识。** 重试耗尽 / 超时一律向上抛，由 RAG-037 的检索状态契约收敛为 `unavailable` 并强制披露；绝不返回空列表让上层以为「查过了、没有」。
+
+每次失败 attempt 记一条 `rag_call_failed`（attempt / elapsed / error_type / backend / tenant），预算耗尽记 `rag_deadline_exhausted`。日志里**不写** Authorization、api key、请求正文或命中正文。
+
+### pymilvus 同步调用的取消边界
+
+pymilvus 是同步客户端，查询放进线程池执行。总时限到期或调用被取消时，`asyncio.wait_for` 只能让**协程放弃等待**，**无法真正中断**线程里的底层调用——线程会跑到底才释放工作线程。因此：
+
+- 「有界」的含义是**调用方不再等**，不是服务端调用被取消；
+- 被放弃的调用不会污染结果（返回值被丢弃），也不会被写成空结果；
+- 依赖方持续无响应时，线程池 worker 会被占住，运维上仍需靠 Milvus 侧的连接/查询超时兜底。
+
+### 关闭韧性
+
+`RAG_RETRIEVAL_RESILIENCE_ENABLED=false`：不重试（attempt 固定为 1）、不记退避等待，行为退回 RAG-038 之前，便于在休眠/无网环境排障。`RAG_RETRIEVAL_DEADLINE_SECONDS=0` 则连总时限一起关闭。
 
 ## 备份与恢复
 

@@ -7,6 +7,15 @@
 设计：稠密检索走 Milvus，稀疏检索（BM25）与内容存储仍复用主库中的
 ``DocumentChunk``（已保存 tokens / content），两者通过 RRF 融合。
 仅在确实需要大规模向量检索时使用；中小规模直接采用本地实现即可。
+
+调用韧性（RAG-038）：Milvus 查询套**共享**总时限（``current_or_new_deadline()``）。
+这里不做重试——向量检索重试的收益不确定，而重复查询会放大服务端压力；
+限时失败同样向上抛（``MilvusUnavailableError``），绝不返回空列表冒充「没有命中」。
+
+⚠️ 取消边界：pymilvus 是**同步**客户端，查询在线程池里执行。总时限到期或调用
+被取消时，只能让协程放弃等待，**无法真正中断**线程里的底层调用——线程会继续
+跑到底才释放工作线程。因此取消发生后本方法不会返回任何结果，也不会把
+``CancelledError`` 改写成业务异常，而是原样上抛。
 """
 
 import json
@@ -21,6 +30,11 @@ from app.models.rag import Document, DocumentChunk, EmbeddingIndex
 from app.rag.access import ReadScope
 from app.rag.index_identity import EmbeddingIndexIdentity
 from app.rag.index_registry import IndexUnavailableError, resolve_read_index_for
+from app.rag.resilience import (
+    DeadlineExceededError,
+    current_or_new_deadline,
+    run_blocking_with_deadline,
+)
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.local import _bm25_scores, _rrf, visible_chunks_with_status
 
@@ -63,8 +77,12 @@ class MilvusVectorStore(VectorStore):
             )
         return index
 
-    def _connect(self, identity: EmbeddingIndexIdentity | None = None):
-        target_index = self._resolve_index(identity)
+    def _connect(
+        self,
+        identity: EmbeddingIndexIdentity | None = None,
+        index: EmbeddingIndex | None = None,
+    ):
+        target_index = index if index is not None else self._resolve_index(identity)
         if self._collection is not None and self._collection_name == target_index.name:
             return self._collection
         try:
@@ -221,6 +239,30 @@ class MilvusVectorStore(VectorStore):
         stmt = select(DocumentChunk).where(DocumentChunk.tenant_id == tenant_id)
         return len(self.session.exec(stmt).all())
 
+    def _remote_search(
+        self,
+        identity: EmbeddingIndexIdentity | None,
+        index: EmbeddingIndex,
+        expr: str,
+        query_embedding: list[float],
+        expand: int,
+    ) -> list:
+        """真正打到 Milvus 的那一段（同步），由 ``run_blocking_with_deadline`` 限时。
+
+        连集合、取检索参数、发起查询都在这里面：``connections.connect`` 同样会
+        阻塞，不该由调用方各自承担，否则「总时限」只管住查询却管不住连接。
+        索引行由调用方解析好传进来，避免在线程池里再碰一次数据库会话。
+        """
+        collection = self._connect(identity, index=index)
+        return collection.search(
+            data=[query_embedding],
+            anns_field="embedding",
+            param=self._search_params(collection),
+            limit=expand,
+            expr=expr,
+            output_fields=["id"],
+        )[0]
+
     async def hybrid_search(
         self,
         query_embedding: list[float],
@@ -236,21 +278,27 @@ class MilvusVectorStore(VectorStore):
         # 身份核对必须在取候选之前：没有生效索引 → IndexUnavailableError，
         # 身份不符 → IndexIdentityError（同维异模型靠维度发现不了）。
         target_index = self._resolve_index(identity, tenant_id=tenant_id)
-        collection = self._connect(identity)
         expr = (
             f'tenant_id == "{tenant_id}"'
             f' and {_INDEX_ID_FIELD} == "{target_index.id}"'
         )
         expand = max(top_k * 4, 20)
+        deadline = current_or_new_deadline()
         try:
-            hits = collection.search(
-                data=[query_embedding],
-                anns_field="embedding",
-                param=self._search_params(collection),
-                limit=expand,
-                expr=expr,
-                output_fields=["id"],
-            )[0]
+            hits = await run_blocking_with_deadline(
+                self._remote_search,
+                identity,
+                target_index,
+                expr,
+                query_embedding,
+                expand,
+                deadline=deadline,
+                backend="milvus",
+                tenant=tenant_id,
+            )
+        except DeadlineExceededError as exc:
+            # 超时也算「没查完」，不能回空列表冒充「知识库里没有」。
+            raise MilvusUnavailableError(f"Milvus 检索超时：{exc}") from exc
         except Exception as exc:  # pragma: no cover - 依赖线上 Milvus
             # 不能吞成空列表：那会让调用方把「检索服务故障」当成「知识库里没有」，
             # 用户看到的是一个正常的空结果而不是故障提示。向上抛，由检索状态

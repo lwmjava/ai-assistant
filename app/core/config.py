@@ -115,10 +115,26 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
     # 单次 /embeddings 请求的文本条数。DashScope text-embedding-v3/v4 上限为 10。
     EMBEDDING_BATCH_SIZE: int = 10
+    # 单次嵌入 HTTP 超时（秒）。嵌入是短请求，不该复用 LLM_TIMEOUT（对话生成
+    # 需要长输出，60s 合理）；且它必须能被下面的检索总时限夹住。
+    EMBEDDING_TIMEOUT_SECONDS: float = 15.0
     # 索引身份（ADR-0008）：换模型或改归一化/度量都要换索引，不能原地混写。
     EMBEDDING_INDEX_VERSION: str = "1"  # 显式索引版本，重建新索引时递增
     EMBEDDING_NORMALIZATION: str = "l2"  # l2 | none：影响向量数值，必须绑定进身份
     EMBEDDING_METRIC: str = "cosine"  # cosine | ip | l2：沿用已批准的 Milvus cosine
+
+    # ── 检索调用韧性（RAG-038）：总时限 + 有限退避 + 取消传播 ──
+    # 一次检索 = 嵌入 + 向量检索，**共用**这一个总预算，而不是每个子调用各一个。
+    # 依赖方抖动时宁可「体面失败 + 明确披露」，也不要把整个请求拖死。
+    RAG_RETRIEVAL_RESILIENCE_ENABLED: bool = True
+    # 总时限（秒）。0 或负数 = 关闭时限与重试（休眠/无网排障用）。
+    RAG_RETRIEVAL_DEADLINE_SECONDS: float = 8.0
+    # 单个子调用的最大尝试次数（**含首次**）。3 = 最多 2 次重试；
+    # 只对连接错误 / 读超时 / 429 / 5xx 重试，4xx 与业务错误一律只打一次。
+    RAG_RETRIEVAL_MAX_ATTEMPTS: int = 3
+    # 退避基数与上限（秒）：第 n 次失败等 base * 2**(n-1)，夹到 max，再叠 ±20% 抖动。
+    RAG_RETRIEVAL_BACKOFF_BASE_SECONDS: float = 0.2
+    RAG_RETRIEVAL_BACKOFF_MAX_SECONDS: float = 1.5
 
     # ── 向量库与检索 ──
     RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus

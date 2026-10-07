@@ -406,7 +406,7 @@ async def test_pipeline_retrieval_failure_converges_without_leaking_text(real_fi
     assert state.answer
     message = assert_minimized(real_filtered_records, "app.agents.pipeline")
     assert "RuntimeError" in message
-    assert "unavailable" in message in message
+    assert "unavailable" in message
 
 
 @pytest.mark.asyncio

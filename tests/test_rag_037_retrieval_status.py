@@ -261,6 +261,17 @@ async def test_pipeline_ok_has_no_disclosure() -> None:
     assert DISCLOSURE_PREFIX not in "".join(llm.prompts)
 
 
+async def test_pipeline_no_hit_final_text_carries_disclosure() -> None:
+    """复审 N-01：no_hit 分支此前只验状态与提示层，没验最终回复文本。"""
+    llm = _IgnoreNoticeLLM()
+    pipeline = AgentPipeline(llm, LLMOptions(), retriever=_retriever(_Backend([])))
+    state = await pipeline.run(AgentState(user_input="年假怎么算"))
+    assert state.retrieval_status == "no_hit"
+    assert state.answer.startswith(settings.RAG_NO_HIT_REPLY)
+    # 模型照旧冒充知识作答，但用户看到的第一句是确定的声明
+    assert "根据知识库" in state.answer
+
+
 # ── 3. 短路径入口 ──────────────────────────────────────────
 
 
@@ -292,6 +303,49 @@ async def test_fast_path_no_hit_still_says_no_results() -> None:
     assert state.retrieval_status == "no_hit"
     assert "没有可用的检索结果" in llm.users[0]
     assert settings.RAG_NO_HIT_NOTICE in llm.systems[0]
+
+
+async def test_fast_path_below_threshold_final_text_is_the_refusal() -> None:
+    """复审 N-01：短路径的终态拒答此前只验状态，没有一条断言最终文本。
+
+    补上「流式 token 拼起来 == 拒答语」与「模型一次都没被调用」两条，
+    否则把短路改回"交给模型改写"不会被任何用例发现。
+    """
+    llm = _IgnoreNoticeLLM()
+    state = AgentState(user_input="根据知识库回答年假")
+    retriever = _retriever(_Backend([_hit(0.01, "不相关内容")]))
+    tokens: list[str] = []
+    async for event in iter_fast_path(
+        llm, LLMOptions(), state, route_message(state.user_input), retriever, None
+    ):
+        if event.type == "token":
+            tokens.append(event.data)
+    assert state.retrieval_status == "below_threshold"
+    assert llm.calls == 0, "终态拒答不应再进生成"
+    assert "".join(tokens) == settings.RAG_REFUSE_MESSAGE
+    assert state.answer == settings.RAG_REFUSE_MESSAGE
+
+
+async def test_fast_path_disclosure_reaches_final_text_even_if_llm_ignores() -> None:
+    """复审 N-01：短路径披露语此前只验 system 侧指令，没验用户最终看到什么。
+
+    用完全忽略指令的对抗 LLM，断言流式 token 的第一段就是披露语。
+    """
+    llm = _IgnoreNoticeLLM()
+    state = AgentState(user_input="查一下年假")
+    retriever = _retriever(_Backend(error=RuntimeError("检索不可用")))
+    tokens: list[str] = []
+    async for event in iter_fast_path(
+        llm, LLMOptions(), state, route_message(state.user_input), retriever, None
+    ):
+        if event.type == "token":
+            tokens.append(event.data)
+    assert state.retrieval_status == "unavailable"
+    streamed = "".join(tokens)
+    assert streamed.startswith(settings.RAG_UNAVAILABLE_REPLY)
+    # 模型正文仍在，但被确定性标注压在后面
+    assert "根据知识库" in streamed
+    assert streamed == state.answer
 
 
 async def test_fast_path_ok_injects_snippet_without_disclosure() -> None:

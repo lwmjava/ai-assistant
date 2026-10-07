@@ -941,7 +941,7 @@ async def search(
     检索状态与「实际生效后端」通过响应头暴露：后端工厂会在缺依赖时把
     langchain / llamaindex 静默降级为 native，调用方需要能观察到真实生效值。
     本端点不做相似度阈值过滤，因此状态只有 ok / no_hit 两种；检索失败仍以
-    5xx 呈现——显式检索接口不应把故障伪装成空结果。
+    503 呈现——显式检索接口不应把故障伪装成空结果。
     """
     if not req.query.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空")
@@ -954,19 +954,18 @@ async def search(
         # 不降级为空列表：空列表会被读成「查过了、没有」。用 503 并在响应头
         # 标出 unavailable，让调用方能区分「知识库没有」与「检索没跑成」。
         logger.exception("rag_search_unavailable exception_type=%s", type(exc).__name__)
-        response.headers["X-Retrieval-Status"] = "unavailable"
-        response.headers["X-RAG-Backend"] = rag.last_backend_name or "native"
-        # 头必须挂在异常自己的响应上：在异常处理前给 Response 设的头会被丢掉。
+        # 头必须挂在异常自己的响应上：在异常处理前给 Response 设的头会被丢掉，
+        # 因此这里不再给 response.headers 赋值，避免留下看似生效的死代码。
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="知识库检索服务当前不可用，未能完成本次检索。",
             headers={
                 "X-Retrieval-Status": "unavailable",
-                "X-RAG-Backend": rag.last_backend_name or "native",
+                "X-RAG-Backend": rag.last_backend_name or "unknown",
             },
         ) from exc
     response.headers["X-Retrieval-Status"] = "ok" if results else "no_hit"
-    response.headers["X-RAG-Backend"] = rag.last_backend_name or "native"
+    response.headers["X-RAG-Backend"] = rag.last_backend_name or "unknown"
     return [
         SearchResultOut(
             document_id=r.document_id,

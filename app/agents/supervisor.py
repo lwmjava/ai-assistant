@@ -41,7 +41,8 @@ _SUPERVISOR_SYSTEM = (
 )
 
 _RESEARCH_SYSTEM = (
-    "你是调研员。基于「用户目标」与已有调研，写一段精炼的调研记录。\n" "不要调用工具，不要声称已经检索过知识库。"
+    "你是调研员。基于「用户目标」与已有调研，写一段精炼的调研记录。\n"
+    "你没有工具可用，不要声称已经调用过工具或已经检索过知识库。"
 )
 
 _DRAFT_SYSTEM = (
@@ -171,9 +172,13 @@ class SupervisorGraph:
             f"## 已有调研\n{state.get('research') or '（尚无调研记录）'}\n\n"
             "请写一段调研记录。"
         )
+        system = _RESEARCH_SYSTEM
+        notice = state.get("retrieval_notice", "")
+        if notice:
+            system = f"{system}\n\n{notice}"
         draft = await self.llm.chat(
             [
-                ChatMessage(role=ChatRole.SYSTEM, content=_RESEARCH_SYSTEM),
+                ChatMessage(role=ChatRole.SYSTEM, content=system),
                 ChatMessage(role=ChatRole.USER, content=prompt),
             ],
             self.options,
@@ -199,9 +204,13 @@ class SupervisorGraph:
             f"## 调研记录\n{research}\n\n"
             "请产出最终回答。"
         )
+        system = _DRAFT_SYSTEM
+        notice = state.get("retrieval_notice", "")
+        if notice:
+            system = f"{system}\n\n{notice}"
         answer = await self.llm.chat(
             [
-                ChatMessage(role=ChatRole.SYSTEM, content=_DRAFT_SYSTEM),
+                ChatMessage(role=ChatRole.SYSTEM, content=system),
                 ChatMessage(role=ChatRole.USER, content=prompt),
             ],
             self.options,
@@ -273,6 +282,9 @@ class SupervisorGraph:
             "next": "research",
             "revisions": 0,
             "delegations": [],
+            # 检索非 ok 时给模型的披露要求。必须走 system 侧：放进「上下文」
+            # 会被当成资料，而资料可能被模型当不可信文本忽略掉。
+            "retrieval_notice": state.retrieval_notice,
         }
         try:
             final = await self._graph.ainvoke(graph_state)

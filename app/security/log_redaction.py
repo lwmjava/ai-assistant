@@ -19,6 +19,7 @@ _RAG_API_EVENTS = {
     "保存源文件失败: filename=%s": "rag_source_save_failed",
     "上传文档解析成功，但知识库摄取失败: filename=%s": "rag_upload_ingest_failed",
     "创建上传导入任务时保存源文件失败": "rag_import_source_save_failed",
+    "rag_search_unavailable exception_type=%s": "rag_search_unavailable",
 }
 _PIPELINE_FAILURE_EVENTS = {
     "Agent 管线执行失败": "agent_pipeline_failed",

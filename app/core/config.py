@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
     # 单次 /embeddings 请求的文本条数。DashScope text-embedding-v3/v4 上限为 10。
     EMBEDDING_BATCH_SIZE: int = 10
+    # 索引身份（ADR-0008）：换模型或改归一化/度量都要换索引，不能原地混写。
+    EMBEDDING_INDEX_VERSION: str = "1"  # 显式索引版本，重建新索引时递增
+    EMBEDDING_NORMALIZATION: str = "l2"  # l2 | none：影响向量数值，必须绑定进身份
+    EMBEDDING_METRIC: str = "cosine"  # cosine | ip | l2：沿用已批准的 Milvus cosine
 
     # ── 向量库与检索 ──
     RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus
@@ -116,9 +120,9 @@ class Settings(BaseSettings):
         "未检索到足够相关的知识库资料，未能给出可靠答案。"
         "请补充关键词，或确认相关资料已上传至知识库。"
     )
-    # 检索状态（ok / no_hit / below_threshold / unavailable）是否向模型注入
-    # 「必须向用户披露」的指令。关闭即回退到不注入披露要求的旧行为，
-    # 状态本身仍记录与暴露。
+    # 只控制「面向用户的提示层」：关闭后不再给模型注入披露指令，
+    # 也不再前置披露语、不再做全低分终态拒答（等同 RAG-037 之前的旧行为）。
+    # 检索状态本身（ok / no_hit / below_threshold / unavailable）仍照常记录与暴露。
     RAG_STATUS_NOTICE_ENABLED: bool = True
     # 零候选时的披露语：允许基于模型知识作答，但须声明未使用知识库内容。
     RAG_NO_HIT_NOTICE: str = (

@@ -792,7 +792,7 @@ class AgentPipeline:
             # 4c. 披露语先吐给用户：即使后续模型完全忽略 prompt 里的指令，
             # 用户看到的第一句话也是确定的
             if state.retrieval_disclosure:
-                for piece in _chunk_text(state.retrieval_disclosure):
+                for piece in _chunk_text(state.retrieval_disclosure + "\n\n"):
                     yield AgentEvent("token", piece)
             # 5. 行动
             yield AgentEvent("stage", "行动")

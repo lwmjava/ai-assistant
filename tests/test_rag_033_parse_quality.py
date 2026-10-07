@@ -748,6 +748,8 @@ def test_used_mock_is_true_when_factory_provider_is_faked(monkeypatch: pytest.Mo
     probe = _report_mod.build_ocr_probe([], ocr_provider="tesseract")
     assert probe["used_mock"] is True
     assert probe["provider_class"].startswith("app.rag.ocr.") is False
+    # C.5：这个对外字段本身也必须被盯住，不能只靠 bindings_consistent 兜底
+    assert probe["factory_provider_is_real"] is False
     assert probe["bindings_consistent"] is False
     assert probe["inconsistent_bindings"] == sorted(_report_mod.PARSER_OCR_BINDINGS)
 
@@ -764,6 +766,27 @@ def test_used_mock_is_true_when_observed_provider_is_faked() -> None:
 # N-03：provider 不能靠产物自报，必须由「工厂侧 + 解析模块侧」双侧一致来派生
 # 反例（单侧替换必须挡住）+ 正例（双侧一致不得误杀真实路径），两者都要有。
 # ---------------------------------------------------------------------------
+
+
+def _cloud_provider_available() -> bool:
+    """cloud provider 能否构造——取决于本机是否有 OCR/LLM 凭据（含 .env）。
+
+    没配凭据的机器/CI 上 `OpenAiVisionOcrProvider.from_settings()` 会抛
+    ``ocr_cloud_config_missing``，依赖它的用例必须跳过而不是报红。
+    """
+    try:
+        from app.rag.ocr.openai_vision import OpenAiVisionOcrProvider
+
+        OpenAiVisionOcrProvider.from_settings()
+    except Exception:  # noqa: BLE001 - 任何构造失败都视为不可用
+        return False
+    return True
+
+
+_CLOUD_REQUIRED = pytest.mark.skipif(
+    not _cloud_provider_available(),
+    reason="本机未配置 cloud OCR 凭据（RAG_OCR_* 或 LLM_*），跳过依赖 cloud 的用例",
+)
 
 
 def test_used_mock_is_true_when_only_parser_binding_is_replaced(
@@ -805,8 +828,13 @@ def test_parser_binding_divergence_blocks_gate_end_to_end(monkeypatch: pytest.Mo
     assert polluted["gate"]["meets_gate"] is False
 
 
+@_CLOUD_REQUIRED
 def test_consistent_switch_to_another_real_provider_keeps_used_mock_false() -> None:
-    """N-03 正例 A：双侧一致地切到另一个真实 provider，不得误判为 mock。"""
+    """N-03 正例 A：双侧一致地切到另一个真实 provider，不得误判为 mock。
+
+    依赖本机 cloud 凭据；没有凭据的机器会跳过（见 `_cloud_provider_available`），
+    此时由正例 B 兜住「一致性不得误杀真实路径」这条不变式。
+    """
     probe = _report_mod.build_ocr_probe([], ocr_provider="cloud")
     assert probe["provider_class"] == "app.rag.ocr.openai_vision.OpenAiVisionOcrProvider"
     assert probe["bindings_consistent"] is True
@@ -817,12 +845,22 @@ def test_consistent_switch_to_another_real_provider_keeps_used_mock_false() -> N
 def test_both_sides_rebound_to_same_real_provider_is_not_a_mock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """N-03 正例 B：两侧一致地重绑定到另一个真实 provider，不算 mock（不得误杀）。"""
+    """N-03 正例 B：两侧一致地重绑定到另一个真实 provider，不算 mock（不得误杀）。
+
+    刻意选用**另一个真实 provider 类**（`OpenAiVisionOcrProvider`，与默认的 tesseract
+    不同），并直接构造而不走 `from_settings`——因此本用例**不依赖任何凭据**，
+    在没有 cloud 配置的机器/CI 上也能守住这条不变式。
+    """
 
     def _cloud_factory():
         from app.rag.ocr.openai_vision import OpenAiVisionOcrProvider
 
-        return OpenAiVisionOcrProvider.from_settings()
+        return OpenAiVisionOcrProvider(
+            base_url="http://127.0.0.1:1/v1",
+            api_key="not-a-real-key",
+            model="unit-test-model",
+            timeout_seconds=1,
+        )
 
     monkeypatch.setattr("app.rag.ocr.factory.get_ocr_provider", _cloud_factory)
     for dotted in _report_mod.PARSER_OCR_BINDINGS:
@@ -830,6 +868,7 @@ def test_both_sides_rebound_to_same_real_provider_is_not_a_mock(
 
     probe = _report_mod.build_ocr_probe([], ocr_provider="tesseract")
     assert probe["provider_class"] == "app.rag.ocr.openai_vision.OpenAiVisionOcrProvider"
+    assert probe["factory_provider_is_real"] is True
     assert probe["bindings_consistent"] is True
     assert probe["inconsistent_bindings"] == []
     assert probe["used_mock"] is False

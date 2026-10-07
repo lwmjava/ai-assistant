@@ -493,18 +493,33 @@ M-02 修的是硬编码 `used_mock: False`，N-01 修的是独立维护的 `meet
 
 | 用例 | 行号 | 场景 |
 |---|---|---|
-| `test_used_mock_is_true_when_only_parser_binding_is_replaced` | `:769` | 只换解析模块侧（工厂侧仍是真 provider，光看工厂侧会误判） |
-| `test_parser_binding_divergence_blocks_gate_end_to_end` | `:792` | 端到端：单侧替换必须让 G5c 不通过、`meets_gate=False`，不只是个字段 |
-| `test_used_mock_is_true_when_factory_provider_is_faked` | `:737` | 只换工厂侧（原有 M-02 用例，补断言 `bindings_consistent is False`） |
+| `test_used_mock_is_true_when_only_parser_binding_is_replaced` | `:792` | 只换解析模块侧（工厂侧仍是真 provider，光看工厂侧会误判） |
+| `test_parser_binding_divergence_blocks_gate_end_to_end` | `:815` | 端到端：单侧替换必须让 G5c 不通过、`meets_gate=False`，不只是个字段 |
+| `test_used_mock_is_true_when_factory_provider_is_faked` | `:737` | 只换工厂侧（原有 M-02 用例，补断言 `bindings_consistent is False`；C.5 再补 `factory_provider_is_real is False`） |
 
 **正例（不得误杀真实路径）**：
 
-| 用例 | 行号 | 场景 |
-|---|---|---|
-| `test_consistent_switch_to_another_real_provider_keeps_used_mock_false` | `:808` | 经配置双侧一致切到 `cloud`（`OpenAiVisionOcrProvider`）→ `used_mock=False` |
-| `test_both_sides_rebound_to_same_real_provider_is_not_a_mock` | `:817` | 工厂侧与两个解析模块绑定一致地重绑定到同一个真实 provider → `used_mock=False` |
+| 用例 | 行号 | 场景 | 凭据依赖 |
+|---|---|---|---|
+| `test_consistent_switch_to_another_real_provider_keeps_used_mock_false` | `:832` | 经配置双侧一致切到 `cloud`（`OpenAiVisionOcrProvider`）→ `used_mock=False` | **依赖**：无 cloud 配置时 `skip`（`_cloud_provider_available` `:771`） |
+| `test_both_sides_rebound_to_same_real_provider_is_not_a_mock` | `:845` | 工厂侧与两个解析模块绑定一致地重绑定到**另一个真实 provider 类** → `used_mock=False` | **无依赖**：直接构造 `OpenAiVisionOcrProvider`，不走 `from_settings` |
 
 只有反例没有正例等于「把真实路径一起误杀」，所以两类都在。
+
+**为什么正例 B 刻意不用 `from_settings()`**：C.4.1——正例 A 走真实配置路径
+（`RAG_OCR_*` / `LLM_*`），在没有 `.env` 或没配 cloud 的机器/CI 上会因
+`ocr_cloud_config_missing` 直接**报红**（评审在缺 `.env` 的 worktree 里实测 2 failed）。
+正例不能靠环境运气，所以 B 改为直接构造真实 provider 类、**不依赖任何凭据**，
+保证「一致性不得误杀真实路径」这条不变式在任何机器上都有守护；A 则用 `skipif`
+探测（`_cloud_provider_available`），有凭据时才跑真实配置路径。
+
+实测（清掉凭据模拟无配置环境）：
+```
+RAG_OCR_BASE_URL="" … LLM_DEFAULT_MODEL="" pytest … -k "consistent_switch or both_sides_rebound"
+s.   1 passed, 1 skipped
+SKIPPED [1] …:831: 本机未配置 cloud OCR 凭据（RAG_OCR_* 或 LLM_*），跳过依赖 cloud 的用例
+```
+A 跳过而非报红，B 仍通过。
 
 **变异验证（实测，每条都先 `assert mutated != text` 自证改到字节）**：
 
@@ -513,9 +528,11 @@ M-02 修的是硬编码 `used_mock: False`，N-01 修的是独立维护的 `meet
 | N-03-a | `used_mock` 去掉 `bindings_consistent` 项（退回 N-03 的洞） | 30732 → 30691 | **2** | `test_used_mock_is_true_when_only_parser_binding_is_replaced`、`test_parser_binding_divergence_blocks_gate_end_to_end` |
 | N-03-b | `bindings_consistent` 恒为 `True` | 30732 → 30671 | **3** | 上述 2 条 + `test_used_mock_is_true_when_factory_provider_is_faked` |
 | N-03-c | `bindings_consistent` 恒为 `False`（把真实路径一起误杀） | 30732 → 30672 | **6** | `test_consistent_switch_to_another_real_provider_keeps_used_mock_false`、`test_both_sides_rebound_to_same_real_provider_is_not_a_mock`、`test_ocr_probe_is_derived_from_real_provider`、`test_gate_g5c_passes_on_real_provider_path`、`test_ocr_report_never_claims_ocr_verified`、`test_committed_report_matches_script_output` |
+| N-03-d（C.5） | `factory_provider_is_real` 恒为 `True` | 30902 → 30811 | **1** | `test_used_mock_is_true_when_factory_provider_is_faked` |
 
-N-03-c 同时打掉两条正例，证明正例不是摆设。还原后
-`sha256(scripts/parse_quality_report.py)=7a293414406fec14…` 三次均一致，**零残留**。
+N-03-c 同时打掉两条正例，证明正例不是摆设。N-03-d 在补 C.5 断言前是**存活**的
+（对外字段 `factory_provider_is_real` 恒 True 无人发现），补断言后变红。
+还原后 `sha256(scripts/parse_quality_report.py)` 四次均一致，**零残留**。
 
 ---
 

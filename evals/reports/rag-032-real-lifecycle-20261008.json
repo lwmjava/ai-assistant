@@ -1,0 +1,321 @@
+{
+  "schema_version": "rag032-real-lifecycle-v1",
+  "run_id": "4ce13ffa860745b2ab56f9bb66c7abcb",
+  "database": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\rag032-real-4ce13ffa860745b2ab56f9bb66c7abcb.db",
+  "collection_prefix": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb",
+  "embedding": {
+    "provider": "mock/synthetic",
+    "dim": 8,
+    "fee": 0,
+    "purpose": "deterministic lifecycle, not retrieval quality"
+  },
+  "commands": [
+    {
+      "argv": [
+        "prepare",
+        "--json"
+      ],
+      "exit_code": 0,
+      "stdout": "已登记新索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074（status=preparing）\n旧索引仍为 active，读路径不受影响。\n下一步：用该配置重新摄取全部当前文档（rebuild --apply），再执行 activate。\n{\"id\": \"6f5b30561f1543589409b9c9626ea2b3\", \"name\": \"rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074\", \"status\": \"preparing\", \"chunk_count\": 0, \"identity_key\": \"milvus|mock|synthetic-model-b||8|1|l2|cosine\", \"fingerprint\": \"a77b0e56b074\", \"identity\": {\"backend\": \"milvus\", \"provider\": \"mock\", \"model\": \"synthetic-model-b\", \"deployment\": \"\", \"dim\": 8, \"index_version\": \"1\", \"normalization\": \"l2\", \"metric\": \"cosine\", \"fingerprint\": \"a77b0e56b074\"}}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "rebuild",
+        "--apply"
+      ],
+      "exit_code": 0,
+      "stdout": "目标身份 milvus|mock|synthetic-model-b||8|1|l2|cosine\n将重建 3 篇当前文档的向量\n重建完成：成功 3，失败 0，分块 3\n索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074 status=preparing\n下一步：python scripts/rebuild_embedding_index.py activate --index-id 6f5b30561f1543589409b9c9626ea2b3\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "rebuild",
+        "--apply"
+      ],
+      "exit_code": 0,
+      "stdout": "目标身份 milvus|mock|synthetic-model-b||8|1|l2|cosine\n将重建 3 篇当前文档的向量\n重建完成：成功 3，失败 0，分块 3\n索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074 status=preparing\n下一步：python scripts/rebuild_embedding_index.py activate --index-id 6f5b30561f1543589409b9c9626ea2b3\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "activate",
+        "--index-id",
+        "6f5b30561f1543589409b9c9626ea2b3"
+      ],
+      "exit_code": 0,
+      "stdout": "已激活 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074；同后端其它 active 索引已转 retired（保留未删）。\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "rollback",
+        "--index-id",
+        "78afbd87c556417c8a61f2e6804ac170"
+      ],
+      "exit_code": 0,
+      "stdout": "已回退到 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9c2b179f3f69。注意：模型配置需与该索引身份一致，本命令已在激活前校验。\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "prepare",
+        "--json"
+      ],
+      "exit_code": 0,
+      "stdout": "已登记新索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c（status=preparing）\n旧索引仍为 active，读路径不受影响。\n下一步：用该配置重新摄取全部当前文档（rebuild --apply），再执行 activate。\n{\"id\": \"70892417386b4bbab4f8093280bed7e0\", \"name\": \"rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c\", \"status\": \"preparing\", \"chunk_count\": 0, \"identity_key\": \"milvus|mock|synthetic-model-c-failure||8|1|l2|cosine\", \"fingerprint\": \"9e1ece5d141c\", \"identity\": {\"backend\": \"milvus\", \"provider\": \"mock\", \"model\": \"synthetic-model-c-failure\", \"deployment\": \"\", \"dim\": 8, \"index_version\": \"1\", \"normalization\": \"l2\", \"metric\": \"cosine\", \"fingerprint\": \"9e1ece5d141c\"}}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "rebuild",
+        "--apply"
+      ],
+      "exit_code": 1,
+      "stdout": "目标身份 milvus|mock|synthetic-model-c-failure||8|1|l2|cosine\n将重建 3 篇当前文档的向量\n重建完成：成功 0，失败 3，分块 0\n索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c status=failed\n重建未完成，旧索引仍是 active，读路径未受影响。\n",
+      "stderr": "失败清单：['b9e4e040729345fdac7d5694532679b0: RuntimeError', '66a3a82dbcdb4563a04a28c27f857e64: IndexIdentityError', 'ca3891772d7d41be9a2063c209bb9034: IndexIdentityError']\n"
+    },
+    {
+      "argv": [
+        "activate",
+        "--index-id",
+        "70892417386b4bbab4f8093280bed7e0"
+      ],
+      "exit_code": 3,
+      "stdout": "",
+      "stderr": "索引身份错误：索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c 状态为 failed，不得激活；失败证据：{\"stage\": \"external_index_compensation\", \"document_id\": \"b9e4e040729345fdac7d5694532679b0\", \"target_index_id\": \"70892417386b4bbab4f8093280bed7e0\", \"new_chunk_ids\": [\"252d8841390a4be8bf6a5ba5cdb06463\"], \"exception_type\": \"RuntimeError\", \"compensation_required\": true, \"summary\": \"重建完成：成功 0 篇，失败 3 篇\", \"failed_documents\": [\"b9e4e040729345fdac7d5694532679b0: RuntimeError\", \"66a3a82dbcdb4563a04a28c27f857e64: IndexIdentityError\", \"ca3891772d7d41be9a2063c209bb9034: IndexIdentityError\"]}。请先修复或改用 rebuild。\n"
+    },
+    {
+      "argv": [
+        "prepare",
+        "--json"
+      ],
+      "exit_code": 0,
+      "stdout": "已登记新索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c（status=preparing）\n旧索引仍为 active，读路径不受影响。\n下一步：用该配置重新摄取全部当前文档（rebuild --apply），再执行 activate。\n{\"id\": \"70892417386b4bbab4f8093280bed7e0\", \"name\": \"rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c\", \"status\": \"preparing\", \"chunk_count\": 0, \"identity_key\": \"milvus|mock|synthetic-model-c-failure||8|1|l2|cosine\", \"fingerprint\": \"9e1ece5d141c\", \"identity\": {\"backend\": \"milvus\", \"provider\": \"mock\", \"model\": \"synthetic-model-c-failure\", \"deployment\": \"\", \"dim\": 8, \"index_version\": \"1\", \"normalization\": \"l2\", \"metric\": \"cosine\", \"fingerprint\": \"9e1ece5d141c\"}}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "rebuild",
+        "--apply"
+      ],
+      "exit_code": 0,
+      "stdout": "目标身份 milvus|mock|synthetic-model-c-failure||8|1|l2|cosine\n将重建 3 篇当前文档的向量\n重建完成：成功 3，失败 0，分块 3\n索引 rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c status=preparing\n下一步：python scripts/rebuild_embedding_index.py activate --index-id 70892417386b4bbab4f8093280bed7e0\n",
+      "stderr": ""
+    }
+  ],
+  "snapshots": {
+    "initial_a": {
+      "index_id": "78afbd87c556417c8a61f2e6804ac170",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9c2b179f3f69",
+      "sql_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "remote_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "a_during_b_preparation": {
+      "index_id": "78afbd87c556417c8a61f2e6804ac170",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9c2b179f3f69",
+      "sql_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "remote_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "b_prepared": {
+      "index_id": "6f5b30561f1543589409b9c9626ea2b3",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074",
+      "sql_ids": [
+        "04393d4db34748ed89ef429773eaa979",
+        "1cfc0965df2449a9a07e3c7e24c09ae9",
+        "99d3b24d108c44fba5e87022c85be4f4"
+      ],
+      "remote_ids": [
+        "04393d4db34748ed89ef429773eaa979",
+        "1cfc0965df2449a9a07e3c7e24c09ae9",
+        "99d3b24d108c44fba5e87022c85be4f4"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "b_prepared_second_run": {
+      "index_id": "6f5b30561f1543589409b9c9626ea2b3",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074",
+      "sql_ids": [
+        "0df34a87215046b7a9cbf49ad4c07298",
+        "404e595b7247495a8f68845c42692ad6",
+        "fb1b42ae93f341ae9bbc5694de8e37f9"
+      ],
+      "remote_ids": [
+        "0df34a87215046b7a9cbf49ad4c07298",
+        "404e595b7247495a8f68845c42692ad6",
+        "fb1b42ae93f341ae9bbc5694de8e37f9"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "a_after_repeat": {
+      "index_id": "78afbd87c556417c8a61f2e6804ac170",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9c2b179f3f69",
+      "sql_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "remote_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "b_active": {
+      "index_id": "6f5b30561f1543589409b9c9626ea2b3",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074",
+      "sql_ids": [
+        "0df34a87215046b7a9cbf49ad4c07298",
+        "404e595b7247495a8f68845c42692ad6",
+        "fb1b42ae93f341ae9bbc5694de8e37f9"
+      ],
+      "remote_ids": [
+        "0df34a87215046b7a9cbf49ad4c07298",
+        "404e595b7247495a8f68845c42692ad6",
+        "fb1b42ae93f341ae9bbc5694de8e37f9"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "6f5b30561f1543589409b9c9626ea2b3"
+    },
+    "a_after_rollback": {
+      "index_id": "78afbd87c556417c8a61f2e6804ac170",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9c2b179f3f69",
+      "sql_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "remote_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "b_retained_after_rollback": {
+      "index_id": "6f5b30561f1543589409b9c9626ea2b3",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074",
+      "sql_ids": [
+        "0df34a87215046b7a9cbf49ad4c07298",
+        "404e595b7247495a8f68845c42692ad6",
+        "fb1b42ae93f341ae9bbc5694de8e37f9"
+      ],
+      "remote_ids": [
+        "0df34a87215046b7a9cbf49ad4c07298",
+        "404e595b7247495a8f68845c42692ad6",
+        "fb1b42ae93f341ae9bbc5694de8e37f9"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "a_after_c_failure": {
+      "index_id": "78afbd87c556417c8a61f2e6804ac170",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9c2b179f3f69",
+      "sql_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "remote_ids": [
+        "45aea1cd4fc747d0b8c5271190b47ae4",
+        "8ac2822e7ff44c3d976d739b0ba11f6e",
+        "eedf3c25c5c24d6c84a6648616467b4a"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    },
+    "c_retry_completed": {
+      "index_id": "70892417386b4bbab4f8093280bed7e0",
+      "collection": "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c",
+      "sql_ids": [
+        "33ba79e4ee0a4b7da77a014d37b6fddd",
+        "542b5a11f5d841ba81374cc6a7db8730",
+        "59532849189f468ebf2b37f4dbc5e508"
+      ],
+      "remote_ids": [
+        "33ba79e4ee0a4b7da77a014d37b6fddd",
+        "542b5a11f5d841ba81374cc6a7db8730",
+        "59532849189f468ebf2b37f4dbc5e508"
+      ],
+      "dimensions": [
+        8
+      ],
+      "active_index": "78afbd87c556417c8a61f2e6804ac170"
+    }
+  },
+  "collections_retained": [
+    "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9c2b179f3f69",
+    "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__a77b0e56b074",
+    "rag032_synthetic_4ce13ffa860745b2ab56f9bb66c7abcb__v1__9e1ece5d141c"
+  ],
+  "service_version": "2.5.11",
+  "failure_evidence": {
+    "index_id": "70892417386b4bbab4f8093280bed7e0",
+    "status": "failed",
+    "notes": {
+      "stage": "external_index_compensation",
+      "document_id": "b9e4e040729345fdac7d5694532679b0",
+      "target_index_id": "70892417386b4bbab4f8093280bed7e0",
+      "new_chunk_ids": [
+        "252d8841390a4be8bf6a5ba5cdb06463"
+      ],
+      "exception_type": "RuntimeError",
+      "compensation_required": true,
+      "summary": "重建完成：成功 0 篇，失败 3 篇",
+      "failed_documents": [
+        "b9e4e040729345fdac7d5694532679b0: RuntimeError",
+        "66a3a82dbcdb4563a04a28c27f857e64: IndexIdentityError",
+        "ca3891772d7d41be9a2063c209bb9034: IndexIdentityError"
+      ]
+    }
+  },
+  "fingerprints": {
+    "app\\rag\\service.py": "7f375c7b9f9baa298cb2dd1d61c5554652ff728fc4e791377a42f7b43530c16c",
+    "app\\rag\\vectorstore\\milvus.py": "eecb5333aa8b102e50a67ed37fb60807d9a4d7fd6022906a7f853c87a63a2e96",
+    "scripts\\rebuild_embedding_index.py": "71694c24721bf48b2f2bc8df34bbd50d89bc00f2b1e36d7ebfd9c189a0597613"
+  },
+  "result": "pass"
+}

@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 
 from sqlmodel import Session, col, select
 
-from app.models.rag import DocumentChunk, EmbeddingIndex, IndexStatus
+from app.models.rag import Document, DocumentChunk, EmbeddingIndex, IndexStatus
 from app.rag.index_identity import (
     EmbeddingIndexIdentity,
     IndexIdentityError,
@@ -266,33 +266,79 @@ def identity_of_row(row: EmbeddingIndex) -> EmbeddingIndexIdentity:
     )
 
 
-async def _probe_retrieval_hits(session: Session, target: EmbeddingIndex) -> int:
-    """对每个采样分块，**用它自己的向量**跑一次真实检索，返回能命中自己的条数。
+async def _probe_retrieval_hits(target: EmbeddingIndex) -> int:
+    """对每个采样分块，**用它自己的向量**做一次只读自检，返回能在 top-k 内命中自己的条数。
 
     自匹配不需要调用嵌入接口，也不需要假设查询文本怎么切分：查不回来说明这批
     向量根本不在当前读路径上（维度与索引登记不符、文档已下线、集合没接通等）。
-    """
-    from app.rag.vectorstore.factory import get_vector_store
 
-    store = get_vector_store(session)
-    identity = identity_of_row(target)
-    samples = session.exec(
-        select(DocumentChunk)
-        .where(col(DocumentChunk.index_id) == target.id)
-        .limit(RETRIEVAL_PROBE_SAMPLE_SIZE)
-    ).all()
-    hits = 0
-    for row in samples:
-        vector = _loads_list(row.embedding)
-        tokens = _loads_list(row.tokens)
-        if not vector:
-            continue
-        found = await store.hybrid_search(
-            vector, tokens, row.tenant_id, RETRIEVAL_PROBE_TOP_K, identity=identity
-        )
-        if any(hit.id == row.id and hit.similarity > 0 for hit in found):
-            hits += 1
-    return hits
+    实现方式（H-R1 / M-R2 / SQLite 写锁修复）：
+
+    - 在**独立 Session** 内做**纯只读**查询，不跨线程共享主线程 Session，也不写
+      任何 active/retired 状态——写临时状态会与主事务的未提交写事务在 SQLite 上
+      撞 ``database is locked``；
+    - 不经过 ``get_vector_store`` / ``resolve_read_index_for``，直接按
+      ``target.id`` 过滤分块，JOIN Document 做可见性过滤（与
+      ``LocalVectorStore.hybrid_search`` 的候选集一致：``deleted_at IS NULL`` 且
+      ``is_current = True``）；
+    - 用 numpy 余弦相似度在内存矩阵上算 top-k，看 sample 自己是否排进前
+      ``RETRIEVAL_PROBE_TOP_K``。
+
+    业务语义与原 ``hybrid_search`` 自检等价：
+      - 有分块、文档在线、维度匹配 → hits >= 1 → 允许激活；
+      - 无分块 / 分块挂在离线文档上 / 维度漂移 → hits = 0 → 拒绝激活。
+    """
+    import numpy as np
+
+    from app.core.database import engine
+
+    with Session(engine) as probe_session:
+        rows = probe_session.exec(
+            select(DocumentChunk)
+            .join(Document, col(DocumentChunk.document_id) == col(Document.id))
+            .where(
+                col(DocumentChunk.index_id) == target.id,
+                col(Document.deleted_at).is_(None),
+                col(Document.is_current).is_(True),
+            )
+        ).all()
+        if not rows:
+            return 0
+
+        # 加载向量矩阵：只保留维度与登记 dim 一致的分块，与 LocalVectorStore 一致。
+        embeddings: list[list[float]] = []
+        chunk_ids: list[str] = []
+        for chunk in rows:
+            vec = _loads_list(chunk.embedding)
+            if vec and len(vec) == target.dim:
+                embeddings.append(vec)
+                chunk_ids.append(chunk.id)
+        if not embeddings:
+            return 0
+
+        matrix = np.array(embeddings, dtype=np.float64)
+        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        matrix = matrix / norms
+
+        # 抽样自检：取前 RETRIEVAL_PROBE_SAMPLE_SIZE 条在线分块。
+        samples = rows[:RETRIEVAL_PROBE_SAMPLE_SIZE]
+        hits = 0
+        for sample in samples:
+            vec = _loads_list(sample.embedding)
+            if not vec or len(vec) != target.dim:
+                continue
+            q = np.array(vec, dtype=np.float64)
+            q_norm = np.linalg.norm(q)
+            if q_norm == 0:
+                continue
+            q = q / q_norm
+            scores = matrix @ q
+            top_indices = set(np.argsort(-scores)[:RETRIEVAL_PROBE_TOP_K].tolist())
+            top_ids = {chunk_ids[i] for i in top_indices}
+            if sample.id in top_ids:
+                hits += 1
+        return hits
 
 
 def _loads_list(raw: str | None) -> list:
@@ -312,13 +358,17 @@ def probe_retrieval_hits(session: Session, target: EmbeddingIndex) -> int:
     激活是同步操作，而向量检索是协程。调用方可能已经在事件循环里（摄取路径与
     异步用例），此时 ``asyncio.run`` 会直接抛 RuntimeError，因此放到独立线程
     的新循环里跑；没有运行中的循环时直接在当前线程跑。
+
+    ``session`` 参数保留是为了与调用方 ``activate_index`` 的签名兼容；实际 probe
+    在独立 Session 内进行（见 :func:`_probe_retrieval_hits` 的 docstring），本函数
+    不再把传入的 Session 跨线程传递。
     """
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(_probe_retrieval_hits(session, target))
+        return asyncio.run(_probe_retrieval_hits(target))
     with ThreadPoolExecutor(max_workers=1, thread_name_prefix="index-probe") as pool:
-        return pool.submit(asyncio.run, _probe_retrieval_hits(session, target)).result()
+        return pool.submit(asyncio.run, _probe_retrieval_hits(target)).result()
 
 
 def resolve_write_index(
@@ -404,6 +454,7 @@ def adopt_legacy_chunks(
     require_dim_match: bool = True,
     evidence: str = "",
     declared_model: str | None = None,
+    commit: bool = True,
 ) -> int:
     """把身份未知的历史分块登记到指定索引。
 
@@ -414,6 +465,9 @@ def adopt_legacy_chunks(
     - ``declared_model`` 一旦给出，必须与目标索引登记的模型一致，
       否则就是「把模型 A 的向量标成模型 B」；
     - 必须**先抽样校验维度**与索引登记一致，有任何一条对不上就整体拒绝，不写一半。
+
+    ``commit=False`` 用于写入事务内部：登记随业务提交一起落库，避免中途提交半个
+    事务（与 :func:`activate_index` 的 ``commit`` 参数语义一致）。
     """
     evidence = (evidence or "").strip()
     if not evidence:
@@ -457,7 +511,10 @@ def adopt_legacy_chunks(
         f"evidence={evidence}"
     )
     session.add(index)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     logger.info(
         "embedding_index_adopted_legacy index=%s count=%s tenant=%s",
         index.name, len(rows), tenant_id or "*",

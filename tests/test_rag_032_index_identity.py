@@ -1403,3 +1403,106 @@ def test_activate_refuses_index_whose_vectors_dim_drift(db: Session) -> None:
     assert active_index(db).id == old.id
     db.refresh(target)
     assert target.status == IndexStatus.PREPARING.value
+
+
+# ── 10. Review 修复补测（2026-10-08）──────────────────────
+
+
+@pytest.mark.asyncio
+async def test_activate_in_running_event_loop_uses_threadpool_probe(db: Session) -> None:
+    """H-R1：在有运行中事件循环的上下文里激活索引，probe 走独立 Session + 线程池。
+
+    此前 probe 复用主线程 Session 跨线程传递，SQLAlchemy Session 不是线程安全的，
+    会造成连接竞争与 flush 可见性问题。修复后 probe 从 engine 新建独立 Session。
+    本用例在 ``@pytest.mark.asyncio`` 函数里调用同步的 ``activate_index``，
+    此时 ``asyncio.get_running_loop()`` 非 None，probe 走 ThreadPoolExecutor 分支。
+    """
+    old = resolve_write_index(db, _identity("model-a", 8))
+    _chunk(db, index_id=old.id, text="甲")
+    target = ensure_index(db, _identity("model-b", 8))
+    _chunk(db, index_id=target.id, text="乙")
+
+    # 在异步上下文里调用同步的 activate_index：probe 会检测到运行中的事件循环，
+    # 并通过 ThreadPoolExecutor 在独立线程 + 独立 Session 里跑抽样检索。
+    activate_index(db, target.id)
+
+    assert active_index(db).id == target.id
+    db.refresh(old)
+    assert old.status == IndexStatus.RETIRED.value
+    assert probe_retrieval_hits(db, target) >= 1
+
+
+def test_adopt_legacy_chunks_commit_flush_only(db: Session) -> None:
+    """M-R1：``commit=False`` 时只 flush 不 commit，变更对外不可见。
+
+    调用方需要把 adopt 随业务事务一起提交；如果 adopt 自己 commit 了，
+    业务回滚时会留下已登记的历史分块，造成「说没做、实际做了」的漂移。
+    """
+    index = resolve_write_index(db, _identity("m", 8))
+    tenant = f"t-{uuid4().hex[:8]}"
+    legacy = _chunk(db, index_id=None, dim=8, tenant=tenant)
+
+    adopted = adopt_legacy_chunks(
+        db, index, tenant_id=tenant, evidence="ops", declared_model="m", commit=False
+    )
+    assert adopted == 1
+
+    # flush 生效：同一 Session 内能看到 index_id 已更新
+    db.refresh(legacy)
+    assert legacy.index_id == index.id
+
+    # 未 commit：新开的 Session 看不到这个变更
+    with Session(engine) as fresh:
+        assert legacy_chunk_count(fresh, tenant_id=tenant) >= 1, (
+            "commit=False 时，外部 Session 不应看到已登记的历史块"
+        )
+
+    # 手动提交后，新 Session 才能看到
+    db.commit()
+    with Session(engine) as fresh2:
+        assert legacy_chunk_count(fresh2, tenant_id=tenant) == 0
+
+
+def test_embedding_index_view_supported_is_none_on_exception(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """M-R4：health 查询异常时 ``supported`` 必须降级为 None，不能默认 True。
+
+    此前 ``supported`` 默认 True，异常分支不显式覆盖，运维会看到一个「一切正常」
+    的健康检查，而实际上根本没查成。
+    """
+    from app.api.routes.health import _embedding_index_view
+
+    def _boom(*args: object, **kwargs: object) -> object:
+        raise RuntimeError("模拟 active_index 查询失败")
+
+    monkeypatch.setattr("app.api.routes.health.active_index", _boom)
+    view = _embedding_index_view()
+    assert view["supported"] is None, (
+        "查询异常时 supported 必须为 None，不得残留默认 True"
+    )
+
+
+def test_probe_temporary_active_state_does_not_leak(db: Session) -> None:
+    """M-R2：probe 在独立 Session 内临时切换 active 状态，跑完后不得残留。
+
+    probe 为了让 ``resolve_read_index_for`` 在独立 Session 内看到 target 为 active，
+    临时把同后端其它 active 设为 retired。这个临时状态只应作用于 probe 自己的
+    Session 事务（flush 不 commit，退出时回滚），绝不能泄漏到主库。
+    """
+    old = resolve_write_index(db, _identity("model-a", 8))
+    _chunk(db, index_id=old.id, text="甲")
+    target = ensure_index(db, _identity("model-b", 8))
+    _chunk(db, index_id=target.id, text="乙")
+
+    activate_index(db, target.id)
+
+    # 激活完成后：只有 target 是 active，old 是 retired，没有第三个 active
+    all_indexes = db.exec(select(EmbeddingIndex)).all()
+    active_rows = [r for r in all_indexes if r.status == IndexStatus.ACTIVE.value]
+    assert len(active_rows) == 1, (
+        f"只应有一个 active 索引，实际: {[(r.id, r.status) for r in active_rows]}"
+    )
+    assert active_rows[0].id == target.id
+    db.refresh(old)
+    assert old.status == IndexStatus.RETIRED.value

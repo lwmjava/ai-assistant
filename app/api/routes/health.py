@@ -101,7 +101,7 @@ def _embedding_index_view() -> dict:
         "metric": settings.EMBEDDING_METRIC,
         "normalization_actual": ACTUAL_NORMALIZATION,
         "metric_actual": ACTUAL_METRIC,
-        "supported": True,
+        "supported": None,
         "legacy_chunks": None,
         "fingerprint": None,
         "identity_key": None,
@@ -157,6 +157,9 @@ def _embedding_index_view() -> dict:
             view["legacy_chunks"] = legacy
     except Exception as exc:  # noqa: BLE001 — 展示层故障不应把 health 判死
         logger.warning("embedding index view failed: %s", type(exc).__name__)
+        # 查询异常时无法判断索引配置是否支持，显式把 supported 降为 None，
+        # 避免默认 True 误导运维（M-R4）。
+        view["supported"] = None
     return view
 
 

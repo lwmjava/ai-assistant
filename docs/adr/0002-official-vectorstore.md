@@ -102,3 +102,7 @@ Milvus 闭环（对应第 5 节；未配置则 skip，skip 不算通过）：
 用户批准 [ADR-0008](0008-embedding-index-identity-and-switching.md) 的索引身份、新索引准备/验证、显式切换及旧索引回退。由 RAG-032 实现，RAG-015/036 核对规范化、真实 similarity 和混合语义。具体真实重建和生产切换另授权。
 
 2026-09-29 五条核对证据为历史集成证据；RAG-022 最新说明仍登记 SQL/远端索引原子性缺口。因此当前继续保持 local 默认、Milvus Partial，不根据历史脚本自动更改默认或宣称生产可用。未来默认切换必须同时有当前闭环证据和显式批准；本补记不重选 Milvus metric，也不改冻结 Local 评测。
+
+## 10. 2026-10-08 混合候选语义补证
+
+Local 对过滤后的全部有效块计算 Dense/BM25；Milvus 对远端 Dense 窗口经 SQL 可见性过滤后的候选计算 BM25。二者不等价，窗口外词面命中可遗漏，过滤可能耗尽候选。全零 BM25 在两库均不贡献稀疏排名；正分仍沿用既有 RRF。这是现有行为边界与缺陷修复，不批准新增独立稀疏召回架构。证据与尚未闭合的索引重建前置见 [混合语义实现说明](../plans/implementation_rag_036_hybrid_semantics.md)。默认 local、Milvus Partial 保持，固定向量和小规模真实Embedding切片不代表生产质量提升。

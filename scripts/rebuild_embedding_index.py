@@ -38,7 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlmodel import Session, select  # noqa: E402
+from sqlmodel import Session, col, select  # noqa: E402
 
 from app.core.database import engine, init_db  # noqa: E402
 from app.models.rag import (  # noqa: E402
@@ -167,7 +167,9 @@ def cmd_prepare(args: argparse.Namespace) -> int:
             print(f"目标身份已是生效索引，无需重建：{index.name}")
             return 0
         index.status = IndexStatus.PREPARING.value
-        index.notes = "准备中：等待全量重建与校验"
+        # 不抹去上一轮远端部分写入的补偿记录；重建会按目标/文档清理这些残留。
+        if not index.notes or '"compensation_required": true' not in index.notes:
+            index.notes = "准备中：等待全量重建与校验"
         session.add(index)
         session.commit()
         print(f"已登记新索引 {index.name}（status=preparing）")
@@ -275,13 +277,15 @@ def cmd_rebuild(args: argparse.Namespace) -> int:
     identity = _identity(args.model, args.dim, args.version)
 
     with Session(engine) as session:
-        docs = session.exec(select(Document).where(Document.is_current.is_(True))).all()
+        docs = session.exec(select(Document).where(col(Document.is_current).is_(True))).all()
         print(f"目标身份 {identity.key()}")
         print(f"将重建 {len(docs)} 篇当前文档的向量")
         if not args.apply:
             print("未执行。加 --apply 才会真正调用嵌入接口（会产生费用）。")
             return 0
         index = ensure_index(session, identity)
+        if index.status == IndexStatus.ACTIVE.value:
+            raise IndexIdentityError("active索引不能作为全量重建目标；请先prepare新的模型身份")
         index.status = IndexStatus.PREPARING.value
         session.add(index)
         session.commit()
@@ -331,11 +335,22 @@ def cmd_rebuild(args: argparse.Namespace) -> int:
         chunks = session.exec(
             select(DocumentChunk).where(DocumentChunk.index_id == index.id)
         ).all()
+        session.refresh(index)  # Service在独立事务保存的失败证据不能被旧对象覆盖。
         index.chunk_count = len(chunks)
-        index.notes = f"重建完成：成功 {rebuilt} 篇，失败 {len(failed)} 篇"
+        summary = f"重建完成：成功 {rebuilt} 篇，失败 {len(failed)} 篇"
         if failed:
             index.status = IndexStatus.FAILED.value
-            index.notes += f"；失败清单 {failed[:10]}"
+            try:
+                detail = json.loads(index.notes or "{}")
+            except (ValueError, TypeError):
+                detail = {}
+            if not isinstance(detail, dict):
+                detail = {}
+            detail["summary"] = summary
+            detail["failed_documents"] = failed
+            index.notes = json.dumps(detail, ensure_ascii=False)
+        else:
+            index.notes = summary
         session.add(index)
         session.commit()
         print(f"重建完成：成功 {rebuilt}，失败 {len(failed)}，分块 {index.chunk_count}")

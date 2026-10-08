@@ -1,0 +1,174 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+_______ test_all_zero_bm25_has_only_dense_contribution[query0-tokens0] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001D1BDE28F80>
+query = [], tokens = [['apple'], ['pear']]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("query,tokens", [([], [["apple"], ["pear"]]),
+                                             (["apple"], [[], []]),
+                                             (["absent"], [["apple"], ["pear"]])])
+    async def test_all_zero_bm25_has_only_dense_contribution(monkeypatch, query, tokens):
+        monkeypatch.setattr(settings, "RAG_EFFECTIVE_DATE_FILTER", False)
+        tenant = uuid4().hex
+        with Session(engine) as session:
+            for backend, store_type in (("local", LocalVectorStore), ("milvus", MilvusVectorStore)):
+                identity = EmbeddingIndexIdentity(backend, "synthetic", "fixed-unit-v1", 2)
+                index = ensure_index(session, identity)
+                rows = []
+                for i, vector in enumerate(([.8, .6], [.6, .8])):
+                    doc = Document(tenant_id=tenant, user_id="owner", title=str(i))
+                    session.add(doc)
+                    session.flush()
+                    row = DocumentChunk(tenant_id=tenant, document_id=doc.id, content=str(i),
+                                        embedding=json.dumps(vector), tokens=json.dumps(tokens[i]),
+                                        index_id=index.id)
+                    session.add(row)
+                    rows.append(row)
+                session.flush()
+                index.status = "active"
+                index.chunk_count = len(rows)
+                session.add(index)
+                session.commit()
+                store = store_type(session)
+                if backend == "milvus":
+                    hits = [SimpleNamespace(entity={"id": row.id}, distance=.8 - i * .2)
+                            for i, row in enumerate(rows)]
+                    monkeypatch.setattr(store, "_remote_search", lambda *a: hits)
+                result = await store.hybrid_search([1., 0.], query, tenant, 2, identity=identity)
+                assert [r.content for r in result] == ["0", "1"]
+>               assert [r.score for r in result] == pytest.approx([1 / 61, 1 / 62])
+E               assert [0.0327868852...5806451612903] == approx([0.016...16 ± 1.6e-08])
+E                 
+E                 comparison failed. Mismatched elements: 2 / 2:
+E                 Max absolute difference: 0.01639344262295082
+E                 Max relative difference: 0.5
+E                 Index | Obtained            | Expected                      
+E                 0     | 0.03278688524590164 | 0.01639344262295082 ± 1.6e-08 
+E                 1     | 0.03225806451612903 | 0.016129032258064516 ± 1.6e-08
+
+tests\test_rag_036_hybrid_semantics.py:52: AssertionError
+_______ test_all_zero_bm25_has_only_dense_contribution[query1-tokens1] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001D1BFBF3650>
+query = ['apple'], tokens = [[], []]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("query,tokens", [([], [["apple"], ["pear"]]),
+                                             (["apple"], [[], []]),
+                                             (["absent"], [["apple"], ["pear"]])])
+    async def test_all_zero_bm25_has_only_dense_contribution(monkeypatch, query, tokens):
+        monkeypatch.setattr(settings, "RAG_EFFECTIVE_DATE_FILTER", False)
+        tenant = uuid4().hex
+        with Session(engine) as session:
+            for backend, store_type in (("local", LocalVectorStore), ("milvus", MilvusVectorStore)):
+                identity = EmbeddingIndexIdentity(backend, "synthetic", "fixed-unit-v1", 2)
+                index = ensure_index(session, identity)
+                rows = []
+                for i, vector in enumerate(([.8, .6], [.6, .8])):
+                    doc = Document(tenant_id=tenant, user_id="owner", title=str(i))
+                    session.add(doc)
+                    session.flush()
+                    row = DocumentChunk(tenant_id=tenant, document_id=doc.id, content=str(i),
+                                        embedding=json.dumps(vector), tokens=json.dumps(tokens[i]),
+                                        index_id=index.id)
+                    session.add(row)
+                    rows.append(row)
+                session.flush()
+                index.status = "active"
+                index.chunk_count = len(rows)
+                session.add(index)
+                session.commit()
+                store = store_type(session)
+                if backend == "milvus":
+                    hits = [SimpleNamespace(entity={"id": row.id}, distance=.8 - i * .2)
+                            for i, row in enumerate(rows)]
+                    monkeypatch.setattr(store, "_remote_search", lambda *a: hits)
+                result = await store.hybrid_search([1., 0.], query, tenant, 2, identity=identity)
+                assert [r.content for r in result] == ["0", "1"]
+>               assert [r.score for r in result] == pytest.approx([1 / 61, 1 / 62])
+E               assert [0.0327868852...5806451612903] == approx([0.016...16 ± 1.6e-08])
+E                 
+E                 comparison failed. Mismatched elements: 2 / 2:
+E                 Max absolute difference: 0.01639344262295082
+E                 Max relative difference: 0.5
+E                 Index | Obtained            | Expected                      
+E                 0     | 0.03278688524590164 | 0.01639344262295082 ± 1.6e-08 
+E                 1     | 0.03225806451612903 | 0.016129032258064516 ± 1.6e-08
+
+tests\test_rag_036_hybrid_semantics.py:52: AssertionError
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-10-08T05:25:16.526844+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__466f78d212ca backend=local model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.533114+00:00", "level": "INFO", "logger": "app.rag.vectorstore.local", "message": "bm25_all_zero tenant_id=6af14483378d4165ae922e5c17e325a6 candidate_count=2 query_token_count=1 empty_doc_count=2 reason=empty_doc_tokens", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.535113+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=ai_assistant_chunks__v1__549259665e13 backend=milvus model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.543623+00:00", "level": "INFO", "logger": "app.rag.resilience", "message": "rag_call_succeeded attempt=1 elapsed_ms=0 backend=milvus tenant=6af14483378d4165ae922e5c17e325a6 outcome=ok", "trace_id": "", "user_id": "", "tenant_id": ""}
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-08T05:25:16.526844+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__466f78d212ca backend=local model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.534114+00:00", "level": "INFO", "logger": "app.rag.vectorstore.local", "message": "bm25_all_zero tenant_id=6af14483378d4165ae922e5c17e325a6 candidate_count=2 query_token_count=1 empty_doc_count=2 reason=empty_doc_tokens", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.535113+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=ai_assistant_chunks__v1__549259665e13 backend=milvus model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.543623+00:00", "level": "INFO", "logger": "app.rag.resilience", "message": "rag_call_succeeded attempt=1 elapsed_ms=0 backend=milvus tenant=6af14483378d4165ae922e5c17e325a6 outcome=ok", "trace_id": "", "user_id": "", "tenant_id": ""}
+_______ test_all_zero_bm25_has_only_dense_contribution[query2-tokens2] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001D1BFC85100>
+query = ['absent'], tokens = [['apple'], ['pear']]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("query,tokens", [([], [["apple"], ["pear"]]),
+                                             (["apple"], [[], []]),
+                                             (["absent"], [["apple"], ["pear"]])])
+    async def test_all_zero_bm25_has_only_dense_contribution(monkeypatch, query, tokens):
+        monkeypatch.setattr(settings, "RAG_EFFECTIVE_DATE_FILTER", False)
+        tenant = uuid4().hex
+        with Session(engine) as session:
+            for backend, store_type in (("local", LocalVectorStore), ("milvus", MilvusVectorStore)):
+                identity = EmbeddingIndexIdentity(backend, "synthetic", "fixed-unit-v1", 2)
+                index = ensure_index(session, identity)
+                rows = []
+                for i, vector in enumerate(([.8, .6], [.6, .8])):
+                    doc = Document(tenant_id=tenant, user_id="owner", title=str(i))
+                    session.add(doc)
+                    session.flush()
+                    row = DocumentChunk(tenant_id=tenant, document_id=doc.id, content=str(i),
+                                        embedding=json.dumps(vector), tokens=json.dumps(tokens[i]),
+                                        index_id=index.id)
+                    session.add(row)
+                    rows.append(row)
+                session.flush()
+                index.status = "active"
+                index.chunk_count = len(rows)
+                session.add(index)
+                session.commit()
+                store = store_type(session)
+                if backend == "milvus":
+                    hits = [SimpleNamespace(entity={"id": row.id}, distance=.8 - i * .2)
+                            for i, row in enumerate(rows)]
+                    monkeypatch.setattr(store, "_remote_search", lambda *a: hits)
+                result = await store.hybrid_search([1., 0.], query, tenant, 2, identity=identity)
+                assert [r.content for r in result] == ["0", "1"]
+>               assert [r.score for r in result] == pytest.approx([1 / 61, 1 / 62])
+E               assert [0.0327868852...5806451612903] == approx([0.016...16 ± 1.6e-08])
+E                 
+E                 comparison failed. Mismatched elements: 2 / 2:
+E                 Max absolute difference: 0.01639344262295082
+E                 Max relative difference: 0.5
+E                 Index | Obtained            | Expected                      
+E                 0     | 0.03278688524590164 | 0.01639344262295082 ± 1.6e-08 
+E                 1     | 0.03225806451612903 | 0.016129032258064516 ± 1.6e-08
+
+tests\test_rag_036_hybrid_semantics.py:52: AssertionError
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-10-08T05:25:16.562723+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__466f78d212ca backend=local model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.568771+00:00", "level": "INFO", "logger": "app.rag.vectorstore.local", "message": "bm25_all_zero tenant_id=eb12556a97fa4bc39aea7e3b85d27735 candidate_count=2 query_token_count=1 empty_doc_count=0 reason=no_overlap", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.570770+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=ai_assistant_chunks__v1__549259665e13 backend=milvus model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.578086+00:00", "level": "INFO", "logger": "app.rag.resilience", "message": "rag_call_succeeded attempt=1 elapsed_ms=0 backend=milvus tenant=eb12556a97fa4bc39aea7e3b85d27735 outcome=ok", "trace_id": "", "user_id": "", "tenant_id": ""}
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-08T05:25:16.562723+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__466f78d212ca backend=local model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.568771+00:00", "level": "INFO", "logger": "app.rag.vectorstore.local", "message": "bm25_all_zero tenant_id=eb12556a97fa4bc39aea7e3b85d27735 candidate_count=2 query_token_count=1 empty_doc_count=0 reason=no_overlap", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.570770+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=ai_assistant_chunks__v1__549259665e13 backend=milvus model=fixed-unit-v1 dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-08T05:25:16.578086+00:00", "level": "INFO", "logger": "app.rag.resilience", "message": "rag_call_succeeded attempt=1 elapsed_ms=0 backend=milvus tenant=eb12556a97fa4bc39aea7e3b85d27735 outcome=ok", "trace_id": "", "user_id": "", "tenant_id": ""}
+=========================== short test summary info ===========================
+FAILED tests/test_rag_036_hybrid_semantics.py::test_all_zero_bm25_has_only_dense_contribution[query0-tokens0]
+FAILED tests/test_rag_036_hybrid_semantics.py::test_all_zero_bm25_has_only_dense_contribution[query1-tokens1]
+FAILED tests/test_rag_036_hybrid_semantics.py::test_all_zero_bm25_has_only_dense_contribution[query2-tokens2]
+3 failed in 2.20s

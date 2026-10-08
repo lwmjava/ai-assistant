@@ -1,0 +1,195 @@
+{
+  "result": "pass",
+  "database": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\artifacts\\hybrid-e0df69695b7f47eeba8d02a9400bdd29\\evaluation.db",
+  "dataset_version": "hybrid-semantics-synthetic-v1",
+  "rrf_k": 60,
+  "embedding": {
+    "provider": "synthetic-fixed",
+    "model": "explicit-unit-vectors-v1",
+    "dim": 2
+  },
+  "real_milvus": true,
+  "collection": "ai_assistant_chunks__v897942c046904b598c49274c8e8e47dc__8f4f8e2914cf",
+  "slices": [
+    {
+      "name": "empty_query",
+      "top_k": 2,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "a",
+          "score": 0.01639344262295082,
+          "similarity": 0.9
+        },
+        {
+          "name": "b",
+          "score": 0.016129032258064516,
+          "similarity": 0.4
+        }
+      ],
+      "milvus": [
+        {
+          "name": "a",
+          "score": 0.01639344262295082,
+          "similarity": 0.9000000357627869
+        },
+        {
+          "name": "b",
+          "score": 0.016129032258064516,
+          "similarity": 0.4000000059604645
+        }
+      ]
+    },
+    {
+      "name": "empty_docs",
+      "top_k": 2,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "a",
+          "score": 0.01639344262295082,
+          "similarity": 0.9
+        },
+        {
+          "name": "b",
+          "score": 0.016129032258064516,
+          "similarity": 0.4
+        }
+      ],
+      "milvus": [
+        {
+          "name": "a",
+          "score": 0.01639344262295082,
+          "similarity": 0.9000000357627869
+        },
+        {
+          "name": "b",
+          "score": 0.016129032258064516,
+          "similarity": 0.4000000059604645
+        }
+      ]
+    },
+    {
+      "name": "no_overlap",
+      "top_k": 2,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "a",
+          "score": 0.01639344262295082,
+          "similarity": 0.9
+        },
+        {
+          "name": "b",
+          "score": 0.016129032258064516,
+          "similarity": 0.4
+        }
+      ],
+      "milvus": [
+        {
+          "name": "a",
+          "score": 0.01639344262295082,
+          "similarity": 0.9000000357627869
+        },
+        {
+          "name": "b",
+          "score": 0.016129032258064516,
+          "similarity": 0.4000000059604645
+        }
+      ]
+    },
+    {
+      "name": "positive_overlap",
+      "top_k": 2,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "a",
+          "score": 0.03252247488101534,
+          "similarity": 0.9
+        },
+        {
+          "name": "b",
+          "score": 0.03252247488101534,
+          "similarity": 0.4
+        }
+      ],
+      "milvus": [
+        {
+          "name": "a",
+          "score": 0.03252247488101534,
+          "similarity": 0.9000000357627869
+        },
+        {
+          "name": "b",
+          "score": 0.03252247488101534,
+          "similarity": 0.4000000059604645
+        }
+      ]
+    },
+    {
+      "name": "keyword_outside_window",
+      "top_k": 1,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "keyword-04",
+          "score": 0.02815814850530376,
+          "similarity": 0.6799999999999999
+        }
+      ],
+      "milvus": [
+        {
+          "name": "dense-00",
+          "score": 0.01639344262295082,
+          "similarity": 0.9900000095367432
+        }
+      ]
+    },
+    {
+      "name": "visibility",
+      "top_k": 2,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "allowed",
+          "score": 0.01639344262295082,
+          "similarity": 0.4
+        }
+      ],
+      "milvus": [
+        {
+          "name": "allowed",
+          "score": 0.01639344262295082,
+          "similarity": 0.4000000059604645
+        }
+      ]
+    },
+    {
+      "name": "filtered_window_exhausted",
+      "top_k": 1,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "allowed",
+          "score": 0.01639344262295082,
+          "similarity": 0.4
+        }
+      ],
+      "milvus": []
+    }
+  ],
+  "dataset_sha256": "05084ff9fb05ab9dbce45590d127166912cca35c0a3be8f1b0f52104d709c267",
+  "code_sha256": {
+    "app/rag/vectorstore/local.py": "905d47fa82dba65e0ea8d567ed45148472ddedf0b88e8da51e7c07db283da033",
+    "app/rag/vectorstore/milvus.py": "8ebd4037bf788ca7bc86c258537e88b8cad3d9c4ed91b9a78c1207f30aeaafce",
+    "scripts/rag_hybrid_semantics_check.py": "843454708a35d6db3313f719c70d11a52864028bd8c85478c6c444ae32d35106"
+  },
+  "server_version": "2.5.11",
+  "remote_count": 76,
+  "limitations": [
+    "Fixed vectors prove semantics, not embedding quality.",
+    "BM25 statistics use different candidate universes.",
+    "Post-selection SQL filtering can exhaust the dense window."
+  ]
+}

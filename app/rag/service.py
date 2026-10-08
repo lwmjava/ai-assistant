@@ -10,6 +10,7 @@
 控制面：成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -31,6 +32,7 @@ from app.models.rag import (
     DocumentIngestionSnapshot,
     EmbeddingIndex,
     ImportJob,
+    IndexStatus,
 )
 from app.models.user import User
 from app.rag.access import (
@@ -74,6 +76,7 @@ from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.factory import get_vector_store
 from app.rag.vectorstore.local import LocalVectorStore, visible_chunks_with_status
+from app.rag.vectorstore.milvus import MilvusVectorStore
 from app.services.quota import source_file_size
 
 
@@ -269,6 +272,7 @@ class RAGService:
         # 显式写目标：重建期间写 preparing 索引（旧 active 继续服务）。
         # None 表示写当前 active 索引。
         self._write_index_id = write_index_id
+        self._reindex_external_attempt: tuple[str, str, list[str]] | None = None
 
     def _resolve_backend(self, backend: str | None = None) -> RagBackend:
         """按请求级覆盖或默认配置返回后端实例。"""
@@ -659,6 +663,8 @@ class RAGService:
                         f"当前嵌入身份 {identity.key()} 与写入目标索引 {target.name} "
                         f"的身份 {target.identity_key} 不一致，拒绝写入"
                     )
+                if target.status not in (IndexStatus.ACTIVE.value, IndexStatus.PREPARING.value):
+                    raise IndexIdentityError("重建写入目标必须处于 active/preparing 状态")
                 self._index = target
             else:
                 self._index = resolve_write_index(
@@ -1065,10 +1071,29 @@ class RAGService:
         content_hash: str,
     ) -> Document:
         """准备候选后替换；任何失败回滚，不能让调用方提交旧块删除。"""
+        self._reindex_external_attempt = None
         try:
             return await self._reindex_document_in_place(document, parsed, content_hash=content_hash)
-        except Exception:
+        except (Exception, asyncio.CancelledError) as exc:
             self.session.rollback()
+            if self._reindex_external_attempt is not None:
+                target_id, document_id, new_ids = self._reindex_external_attempt
+                # 独立事务保存补偿证据，不能随业务SQL回滚而消失。旧active不改状态。
+                with Session(self.session.get_bind()) as evidence:
+                    target = evidence.get(EmbeddingIndex, target_id)
+                    if target is not None and target.status != IndexStatus.ACTIVE.value:
+                        target.status = IndexStatus.FAILED.value
+                        target.notes = json.dumps({
+                            "stage": "external_index_compensation",
+                            "document_id": document_id,
+                            "target_index_id": target_id,
+                            "new_chunk_ids": new_ids,
+                            "exception_type": type(exc).__name__,
+                            "compensation_required": True,
+                        }, ensure_ascii=False)
+                        evidence.add(target)
+                        evidence.commit()
+                self._index = None
             raise
 
     async def _reindex_document_in_place(
@@ -1119,31 +1144,21 @@ class RAGService:
         if plan is None:
             plan = self._build_chunk_plan(decision, params)
         embeddings = await self._embed_chunks(chunk_objs)
-        # LocalVectorStore 与应用共用SQL事务，其delete接口会commit，不能在此调用。
-        # 外部清理失败显式失败；不把异常吞掉后宣称索引替换完成。
-        if not isinstance(self._vector_store, LocalVectorStore):
-            try:
-                await self._vector_store.delete_by_document(document.id, document.tenant_id)
-            except Exception as exc:  # noqa: BLE001 — 外部索引未知异常统一转成可追踪错误
-                raise ImportTraceError(
-                    f"外部索引清理失败，需补偿：document={document.id} 原因={type(exc).__name__}",
-                    stage="external_index_compensation",
-                    error_code=type(exc).__name__,
-                ) from exc
-        # 写目标不是当前 active 索引（重建期写 preparing 索引）时**不删旧分块**：
-        # 旧索引必须继续可读，回退后旧数据也必须真实存在——就地替换会让回退
-        # 只剩一个空的登记行。
-        target_index_id = self._write_index().id
-        active = active_index(self.session, identity_from_provider(self._embedding).backend)
+        target = self._write_index()
+        target_index_id = target.id
+        identity = identity_from_provider(self._embedding)
+        active = active_index(self.session, identity.backend)
         replacing_active = active is not None and active.id == target_index_id
-        if replacing_active:
-            # 即使就地替换，也只动目标索引名下的分块：其它索引（retired / 身份未知）
-            # 的分块属于别人的向量空间，删除它们就是破坏回退能力。
-            for chunk in old_chunks:
-                if chunk.index_id == target_index_id:
-                    self.session.delete(chunk)
-            self.session.flush()
+        target_old_chunks = [chunk for chunk in old_chunks if chunk.index_id == target_index_id]
+        try:
+            compensation = json.loads(target.notes or "{}")
+        except (ValueError, TypeError):
+            compensation = {}
+        pending_cleanup = (isinstance(compensation, dict)
+                           and compensation.get("compensation_required") is True
+                           and compensation.get("document_id") == document.id)
         parent_id_map: dict[str, str] = {}
+        persisted_rows: list[DocumentChunk] = []
         for chunk_index, (piece, vector) in enumerate(zip(chunk_objs, embeddings, strict=True)):
             row_id = uuid.uuid4().hex
             parent_id = None
@@ -1167,6 +1182,47 @@ class RAGService:
             )
             if metadata.get("kind") == "parent":
                 parent_id_map[str(metadata.get("parent_key"))] = row_id
+            persisted_rows.append(row)
+        if isinstance(self._vector_store, MilvusVectorStore):
+            self._vector_store.validate_add(persisted_rows, identity, target_index_id=target_index_id)
+        # LocalVectorStore 与应用共用SQL事务，其delete接口会commit，不能在此调用。
+        # 外部清理失败显式失败；不把异常吞掉后宣称索引替换完成。
+        if not isinstance(self._vector_store, LocalVectorStore):
+            if not replacing_active:
+                if not isinstance(self._vector_store, MilvusVectorStore):
+                    raise IndexIdentityError("该远端向量库未声明 preparing 目标写入/清理能力，拒绝重建")
+                with Session(self.session.get_bind()) as registered:
+                    if registered.get(EmbeddingIndex, target_index_id) is None:
+                        raise IndexIdentityError("远端重建目标尚未提交登记；请先执行 prepare")
+                self._reindex_external_attempt = (target_index_id, document.id, [])
+            try:
+                if isinstance(self._vector_store, MilvusVectorStore):
+                    if replacing_active:
+                        # 既有active就地重解析保持原删除接口；新目标分支才收紧失败契约。
+                        await self._vector_store.delete_by_document(document.id, document.tenant_id)
+                    elif target_old_chunks or pending_cleanup:
+                        await self._vector_store.delete_by_document(
+                            document.id, document.tenant_id,
+                            target_index_id=target_index_id, identity=identity,
+                        )
+                else:
+                    await self._vector_store.delete_by_document(document.id, document.tenant_id)
+            except Exception as exc:  # noqa: BLE001 — 外部索引未知异常统一转成可追踪错误
+                raise ImportTraceError(
+                    f"外部索引清理失败，需补偿：document={document.id} 原因={type(exc).__name__}",
+                    stage="external_index_compensation",
+                    error_code=type(exc).__name__,
+                ) from exc
+        # 写目标不是当前 active 索引（重建期写 preparing 索引）时**不删旧分块**：
+        # 旧索引必须继续可读，回退后旧数据也必须真实存在——就地替换会让回退
+        # 只剩一个空的登记行。
+        if replacing_active or target_old_chunks:
+            # 即使就地替换，也只动目标索引名下的分块：其它索引（retired / 身份未知）
+            # 的分块属于别人的向量空间，删除它们就是破坏回退能力。
+            for chunk in target_old_chunks:
+                self.session.delete(chunk)
+            self.session.flush()
+        for row in persisted_rows:
             self.session.add(row)
         document.content_hash = content_hash
         document.chunk_count = len(chunk_objs)
@@ -1185,6 +1241,12 @@ class RAGService:
         snapshot.cleaning_report = json.dumps(cleaning.report, ensure_ascii=False)
         self.session.add(snapshot)
         self.session.add(document)
+        if self._reindex_external_attempt is not None:
+            self._reindex_external_attempt = (target_index_id, document.id, [row.id for row in persisted_rows])
+        if isinstance(self._vector_store, MilvusVectorStore):
+            await self._vector_store.add(persisted_rows, identity=identity, target_index_id=target_index_id)
+        else:
+            await self._vector_store.add(persisted_rows)
         self.session.commit()
         self.session.refresh(document)
         return document

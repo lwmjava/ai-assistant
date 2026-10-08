@@ -26,9 +26,9 @@ import numpy as np
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
-from app.models.rag import Document, DocumentChunk, EmbeddingIndex
+from app.models.rag import Document, DocumentChunk, EmbeddingIndex, IndexStatus
 from app.rag.access import ReadScope
-from app.rag.index_identity import EmbeddingIndexIdentity
+from app.rag.index_identity import EmbeddingIndexIdentity, IndexIdentityError, identity_matches_row
 from app.rag.index_registry import IndexUnavailableError, resolve_read_index_for
 from app.rag.resilience import (
     DeadlineExceededError,
@@ -191,37 +191,79 @@ class MilvusVectorStore(VectorStore):
         params = {"nprobe": settings.MILVUS_NPROBE} if "IVF" in index_type.upper() else {}
         return {"metric_type": "COSINE", "params": params}
 
-    async def add(self, chunks: list, identity: EmbeddingIndexIdentity | None = None) -> None:
-        target_index = self._resolve_index(identity)
-        collection = self._connect(identity)
-        entities = [
-            {
-                "id": c.id,
-                "tenant_id": c.tenant_id,
-                _DOCUMENT_ID_FIELD: c.document_id,
+    def _write_target(
+        self, identity: EmbeddingIndexIdentity | None, target_index_id: str | None
+    ) -> EmbeddingIndex:
+        if target_index_id is None:
+            return self._resolve_index(identity)
+        target = self.session.get(EmbeddingIndex, target_index_id)
+        if (target is None or target.backend != "milvus"
+                or target.status not in (IndexStatus.ACTIVE.value, IndexStatus.PREPARING.value)):
+            raise IndexIdentityError("远端写入目标必须是已登记的 active/preparing Milvus 索引")
+        if identity is None or not identity_matches_row(identity, target):
+            raise IndexIdentityError("远端写入目标与当前模型完整身份不匹配")
+        return target
+
+    def validate_add(
+        self, chunks: list, identity: EmbeddingIndexIdentity | None = None,
+        *, target_index_id: str | None = None,
+    ) -> tuple[EmbeddingIndex, list[dict]]:
+        """纯SQL/内存预检；调用方可以在任何远端清理前验证整批候选。"""
+        target_index = self._write_target(identity, target_index_id)
+        # 全批校验完成才连接/写远端，避免前半批已写而后半批才发现身份或维度错误。
+        entities: list[dict] = []
+        for chunk in chunks:
+            if target_index_id is not None:
+                doc = self.session.get(Document, chunk.document_id)
+                if (chunk.index_id != target_index.id or doc is None
+                        or doc.tenant_id != chunk.tenant_id or doc.deleted_at is not None):
+                    raise IndexIdentityError("远端分块目标/文档/租户归属不匹配")
+            if not chunk.embedding:
+                continue
+            vector = json.loads(chunk.embedding)
+            if (not isinstance(vector, list) or len(vector) != target_index.dim
+                    or not all(isinstance(value, int | float) and np.isfinite(value) for value in vector)):
+                raise IndexIdentityError("远端分块向量维度或数值与登记索引不匹配")
+            entities.append({
+                "id": chunk.id,
+                "tenant_id": chunk.tenant_id,
+                _DOCUMENT_ID_FIELD: chunk.document_id,
                 _INDEX_ID_FIELD: target_index.id,
-                "embedding": json.loads(c.embedding) if c.embedding else None,
-            }
-            for c in chunks
-            if c.embedding
-        ]
+                "embedding": vector,
+            })
+        return target_index, entities
+
+    async def add(
+        self, chunks: list, identity: EmbeddingIndexIdentity | None = None,
+        *, target_index_id: str | None = None,
+    ) -> None:
+        target_index, entities = self.validate_add(chunks, identity, target_index_id=target_index_id)
         if entities:
+            collection = self._connect(identity, index=target_index)
             collection.upsert(entities)
 
-    async def delete_by_document(self, document_id: str, tenant_id: str) -> int:
+    async def delete_by_document(
+        self, document_id: str, tenant_id: str, *,
+        target_index_id: str | None = None, identity: EmbeddingIndexIdentity | None = None,
+    ) -> int:
         """删除某文档的全部分块向量，返回实际删除条数。
 
         先按主键查出命中条数再删除，因为 Milvus 的 ``delete`` 返回值不含删除计数，
         早期实现直接 ``return len([document_id])`` 恒为 1，会掩盖删除失败。
         """
-        target_index = self._resolve_index()
-        collection = self._connect()
+        target_index = self._write_target(identity, target_index_id)
+        if target_index_id is not None:
+            doc = self.session.get(Document, document_id)
+            if doc is None or doc.tenant_id != tenant_id:
+                raise IndexIdentityError("远端清理文档与租户归属不匹配")
+        collection = self._connect(identity, index=target_index)
         expr = (
             f'{_DOCUMENT_ID_FIELD} == "{document_id}" and tenant_id == "{tenant_id}"'
             f' and {_INDEX_ID_FIELD} == "{target_index.id}"'
         )
         try:
-            matched = collection.query(expr=expr, output_fields=["id"])
+            query_options = {"consistency_level": "Strong"} if target_index_id is not None else {}
+            matched = collection.query(expr=expr, output_fields=["id"], **query_options)
             ids = [row.get("id") for row in matched or []]
             if not ids:
                 return 0
@@ -232,6 +274,9 @@ class MilvusVectorStore(VectorStore):
                 document_id,
                 type(exc).__name__,
             )
+            if target_index_id is not None:
+                # 重建路径必须显式失败，不能把清理失败伪装成目标集合本来为空。
+                raise MilvusUnavailableError("重建目标远端清理失败，需要补偿") from exc
             return 0
         return len(ids)
 
@@ -344,7 +389,8 @@ class MilvusVectorStore(VectorStore):
         if any(s > 0 for s in bm25):
             sparse_order = list(np.argsort(-np.array(bm25)).tolist())
         else:
-            sparse_order = list(range(len(ordered)))
+            # 没有词面证据时仅保留稠密贡献，不构造第二路排名。
+            sparse_order = []
         dense_order = list(range(len(ordered)))  # 已是按距离升序
 
         fused = _rrf([dense_order, sparse_order], k=rrf_k)

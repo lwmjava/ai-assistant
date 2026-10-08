@@ -305,6 +305,12 @@ $ activate --index-id <id>
 
 ### 7.5 本轮仍未关闭（需后续卡承接）
 
+> 此节保留第三轮复审时点（2026-10-07）的历史缺口，不表示2026-10-08的最终代码。
+> 当前收尾与远端重建整改见 [2026-10-08实施说明](implementation_rag_032_remote_rebuild_fix_20261008.md)：
+> L-02/N-01已修；初次Milvus摄取写入及相似度已由RAG-015修复；重建现已显式写preparing目标、
+> 保护旧active、记录补偿并有全新合成真实collection生命周期证据。llamaindex运行时仍未验证，
+> 缓存仍由RAG-019承接；最终独立复核与状态更新由主Agent完成，不能根据本历史节或单测数量关闭。
+
 - **Milvus 真实写入闭环**：`MilvusVectorStore.add()` 在 `app/` 下仍无调用点，
   真实 Milvus 连通性验证仍属 RAG-015。
 - **Milvus `index_id` 的写入分支**：本卡只覆盖了检索侧（检索表达式 + SQL 回查）的

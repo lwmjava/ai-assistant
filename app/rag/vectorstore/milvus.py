@@ -224,6 +224,11 @@ class MilvusVectorStore(VectorStore):
             if (not isinstance(vector, list) or len(vector) != target_index.dim
                     or not all(isinstance(value, int | float) and np.isfinite(value) for value in vector)):
                 raise IndexIdentityError("远端分块向量维度或数值与登记索引不匹配")
+            # 防御性校验：写入侧（service.py）已统一归一化；若有调用方绕过 service
+            # 直接把异范向量塞进实体，COSINE 度量下点积≠余弦，必须在此拦截。
+            norm = float(np.linalg.norm(np.asarray(vector, dtype=np.float64)))
+            if norm > 0.0 and abs(norm - 1.0) > 1e-5:
+                raise IndexIdentityError("写入向量未 L2 归一化")
             entities.append({
                 "id": chunk.id,
                 "tenant_id": chunk.tenant_id,

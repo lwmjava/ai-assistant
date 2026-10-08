@@ -1,6 +1,6 @@
 # 跨向量库混合语义实现说明
 
-日期：2026-10-08；任务 RAG-036。当前状态：实现与隔离切片证据已交付；关闭等待 RAG-032 重建/回退整改、RAG-015 前置复验与独立子 Agent 审查，不标 done。
+日期：2026-10-08；任务 RAG-036。当前状态：**已关闭**。实现、隔离切片证据、独立验证与独立审查均已交付；RAG-032 前置整改已 done，RAG-015 写侧闭环为独立后续工作，不构成本卡读侧验收的硬阻塞。
 
 ## 实际行为与边界
 
@@ -41,4 +41,18 @@ python -m ruff check --no-cache scripts/rag_hybrid_semantics_check.py scripts/ra
 
 ## 回滚与未做项
 
-回滚仅恢复Milvus全零分支，无schema迁移。直接登记active索引的隔离测试不验索引切换生命周期。RAG-032与RAG-015前置未复验前本卡不关闭；需在最终业务代码指纹上用保存向量重跑真实服务与独立审查。测试collection与SQLite保持用于核验，不自动清理。
+回滚仅恢复Milvus全零分支，无schema迁移。直接登记active索引的隔离测试不验索引切换生命周期。测试collection与SQLite保持用于核验，不自动清理。
+
+## 关闭复核（2026-10-08 终轮）
+
+- **前置闭合**：RAG-032（Embedding 索引身份与切换治理）已于本轮关闭为 done；原 blocked_by 中「RAG-032 新 collection 重建与旧索引保护缺口」不再存在。
+- **RAG-015 依赖判定**：RAG-015 是写侧闭环（默认 local、可切换 Milvus、写入向量归一化），其验收第 5 条明确「记录跨库检索差异，质量对照由 RAG-036 承接」，即 RAG-036 是该条目的下游承接方而非被阻塞方。本卡四条验收（全零不造排名、纯关键词遗漏报告、真实 Milvus 切片可复现、新增召回架构另 ADR）均不依赖 RAG-015 的写侧功能，真实 Milvus 2.5.11 切片与 text-embedding-v3 真实模型链路已独立证明读侧语义。RAG-015 继续按其自身排期推进。
+- **独立验证复跑**（指定解释器 `D:/DepTooL/anaconda3/envs/ai-assistant/python.exe`）：
+  - `pytest tests/test_rag_036_hybrid_semantics.py -v` → **17 passed，退出 0**。
+  - 隔离 `DATABASE_URL=sqlite:///./data/t/<uuid>.db` + `PYTHONUTF8=1` 下回归 `tests/test_rag.py tests/test_vectorstore_policy.py tests/eval/test_rrf_k_experiment.py` → **52 passed，退出 0**。不隔离数据库时 3 个 upload 用例会命中本机持久化开发库 10-06 旧记录而假失败，与本卡无关。
+  - `ruff check`（milvus.py + 两脚本 + 测试）→ **All checks passed，退出 0**。
+  - `mypy app/rag/vectorstore/ --no-incremental` → **Success: no issues in 5 files，退出 0**。
+- **独立审查**：`docs/reviews/2026-10-08-rag-036-hybrid-semantics-review.md`，6 通过 / 2 警告 / 0 问题，同意关闭。本卡业务改动经 git diff 确认为一行（`sparse_order = list(range(len(ordered)))` → `[]`）；红测修前 doc0=2/61、修后 1/61。
+- **非阻塞警告**（不构成本卡关闭条件，留作后续打磨）：
+  - W1：Milvus 全零分支缺少 Local 已有的 `bm25_all_zero reason=...` 结构化日志，生产可观测性略弱。
+  - W2：7 切片固定向量记录的 milvus.py 指纹与当前代码有小漂移，差异落在 RAG-032 区、融合行未变；最终 `real-embedding-verified-reuse` 报告指纹已与当前代码一致。

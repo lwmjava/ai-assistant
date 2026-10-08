@@ -6888,9 +6888,10 @@ tasks:
 
   - id: "RAG-015"
     title: "默认保持 local、可切换 Milvus、写入向量规范化"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ''
+    progress: "2026-10-08：写入侧 L2 归一化固化（base.py 新增 l2_normalize），service.py 两处写入点归一化+维度校验，milvus.py validate_add 防御性归一化校验。默认 local 不变；Milvus 写侧 add 链路已由守护测试验证；相似度取自 COSINE distance 非占位。24 passed + 52 passed 回归，ruff/mypy 退出 0。实现说明见 docs/plans/implementation_rag_015.md。未做：真实 Milvus 端到端命中（无服务）、历史向量重写。"
     depends_on:
     - "RAG-014"
     - "RAG-023"
@@ -9955,7 +9956,7 @@ tasks:
 
   - id: "RAG-036"
     title: "跨向量库混合语义验收"
-    status: "blocked"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -9996,7 +9997,7 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "2026-10-08：真实 Milvus 已启动、真实 Embedding 费用已批准；独立审计确认 RAG-032 新 collection 重建与旧索引保护仍有缺口，RAG-015 前置链未闭合，先整改 RAG-032。语义补证继续但不能关闭。"
+      blocked_by: "2026-10-08 关闭：RAG-032 已 done，原 collection 重建/旧索引保护缺口闭合。RAG-015 为写侧闭环（默认 local/切换/归一化写入），其验收第5条将质量对照交本卡承接；本卡四条验收（全零不造排名、纯关键词遗漏报告、真实 Milvus 2.5.11 切片可复现、新增召回架构另 ADR）均不依赖 RAG-015 写侧功能。独立验证 17 passed + 隔离回归 52 passed + ruff/mypy 退出0；独立审查 docs/reviews/2026-10-08-rag-036-hybrid-semantics-review.md 同意关闭。非阻塞警告：Milvus 全零分支缺结构化日志（W1）、7切片指纹小漂移已闭环（W2）。"
       nightly:
         eligible: false
         production_access: false

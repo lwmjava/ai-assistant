@@ -261,3 +261,109 @@ async def test_milvus_similarity_returns_real_cosine_not_placeholder(session, mo
         "相似度彼此相同，疑似仍是占位值"
     )
     assert similarities == pytest.approx({key: expected[key] for key in similarities})
+
+
+# ── 写入侧 L2 归一化固化 ──────────────────────────────────────────────
+
+
+def test_l2_normalize_utility() -> None:
+    """l2_normalize：[3,4]→[0.6,0.8]，零向量原样返回。"""
+    from app.rag.vectorstore.base import l2_normalize
+
+    assert l2_normalize([3.0, 4.0]) == pytest.approx([0.6, 0.8])
+    assert l2_normalize([0.0, 0.0]) == [0.0, 0.0]
+    assert l2_normalize([]) == []
+    # 已经归一化的向量保持不变
+    assert l2_normalize([0.6, 0.8]) == pytest.approx([0.6, 0.8])
+
+
+@pytest.mark.asyncio
+async def test_ingest_normalizes_raw_embeddings_before_persist(session) -> None:
+    """未归一化的 provider 向量在写入 DB 前必须被归一化。
+
+    OpenAICompatibleEmbeddingProvider 返回 API 原始向量（未归一化），
+    写入侧若不归一，检索侧点积≠余弦。这里注入一个返回未归一化向量的
+    provider，摄取后从 DB 读出 embedding，验证 norm≈1.0。
+    """
+    import json
+
+    import numpy as np
+    from sqlmodel import select
+
+    from app.models.rag import DocumentChunk
+    from app.rag.embeddings.base import EmbeddingInputPolicy, EmbeddingProvider
+    from app.rag.service import RAGService
+
+    class _UnnormalizedProvider(EmbeddingProvider):
+        """故意返回未归一化向量的假 provider（模拟 OpenAI API 原始返回）。"""
+
+        model = "unnormalized-test"
+        dim = 64
+        input_policy = EmbeddingInputPolicy(
+            max_input_tokens=None, counting_method="offline-unlimited", source="test"
+        )
+
+        async def embed(self, texts):
+            # 返回所有维度均为 1.0 的向量（norm=sqrt(64)=8，未归一化）
+            return [[1.0] * self.dim for _ in texts]
+
+    rag = RAGService(
+        session,
+        "rag015-norm",
+        embedding_provider=_UnnormalizedProvider(),
+    )
+    doc = await rag.ingest_text(
+        "写入侧必须归一化，否则点积不等于余弦。" * 20,
+        title="归一化守护",
+        source="rag015",
+        user_id="rag015-user",
+    )
+    chunks = session.exec(
+        select(DocumentChunk).where(DocumentChunk.document_id == doc.id)
+    ).all()
+    assert chunks, "摄取后没有分块"
+    for chunk in chunks:
+        assert chunk.embedding is not None, "分块应有向量"
+        vector = json.loads(chunk.embedding)
+        norm = float(np.linalg.norm(np.asarray(vector, dtype=np.float64)))
+        assert abs(norm - 1.0) < 1e-5, (
+            f"DB 中向量未归一化：norm={norm}, chunk={chunk.id}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_ingest_rejects_dimension_mismatch(session) -> None:
+    """写入向量维度与登记索引不符时必须抛 IndexIdentityError。
+
+    provider 声明 dim=64（索引按此登记），但 embed 返回 32 维向量，
+    模拟 provider 实现错误导致实际返回维度与声明不符的场景。
+    """
+    from app.rag.embeddings.base import EmbeddingInputPolicy, EmbeddingProvider
+    from app.rag.index_identity import IndexIdentityError
+    from app.rag.service import RAGService
+
+    class _WrongDimProvider(EmbeddingProvider):
+        """声明 64 维但实际返回 32 维向量。"""
+
+        model = "wrong-dim-test"
+        dim = 64
+        input_policy = EmbeddingInputPolicy(
+            max_input_tokens=None, counting_method="offline-unlimited", source="test"
+        )
+
+        async def embed(self, texts):
+            # 故意返回与声明 dim 不符的向量
+            return [[0.1] * 32 for _ in texts]
+
+    rag = RAGService(
+        session,
+        "rag015-dim",
+        embedding_provider=_WrongDimProvider(),
+    )
+    with pytest.raises(IndexIdentityError, match="维度"):
+        await rag.ingest_text(
+            "维度不符必须拒绝写入。" * 10,
+            title="维度守护",
+            source="rag015",
+            user_id="rag015-user",
+        )

@@ -7,6 +7,7 @@
 再用倒数排名融合（RRF）合并两份排序，兼顾语义召回与精确词面匹配。
 """
 
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -74,3 +75,17 @@ class VectorStore(ABC):
     @abstractmethod
     async def count(self, tenant_id: str) -> int:
         """返回某租户下的分块总数。"""
+
+
+def l2_normalize(vector: list[float]) -> list[float]:
+    """对向量做 L2 归一化。零向量（norm=0）原样返回，避免除零。
+
+    写入侧统一在此固化：检索侧点积=余弦成立的前提是入库向量已归一。
+    不引入 numpy，保持本模块对后端实现无第三方数值库依赖。
+    """
+    if not vector:
+        return vector
+    norm = math.sqrt(sum(value * value for value in vector))
+    if norm == 0.0:
+        return list(vector)
+    return [value / norm for value in vector]

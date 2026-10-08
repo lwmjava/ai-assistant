@@ -73,7 +73,7 @@ from app.rag.index_registry import (
 )
 from app.rag.retrieval_guard import drop_injected_chunks
 from app.rag.retriever import HybridRetriever
-from app.rag.vectorstore.base import ChunkResult, VectorStore
+from app.rag.vectorstore.base import ChunkResult, VectorStore, l2_normalize
 from app.rag.vectorstore.factory import get_vector_store
 from app.rag.vectorstore.local import LocalVectorStore, visible_chunks_with_status
 from app.rag.vectorstore.milvus import MilvusVectorStore
@@ -431,6 +431,8 @@ class RAGService:
 
             parent_id_map: dict[str, str] = {}
             persisted_rows: list[DocumentChunk] = []
+            write_index = self._write_index()
+            expected_dim = write_index.dim
             for chunk_index, (chunk, vector) in enumerate(zip(chunk_objs, embeddings, strict=True)):
                 # 手动生成主键，便于父块落库后直接回填子块的 parent_id，无需逐块 flush。
                 row_id = uuid.uuid4().hex
@@ -440,6 +442,15 @@ class RAGService:
                 metadata = dict(chunk.metadata or {})
                 if cleaning is not None:
                     metadata["cleaning"] = cleaning.report
+                # 写入侧固化 L2 归一化：检索侧点积=余弦成立的前提是入库向量已归一。
+                # 维度与登记索引不符时直接拒绝，不把异维向量写进索引。
+                normalized_vector: list[float] | None = None
+                if vector is not None:
+                    if len(vector) != expected_dim:
+                        raise IndexIdentityError(
+                            f"写入向量维度 {len(vector)} 与登记索引 {expected_dim} 不符"
+                        )
+                    normalized_vector = l2_normalize(vector)
                 row = DocumentChunk(
                     id=row_id,
                     tenant_id=self.tenant_id,
@@ -447,12 +458,15 @@ class RAGService:
                     chunk_index=chunk_index,
                     content=chunk.text,
                     source=source,
-                    embedding=json.dumps(vector, ensure_ascii=False) if vector is not None else None,
+                    embedding=(
+                        json.dumps(normalized_vector, ensure_ascii=False)
+                        if normalized_vector is not None else None
+                    ),
                     tokens=json.dumps(self._tokenizer(chunk.text), ensure_ascii=False),
                     strategy=strategy_name,
                     chunk_metadata=json.dumps(metadata, ensure_ascii=False) if metadata else None,
                     parent_id=parent_id,
-                    index_id=self._write_index().id,
+                    index_id=write_index.id,
                 )
                 if metadata.get("kind") == "parent":
                     parent_id_map[str(metadata.get("parent_key"))] = row_id
@@ -1159,6 +1173,7 @@ class RAGService:
                            and compensation.get("document_id") == document.id)
         parent_id_map: dict[str, str] = {}
         persisted_rows: list[DocumentChunk] = []
+        expected_dim = target.dim
         for chunk_index, (piece, vector) in enumerate(zip(chunk_objs, embeddings, strict=True)):
             row_id = uuid.uuid4().hex
             parent_id = None
@@ -1166,6 +1181,14 @@ class RAGService:
                 parent_id = parent_id_map[piece.parent_id]
             metadata: dict = dict(piece.metadata or {})
             metadata["cleaning"] = cleaning.report
+            # 写入侧固化 L2 归一化：与正常摄取路径同一契约，异维直接拒绝。
+            normalized_vector: list[float] | None = None
+            if vector is not None:
+                if len(vector) != expected_dim:
+                    raise IndexIdentityError(
+                        f"写入向量维度 {len(vector)} 与登记索引 {expected_dim} 不符"
+                    )
+                normalized_vector = l2_normalize(vector)
             row = DocumentChunk(
                 id=row_id,
                 tenant_id=document.tenant_id,
@@ -1173,12 +1196,12 @@ class RAGService:
                 chunk_index=chunk_index,
                 content=piece.text,
                 source=document.source,
-                embedding=json.dumps(vector, ensure_ascii=False) if vector is not None else None,
+                embedding=json.dumps(normalized_vector, ensure_ascii=False) if normalized_vector is not None else None,
                 tokens=json.dumps(self._tokenizer(piece.text), ensure_ascii=False),
                 strategy=strategy_name,
                 chunk_metadata=json.dumps(metadata, ensure_ascii=False) if metadata else None,
                 parent_id=parent_id,
-                index_id=self._write_index().id,
+                index_id=target.id,
             )
             if metadata.get("kind") == "parent":
                 parent_id_map[str(metadata.get("parent_key"))] = row_id

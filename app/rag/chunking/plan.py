@@ -39,7 +39,7 @@ def validate_params(values: dict[str, Any], *, complete: bool, depth: int = 0) -
 
     if depth > 8:
         raise ValueError("chunk_plan_invalid: child_params nesting")
-    required = {field.name for field in fields(ChunkParams)} - {"input_policy"}
+    required = {field.name for field in fields(ChunkParams)} - {"input_policy", "llm_boundary_advisor"}
     if complete and set(values) != required:
         raise ValueError("chunk_plan_invalid: incomplete or unknown parameters")
     try:

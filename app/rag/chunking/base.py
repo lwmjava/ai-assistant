@@ -46,6 +46,8 @@ class ChunkParams:
     child_params: dict | None = None
     # Service-owned provider policy, never a request/child parameter override.
     input_policy: EmbeddingInputPolicy | None = None
+    # RAG-031：服务端注入的 LLM 边界建议器，默认 None（关闭）。不进持久化计划。
+    llm_boundary_advisor: Any = None
 
 
 class ChunkingStrategy(ABC):
@@ -66,13 +68,19 @@ class ChunkingStrategy(ABC):
 
             @wraps(original)
             async def guarded(self, text: str, *, params: ChunkParams) -> list[Chunk]:
-                from app.rag.chunking.structure import protected_split, structure_units
+                from app.rag.chunking.structure import (
+                    protected_split,
+                    resolve_boundary_table,
+                    structure_units,
+                )
 
                 if self.name != "parent_child" and structure_units(text or ""):
                     policy = params.input_policy or getattr(self, "_input_policy", None)
                     if policy is None:
                         policy = getattr(getattr(self, "_embedding", None), "input_policy", None)
-                    return protected_split(text, params.chunk_size, policy)
+                    advisor = getattr(params, "llm_boundary_advisor", None)
+                    boundaries = await resolve_boundary_table(text, params.chunk_size, advisor)
+                    return protected_split(text, params.chunk_size, policy, boundaries=boundaries)
                 return await original(self, text, params=params)
 
             setattr(cls, "split", guarded)

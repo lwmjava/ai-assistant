@@ -29,6 +29,14 @@ class StructureUnit:
     header_end: int | None = None
 
 
+@dataclass(frozen=True)
+class _GapPlan:
+    """一个正文间隙的切分计划（RAG-031）。offsets 相对间隙起点的字符偏移。"""
+
+    offsets: tuple[int, ...]
+    meta: dict[str, object]
+
+
 def structure_units(text: str) -> list[StructureUnit]:
     """Find nonoverlapping fenced blocks, conservative boxes and pipe tables."""
     lines = text.splitlines(keepends=True)
@@ -110,21 +118,57 @@ def _chunk(text: str, start: int, end: int, kind: str, policy: Any, prefix: str 
     return Chunk(text=content, index=0, metadata=metadata)
 
 
-def protected_split(text: str, chunk_size: int, policy: Any = None) -> list[Chunk]:
-    """Partition source exactly; atoms exceed soft targets instead of being cut."""
+def protected_split(
+    text: str,
+    chunk_size: int,
+    policy: Any = None,
+    boundaries: dict[int, _GapPlan] | None = None,
+) -> list[Chunk]:
+    """Partition source exactly; atoms exceed soft targets instead of being cut.
+
+    ``boundaries``（RAG-031）为正文间隙起点 -> 边界计划；``None`` 时行为与
+    结构保护基线完全一致（默认关闭路径）。
+    """
     result: list[Chunk] = []
     target = max(1, chunk_size)
     units = structure_units(text)
 
+    def emit_one(start: int, end: int, extra_meta: dict | None) -> None:
+        chunk = _chunk(text, start, end, "text", policy)
+        if extra_meta:
+            chunk.metadata.update(extra_meta)
+        result.append(chunk)
+
+    def emit_interval(start: int, end: int, extra_meta: dict | None) -> None:
+        """emit [start,end) under policy; subdivide by char if it exceeds the limit."""
+        if policy is None or policy.check(text[start:end]) != "input_limit_exceeded":
+            emit_one(start, end, extra_meta)
+            return
+        cursor = start
+        while cursor < end:
+            stop = min(end, cursor + target)
+            while stop > cursor + 1 and policy.check(text[cursor:stop]) == "input_limit_exceeded":
+                stop = cursor + max(1, (stop - cursor) // 2)
+            emit_one(cursor, stop, extra_meta)
+            cursor = stop
+
     def plain(start: int, end: int) -> None:
-        while start < end:
-            stop = min(end, start + target)
-            # Prose may split at characters, but honor a verified provider limit.
+        plan = boundaries.get(start) if boundaries is not None else None
+        if plan is not None and plan.offsets:
+            bounds = [0, *plan.offsets, end - start]
+            for index in range(len(bounds) - 1):
+                emit_interval(start + bounds[index], start + bounds[index + 1], plan.meta)
+            return
+        # 规则字符切分。plan 存在但无偏移（降级）时，把降级原因写进 chunk。
+        extra = plan.meta if plan is not None else None
+        cursor = start
+        while cursor < end:
+            stop = min(end, cursor + target)
             if policy is not None:
-                while stop > start + 1 and policy.check(text[start:stop]) == "input_limit_exceeded":
-                    stop = start + max(1, (stop - start) // 2)
-            result.append(_chunk(text, start, stop, "text", policy))
-            start = stop
+                while stop > cursor + 1 and policy.check(text[cursor:stop]) == "input_limit_exceeded":
+                    stop = cursor + max(1, (stop - cursor) // 2)
+            emit_one(cursor, stop, extra)
+            cursor = stop
 
     cursor = 0
     for unit in units:
@@ -186,3 +230,48 @@ def protected_split(text: str, chunk_size: int, policy: Any = None) -> list[Chun
         chunk.metadata["section_path"] = [heading["title"] for heading in active]
         chunk.metadata["source_heading_ranges"] = [dict(heading) for heading in active]
     return result
+
+
+async def resolve_boundary_table(
+    text: str,
+    chunk_size: int,
+    advisor: Any,
+) -> dict[int, _GapPlan] | None:
+    """RAG-031：对正文间隙异步收集 LLM 边界建议，同步切分仍走 ``protected_split``。
+
+    ``advisor`` 为 ``None``（默认关闭）时返回 ``None``，``protected_split`` 行为
+    与结构保护基线一致。只对超过软目标的正文间隙发起有界调用；任何失败都降级为
+    规则切分并把原因写进 chunk 元数据。
+    """
+    if advisor is None:
+        return None
+    target = max(1, chunk_size)
+    units = structure_units(text)
+    gaps: list[tuple[int, int]] = []
+    cursor = 0
+    for unit in units:
+        gaps.append((cursor, unit.start))
+        cursor = unit.end
+    gaps.append((cursor, len(text)))
+
+    table: dict[int, _GapPlan] = {}
+    base_meta = advisor.metadata_snapshot()
+    for start, end in gaps:
+        if end - start <= target:
+            continue
+        outcome = await advisor.suggest(text[start:end], target_chars=target)
+        if outcome.kind == "offsets" and outcome.offsets:
+            table[start] = _GapPlan(
+                offsets=outcome.offsets,
+                meta={**base_meta, "llm_boundary_used": True},
+            )
+        else:
+            table[start] = _GapPlan(
+                offsets=(),
+                meta={
+                    **base_meta,
+                    "llm_boundary_used": False,
+                    "llm_boundary_degraded_reason": outcome.reason or "no_boundaries",
+                },
+            )
+    return table

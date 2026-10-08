@@ -195,6 +195,18 @@ class Settings(BaseSettings):
     # 默认切分策略：structured | paragraph | sliding_window | token_aware |
     # semantic | parent_child | auto（按文档特征路由）
     RAG_CHUNK_STRATEGY: str = "structured"
+    # ── RAG-031 LLM 辅助切分边界（默认关闭）──
+    # 结构保护之后，对正文间隙的主题边界让 LLM 只建议「句子序号」，代码按序号切取原文；
+    # 坏 JSON / 注入 / 超时 / 预算耗尽一律规则降级，不改写原文、不阻塞摄取。
+    RAG_LLM_BOUNDARY_ENABLED: bool = False
+    # 单次发给模型的正文片段上限（字符）。超过则该间隙不调用模型，规则切分。
+    RAG_LLM_BOUNDARY_MAX_CHARS: int = 1500
+    # 单篇文档最多发起几次边界建议调用（费用护栏）。
+    RAG_LLM_BOUNDARY_MAX_CALLS: int = 3
+    # 模型输出预留 token（边界序号数组很短）。
+    RAG_LLM_BOUNDARY_MAX_OUTPUT_TOKENS: int = 256
+    # 单次边界建议调用超时（秒）。
+    RAG_LLM_BOUNDARY_TIMEOUT_SECONDS: float = 15.0
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
     RAG_MIN_SIMILARITY: float = 0.4  # 稠密相似度低于该值可少返回或全不返回（0.4 为 2026-10-02 拍板阈值）
     # 全被低分过滤时的拒答提示

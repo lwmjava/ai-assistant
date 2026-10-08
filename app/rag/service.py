@@ -295,15 +295,43 @@ class RAGService:
         overrides = dict(chunk_params or {})
         if "input_policy" in overrides:
             raise ValueError("input_policy is server controlled")
+        if "llm_boundary_advisor" in overrides:
+            raise ValueError("llm_boundary_advisor is server controlled")
         values = {"chunk_size": settings.RAG_CHUNK_SIZE, "chunk_overlap": settings.RAG_CHUNK_OVERLAP, **overrides}
-        return ChunkParams(**values, input_policy=self._embedding.input_policy)
+        return ChunkParams(
+            **values,
+            input_policy=self._embedding.input_policy,
+            llm_boundary_advisor=self._build_llm_boundary_advisor(),
+        )
+
+    def _build_llm_boundary_advisor(self):
+        """RAG-031：配置开启时构造有界边界建议器；默认关闭返回 None。
+
+        每个文档新建一个 advisor（独立调用计数）。真正发请求仍走 RAG-028 的
+        ``LLMProvider.chat`` 预算 Guard；未知模型会被 Guard 拒绝并降级为规则切分。
+        """
+        if not getattr(settings, "RAG_LLM_BOUNDARY_ENABLED", False):
+            return None
+        from app.llm.factory import get_llm_provider
+        from app.rag.chunking.llm_boundaries import BoundaryAdvisor
+
+        return BoundaryAdvisor(
+            provider=get_llm_provider("chat"),
+            max_calls=settings.RAG_LLM_BOUNDARY_MAX_CALLS,
+            max_chars_per_call=settings.RAG_LLM_BOUNDARY_MAX_CHARS,
+            output_tokens=settings.RAG_LLM_BOUNDARY_MAX_OUTPUT_TOKENS,
+            timeout=settings.RAG_LLM_BOUNDARY_TIMEOUT_SECONDS,
+        )
 
     @staticmethod
     def _build_chunk_plan(decision: RoutingDecision, params: ChunkParams) -> dict:
         """构造版本化切分计划 JSON：策略名 + 有效参数 + 路由原因。"""
         from dataclasses import asdict
 
-        values = {k: v for k, v in asdict(params).items() if k != "input_policy"}
+        values = {
+            k: v for k, v in asdict(params).items()
+            if k not in ("input_policy", "llm_boundary_advisor")
+        }
         validate_params(values, complete=True)
         return {
             "version": decision.version,

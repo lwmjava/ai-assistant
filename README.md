@@ -397,6 +397,9 @@ docker compose up -d --build
 | `RAG_UPLOAD_ALLOWED_EXTENSIONS` | 允许的扩展名，逗号分隔、不带点 | `txt,md,json,xml,csv,doc,xls,ppt,docx,xlsx,pptx,pdf` |
 | `RAG_BACKEND` | 切分/检索策略：`native` / `langchain` / `llamaindex` | `native` |
 | `RAG_CHUNK_STRATEGY` | 文档切分策略（见下方「文档切分策略」） | `structured` |
+| `RAG_LLM_BOUNDARY_ENABLED` | LLM 辅助切分边界开关。结构保护后让模型只建议句子序号，代码切取原文；失败自动规则降级 | `false` |
+| `RAG_LLM_BOUNDARY_MAX_CALLS` | 单篇文档最多几次边界建议 LLM 调用（费用护栏） | `3` |
+| `RAG_LLM_BOUNDARY_MAX_CHARS` | 单次发给模型的正文上限（字符），超过则不调用、规则切分 | `1500` |
 | `RAG_LANGCHAIN_SPLITTER` | LangChain 切分器（当前仅 `recursive`） | `recursive` |
 | `RAG_LLAMAINDEX_SPLITTER` | LlamaIndex 切分器：`sentence` / `markdown` | `sentence` |
 | `RAG_OCR_ENABLED` | 是否启用扫描版 PDF OCR | `false` |
@@ -608,6 +611,8 @@ with source, target:
 | `parent_child` | 父子文档：父块为子块倍数粗块，检索命中子块时自动返回父块上下文 |
 
 设 `RAG_CHUNK_STRATEGY=auto` 时，系统按文档特征自动路由（含标题走 `structured`、英文占比高走 `token_aware`，其余走 `paragraph`）。
+
+`RAG_LLM_BOUNDARY_ENABLED=true` 为可选增强：在代码围栏/盒图/表格等结构原子单元被规则保护之后，让 LLM 对这些单元之间的**正文间隙**只建议句子序号，代码按序号切取原文。模型不输出、不改写原文；坏 JSON、注入式输出、超时或调用次数用尽时自动回退规则切分，不阻塞摄取。默认关闭；真实质量与成本需在获得调用授权后另行评测。
 
 ## OCR（扫描版 PDF）
 

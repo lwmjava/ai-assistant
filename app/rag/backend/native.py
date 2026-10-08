@@ -114,4 +114,11 @@ class NativeRagBackend(RagBackend):
             read_scope=read_scope,
             identity=self._current_identity(),
         )
+        # 双保险：store 恰好在 deadline 耗尽后才把结果交回来时，不能把这批迟到 hits
+        # 当成正常命中 / 收敛成 no_hit——那等于把超时故障伪装成「查过了、没有」。
+        # to_thread 已让等待有界，这里兜住「刚到点就返回」的边界，不往上送迟到结果。
+        if deadline is not None and deadline.expired():
+            raise DeadlineExceededError(
+                f"向量检索在总时限 {deadline.total:.3f}s 耗尽后才返回结果，拒绝当命中"
+            )
         return drop_injected_chunks(hits, keep=top_k)

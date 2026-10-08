@@ -344,7 +344,10 @@ async def retry_async(
 
     - 次数上界：``policy.attempts()``（含首次），达到即抛出，绝不无限重试。
     - 时间上界：每次 attempt 前先 :func:`ensure_budget`；退避等待前检查剩余
-      预算，不够就**放弃等待直接抛**，不睡过 deadline。
+      预算，不够就**放弃等待直接抛**，不睡过 deadline。``backoff_base<=0`` 是
+      「零退避」：``wait=0`` 视为无等待、立即重试（``await sleeper(0)`` 让出一次），
+      不算放弃——配置判据 ``retrieval_retry_effectively_disabled`` 在 base=0 时也
+      返回 False（认为重试有效），二者一致。
     - 取消传播：``asyncio.CancelledError`` 原样上抛，不被任何分支改写。
 
     Args:
@@ -382,11 +385,13 @@ async def retry_async(
                 wait = policy.wait_for(attempt)
                 # 关键：预算不够等下一次就不再等。等过去必然睡过 deadline，
                 # 「有界」就名存实亡了。
-                outcome = (
-                    "give_up_budget"
-                    if wait <= 0 or wait >= deadline.remaining()
-                    else "retry"
-                )
+                # wait<=0（backoff_base<=0）表示**零退避**：立即重试，只 await
+                # sleeper(0) 让出一次事件循环即可，不是「放弃」。只有当等待大于零
+                # 且剩余预算连这点等待都不够时，才 give_up_budget。
+                if wait > 0 and wait >= deadline.remaining():
+                    outcome = "give_up_budget"
+                else:
+                    outcome = "retry"
             _log_failure(
                 attempt=attempt,
                 elapsed=elapsed,

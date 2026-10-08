@@ -117,10 +117,25 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
                 len(batch),
             )
         resp.raise_for_status()
-        data = resp.json()["data"]
+        payload = resp.json()
+        data = payload["data"]
         # 接口可能乱序返回，按 batch 内 index 排序以保证与输入对齐。
         data_sorted = sorted(data, key=lambda d: d.get("index", 0))
-        return [item["embedding"] for item in data_sorted]
+        vectors = [item["embedding"] for item in data_sorted]
+        # 成本可观测（RAG-038）：保留响应里的 usage，缺省记 -1（unknown）。
+        # 兼容 / Mock provider 不带 usage 字段时不报错。严禁记录 api key、
+        # 请求正文或命中正文——这里只记 token 计数与批大小。
+        usage = payload.get("usage") or {}
+        prompt_tokens = usage.get("prompt_tokens", -1)
+        total_tokens = usage.get("total_tokens", -1)
+        logger.info(
+            "rag_embedding_batch_usage backend=embedding batch_size=%s "
+            "usage_prompt_tokens=%s usage_total_tokens=%s",
+            len(batch),
+            prompt_tokens,
+            total_tokens,
+        )
+        return vectors
 
     def _validate_dimensions(self, vectors: list[list[float]]) -> None:
         """校验返回向量维度与配置一致，避免静默的检索错位。"""

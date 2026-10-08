@@ -9,6 +9,7 @@
 数据量大时可平滑替换为 Milvus 等专用向量数据库（接口保持一致）。
 """
 
+import asyncio
 import json
 import logging
 import math
@@ -139,6 +140,38 @@ class LocalVectorStore(VectorStore):
         return len(self.session.exec(stmt).all())
 
     async def hybrid_search(
+        self,
+        query_embedding: list[float],
+        query_tokens: list[str],
+        tenant_id: str,
+        top_k: int,
+        rrf_k: int = 60,
+        as_of: datetime | None = None,
+        schedule_at: datetime | None = None,
+        read_scope: ReadScope | None = None,
+        identity: EmbeddingIndexIdentity | None = None,
+    ) -> list[ChunkResult]:
+        # 方法体全是同步 SQLModel / numpy / BM25，不能直接在事件循环线程里跑：
+        # 否则外层 native.retrieve 的 asyncio.wait_for 定时器在同步阻塞期间无法
+        # 触发，慢查询会把调用方拖满而不是被限时放弃（RAG-038 复审 P1a）。
+        # 丢进工作线程后，wait_for 才能在 deadline 到点时让协程放弃等待。
+        # database.py 已对 SQLite 设 check_same_thread=False；一次检索内该
+        # request-scoped Session 只在本线程被触碰，事件循环 await 期间不并发使用它，
+        # 因此线程安全成立。权限过滤（tenant/read_scope/index_id）逻辑在同步方法内原样保留。
+        return await asyncio.to_thread(
+            self._hybrid_search_sync,
+            query_embedding,
+            query_tokens,
+            tenant_id,
+            top_k,
+            rrf_k,
+            as_of=as_of,
+            schedule_at=schedule_at,
+            read_scope=read_scope,
+            identity=identity,
+        )
+
+    def _hybrid_search_sync(
         self,
         query_embedding: list[float],
         query_tokens: list[str],

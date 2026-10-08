@@ -1242,3 +1242,158 @@ def test_bind_deadline_is_scoped():
         assert bound is d
         assert current_deadline() is d
     assert current_deadline() is None
+
+
+# ────────────────────────── 9. 第三轮复审阻断项 ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_sync_local_slow_query_is_bounded_not_no_hit(monkeypatch):
+    """P1a：本地同步检索慢查询必须被 wait_for 限时放弃，而不是阻塞事件循环后返回 no_hit。
+
+    改前 ``hybrid_search`` 是 async 但方法体全同步：SQLModel/numpy/BM25 无 await，
+    直接跑在事件循环线程上，外层 ``wait_for`` 定时器在同步阻塞期间无法触发，慢查询
+    会被等满并把结果（空库）收敛成 no_hit——把超时故障伪装成「查过了、没有」。
+    修法是把同步体挪进 ``asyncio.to_thread``，让定时器能在 deadline 到点时触发。
+    """
+    from app.rag.backend.native import NativeRagBackend
+    from app.rag.vectorstore.local import LocalVectorStore
+
+    monkeypatch.setattr(settings, "RAG_RETRIEVAL_DEADLINE_SECONDS", 0.05)
+
+    # 在同步方法体内注入 150ms 阻塞（远超 50ms deadline），返回空库值 None。
+    # 这与「同步 Session 查询慢」形状一致，不改写 native/store 控制流。
+    def slow_resolve(session, identity, *, tenant_id, backend):
+        time.sleep(0.15)
+        return None
+
+    monkeypatch.setattr("app.rag.vectorstore.local.resolve_read_index_for", slow_resolve)
+
+    store = LocalVectorStore(session=None)  # type: ignore[arg-type]
+    backend = NativeRagBackend(_RecordingEmbedding(), store, tokenizer=lambda q: [])  # type: ignore[arg-type]
+    started = time.monotonic()
+    with pytest.raises(DeadlineExceededError):
+        await backend.retrieve("查一下", tenant_id="t1", top_k=5)
+    elapsed = time.monotonic() - started
+    # 调用方在 deadline 到点就放弃，不等线程里的 150ms 跑完。
+    assert elapsed <= 0.05 + _TOLERANCE, f"实测 {elapsed:.3f}s 未被限时"
+
+
+@pytest.mark.asyncio
+async def test_native_rejects_late_result_after_deadline():
+    """P1b：向量检索恰好在 deadline 耗尽后才交回 hits 时，native 拒绝当命中。
+
+    to_thread 让等待有界是第一道；这里兜住「刚好在 deadline 到点时返回了 hits」
+    的边界——若不二次检查，这批迟到结果会被当正常命中 / 收敛成 no_hit。
+    """
+    from app.rag.backend.native import NativeRagBackend
+    from app.rag.vectorstore.base import ChunkResult
+
+    clock = FakeClock()
+    deadline = Deadline(0.1, clock=clock)
+
+    class LateStore:
+        """返回前把共享时钟推过 deadline，模拟「结果在预算耗尽后才到」。"""
+
+        async def hybrid_search(self, *args, **kwargs):
+            clock.advance(0.2)
+            return [
+                ChunkResult(
+                    id="chunk-1",
+                    content="迟到的命中正文",
+                    source="doc-1",
+                    document_id="doc-1",
+                    score=0.9,
+                    version_status="current",
+                    similarity=0.9,
+                )
+            ]
+
+    backend = NativeRagBackend(
+        _RecordingEmbedding(), LateStore(), tokenizer=lambda q: []  # type: ignore[arg-type]
+    )
+    with bind_deadline(deadline):
+        with pytest.raises(DeadlineExceededError):
+            await backend.retrieve("查一下", tenant_id="t1", top_k=5)
+
+
+@pytest.mark.asyncio
+async def test_zero_backoff_retries_to_attempts_limit_without_budget_giveup(caplog):
+    """P3：base=max=0（零退避）时，可重试故障应重试到 attempts 上限，不是只打一次。
+
+    改前 ``wait<=0`` 被误判为 ``give_up_budget``，导致判据说「重试有效」、运行却只
+    打一次。修法：``wait<=0`` 视为「零退避立即重试」，只 await sleeper(0) 让出一次。
+    """
+    caplog.set_level(logging.WARNING)
+    clock = FakeClock()
+    deadline = Deadline(10.0, clock=clock)
+    policy = RetryPolicy(max_attempts=3, backoff_base=0.0, backoff_max=0.0, jitter=0.0)
+    # 判据与运行一致：零退避不算「重试实际已禁用」。
+    assert not retrieval_retry_effectively_disabled(
+        deadline_seconds=10.0, max_attempts=3, backoff_base=0.0, backoff_max=0.0
+    )
+
+    op = ScriptedOp([_http_error(429)])
+    waits: list[float] = []
+    with pytest.raises(httpx.HTTPStatusError):
+        await retry_async(
+            op, deadline=deadline, policy=policy, backend="embedding", sleep=_sleeper(waits)
+        )
+
+    assert op.attempts == 3, "零退避时可重试故障必须打满 attempts 上限"
+    assert waits == [0.0, 0.0], "两次重试都是零等待立即重试"
+    outcomes = [r.getMessage().split("outcome=")[1] for r in _failed_events(caplog)]
+    assert "give_up_budget" not in outcomes, "零退避不得被误判为预算不够"
+    assert outcomes == ["retry", "retry", "give_up_attempts_exhausted"]
+
+
+@pytest.mark.asyncio
+async def test_embedding_logs_usage_when_present(monkeypatch, caplog):
+    """成本追踪：响应带 usage 时，成功日志事件带出 prompt/total token 数。"""
+    caplog.set_level(logging.INFO)
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        size = len(json.loads(request.content)["input"])
+        return httpx.Response(
+            200,
+            json={
+                "data": [{"index": i, "embedding": [0.1, 0.9]} for i in range(size)],
+                "usage": {"prompt_tokens": 12, "total_tokens": 34},
+            },
+        )
+
+    provider, requests = _embedding_provider(monkeypatch, respond)
+    await provider.embed(["合成文本"])
+    assert len(requests) == 1
+    usage_events = [r for r in caplog.records if "rag_embedding_batch_usage" in r.getMessage()]
+    assert len(usage_events) == 1
+    msg = usage_events[0].getMessage()
+    assert "usage_prompt_tokens=12" in msg
+    assert "usage_total_tokens=34" in msg
+    # 严禁泄露密钥 / 正文。
+    for record in caplog.records:
+        m = record.getMessage()
+        assert "sk-rag038" not in m
+        assert "合成文本" not in m
+        assert "Authorization" not in m
+
+
+@pytest.mark.asyncio
+async def test_embedding_usage_unknown_when_missing(monkeypatch, caplog):
+    """成本追踪：兼容 / Mock provider 不带 usage 字段时记 -1（unknown），不报错。"""
+    caplog.set_level(logging.INFO)
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        size = len(json.loads(request.content)["input"])
+        return httpx.Response(
+            200, json={"data": [{"index": i, "embedding": [0.1, 0.9]} for i in range(size)]}
+        )
+
+    provider, _ = _embedding_provider(monkeypatch, respond)
+    vectors = await provider.embed(["合成文本"])  # 不带 usage 也必须正常返回
+    assert len(vectors) == 1
+    usage_events = [r for r in caplog.records if "rag_embedding_batch_usage" in r.getMessage()]
+    assert len(usage_events) == 1
+    msg = usage_events[0].getMessage()
+    assert "usage_prompt_tokens=-1" in msg
+    assert "usage_total_tokens=-1" in msg

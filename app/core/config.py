@@ -43,6 +43,10 @@ def retrieval_retry_effectively_disabled(
     这是配置层的静态判据，与运行期 ``retry_async`` 的 ``give_up_budget`` 分支
     同源：后者比较的是「实际剩余预算」，这里比较的是「最坏情况下的初始预算」。
     二者由 ``test_deadline_backoff_constraint_*`` 一致性用例守护。
+
+    注：``backoff_base<=0`` 表示**零退避**——``first_wait_upper=0 < deadline`` 本就
+    返回 False（重试有效），运行期 ``wait=0`` 也视为「立即重试」而非「放弃」。
+    这不是「重试被禁用」，不要把它写进告警口径。
     """
     if not enabled or max(1, int(max_attempts)) <= 1:
         return True

@@ -461,3 +461,94 @@ FAILED tests/test_rag_038_deadline_retry.py::test_native_backend_cancellation_pr
 - `tests/test_rag_033_parse_quality.py` 的 2 条失败，在**不含本卡改动**的干净基线
   `60d4293`（worktree `.workbuddy/tmp/wt038base4`）上同样复现，属 RAG-033 自身，
   与本卡无关。
+
+## 11. 第三轮整改（2026-10-08）：关闭独立复审 3 个独立阻断项
+
+第二轮后独立复审（[复审报告](../reviews/2026-10-08-RAG-038时限重试取消复审.md)）
+判「阻断关闭」，剩 3 项。本轮只修这 3 项，不扩大范围。拆分计划见
+[plan_rag_038_round3_20261008.md](plan_rag_038_round3_20261008.md)。
+
+### 11.1 P1a 同步本地检索现在可被限时等待
+
+`LocalVectorStore.hybrid_search` 是 `async def` 但方法体全是同步
+SQLModel / numpy / BM25、无 `await`，跑在事件循环线程上，`native.retrieve`
+外层的 `asyncio.wait_for` 定时器在同步阻塞期间无法触发——复审探针实测
+deadline=20ms、注入 150ms sleep，实际等了 141ms 且把超时结果收敛成 `no_hit`。
+
+修法：把整个方法体抽成同步私有方法 `_hybrid_search_sync(...)`，async 入口改为
+`await asyncio.to_thread(self._hybrid_search_sync, ...)`。`database.py` 已对
+SQLite 设 `check_same_thread=False`，一次检索内该 request-scoped Session 只在
+工作线程被触碰，事件循环在 await 期间不并发使用它，线程安全成立；
+tenant / read_scope / index_id 权限过滤逻辑原样保留，只是挪进线程。
+「有界」语义与 `run_blocking_with_deadline` 一致：线程里的底层调用无法被真正
+中断，超时按 `DeadlineExceededError` 上抛，调用方不再等。
+
+### 11.2 P1b 拒绝迟到结果
+
+`native._retrieve` 在 `await self._store.hybrid_search(...)` 返回后、
+`drop_injected_chunks` 之前，若 `current_deadline()` 已 `expired()`，抛
+`DeadlineExceededError`，不把迟到 hits 往上送（否则被当命中 / no_hit）。
+与 to_thread 双保险：to_thread 让等待有界，这里兜住「恰好在 deadline 后返回」。
+
+### 11.3 P3 零退避语义与判据对齐
+
+`backoff_base=backoff_max=0`、`deadline=1`、`max_attempts=3` 时，配置判据
+`retrieval_retry_effectively_disabled` 返回 False（认为重试有效），但
+`retry_async` 里 `wait=0` 命中旧的 `wait<=0 → give_up_budget`，实际只打一次。
+
+修法：`wait<=0` 视为「零退避、立即重试」，`outcome="retry"`，照常重试，
+只 `await sleeper(0)` 让出一次事件循环；只有 `wait>0 且 wait>=deadline.remaining()`
+才 `give_up_budget`。判据公式不用改（base=0 时 `first_wait_upper=0<deadline`
+本就返回 False），只补注释说明 `base<=0` 是「零退避立即重试」而非禁用。
+同步更新 `resilience.py` docstring、`.env.example`、README 措辞。
+
+### 11.4 成本 usage 追踪
+
+`openai_compatible._post_batch` 原来只取 `resp.json()["data"]`、丢弃 `["usage"]`。
+改为解析响应后保留 `usage.prompt_tokens` / `usage.total_tokens`（缺省记 `-1`），
+在成功路径记 `rag_embedding_batch_usage`（`batch_size` + 两个 token 字段）。
+无 usage 字段的兼容 / Mock provider 不报错。日志仍严禁 api key、请求正文、命中正文。
+
+### 11.5 验证（本轮实际运行，conda 解释器 + 隔离 SQLite）
+
+解释器 `D:\DepTooL\anaconda3\envs\ai-assistant\python.exe`，每条 pytest 用全新
+UUID basetemp 与独立 `sqlite:///./data/pytest-tmp/<uuid>.db`，`PYTHONUTF8=1`。
+
+- `pytest tests/test_rag_038_deadline_retry.py -q`：**56 passed**（原 51 + 新增 5），exit 0。
+- `pytest tests/ -k "rag or chunk or context or embedding" -q`：**788 passed,
+  3 skipped, 2 failed**，exit 1。两条失败与本卡无关（见下）。
+- `ruff check --no-cache app/rag/ tests/test_rag_038_deadline_retry.py`：
+  **All checks passed!**，exit 0。
+- `mypy app/rag/ app/core/config.py`：**Success: no issues found in 72 source files**，exit 0。
+
+新增 5 个测试：
+
+1. `test_sync_local_slow_query_is_bounded_not_no_hit`：to_thread 内注入 150ms
+   sleep、deadline=50ms，真实 `NativeRagBackend.retrieve` 抛 `DeadlineExceededError`
+   而非 no_hit，实测等待 ≤ 50ms + 容差。
+2. `test_native_rejects_late_result_after_deadline`：store 返回前把共享时钟推过
+   deadline，native 抛 `DeadlineExceededError`，不把迟到 hits 当命中。
+3. `test_zero_backoff_retries_to_attempts_limit_without_budget_giveup`：base=max=0、
+   attempts=3，可重试故障打满 3 次，等待序列 `[0.0, 0.0]`，无 `give_up_budget`，
+   outcomes `[retry, retry, give_up_attempts_exhausted]`。
+4. `test_embedding_logs_usage_when_present`：MockTransport 带 `usage` → 成功日志含
+   `usage_prompt_tokens=12 usage_total_tokens=34`，且无 key / 正文泄露。
+5. `test_embedding_usage_unknown_when_missing`：响应不带 usage → 记
+   `usage_prompt_tokens=-1 usage_total_tokens=-1`，正常返回不报错。
+
+### 11.6 未决 / 既有失败（与本卡无关，按要求不改）
+
+- `tests/test_rag_033_parse_quality.py::test_report_file_name_carries_gate_version`：
+  报告文件名日期 `20261008`（运行当日）与已提交的 `20261007` 不一致，属日历日边界，
+  本卡未触碰该文件。
+- `tests/test_rag_log_minimization.py::test_milvus_delete_failure_retains_diagnostics...`：
+  `app/rag/vectorstore/milvus.py:264` 调 `self._connect(identity, index=target_index)`，
+  测试替身 lambda 不收 `index` 关键字参数——本卡未改 `milvus.py`。
+  两条均在含本卡改动时复现于本卡未触碰的代码路径，按要求记录不修。
+
+### 11.7 非目标遵守
+
+未自动降级 BM25、未引入新队列依赖、未改 RRF k / 切分 / Embedding 模型；
+未动 `app/services/`、`app/agents/`、`app/models/`；未重建真实索引、未调用真实计费模型；
+未 push / commit / merge / deploy。
+

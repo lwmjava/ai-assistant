@@ -10062,7 +10062,7 @@ tasks:
 
   - id: "RAG-038"
     title: "检索调用 deadline、重试与取消"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:

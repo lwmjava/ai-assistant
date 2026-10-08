@@ -556,7 +556,7 @@ deadline 用 `ContextVar` 传播：`asyncio` 每次 `create_task` 会复制当�
 `embed()` 一次调用可能含几十批。检索路径（已绑定）各批共享总预算；**写入 / 导入 / 重建索引 / 语义切分路径没有绑定，每批各拿一个 `RAG_EMBED_BATCH_DEADLINE_SECONDS`（默认 20s）**。若让整通调用共用一个 8s 的检索预算，一篇 200 分块的文档会在第 16 批被 `DeadlineExceededError` 打断——哪怕每一批都在自己的超时内成功返回。写入侧单次超时同样用 `EMBEDDING_TIMEOUT_SECONDS`。
 
 **3. 总时限必须大于第一次退避，否则重试实际不会发生。**
-判据是 `RAG_RETRIEVAL_DEADLINE_SECONDS > min(BASE, MAX) × 1.2`（1.2 = 抖动上界）。不满足时第一次失败后剩余预算就不够等退避，直接走「放弃」，一次都不重试——配置看起来启用着重试，实际等价于 `MAX_ATTEMPTS=1`。启动时会打一条 `rag_retry_effectively_disabled` 告警说明「重试实际已禁用」。默认 8.0 / 0.2 / 1.5 满足该约束。
+判据是 `RAG_RETRIEVAL_DEADLINE_SECONDS > min(BASE, MAX) × 1.2`（1.2 = 抖动上界）。不满足时第一次失败后剩余预算就不够等退避，直接走「放弃」，一次都不重试——配置看起来启用着重试，实际等价于 `MAX_ATTEMPTS=1`。启动时会打一条 `rag_retry_effectively_disabled` 告警说明「重试实际已禁用」。默认 8.0 / 0.2 / 1.5 满足该约束。`BASE<=0` 是**零退避**：失败后立即重试（不等），判据自动满足，不算「重试实际已禁用」。
 
 ### pymilvus 同步调用的取消边界
 

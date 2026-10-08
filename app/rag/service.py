@@ -894,13 +894,31 @@ class RAGService:
         return drop_injected_chunks(expanded, keep=len(expanded))
 
     def make_retriever(self, top_k: int | None = None) -> HybridRetriever:
-        """生成可注入 Agent 管线的混合检索器。"""
-        return HybridRetriever(
+        """生成可注入 Agent 管线的混合检索器。
+
+        RAG-030：把 ``_expand_parent_chunks``（Service 层，持 session）绑定为父块展开回调，
+        使对话 / Agent 实际上下文在阈值过滤后受控选入已复核、已去重的父块；与 RAG-016
+        搜索路径始终展开父块的既有行为一致。绑定的 ``index_id`` 与搜索读路径同源。
+        本卡范围裁决后不再保留独立配置开关（``RAG_DIALOG_PARENT_EXPANSION`` 提案已收回，
+        因 ``app/core/config.py`` 不在本卡 allowed_paths）；回滚方式为回退本卡提交。
+        """
+        retriever = HybridRetriever(
             self._backend,
             self.tenant_id,
             top_k or settings.RAG_TOP_K,
             read_scope=self._read_scope,
         )
+        index_id = self._read_index_id()
+        retriever.parent_expander = self._dialog_parent_expander(index_id)
+        return retriever
+
+    def _dialog_parent_expander(self, index_id: str | None):
+        """构造对话路径用的父块展开闭包：绑定 index_id，每把 query 透传。"""
+
+        async def expander(hits: list[ChunkResult], *, query: str = "") -> list[ChunkResult]:
+            return await self._expand_parent_chunks(hits, query=query, index_id=index_id)
+
+        return expander
 
     # ── 文档管理 ────────────────────────────────────
     def _can_access(self, doc: Document, user: User) -> bool:

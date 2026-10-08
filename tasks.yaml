@@ -9639,7 +9639,7 @@ tasks:
 
   - id: "RAG-030"
     title: "对话父块受控组装"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -9683,6 +9683,7 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "ADR-0005已Accepted；RAG-026/RAG-029未完成，待授权与预算基础就绪后实施，不重复架构方向裁决。"
+      acceptance_record: "2026-10-08：关闭。对话父块受控组装：HybridRetriever 阈值过滤后经 ParentExpander 受控展开父块（复用 RAG-016 _expand_parent_chunks 的租户/deleted/index_id/uploader/is_current 过滤、两次注入剔除与 seen 去重，父块紧跟触发子块），RAGService.make_retriever 始终绑定 _dialog_parent_expander，同步/流式共用；定位元信息随 ChunkResult 保留，selected 只表示实际选入。证据：tests/test_rag_030_dialog_parent_assembly.py 12 条（5 接线+7 集成）+ 独立入口级审查 11 反例全 PASS（docs/reviews/2026-10-08-RAG-030对话父块独立审查.md，含真·跨租户父块、软删文档父块、注入父块、父子双超预算、父块缺失、uploader 范围、实跑 run_stream 流式入口）；关联回归 138/122 passed；全量 pytest 1198 passed/2 failed（RAG-033 报告日期漂移、milvus 删除 mock 签名，均为基线既有失败，SUT 不在本卡 diff）；ruff/mypy 退出 0。范围裁决：实施中曾新增 app/core/config.py 回滚开关 RAG_DIALOG_PARENT_EXPANSION，该文件不在 allowed_paths 且向用户请求扩展未获答复，按治理保守原则收回（config.py 已还原为空 diff）；对话父块展开默认开启，回滚＝回退本卡提交；后续用户批准可另补开关。依赖链：RAG-016/026/029 当前 HEAD 关键验收路径（safe_parent_expansion/uploader_scope/rag029 专项）抽查通过，无未决 P1。未验证：真实 Embedding/LLM 生成与检索质量（non-goal，未发起真实调用）；Fast 短路径与 Supervisor 未单独实跑（与 make_retriever+assemble_retrieval 结构同源，审查者注明）；全量两条既有失败非本卡引入。P3 提示（不阻塞）：无 env 急停开关；父块超预算时按 RAG-029 不补位规则连带丢弃兄弟块。"
       nightly:
         eligible: false
         production_access: false

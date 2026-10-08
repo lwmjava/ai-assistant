@@ -7,6 +7,7 @@
 """
 
 import logging
+from typing import Protocol
 
 from app.core.config import settings
 from app.rag.access import ReadScope
@@ -24,6 +25,18 @@ from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus, classify
 from app.rag.vectorstore.base import ChunkResult
 
 logger = logging.getLogger(__name__)
+
+
+class ParentExpander(Protocol):
+    """RAG-030：对话父块受控展开回调协议（由 ``RAGService`` 在 Service 层实现）。
+
+    接收阈值过滤后的子块，返回「子块 + 已授权 / 版本 / 注入复核且去重的父块」。
+    Context Builder 不直接访问数据库，父块回查一律走此回调。
+    """
+
+    async def __call__(
+        self, hits: list[ChunkResult], *, query: str = ""
+    ) -> list[ChunkResult]: ...
 
 # 前导说明的唯一定义在 app.rag.context_builder，避免两处围栏文案漂移。
 _UNTRUSTED_PREAMBLE = UNTRUSTED_PREAMBLE
@@ -112,12 +125,19 @@ class HybridRetriever:
         tenant_id: str,
         top_k: int = 5,
         read_scope: ReadScope | None = None,
+        parent_expander: ParentExpander | None = None,
     ) -> None:
         self.backend = backend
         self.tenant_id = tenant_id
         self.top_k = top_k
         # 鉴权主体的有效读范围；None 等同同租户全可读，不构成 uploader 隔离。
         self.read_scope = read_scope
+        # RAG-030：对话父块受控展开回调。协议为
+        # ``async def expander(kept: list[ChunkResult], *, query: str) -> list[ChunkResult]``，
+        # 由 ``RAGService.make_retriever`` 绑定到 ``_expand_parent_chunks``（Service 层，
+        # 持 session，负责授权 / 版本 / 注入复核与去重）。None = 旧读路径（子块 only）。
+        # Context Builder 不直接访问数据库，父块回查一律走此回调。
+        self.parent_expander = parent_expander
         self.last_hits: list[ChunkResult] = []
         # 上一次检索中**实际进入模型 payload** 的命中。由管线在按块预算组装后
         # 回写（见 app.agents.pipeline._fill_retrieval）。``last_hits`` 是阈值过滤
@@ -167,6 +187,11 @@ class HybridRetriever:
             )
         threshold = settings.RAG_MIN_SIMILARITY
         kept = [hit for hit in results if hit.similarity >= threshold]
+        # RAG-030：阈值过滤后再受控展开父块。父块继承触发子块的 similarity，不单独
+        # 评分、不单独进候选，因此不可能让低分文档的父块越阈；展开在 Service 层
+        # （``_expand_parent_chunks``）重做授权 / 版本 / 注入复核并去重。展开失败时
+        # 回退到已通过 SQL 过滤与阈值的安全子块，不向上炸、不丢证据。
+        expanded = await self._expand_parents(kept, search_text)
         dropped = len(results) - len(kept)
         status = classify(error_type=error_type, candidates=len(results), kept=len(kept))
         if dropped > 0:
@@ -179,7 +204,7 @@ class HybridRetriever:
             )
         outcome = RetrievalOutcome(
             status=status,
-            hits=list(kept),
+            hits=list(expanded),
             dropped_by_threshold=max(0, dropped),
             backend=getattr(self.backend, "name", ""),
             error_type=error_type,
@@ -188,12 +213,36 @@ class HybridRetriever:
         if error_type:
             # 检索未完成：不注入任何资料，也不冒充「没有相关资料」。
             return ""
-        if kept:
-            return format_context(kept)
+        if expanded:
+            return format_context(expanded)
         # 全部被低分过滤：拒答，给出明确提示语，不硬凑。
         if results:
             return settings.RAG_REFUSE_MESSAGE
         return ""
+
+    async def _expand_parents(
+        self, kept: list[ChunkResult], query: str
+    ) -> list[ChunkResult]:
+        """RAG-030：对阈值过滤后的子块受控展开父块。
+
+        - 未绑定 ``parent_expander``（开关关闭 / 旧读路径）或 ``kept`` 为空：原样返回，
+          不触发任何数据库回查。
+        - expander 正常返回：用其结果（已授权 / 版本 / 注入复核 + 去重 + 定位元信息）。
+        - expander 抛异常：记 warning 并回退到原 ``kept``——父块是「证据增强」，
+          其回查失败不应让整条对话检索失败，也不应丢掉已通过 SQL 过滤与阈值的子块。
+        """
+        expander = self.parent_expander
+        if expander is None or not kept:
+            return kept
+        try:
+            expanded = await expander(kept, query=query)
+        except Exception:  # noqa: BLE001 — 父块回查失败降级为子块 only
+            logger.exception(
+                "dialog_parent_expansion_failed_falling_back_to_child_hits tenant=%s",
+                self.tenant_id,
+            )
+            return kept
+        return list(expanded)
 
     def _settle(self, outcome: RetrievalOutcome) -> None:
         """写入上一次检索的终态与命中，供入口读取。"""

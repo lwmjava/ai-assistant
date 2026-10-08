@@ -41,7 +41,13 @@ def format_context(chunks: list[ChunkResult]) -> str:
     return _UNTRUSTED_PREAMBLE + "\n\n".join(blocks) + "\n" + FENCE_CLOSE
 
 
-def assemble_retrieval(retriever: object, snippet: str) -> ContextPayload:
+def assemble_retrieval(
+    retriever: object,
+    snippet: str,
+    memory: str = "",
+    *,
+    trust_structured: bool = True,
+) -> ContextPayload:
     """把一次检索的结果按块预算组装成送模型的 RAG 段落（**唯一入口**）。
 
     所有真实编排路径都必须调它，否则「未选块不出现在来源」在那条路径上就是空话：
@@ -50,6 +56,15 @@ def assemble_retrieval(retriever: object, snippet: str) -> ContextPayload:
     - LangGraph 短路径 ``app.agents.fast_path.iter_fast_path``
     - LangGraph Supervisor ``SupervisorGraph._retrieve``
 
+    ``memory`` 是检索前已有的会话记忆（``state.context``）。两条分支都先按
+    ``RAG_MEMORY_CONTEXT_CHARS`` 独立裁剪记忆，再按 ``RAG_CONTEXT_CHARS`` 选块——
+    记忆与 RAG 各用各的预算，互不挤占。调用方传空串即不注入记忆。
+
+    ``trust_structured=False`` 表示**本轮检索没有可信结果**（调用方已收敛为
+    unavailable）：此时即便检索器上一轮残留了 ``last_hits``，也**不得**把它当本轮
+    证据组装——直接走记忆-only 降级并把 ``last_selected`` 清空，否则会把陈旧命中
+    渲染进模型、并在对外来源里跨轮泄漏（P2-01）。
+
     两条分支都写回 ``retriever.last_selected``：能证明就写真实选入列表，证明不了
     就写空列表——**绝不留下 None**，否则入口会回落全量 ``last_hits``，又变成
     「展示的来源多于实际证据」。
@@ -57,9 +72,9 @@ def assemble_retrieval(retriever: object, snippet: str) -> ContextPayload:
     结构化命中一块都装不下时记一条明确日志（预算值、块数、最大块长度），
     调用方据此向用户说明「证据超出预算」，而不是伪装成「没有资料」。
     """
-    hits = structured_hits(retriever)
+    hits = structured_hits(retriever) if trust_structured else []
     if hits:
-        payload = build_context("", hits)
+        payload = build_context(memory, hits)
         _set_last_selected(retriever, payload.selected)
         if not payload.selected:
             logger.warning(
@@ -78,7 +93,7 @@ def assemble_retrieval(retriever: object, snippet: str) -> ContextPayload:
         return payload
     # 降级：拿不到结构化命中（自定义 Retriever 只给字符串）。围栏闭合由
     # build_from_rag_text 保证；来源无法证明，因此声明为空。
-    payload = build_from_rag_text("", snippet)
+    payload = build_from_rag_text(memory, snippet)
     _set_last_selected(retriever, [])
     return payload
 

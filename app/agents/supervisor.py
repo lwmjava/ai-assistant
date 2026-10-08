@@ -270,7 +270,11 @@ class SupervisorGraph:
         # RAG-029：与自研管线、短路径共用同一个按块预算的 Context Builder，
         # 否则 Supervisor 路径的模型输入不受 RAG_CONTEXT_CHARS 约束，
         # last_selected 也不会被回写（来源会回落成全部命中）。
-        rag_text = assemble_retrieval(self.retriever, snippet).text
+        # unavailable 时不信任残留 last_hits（P2-01）：走降级并清空来源。
+        evidence_trusted = outcome.status != RetrievalStatus.UNAVAILABLE
+        rag_text = assemble_retrieval(
+            self.retriever, snippet, trust_structured=evidence_trusted
+        ).text
         if rag_text.strip():
             state.context = (
                 f"{state.context}\n\n## 知识库检索结果\n{rag_text}" if state.context else rag_text

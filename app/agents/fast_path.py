@@ -133,7 +133,13 @@ async def iter_fast_path(
             # RAG-029：检索结果必须过一遍按块预算的 Context Builder，不能把
             # retrieve() 的原始字符串整段塞进提示词。短路径是知识库问答的默认
             # 路径，绕过它等于预算与「来源 == 实际证据」在这条路径上全部失效。
-            rag_text = assemble_retrieval(retriever, snippet).text
+            # unavailable 时不信任残留 last_hits（P2-01）：走记忆-only 降级并清空来源。
+            evidence_trusted = not (
+                outcome is not None and outcome.status == RetrievalStatus.UNAVAILABLE
+            )
+            rag_text = assemble_retrieval(
+                retriever, snippet, trust_structured=evidence_trusted
+            ).text
             if outcome is not None:
                 state.retrieval_status = outcome.status.value
                 # 检索状态要求是给模型的指令，必须进 system，不能塞进

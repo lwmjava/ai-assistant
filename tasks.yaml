@@ -9583,7 +9583,7 @@ tasks:
 
   - id: "RAG-029"
     title: "按块上下文组装与真实来源"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -9630,6 +9630,7 @@ tasks:
       owner: "个人开发者"
       blocked_by: "RAG-028未完成；ADR-0005第9节已批准预算取舍与selected来源方向，具体分配/超限契约按有证据的单卡计划细化。"
       progress: "2026-10-06：用户批准完整证据块、输出预留、无关/较旧历史先缩减，不截坏围栏；selected仅表示实际选入，不宣称答案引用正确。"
+      acceptance_record: "2026-10-08：关闭。原实现（e246fde+6aae8c7）经2026-10-08独立复审判不建议关闭（H-01默认Pipeline tuple命中截半块且未接统一入口/H-02预算耗尽无确定性披露/H-03降级不重置selected），本轮按docs/plans/plan_rag_029_pipeline_alignment_20261008.md补修：默认管线改调共享入口assemble_retrieval（新增默认空值memory参数与trust_structured开关，Memory/RAG独立预算贯通三条路径），结构化命中非空但selected为空时把CONTEXT_BUDGET_EXHAUSTED加入模型指令与最终确定性披露（同步/流式均可见），降级路径清空last_selected，修正context_builder模块过时注释。先落3条失败反例（H-01/H-02同步流式/H-03）复现后修复。独立入口级审查（docs/reviews/2026-10-08-RAG-029按块上下文复审-第二轮.md）用真实入口构造8个反例，7 PASS/1 FAIL，登记P2-01：retrieve抛异常（unavailable）后管线仍用残留last_hits组装证据，陈旧正文进模型payload且sources报陈旧来源，与「检索不可用、不含知识库内容」披露矛盾；实现者原测试用last_hits=[]恰好绕过该分支。按Review驱动修复回路：新增3条CE-04反例（pipeline/fast_path/supervisor_unavailable_ignores_residual_hits，真实两轮run/_retrieve + _RecordingLLM记录模型实际user文本）先红后绿，三条路径在unavailable时传trust_structured=False，不读残留last_hits、selected清空、payload无陈旧内容、披露不被超预算覆盖。第三轮独立复核（docs/reviews/2026-10-08-RAG-029按块上下文复审-第三轮.md）：8反例全PASS、无新缺陷、关闭对账表P2-01行证据修正为E2（承认last_hits=[]过窄），判可关闭。证据：tests/test_rag_029_pipeline_alignment.py 16条+专项关联80 passed；全量pytest 1186 passed/2 failed（test_rag_033_parse_quality日期漂移与test_rag_log_minimization milvus mock index签名，均为基线既有失败，SUT不在本卡diff）；ruff/mypy退出0；前端typecheck/build退出0。依赖链：RAG-028无未决P1，当前HEAD关键验收58 passed独立复核通过。未验证：真实LLM/Embedding检索质量与生成评测（non-goal，未发起真实调用）；全量两条既有失败非本卡引入。"
       nightly:
         eligible: false
         production_access: false

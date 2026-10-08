@@ -37,10 +37,14 @@ from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
 from app.llm.routing import LLMUnavailableError
-from app.rag.context_builder import build_context, build_from_rag_text
+from app.rag.context_builder import (
+    CONTEXT_BUDGET_EXHAUSTED,
+    ContextPayload,
+    structured_hits,
+)
 from app.rag.context_merge import merge_memory_and_rag, reject_untrusted_tool_call
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
-from app.rag.vectorstore.base import ChunkResult
+from app.rag.retriever import assemble_retrieval
 
 logger = logging.getLogger(__name__)
 
@@ -469,38 +473,54 @@ class AgentPipeline:
                 outcome = last if isinstance(last, RetrievalOutcome) else None
             if outcome is not None:
                 self._record_outcome(state, outcome)
-        state.context = self._assemble_context(memory, rag)
+        # 检索没跑成（unavailable）时，检索器上一轮残留的 last_hits 不可信：
+        # 不得把它当本轮证据组装，否则陈旧命中会进模型 payload 并跨轮泄漏来源（P2-01）。
+        evidence_trusted = not (
+            outcome is not None and outcome.status == RetrievalStatus.UNAVAILABLE
+        )
+        payload = self._assemble_context(memory, rag, evidence_trusted=evidence_trusted)
+        state.context = payload.text
+        self._apply_budget_exhausted_notice(state)
 
-    def _assemble_context(self, memory: str, rag: str) -> str:
-        """按块预算组装上下文；命中可得时同时回写 ``last_selected``。"""
-        hits = self._structured_hits()
-        if hits:
-            payload = build_context(memory, hits)
-            # 回写「实际进入 payload 的命中」，供入口生成来源；未选块不出现在来源里。
-            # 用 setattr：Retriever 是协议，不要求实现方有 last_selected 字段。
-            setattr(self.retriever, "last_selected", payload.selected)
-            if payload.dropped:
-                logger.info(
-                    "rag_context_budget_dropped selected=%s dropped=%s reasons=%s",
-                    len(payload.selected),
-                    len(payload.dropped),
-                    payload.drop_reasons,
-                )
-            return payload.text
+    def _assemble_context(
+        self, memory: str, rag: str, *, evidence_trusted: bool = True
+    ) -> ContextPayload:
+        """按块预算组装上下文；命中可得时同时回写 ``last_selected``。
+
+        统一走共享入口 ``assemble_retrieval``（与 Fast RAG / Supervisor 同源），
+        不再维护第二份 list-only 组装：tuple 等任意合法 Sequence 命中都按整块
+        选入，降级分支也会把 ``last_selected`` 清空（H-01/H-03）。
+
+        ``evidence_trusted=False``（本轮 unavailable）时不读取检索器的结构化命中，
+        走记忆-only 降级并清空 ``last_selected``（P2-01）。
+        """
         if self.retriever is None:
-            return merge_memory_and_rag(memory, rag)
-        # 降级：只有整段字符串（自定义 Retriever 协议实现）。围栏闭合由
-        # build_from_rag_text 保证——先给闭合标记留位置再截断。
-        return build_from_rag_text(memory, rag).text
+            # 无检索器：保留既有「记忆 + 整段字符串」合并行为，不经过按块预算。
+            return ContextPayload(text=merge_memory_and_rag(memory, rag))
+        return assemble_retrieval(
+            self.retriever, rag, memory=memory, trust_structured=evidence_trusted
+        )
 
-    def _structured_hits(self) -> list[ChunkResult]:
-        """取检索器给出的结构化命中；拿不到或不是 ChunkResult 则返回空列表。"""
-        raw = getattr(self.retriever, "last_hits", None)
-        if not isinstance(raw, list) or not raw:
-            return []
-        if not all(isinstance(hit, ChunkResult) for hit in raw):
-            return []
-        return list(raw)
+    def _apply_budget_exhausted_notice(self, state: AgentState) -> None:
+        """结构化命中非空但一块都装不下时，把「证据超出预算」同时送模型与用户。
+
+        ADR-0005 §9：不能安全装入时必须明确超限/证据不足，不能伪装成「检索无命中」。
+        送模型：补进外部上下文；送用户：写进 ``retrieval_disclosure``，同步经
+        ``_with_disclosure`` 前置、流式在正文前先吐出，两条入口都可见（H-02）。
+        """
+        if self.retriever is None or not structured_hits(self.retriever):
+            return
+        if getattr(self.retriever, "last_selected", None):
+            return  # 已有实际选入，不是预算耗尽
+        # 检索本身没跑成（unavailable / no_hit / below_threshold）已有各自披露，
+        # 不拿「超预算」覆盖它。
+        if state.retrieval_status not in ("", "ok"):
+            return
+        if CONTEXT_BUDGET_EXHAUSTED not in state.context:
+            suffix = CONTEXT_BUDGET_EXHAUSTED
+            state.context = f"{state.context}\n\n{suffix}" if state.context else suffix
+        if not state.retrieval_disclosure:
+            state.retrieval_disclosure = CONTEXT_BUDGET_EXHAUSTED
 
     @staticmethod
     def _record_outcome(state: AgentState, outcome: RetrievalOutcome) -> None:

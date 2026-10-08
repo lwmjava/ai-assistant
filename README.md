@@ -400,6 +400,9 @@ docker compose up -d --build
 | `RAG_LLM_BOUNDARY_ENABLED` | LLM 辅助切分边界开关。结构保护后让模型只建议句子序号，代码切取原文；失败自动规则降级 | `false` |
 | `RAG_LLM_BOUNDARY_MAX_CALLS` | 单篇文档最多几次边界建议 LLM 调用（费用护栏） | `3` |
 | `RAG_LLM_BOUNDARY_MAX_CHARS` | 单次发给模型的正文上限（字符），超过则不调用、规则切分 | `1500` |
+| `RAG_SECTION_SUMMARY_ENABLED` | 章节摘要开关。为源文档版本绑定的派生数据，不进向量检索、不替代原文；源版本软删/被替换后摘要立即不可读 | `false` |
+| `RAG_SECTION_SUMMARY_MAX_CALLS` | 单任务最多几次摘要 LLM 调用（费用护栏） | `8` |
+| `RAG_SECTION_SUMMARY_MAX_CHARS_PER_BATCH` | 单批正文上限（字符），超过则切批逐批摘要后合并 | `4000` |
 | `RAG_LANGCHAIN_SPLITTER` | LangChain 切分器（当前仅 `recursive`） | `recursive` |
 | `RAG_LLAMAINDEX_SPLITTER` | LlamaIndex 切分器：`sentence` / `markdown` | `sentence` |
 | `RAG_OCR_ENABLED` | 是否启用扫描版 PDF OCR | `false` |

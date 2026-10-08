@@ -207,6 +207,17 @@ class Settings(BaseSettings):
     RAG_LLM_BOUNDARY_MAX_OUTPUT_TOKENS: int = 256
     # 单次边界建议调用超时（秒）。
     RAG_LLM_BOUNDARY_TIMEOUT_SECONDS: float = 15.0
+    # ── RAG-040 章节摘要（默认关闭；派生数据，不进检索向量，不替代原文块）──
+    # 章节摘要是可选、版本绑定的派生数据；原文仍是事实与引用依据（ADR-0005 §3/§9）。
+    RAG_SECTION_SUMMARY_ENABLED: bool = False
+    # 单任务最多发起几次摘要调用（费用护栏）。
+    RAG_SECTION_SUMMARY_MAX_CALLS: int = 8
+    # 单批正文字符上限：大章节超此值切批逐批摘要后合并。
+    RAG_SECTION_SUMMARY_MAX_CHARS_PER_BATCH: int = 4000
+    # 单条摘要输出预留 token。
+    RAG_SECTION_SUMMARY_MAX_OUTPUT_TOKENS: int = 256
+    # 单次摘要调用超时（秒）。
+    RAG_SECTION_SUMMARY_TIMEOUT_SECONDS: float = 20.0
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
     RAG_MIN_SIMILARITY: float = 0.4  # 稠密相似度低于该值可少返回或全不返回（0.4 为 2026-10-02 拍板阈值）
     # 全被低分过滤时的拒答提示

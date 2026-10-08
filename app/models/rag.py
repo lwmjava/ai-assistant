@@ -267,3 +267,76 @@ class OperationConfirmation(SQLModel, TimestampMixin, table=True):
     document_id: str = Field(index=True)
     action: str = Field(index=True)
     consumed_at: datetime | None = Field(default=None, index=True)
+
+
+class SectionSummaryJobStatus(StrEnum):
+    """章节摘要独立任务状态机（RAG-040）。"""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    PARTIAL = "partial"
+    FAILED = "failed"
+
+
+class SectionSummaryStatus(StrEnum):
+    """单条章节摘要状态。"""
+
+    READY = "ready"
+    FAILED = "failed"
+
+
+class SectionSummaryJob(SQLModel, TimestampMixin, table=True):
+    """一次「为某文档版本生成章节摘要」的独立状态任务（RAG-040）。
+
+    仿 ``ImportJob`` 的状态机：pending → running → success/partial/failed。
+    任务与摘要都是**派生数据**：默认关闭，不进检索向量，不替代原文块。
+    绑定源版本身份（``source_version_hash`` = ``Document.content_hash``）、切分计划
+    版本与模型/Prompt/协议版本；重解析后版本变化，旧摘要随源版本失效规则不可读。
+    """
+
+    __tablename__ = "rag_section_summary_jobs"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    document_id: str = Field(foreign_key="rag_documents.id", index=True)
+    status: str = Field(default=SectionSummaryJobStatus.PENDING.value, index=True)
+    source_version_hash: str = Field(default="", index=True)
+    chunk_plan_version: str = Field(default="")
+    model: str = Field(default="")
+    prompt_version: str = Field(default="")
+    protocol_version: str = Field(default="")
+    calls_used: int = Field(default=0)
+    max_calls: int = Field(default=8)
+    chapters_total: int = Field(default=0)
+    chapters_ready: int = Field(default=0)
+    chapters_failed: int = Field(default=0)
+    error: str | None = Field(default=None)
+    attempt_count: int = Field(default=0)
+    max_attempts: int = Field(default=3)
+
+
+class SectionSummary(SQLModel, TimestampMixin, table=True):
+    """一条绑定到源文档版本的章节摘要（派生数据，RAG-040）。
+
+    ``chunk_id`` 指向被摘要的父块（章节）；``source_chunk_ids``（JSON）记录喂入的
+    原文块 ID，供原文回查。摘要继承源文档的读授权：源版本软删 / 被替换 / 跨租户时
+    读取立即拒绝（``app.rag.section_summaries.get_readable_summary``），不自行物理删除。
+    """
+
+    __tablename__ = "rag_section_summaries"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    document_id: str = Field(foreign_key="rag_documents.id", index=True)
+    chunk_id: str = Field(foreign_key="rag_document_chunks.id", index=True)
+    source_version_hash: str = Field(default="", index=True)
+    chunk_plan_version: str = Field(default="")
+    model: str = Field(default="")
+    prompt_version: str = Field(default="")
+    protocol_version: str = Field(default="")
+    summary_text: str | None = Field(default=None)
+    # 喂入摘要的原文块 ID 列表（JSON 数组字符串），供原文回查。
+    source_chunk_ids: str | None = Field(default=None)
+    status: str = Field(default=SectionSummaryStatus.READY.value, index=True)
+    error: str | None = Field(default=None)

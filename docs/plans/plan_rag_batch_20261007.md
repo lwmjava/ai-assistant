@@ -197,3 +197,19 @@ cd frontend && npm run typecheck && npm run build
 | `.workbuddy/tmp/` 取证脚本 | 各卡的 probe / mutate 脚本与 json | 保留到交付确认后再清，便于复核 |
 | 遗留 worktree | `.worktrees/r3-21416f1`、`.workbuddy/tmp/wt032r3` 等 | 用 `git worktree remove` + `git worktree prune`；**`C:/Users/123/.codex/worktrees/92a2/ai-assistant`（分支 `codex/rag-021`）不是本批的，不要动** |
 | 仓库根 `uutest5.py`（1117 行，untracked） | RAG-034 期间的调试脚本残留，路径用的是正斜杠 `evals/corpus`（Windows 下可用），非缺陷但是垃圾 | 删除或移入 `.workbuddy/tmp/`；属删除操作，执行前需明确 |
+
+## 14. 2026-10-08 接续实测（更新当前准入，前文保留历史）
+
+详见[接续核对与基线记录](record_rag_resume_20261008.md)。实际HEAD为738aef4；15卡全部在tasks.yaml。3项无关既有文档删除不触碰。用户已启动Docker Desktop并批准[具体调用/费用范围](proposal_rag_real_evaluation_authorization_20261008.md)，不再重复申请同一费用。
+
+| 卡 | 当前准入/进度 | 一手证据 |
+|---|---|---|
+| RAG-032 | running，重新整改远端重建闭环；不能沿用第三轮建议盲目关闭 | [独立收尾复核](../reviews/2026-10-08-RAG-032收尾复核.md)：77 passed/1 skipped（含3项收尾探针），另2条业务断言失败：重建漏写外部向量、preparing误清旧active；[整改计划](plan_rag_032_remote_rebuild_fix_20261008.md)已落盘 |
+| RAG-015 | blocked前置关闭资格；历史真实切换报告pass仍有效，但032原卡新collection重建验收不同 | 需032修复及最终受影响独立审查后复核，不能把不同上传集合的切换当成新模型重建 |
+| RAG-036 | blocked前置，语义补证继续；全零修复已实际红绿 | 3个空稀疏反例从翻倍分数变为单Dense贡献；真实Milvus/Embedding证据和独立复核待完成；不改RRF |
+| RAG-029 | running（待整改），不供030作为done前置 | [独立复审](../reviews/2026-10-08-RAG-029按块上下文复审.md)：64项关联通过，3条独立业务失败（tuple/预算披露/旧selected） |
+| RAG-038 | running（待整改） | [独立复审](../reviews/2026-10-08-RAG-038时限重试取消复审.md)：144项通过，Local同步超deadline结果、成本usage、零退避仍需处理 |
+| RAG-030 | pending，029实测关闭后准入 | 最小集成工程审查只读完成，尚未改业务 |
+| RAG-035 | pending；费用具体授权已获批准，人工生成结果确认与发布数值仍待办 | 35个非holdout合成案例；真实费用/数据授权见登记，不能由费用批准推断质量通过 |
+
+整仓mypy与前端typecheck/build已通过开工基线；RAG首次子集7失败已隔离6项Windows临时路径失败（短新目录复跑import_jobs 20通过），另1项跨天报告名断言需修验证设施。Ruff仅切换脚本E501，后续在015范围窄修。最终整合回归尚未执行，批次未完成。清理与行尾归一化保持未做，删除需明确授权。

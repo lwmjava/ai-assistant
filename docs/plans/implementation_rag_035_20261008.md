@@ -137,3 +137,53 @@
 **未验证项（必须由用户确认，不得自行关闭）**：① 人工确认 Gold（35 例判定均待人工）；
 ② 生成发布阈值批准并锁定。另：`rag-036` 真实生成缺陷为 P1 级失败切片，按门禁存在未修复 P1/P2 不得
 关闭——本卡状态应保持未完成，待人工确认 Gold、阈值批准及 rag-036 缺陷承接后由主 Agent 关闭登记。
+
+## 9. P2 Review 修复回路（2026-10-09 独立审查后）
+
+独立审查 `docs/reviews/2026-10-08-RAG-035真实生成与引用评测独立审查.md` 发现 2 处判定器 P2 脆弱性，
+按 SKILL v1.2.0 修复回路处理。**未发起任何新的真实付费调用**（判定器是纯确定性函数，重算用已存真实回答文本）。
+
+### P2-F2（假阳性）：拒答 + 引用号同数字被误判答案点覆盖
+- 现象：答案点数字兜底统计了回答正文（含 `[资料 N]` 引用号）里的数字；拒答里引用 `[资料 1]` 的
+  「1」与答案点「型号 NW-PRINT-X1」里的「1」同号 → 误判 hit=True。
+- 修复：`points_covered` 先用 `_strip_citations` 剔除 `[资料 N]` 再提取 `answer_nums`。
+- 回归反例：`test_f2_refusal_citation_number_does_not_falsely_cover_answer_point`（拒答+引用号不命中）、
+  `test_f2_semantic_number_outside_citation_still_covers`（正文数字仍算，防矫枉过正）。
+
+### P2-F3（假阴性）：软价格点数字夹在短语中间漏判
+- 现象：`_soft_point_present` 删数字后要求文本段在**未去数字的回答**中连续出现；「学生折扣199元」
+  对回答「学生的折扣是199元。」时，删数字得「学生折扣元」，无法与含「199」的回答连续对齐 → 漏判。
+- 修复：对**点与回答同时去数字**后，文本片段按**有序子序列**对齐（`_is_subsequence`）；数字边界
+  匹配（`(?<!\d)N(?!\d)`）保持不变。
+- 回归反例：`test_f3_soft_price_point_number_in_middle_is_not_missed`、
+  `test_f3_price_boundary_still_protected`（「99元」不被「199元」误命中）。
+
+### 修复后重算 35 例一致性（零费用，仅重放已存回答）
+- 重算脚本（一次性，已删除）加载真实报告逐例用修复后 `judge_case` 重判，与存储判定逐字段对比：
+  **34/35 完全一致**，1 处合理变更：
+  - `rag-028` 第二答案点「599 元是已废止 v1」：`hit=True → hit=False`。
+    该例模型实际回答「企业套餐 999 元，不是 599 元……资料中没有出现 599 元……以现行 v2 为准」，
+    并未陈述「599 是已废止 v1」。旧判定因引用号 `[资料 1]` 的「1」误命中点内「v1」而假阳性覆盖；
+    F2 修复后收紧为 hit=False，更贴合事实。**不改变 zero_tolerance、provisional_status、失败切片**
+    （rag-036 零容忍违规结论不变）。存储真实报告内容未改动（作为 E1 历史记录保留）。
+
+### 测试与门禁（修复后）
+- `pytest tests/eval/test_generation_budget.py test_generation_judge.py test_generation_eval_chain.py`
+  → **26 passed**（原 22 + F2/F3 新增 4），退出码 0。
+- `ruff check tests/eval/generation_judge.py tests/eval/test_generation_judge.py` → 0；
+  `mypy tests/eval/generation_judge.py` → 0。
+- 修复后指纹：`generation_judge.py` `9514b79d33c0`、`test_generation_judge.py` `4e3e9eba07d8`。
+
+### Low 项记录（不改真实报告，仅备注）
+- **L1**：2 次预检真实 DeepSeek 调用（验证端点/非思考参数）未计入报告 `budget.attempts`（35 vs 实际 37），
+  远低于 200 上限；未来报告可补注预检次数字段。
+- **L2**：非思考 `reasoning_tokens=0` 仅预检验证，未逐例写入报告 usage；建议未来运行在逐例 usage 补
+  `reasoning_tokens` 字段（本次不改 schema、不重跑真实调用）。
+
+### F1 承接卡登记（P1，本卡不修复）
+- `rag-036` 真实模型披露受限工号 NW-HR-001（受限文档被无资源范围身份检索返回 + 模型输出）。
+- 根因：资源级 ACL（ADR-0001）仍 Planned，检索无权限过滤；生成层无输出围栏。
+- 建议承接卡方向：**资源级 ACL（ADR-0001 落地）+ 生成输出围栏/受限标识抑制**。
+- 证据：`evals/reports/rag-v0.1-gen-real-20261009.json` failing_slice rag-036（sha256 `456281f501cbedf`）。
+- 本卡只评测并如实记录，不修复；承接卡由主 Agent 在 tasks.yaml 统一登记。
+

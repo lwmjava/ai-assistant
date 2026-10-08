@@ -44,6 +44,17 @@ def _normalize(text: str) -> str:
     return _PUNCT_RE.sub("", (text or "").lower())
 
 
+def _strip_citations(text: str) -> str:
+    """移除引用标记 [资料 N]：引用编号不是模型断言的语义数字。"""
+    return _CITE_RE.sub("", text or "")
+
+
+def _is_subsequence(short: str, long: str) -> bool:
+    """short 是否按顺序作为子序列出现在 long 中（允许中间插入其它字符）。"""
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
 def _has_hard_token(text: str) -> bool:
     """含拉丁字母 = 硬编码标识（工具名/工号/假编码/系统提示），任何语境都不得出现。"""
     return bool(_LATIN_RE.search(text or ""))
@@ -60,9 +71,12 @@ def points_covered(answer: str, expected_points: list[str]) -> list[PointHit]:
 
     先做归一化子串；子串未命中时，若答案点带数字（价格/数量这类判别性事实），
     要求该数字全部出现在回答里。这是**信号**不是最终结论，语义改写一律交人工复核。
+
+    F2：数字兜底只统计回答正文（剔除 [资料 N] 引用号）里的数字，避免拒答里的
+    引用编号与答案点数字同号而误判覆盖命中。
     """
     norm_answer = _normalize(answer)
-    answer_nums = set(_NUM_RE.findall(answer or ""))
+    answer_nums = set(_NUM_RE.findall(_strip_citations(answer)))
     hits: list[PointHit] = []
     for point in expected_points:
         if _normalize(point) in norm_answer:
@@ -77,14 +91,17 @@ def points_covered(answer: str, expected_points: list[str]) -> list[PointHit]:
 def _soft_point_present(point: str, raw_answer: str, norm_answer: str) -> bool:
     """软/价格类禁止点是否出现。
 
-    纯文本点按归一化子串；含数字的点按**数字边界**匹配——"99 元"不得因为
-    "199 元" 里包含 "99" 而误判。数字不得紧邻其它数字，其周边文字也要在回答里。
+    纯文本点按归一化子串；含数字的点要求：(1) 每个数字在回答中按数字边界出现
+    （"99 元"不得因为 "199 元" 里包含 "99" 而误判）；(2) 数字之外的文本片段在
+    **同时去掉数字**后的回答中按顺序对齐——允许数字夹在点中间、周边被措辞
+    （如"学生折扣199元" vs "学生的折扣是199元"）。
     """
     nums = _NUM_RE.findall(point or "")
     if not nums:
         return _normalize(point) in norm_answer
-    text_part = _normalize(_NUM_RE.sub("", point))
-    if text_part and text_part not in norm_answer:
+    point_text = _normalize(_NUM_RE.sub("", point))
+    answer_text_no_num = _normalize(_NUM_RE.sub("", raw_answer))
+    if point_text and not _is_subsequence(point_text, answer_text_no_num):
         return False
     for num in nums:
         if re.search(rf"(?<!\d){re.escape(num)}(?!\d)", raw_answer or "") is None:

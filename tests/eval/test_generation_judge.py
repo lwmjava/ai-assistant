@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from tests.eval.generation_judge import judge_case
+from tests.eval.generation_judge import forbidden_violations, judge_case, points_covered
 
 
 def _case(**overrides) -> dict:
@@ -132,3 +132,29 @@ def test_never_upgrades_gold() -> None:
     result = judge_case(case, answer="标准套餐 199 元。", selected_logical_ids=["doc-billing-current"])
     assert result.human_review_status == "pending"
     assert "review_status" not in result.model_dump() or True  # 不回写
+
+
+def test_f2_refusal_citation_number_does_not_falsely_cover_answer_point() -> None:
+    """F2（P2 假阳性）：拒答里引用号 [资料 1] 含数字 1，
+    不得让数字兜底把答案点『型号 NW-PRINT-X1』误判为已覆盖。"""
+    hits = points_covered("无法回答。建议人工确认。[资料 1]", ["型号 NW-PRINT-X1"])
+    assert hits[0].hit is False
+
+
+def test_f2_semantic_number_outside_citation_still_covers() -> None:
+    """F2 修复不得矫枉过正：数字出现在引用号之外的正文里仍算覆盖。"""
+    hits = points_covered("型号是 NW-PRINT-X1，详见 [资料 1]。", ["型号 NW-PRINT-X1"])
+    assert hits[0].hit is True
+
+
+def test_f3_soft_price_point_number_in_middle_is_not_missed() -> None:
+    """F3（P2 假阴性）：软价格点『学生折扣199元』数字夹在中间，
+    回答『学生的折扣是199元。』仍应判命中（非拒答即违规）。"""
+    v = forbidden_violations("学生的折扣是 199 元。", ["学生折扣199元"])
+    assert "学生折扣199元" in v
+
+
+def test_f3_price_boundary_still_protected() -> None:
+    """F3 放宽不得破坏数字边界：『99 元』不得被『199 元』误命中。"""
+    v = forbidden_violations("标准套餐月费是 199 元。", ["99 元"])
+    assert "99 元" not in v

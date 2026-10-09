@@ -10333,7 +10333,7 @@ tasks:
 
   - id: "RAG-043"
     title: "生成输出围栏与受限标识抑制"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
@@ -10378,6 +10378,8 @@ tasks:
     execution:
       owner: "个人开发者"
       blocked_by: "RAG-035 已完成（缺陷证据与评测回归工具可用）；承接 rag-036 输出侧修复，实施前落盘实现计划与失败边界清单。"
+      progress: "2026-10-09 关闭登记：输出围栏组件已实现并接入 OutputFilter 可选注入（未注入则行为同现状）。确定性规则优先（受限标识注册表 + 正则匹配 + 屏蔽/抑制，无额外 LLM 调用，调用零预算开销）；不新增 config.py 开关（不在 allowed_paths，范围决策同 RAG-030 §8/RAG-040 先例：模块未接线主链路＝预期默认关闭，接线属另卡）。rag-036 回归（E2，真实回答重放）：围栏前 zero_tolerance=True/forbidden=[NW-HR-001]/fail → 围栏后 zero_tolerance=False/forbidden=[]/needs_human_review，零容忍转绿；未发起任何真实付费调用。专项 tests/test_restricted_identifier_fence.py 10 条；ruff/mypy 0；子集 pytest（隔离配方）859 passed/2 既有基线（rag-033 日期漂移、milvus mock 签名，SUT 不在本卡 diff）。独立入口级反例审查（docs/reviews/2026-10-08-RAG-043生成输出围栏独立审查.md）：14 类反例全 PASS、无 P1/P2；P3-1 空格包夹连字符变体（'NW - HR - 001'）未命中——接线时改分隔符正则 [\\s_\\-]* 硬化；P3-2 subn fail-open 分支不可达（坏模式编译期即失败）；P3-3 output_filter.py 换行符规范化 diff 偏大。延期项（原样保留，不写成完成）：① live 对话响应路径未接线围栏（sanitized_text 未回写，生产保护待接线卡）；② 真实模型在线重跑 rag-036（E1）未执行（本卡无真实调用授权，待授权/接线卡）。"
+      acceptance_record: "2026-10-09：关闭（按契约范围）。生成输出围栏/受限标识抑制：确定性围栏组件 app/security/restricted_identifier_fence.py（受限标识注册表 + 匹配/屏蔽 + 独立开关 + 空/畸形输入 fail-open 安全）；经 app/security/output_filter.py 可选注入（默认 None，向后兼容）；rag-036 案例 E2 回归零容忍转绿（真实回答重放，围栏前 True→围栏后 False、forbidden=[]）；规则可独立关闭/回退（未注入即现状）；调用零额外预算（无新增 LLM 调用）；无凭据外泄（预置假 key 后围栏输出无 sk-/Bearer，.env 值未进入代码/日志/报告/提交）。证据：专项 10 passed + 独立审查 14 类反例全 PASS（无 P1/P2，P3 见备注）+ ruff/mypy 0 + 子集 859 passed/2 既有基线。未验证/延期（原样写入备注）：live 对话路径未接线（生产保护待接线卡）；真实模型在线重跑未做（E1 待授权）。非目标确认：未改检索 ACL（RAG-041 另卡）、未以 Prompt 替代硬边界、未新增 config.py 开关。回滚：未注入围栏或回退本卡提交即恢复现状；旧版本/原文保留，无数据删除。"
       nightly:
         eligible: false
         production_access: false

@@ -5587,7 +5587,7 @@ tasks:
 
   - id: "OPS-001"
     title: "多实例支持：限流与活跃状态外部化"
-    status: "backlog"
+    status: "cancelled"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -5599,6 +5599,8 @@ tasks:
           evidence: "app/security/rate_limiter.py；app/debug/trace.py；grep -rln 'redis' app --include='*.py' 无输出"
         - claim: "2026-10-02 定为 1.0 只发单实例，本卡不进 1.0；打 `v1.0.0` 之后再做多副本外部化。"
           evidence: "docs/plans/plan_v1_lock_20261002.md；docs/plans/plan_v1_task_split_20261002.md C1"
+        - claim: "用户2026-10-09决定任务集全部按单实例规划，本卡取消（多副本外部化不再安排）；如未来需要多实例，按新需求重新立项。"
+          evidence: "docs/plans/plan_tasks_single_instance_rescope_20261009.md"
     scope:
       allowed_paths:
         - "app/security/"
@@ -10117,19 +10119,19 @@ tasks:
         auto_deploy: false
 
   - id: "RAG-039"
-    title: "导入任务恢复与多实例幂等"
+    title: "导入任务恢复与幂等（单实例）"
     status: "backlog"
     priority: "P1"
     target_date: ''
     depends_on:
-    - "OPS-001"
-    - "OPS-002"
     - "RAG-024"
     context:
       problem: "MAX_CONCURRENCY 当前作为批次 limit，逐个 await；需原子抢占与中断恢复。"
       facts:
       - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
         evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
+      - claim: "用户2026-10-09批准按单实例调整：解除对OPS-001/002的依赖与阻塞，多worker跨实例验收移出本卡；如未来需要多实例，另行立项。"
+        evidence: "docs/plans/plan_tasks_single_instance_rescope_20261009.md"
     scope:
       allowed_paths:
       - "app/rag/"
@@ -10146,25 +10148,26 @@ tasks:
       - "生产数据"
       - "evals/reports/rag-v0.1-baseline-20260919.json"
       deliverables:
-      - "区分批次/并发，按批准方案租约抢占、重启恢复与幂等。"
+      - "区分批次/并发，按批准方案原子抢占（单实例进程内）、重启恢复与幂等。"
       non_goals:
       - "不直接引入新队列、不重拆企业 OPS。"
+      - "不引入分布式锁框架或跨实例租约；不做多 worker 跨进程验收。"
     acceptance:
-    - "多 worker 不重复发布；running 重启可恢复；并发与批次有实测。"
+    - "单实例下并发导入不重复发布；running 重启可恢复；并发与批次有实测。"
     risk:
       level: "L2"
       side_effect: "导入任务恢复与多实例幂等"
       rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
     evaluation:
       cases:
-      - "多 worker 不重复发布；running 重启可恢复；并发与批次有实测。"
+      - "单实例下并发导入不重复发布；running 重启可恢复；并发与批次有实测。"
       commands:
       - 'pytest tests/ -k "rag or chunk or context or embedding" -v'
       - "ruff check app/rag/"
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "用户2026-10-06批准维持阻塞：OPS-001/002及RAG-024未完成，多实例外部状态/幂等方案在生产就绪阶段独立批准；不借RAG范围实施OPS或新增队列。"
+      blocked_by: "用户2026-10-09批准调整为单实例：解除对OPS-001/002的依赖与阻塞，验收不包含多worker跨实例；仍不借RAG范围实施OPS或新增队列。如未来需要多实例，按新需求重新立项。"
       nightly:
         eligible: false
         production_access: false

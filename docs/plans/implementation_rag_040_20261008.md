@@ -75,6 +75,8 @@
 - **未发起任何真实模型/付费调用**；所有 LLM 路径用注入的合成 provider 验证。
 - 未新增数据库直连、顶层架构或第三方依赖。
 - 未改 `tasks.yaml`，未 git 提交，未触碰 RAG-015/032/036。
+- **真实保真评价：待方案批准后执行**。护栏内预算与模型方案见 `docs/plans/proposal_rag_040_fidelity_eval_authorization_20261009.md`（主推 `deepseek-flash` @ api.deepseek.com，复用现有 key；gpt-4o-mini 因 `OPENAI_API_KEY` 缺失排除；信封 ¥1.0 / 绝对 ¥5 / 硬调用上限 10）。批准前未发起任何真实调用。
+- 骨架扩展点已就绪（`evals/section_summary/run.py`）：`BudgetEnvelope`（每请求前按最坏预占、付不起即 `BudgetExhausted`、硬调用上限 10）、`build_real_provider(model="deepseek-flash")`（无 key / 能力未登记即抛错，不静默降级合成）；`main()` 默认仍跑合成 provider，不触发真实调用。护栏纯逻辑测试见 `tests/test_rag_040_eval_envelope.py`（4 条）。
 
 ## 6. 依赖链如实说明
 
@@ -98,13 +100,13 @@
 | 中断重入幂等 | E2 | 通过 | `test_rerun_is_idempotent_when_ready_summary_matches_binding` |
 | 不替代原文/不另建摘要向量检索/不默认启用 | E2 | 通过 | `test_default_off_config_flag_exists`（开关默认 False）；摘要不进检索路径 |
 | 原文回查 | E2 | 通过 | 同「支撑原文 ID」 |
-| **真实保真评价** | — | **未验证（无调用授权）** | `evals/section_summary/run.py` `caa60514…` 仅合成链路；人工 Gold/真实保真待授权，`human_review_status=pending` |
+| **真实保真评价** | **E1（真实调用）** | **调用已执行；保真数值未人工复核，不写达标** | `evals/section_summary/report-real-20261009.json`（sha256 `3ce5f99b…7401`）；deepseek-flash 7 次 HTTP、估算 ¥0.1019/$0.0142、`human_review_status=pending`、`fidelity_graded_pass=false`；凭据扫描 0 |
 | 存储细化与费用/质量门槛落盘 | E3/文档 | 通过（提案） | 计划第 7 节；数值为护栏提案，未经真实费用测量 |
 | 迁移 | E2 | 通过 | `c1d2e3f4a5b6…`，alembic upgrade head 退出码 0 |
 | 配置/.env.example/README 同步 | E2 | 通过 | `config.py 219b588b…`、`.env.example 3566a2e0…`、`README.md d71a29ac…` |
 
 ### 未验证项（原样保留，不伪装为完成）
 
-1. **真实保真评价未验证**：无真实模型/费用调用授权，仅交付可运行骨架与报告 schema；摘要对原文的事实覆盖/幻觉/引用准确性需人工 Gold 复核，待授权后另卡执行。
+1. **真实保真评价（E1 调用已执行，但保真结论未验证）**：2026-10-09 经用户批准方案后用 deepseek-flash 跑了 8 章合成样本（7 次真实 HTTP、¥0.1019、ch05 优雅 empty_output、ch06 空章零调用）。但摘要对原文的**事实覆盖/幻觉/引用准确性尚未人工 Gold 复核**，报告 `human_review_status=pending`、`fidelity_graded_pass=false`——不得写成达标。后续人工复核为另一步，不在本卡自动完成。
 2. **RAG-035 未关闭**：其 P1 缺陷与人工确认项待用户；本卡不依赖其关闭，也不据此声明前置缺口已闭合。
-3. 费用/质量门槛为护栏提案：`max_calls=8`、单批 4000 字符、输出 256 token 未经真实成本测量，不得写成达标结论。
+3. 费用/质量门槛：本次实际 7 次调用、估算 ¥0.1019（信封 ¥1.0、绝对 ¥5 内）；provider 不返回 usage，token 为本地估算（`usage_source=estimated_provider_usage_not_returned`），非账单实测。

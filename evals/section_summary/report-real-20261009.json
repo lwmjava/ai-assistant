@@ -1,0 +1,101 @@
+{
+  "eval_name": "rag-section-summary-fidelity-real",
+  "provider": "deepseek-official",
+  "model": "deepseek-flash",
+  "capability_version": "deepseek-flash-1m-384k-20261007",
+  "prompt_version": "section-summary-prompt-v0.1",
+  "protocol_version": "section-summary-protocol-v0.1",
+  "data": "synthetic-8-chapters-non-customer",
+  "data_fingerprint": "4317c75abdc1a54e",
+  "temperature": 0.0,
+  "thinking": "disabled",
+  "http_attempts": 7,
+  "calls_used": 7,
+  "hard_call_cap": 10,
+  "estimated_input_tokens": 3494,
+  "estimated_output_tokens": 1536,
+  "usage_source": "estimated_provider_usage_not_returned",
+  "estimated_cost_cny": 0.1019,
+  "estimated_cost_usd": 0.0142,
+  "budget_ceiling_cny": 1.0,
+  "absolute_ceiling_cny": 5.0,
+  "retry_disabled": true,
+  "per_chapter": [
+    {
+      "chapter": "ch01",
+      "kind": "ready",
+      "reason": "",
+      "input_chars": 50,
+      "summary_chars": 44,
+      "latency_ms": 1186,
+      "summary_excerpt": "本系统为企业级 AI 助手平台，由 FastAPI 后端与 React 管理控制台组成。"
+    },
+    {
+      "chapter": "ch02",
+      "kind": "ready",
+      "reason": "",
+      "input_chars": 45,
+      "summary_chars": 44,
+      "latency_ms": 989,
+      "summary_excerpt": "第二章目标：提供 RAG 文档解析、混合检索与多租户隔离能力，默认向量库为 local。"
+    },
+    {
+      "chapter": "ch03",
+      "kind": "ready",
+      "reason": "",
+      "input_chars": 67,
+      "summary_chars": 32,
+      "latency_ms": 1570,
+      "summary_excerpt": "本章约束：Milvus 仍为 Partial；资源级 ACL 为"
+    },
+    {
+      "chapter": "ch04",
+      "kind": "ready",
+      "reason": "",
+      "input_chars": 43,
+      "summary_chars": 42,
+      "latency_ms": 1522,
+      "summary_excerpt": "第四章成本：所有生成调用受上下文预算 Guard 与单任务调用数上限约束，超限即停。"
+    },
+    {
+      "chapter": "ch05",
+      "kind": "failed",
+      "reason": "empty_output",
+      "input_chars": 39,
+      "summary_chars": 0,
+      "latency_ms": 1582,
+      "summary_excerpt": ""
+    },
+    {
+      "chapter": "ch06",
+      "kind": "empty",
+      "reason": "",
+      "input_chars": 0,
+      "summary_chars": 0,
+      "latency_ms": 0,
+      "summary_excerpt": ""
+    },
+    {
+      "chapter": "ch07",
+      "kind": "ready",
+      "reason": "",
+      "input_chars": 2649,
+      "summary_chars": 57,
+      "latency_ms": 1846,
+      "summary_excerpt": "本章描述系统分层架构，划分为 API、Service、Agent、Tool、RAG 与存储，各层依赖方向单向向下。"
+    },
+    {
+      "chapter": "ch08",
+      "kind": "ready",
+      "reason": "",
+      "input_chars": 2350,
+      "summary_chars": 40,
+      "latency_ms": 1567,
+      "summary_excerpt": "所有数据访问需校验身份、租户、资源与动作，RAG 与工具返回均按不可信数据处理。"
+    }
+  ],
+  "real_calls_made": true,
+  "human_review_status": "pending",
+  "fidelity_graded_pass": false,
+  "note": "真实调用已执行；覆盖/幻觉/引用准确性未人工复核，不得写成达标。"
+}

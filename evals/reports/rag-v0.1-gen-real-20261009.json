@@ -2201,5 +2201,83 @@
     }
   ],
   "secrets_recorded": false,
-  "gold_upgraded": false
+  "gold_upgraded": true,
+  "human_confirmation": {
+    "confirmed_at": "2026-10-09",
+    "confirmed_by": "user",
+    "scope": "全部 35 个非 holdout 案例（development 26 + validation 9）的真实生成回答与失败切片",
+    "note": "用户人工核对 35 例并确认可升级 Gold；AI 判定结果由人工背书，不再是临时自评。原始回答/usage/判定数组未改动。",
+    "human_review_pending_before": 35
+  },
+  "publish_thresholds": {
+    "threshold_file": "evals/thresholds/rag-v0.1-generation-publish.json",
+    "threshold_version": "1.0.0",
+    "locked_at": "2026-10-09",
+    "locked_by": "user",
+    "measured": {
+      "answer_point_accuracy": {
+        "value": 0.8387,
+        "hit": 26,
+        "total": 31,
+        "threshold": 0.85,
+        "pass": false,
+        "gap_cases": [
+          {
+            "case_id": "rag-015",
+            "hit": 2,
+            "total": 3,
+            "missed": [
+              "不得自动退款"
+            ]
+          },
+          {
+            "case_id": "rag-028",
+            "hit": 1,
+            "total": 2,
+            "missed": [
+              "599 元是已废止 v1"
+            ]
+          },
+          {
+            "case_id": "rag-030",
+            "hit": 1,
+            "total": 2,
+            "missed": [
+              "249 元 2027-01-01 才生效"
+            ]
+          },
+          {
+            "case_id": "rag-031",
+            "hit": 0,
+            "total": 2,
+            "missed": [
+              "2027-01-01 起预告为 249 元",
+              "该日之前不得当现行价格"
+            ]
+          }
+        ]
+      },
+      "citation_accuracy": {
+        "value": 1.0,
+        "hit": 32,
+        "total": 32,
+        "threshold": 0.8,
+        "pass": true
+      },
+      "refusal_correct_rate": {
+        "value": 0.9333,
+        "hit": 14,
+        "total": 15,
+        "threshold": 0.8,
+        "pass": true,
+        "gap_cases": [
+          "rag-036"
+        ]
+      }
+    },
+    "zero_tolerance_blocking": [
+      "rag-036"
+    ],
+    "overall_pass": false
+  }
 }

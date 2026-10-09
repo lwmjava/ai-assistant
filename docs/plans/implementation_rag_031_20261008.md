@@ -93,12 +93,12 @@
 | 配置开关+.env.example+README 同步 | E2 | 通过 | `.env.example`（`3a99db98…e180c2`）、`README.md`（`a60555e4…dd900`） |
 | 切分计划版本绑定（advisor 不入持久化） | E2 | 通过 | `plan.py`（`a8a8e2f1…143cd1`）排除字段；`service.py` `_build_chunk_plan`（`678f19bc…5aee9e`） |
 | 模型/Prompt 版本记录 | E2 | 通过 | chunk metadata 记 `llm_boundary_model/prompt_version/protocol_version`；测试断言 |
-| **真实单变量质量与成本报告** | **E1 缺失** | **未验证** | 仅交付可运行工具+合成报告 `evals/llm_boundary/report.json`（`590bee86…be221`，real_calls=0）。**证据缺口：无真实模型调用/费用授权**（RAG-035 费用授权不含本卡）；真实质量/延迟/成本数值待授权后由该骨架产出，门槛待实测后由负责人批准 |
-| 评测工具/报告骨架（记录版本与失败切片） | E2 | 通过 | `evals/llm_boundary/run.py`（`590bee86…be221`）；report.json 含 prompt/protocol/code sha256 与六失败切片 |
+| **真实单变量质量与成本报告** | **E1 阻塞** | **未验证** | 真实模式工具 `evals/llm_boundary/run_real.py` 已建（$0.1 停止线/最坏价预占/usage 采集/HTTP 计数/无凭据不发请求）；预检报告 `evals/llm_boundary/report-real-20261009.json`（sha256 `0640972ab01f5bf83793f9065370ccd3404823b916c22300027232e4beeceaaf`，status=blocked_no_credentials，real_calls=0，http_attempts=0）。**原因：无 OPENAI_API_KEY**（.env 与进程环境均空；现有 LLM_API_KEY 指向 api.deepseek.com，无法访问 gpt-4o-mini）。用户批复 gpt-4o-mini/$0.1 已记录，但凭据缺失导致 0 次真实调用；质量/成本数值待补凭据后由该脚本产出 |
+| 评测工具/报告骨架（记录版本与失败切片） | E2 | 通过 | 合成 `evals/llm_boundary/run.py`（`590bee86…be221`）+ 真实 `run_real.py`；report.json 含 prompt/protocol/code sha256 与六失败切片；真实报告记录模型/Prompt/数据版本、逐例、usage、请求 ID、计数器、费用、失败切片、holdout 不适用说明 |
 
 ### 未验证项（如实列出）
 
-- **真实单变量质量与成本报告**：未验证。原因：本卡无真实模型调用/费用授权；按付费红线用合成 provider 完成链路与隔离验证，真实报告项不冒充 E1。后续授权依据已写入计划 §7（候选模型 gpt-4o-mini、AI 合成样本、≤3 次/文档、单次≤1500 字符、输出≤256 token、评测≤约 30 次调用、预估 < $0.01）。
+- **真实单变量质量与成本报告**：未验证（E1 阻塞）。用户 2026-10-09 批复 gpt-4o-mini、约 30 次调用、$0.1 停止线（覆盖原计划 <$0.01 提案）。但预检确认**无 OPENAI_API_KEY**（.env 与进程环境均空；现有 LLM_API_KEY 为 DeepSeek，无法访问 gpt-4o-mini），按付费红线与预检要求**未发起任何调用**，real_calls=0。质量/成本/边界准确率数值待补 OpenAI 凭据后由 `run_real.py` 产出；报告诚实标注无凭据，不冒充 E1。
 - 独立入口级反例审查：由主 Agent 另行派发未参与实现的 Agent 执行（本 Agent 为实现者，串行自审不构成独立审查）。
 
 ### 既有基线失败（与本卡无关，未修复）

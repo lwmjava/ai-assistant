@@ -684,9 +684,9 @@ def build_report(*, ocr_provider: str) -> dict:
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "card": "RAG-033 多格式解析与 OCR 质量基线",
         "corpus_dir": (
-            str(CORPUS_DIR.relative_to(REPO_ROOT))
+            CORPUS_DIR.relative_to(REPO_ROOT).as_posix()
             if CORPUS_DIR.is_relative_to(REPO_ROOT)
-            else str(CORPUS_DIR)
+            else CORPUS_DIR.as_posix()
         ),
         "corpus_version": manifest.get("version"),
         "cjk_font": manifest.get("cjk_font"),

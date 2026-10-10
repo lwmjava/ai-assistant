@@ -6,7 +6,7 @@
  * 前端侧的唯一表达，改坏了必须立刻变红——为此逐条覆盖后端那五条判定。
  */
 
-import test from 'node:test'
+import { test } from 'vitest'
 import assert from 'node:assert/strict'
 
 import { can, canControlDocument } from './permissions.ts'

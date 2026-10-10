@@ -130,6 +130,8 @@ tests/test_p0_regression.py
 tests/eval/
 ```
 
+质量门禁已接入 GitHub Actions CI（`NFR-001`，2026-10-10）：`ruff check .`、`mypy app/`、`pytest`、前端 `npm ci`、typecheck、Vitest、ESLint 与 build 串联，见 `.github/workflows/ci.yml`；前端新增 Vitest（4 个测试文件 / 37 用例）与 ESLint（9 flat config）。
+
 现有 pytest 覆盖实现和接口行为。版本化 RAG Evaluation 已有：`evals/datasets/rag-v0.1/`（44 条，其中 Gold v0.1 24 条）与 2026-09-19 检索基线。尚未覆盖真实 LLM 生成层，也没有统一的 Agent/Skill Evaluation Harness。
 
 ## 3. 已确认的文档与实现漂移

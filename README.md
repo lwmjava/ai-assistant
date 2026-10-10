@@ -2,6 +2,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![CI](https://img.shields.io/github/actions/workflow/status/lwmjava/ai-assistant/ci.yml?branch=main)](.github/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org)
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue)](docker-compose.yml)
 

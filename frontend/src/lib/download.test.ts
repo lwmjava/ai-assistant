@@ -1,4 +1,4 @@
-import test from 'node:test'
+import { test } from 'vitest'
 import assert from 'node:assert/strict'
 
 import {
@@ -25,7 +25,7 @@ function installDomStub(): DomProbe {
   let seq = 0
   g.URL = {
     ...(savedUrl as object),
-    createObjectURL: (_blob: Blob) => {
+    createObjectURL: () => {
       const url = `blob:stub/${(seq += 1)}`
       probe.created.push(url)
       return url

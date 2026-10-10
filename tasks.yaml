@@ -4432,7 +4432,7 @@ tasks:
 
   - id: "NFR-001"
     title: "CI 流水线：lint、typecheck、pytest、前端构建、Vitest、ESLint"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []

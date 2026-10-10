@@ -11,7 +11,7 @@ import functools
 import logging
 from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 项目根目录下的 .env（相对路径会随进程工作目录变化，这里固定为绝对路径）
@@ -265,7 +265,9 @@ class Settings(BaseSettings):
     RAG_IMPORT_ENABLED: bool = True
     RAG_IMPORT_INTERVAL_SECONDS: float = 3.0
     RAG_IMPORT_FETCH_TIMEOUT: float = 30.0
-    RAG_IMPORT_MAX_CONCURRENCY: int = 2
+    # 单进程所有执行入口共用并发上限；每轮批次数与并发数分别控制。
+    RAG_IMPORT_MAX_CONCURRENCY: int = Field(default=2, ge=1, le=1000)
+    RAG_IMPORT_BATCH_SIZE: int = Field(default=2, ge=1, le=1000)
     # 单文件上传上限（字节）。默认 10 MiB。等于上限可以上传，超过则拒绝。
     RAG_UPLOAD_MAX_BYTES: int = 10 * 1024 * 1024
     # 允许的扩展名，逗号分隔，不带点。只看文件名的最后一个后缀。
@@ -386,6 +388,14 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         """解析 CORS_ORIGINS 为列表。"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @field_validator("RAG_IMPORT_BATCH_SIZE", "RAG_IMPORT_MAX_CONCURRENCY", mode="before")
+    @classmethod
+    def _validate_import_budget_type(cls, value: object) -> object:
+        """环境变量可用整数字符串；布尔值与浮点数不能冒充调度预算。"""
+        if isinstance(value, bool) or not isinstance(value, int | str):
+            raise ValueError("导入批次与并发上限必须是 1..1000 的整数")
+        return value
 
     @model_validator(mode="after")
     def _warn_if_retry_effectively_disabled(self) -> "Settings":

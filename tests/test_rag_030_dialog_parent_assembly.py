@@ -19,7 +19,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlmodel import Session, SQLModel, col, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import settings
 from app.models.rag import Document, DocumentChunk  # noqa: F401 — 注册 RAG 表

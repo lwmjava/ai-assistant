@@ -406,6 +406,11 @@ docker compose up -d --build
 | `RAG_SECTION_SUMMARY_MAX_CHARS_PER_BATCH` | 单批正文上限（字符），超过则切批逐批摘要后合并 | `4000` |
 | `RAG_LANGCHAIN_SPLITTER` | LangChain 切分器（当前仅 `recursive`） | `recursive` |
 | `RAG_LLAMAINDEX_SPLITTER` | LlamaIndex 切分器：`sentence` / `markdown` | `sentence` |
+| `RAG_IMPORT_ENABLED` | 是否启动后台导入调度器 | `true` |
+| `RAG_IMPORT_INTERVAL_SECONDS` | 导入调度扫描间隔（秒） | `3.0` |
+| `RAG_IMPORT_FETCH_TIMEOUT` | URL 抓取超时（秒） | `30.0` |
+| `RAG_IMPORT_BATCH_SIZE` | 每轮最多处理的任务数，范围 1–1000 | `2` |
+| `RAG_IMPORT_MAX_CONCURRENCY` | 单进程所有导入执行入口共用的并发上限，范围 1–1000 | `2` |
 | `RAG_OCR_ENABLED` | 是否启用扫描版 PDF OCR | `false` |
 | `RAG_OCR_PROVIDER` | OCR provider：`tesseract` / `cloud` | `tesseract` |
 | `RAG_OCR_LANGUAGES` | OCR 语言包 | `chi_sim+eng` |
@@ -440,6 +445,26 @@ docker compose up -d --build
 | `CORS_ORIGINS` | 允许的跨域来源（前后端分离部署时必填） | `*` |
 
 完整配置项见 [`.env.example`](.env.example)。
+
+### 单实例知识库导入恢复
+
+后台导入每轮最多处理 `RAG_IMPORT_BATCH_SIZE` 个任务；同一个应用进程的所有导入执行入口共享
+`RAG_IMPORT_MAX_CONCURRENCY` 上限。同租户同来源任务串行发布，避免重复文档或重复当前版本。
+`run_import_jobs_once(limit=...)` 的参数继续表示每轮任务数，不覆盖并发上限。
+
+调度器启动和执行入口会核对中断的 `running` 任务：有匹配的已提交发布凭据时补齐成功状态；
+未发布且尝试额度尚有余量时重新待执行；额度耗尽则失败并保留追踪记录。已失败任务不会无限自动重试，
+授权用户可在剩余额度内重试。执行取消会向上传播，并保留可恢复记录；活跃任务不会被恢复扫描抢走。
+批次全部任务结束后才显示成功、部分成功或失败。
+
+URL 源文件先登记短事务配额预留及快照，再等待解析和嵌入；恢复复用本次已登记快照，
+重解析的旧源文件继续保留。任务、批次、目标文档与源目录的租户绑定不符时拒绝执行。
+部署限于一个应用进程；不支持多进程导入竞争，不提供跨库事务或跨系统恰好一次保证。
+无需新增数据库迁移。回滚前停止导入调度器，保留任务、文档、源文件和追踪记录，再回退代码与配置；
+旧代码没有本次恢复保证，未完成导入须人工核查。
+
+设计及验证范围见 [导入恢复 ADR](docs/adr/0009-single-instance-import-recovery.md) 与
+[单卡实施计划](docs/plans/plan_rag_039_single_instance_20261010.md)。
 
 ## 升级提示：历史知识库会检索不到（RAG-032 / ADR-0008）
 

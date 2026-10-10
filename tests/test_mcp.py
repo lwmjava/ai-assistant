@@ -114,7 +114,6 @@ def test_config_parsing() -> None:
 
 mcp = pytest.importorskip("mcp")
 
-import importlib.metadata as _md  # noqa: E402
 import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
 
@@ -122,13 +121,7 @@ from app.mcp.client import MCPClient  # noqa: E402
 
 _FIXTURE = str(Path(__file__).parent / "fixtures" / "echo_mcp_server.py")
 
-# 夹具服务器依赖 mcp 2.x 的低层 Server API；1.x 下跳过这两例真实服务器集成测试。
-_MCP_VERSION = tuple(int(x) for x in _md.version("mcp").split(".")[:2])
-_REQUIRES_MCP_V2 = _MCP_VERSION < (2, 0)
-
-
 @pytest.mark.asyncio
-@pytest.mark.skipif(_REQUIRES_MCP_V2, reason="fixture 服务器使用 mcp 2.x 低层 API")
 async def test_real_stdio_server_list_and_call() -> None:
     """通过真实 stdio 传输连接测试服务器，验证列举与调用。"""
     from app.mcp.config import MCPServerConfig
@@ -148,7 +141,6 @@ async def test_real_stdio_server_list_and_call() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(_REQUIRES_MCP_V2, reason="fixture 服务器使用 mcp 2.x 低层 API")
 async def test_manager_collect_tools_from_real_server() -> None:
     """经 MCPToolManager 聚合真实服务器工具，并验证适配器可闭环调用。"""
     from app.mcp.config import MCPServerConfig
@@ -182,3 +174,44 @@ async def test_connect_raises_without_mcp(monkeypatch) -> None:
     client = MCPClient(MCPServerConfig(name="x", transport="stdio", command="python"))
     with pytest.raises(MCPNotAvailableError):
         await client.connect()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("symbol", ["streamable_http_client", "streamablehttp_client"])
+async def test_http_client_symbol_compatibility(monkeypatch, symbol) -> None:
+    """真实connect选择新旧HTTP符号，不发网络请求，不影响stdio闭环验证。"""
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from mcp.client import streamable_http
+
+    from app.mcp.config import MCPServerConfig
+
+    observed = []
+    session = SimpleNamespace(initialize=AsyncMock())
+
+    @asynccontextmanager
+    async def transport(url, headers=None):
+        observed.append((symbol, url, headers))
+        yield None, None, None
+        observed.append("transport_closed")
+
+    @asynccontextmanager
+    async def client_session(read, write):
+        yield session
+
+    for name in ("streamable_http_client", "streamablehttp_client"):
+        monkeypatch.delattr(streamable_http, name, raising=False)
+    monkeypatch.setattr(streamable_http, symbol, transport, raising=False)
+    monkeypatch.setattr(mcp, "ClientSession", client_session)
+    client = MCPClient(MCPServerConfig(name="http-contract", transport="http", url="http://127.0.0.1:1/mcp"))
+    try:
+        await client.connect()
+        assert client.connected
+        session.initialize.assert_awaited_once()
+        assert observed == [(symbol, "http://127.0.0.1:1/mcp", None)]
+    finally:
+        await client.disconnect()
+    assert not client.connected
+    assert observed[-1] == "transport_closed"

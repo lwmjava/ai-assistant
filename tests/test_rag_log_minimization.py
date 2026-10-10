@@ -169,34 +169,50 @@ async def test_milvus_delete_failure_retains_diagnostics_without_exception_body(
     store = MilvusVectorStore(Mock())
     collection = Mock()
     collection.query.side_effect = RuntimeError(EXCEPTION)
-    monkeypatch.setattr(store, "_connect", lambda: collection)
+    connect = Mock(return_value=collection)
+    monkeypatch.setattr(store, "_connect", connect)
     assert await store.delete_by_document("document-log-regression", "tenant-log-regression") == 0
+    connect.assert_called_once()
+    assert connect.call_args.args == (None,)
+    assert "index" in connect.call_args.kwargs
+    collection.query.assert_called_once()
     collection.delete.assert_not_called()
     message = assert_minimized(source_records, "app.rag.vectorstore.milvus")
     assert "RuntimeError" in message
 
 
 @pytest.mark.asyncio
-async def test_import_failure_logs_type_not_exception_and_keeps_failed_job(monkeypatch, source_records):
-    from app.models.rag import ImportJob
-    from app.rag import import_jobs
+async def test_import_failure_logs_type_not_exception_and_keeps_failed_job(monkeypatch, source_records, tmp_path):
+    from sqlmodel import Session, SQLModel, create_engine
 
+    from app.models.rag import ImportJob
+    from app.rag import document_storage, import_jobs
+
+    monkeypatch.setattr(document_storage, "_PROJECT_ROOT", tmp_path)
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    monkeypatch.setattr(import_jobs, "engine", engine)
+    source_path = document_storage.save_source_file("tenant-log-regression", b"synthetic", "source.txt")
     job = ImportJob(
-        tenant_id="tenant-log-regression", user_id="user-log-regression", storage_path="synthetic-source-path"
+        tenant_id="tenant-log-regression", user_id="user-log-regression", storage_path=source_path
     )
-    session = Mock()
+    with Session(engine) as session:
+        session.add(job)
+        session.commit()
+        job_id = job.id
     monkeypatch.setattr(import_jobs, "read_source_file", Mock(side_effect=RuntimeError(EXCEPTION)))
     trace = Mock()
     monkeypatch.setattr(import_jobs, "_record_job_trace", trace)
-    monkeypatch.setattr(import_jobs, "_drop_attempt_source", Mock())
-    await import_jobs._process_job(session, job)
-    assert job.status == "failed"
-    assert job.attempt_count == 1
+    assert await import_jobs.run_import_jobs_once(limit=1) == 1
+    with Session(engine) as session:
+        persisted = session.get(ImportJob, job_id)
+        assert persisted.status == "failed"
+        assert persisted.attempt_count == 1
     assert trace.call_args.args[2].args == (EXCEPTION,)
-    assert session.commit.call_count == 2
     message = assert_minimized(source_records, "app.rag.import_jobs")
     assert "RuntimeError" in message
-    assert job.id in message
+    assert job_id in message
+    engine.dispose()
 
 
 @pytest.mark.asyncio

@@ -28,6 +28,10 @@ ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-c
 |---|---|---|---|
 | ADR-0005 | [0005-rag-adaptive-chunking-context-budget.md](0005-rag-adaptive-chunking-context-budget.md) | Accepted | 2026-10-05 分阶段架构批准；2026-10-06 补充模型预算、来源与摘要生命周期决定；具体费用/质量数值仍须证据；边界辅助与摘要默认关闭 |
 
+## 单实例导入技术细化
+
+[ADR-0009：单实例导入抢占、恢复与发布凭据](0009-single-instance-import-recovery.md)，2026-10-10，Accepted（已批准单实例 RAG-039 范围内的技术细化）。不授权生产操作或迁移，验收以单卡证据为准。
+
 ## 格式
 
 每份 ADR 至少包含：背景、事实、选项、决定、后果、迁移、验证和回滚。模板见 `docs/governance/agent-harness-engineering.md` §17。

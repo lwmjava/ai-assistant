@@ -376,10 +376,13 @@ def _budget_messages(cap: GenerationCapability, overflow: int) -> list[ChatMessa
     payload = estimate_payload_tokens(cap, base)
     assert payload is not None
     room = cap.context_window - reserve - margin
-    return [
+    unit = " x" if cap.counting_method == OFFICIAL_METHOD else "x"
+    messages = [
         base[0],
-        ChatMessage(role=ChatRole.USER, content="x" * (room - payload + overflow)),
+        ChatMessage(role=ChatRole.USER, content=unit * (room - payload + overflow)),
     ]
+    assert estimate_payload_tokens(cap, messages) == room + overflow
+    return messages
 
 
 def test_payload_plus_reserve_plus_margin_over_window_is_blocked(
@@ -701,7 +704,8 @@ def test_unserializable_content_is_rejected(monkeypatch: pytest.MonkeyPatch) -> 
     assert recorder.count == 0
 
 
-def test_unencodable_text_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("shape", ["text", "list", "dict"])
+def test_unencodable_text_is_rejected(monkeypatch: pytest.MonkeyPatch, shape: str) -> None:
     """不可编码字符被计成 0 字节等于宣布任何窗口都装得下。"""
     broken = "\ud800" * 10
     with pytest.raises(PayloadUncountableError):
@@ -714,7 +718,7 @@ def test_unencodable_text_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = _provider(capability=cap)
 
     class _Raw:
-        content = broken
+        content = broken if shape == "text" else ([broken] if shape == "list" else {"text": broken})
 
     with pytest.raises(ContextBudgetError) as caught:
         asyncio.run(provider.chat([_Raw()]))  # type: ignore[list-item]

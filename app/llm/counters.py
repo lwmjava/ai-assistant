@@ -12,8 +12,8 @@
   使用是**偏保守**的：宁可把刚好够用的请求拦下，也不放行超限请求。
 - 计不出来的时候**不计 0**。多模态内容序列化失败、正文含不可编码字符都会抛
   ``PayloadUncountableError``，由护栏按「无法计数」拒绝发送。
-- 官方计数器 ``tiktoken`` 未随本仓库安装（本机 2026-10-07 实测 ``No module named
-  'tiktoken'``），因此当前一律退回保守估算。**安装后** ``official_counter_for``
+- 本机 2026-10-07 实测未安装 ``tiktoken``，当时退回保守估算；这是历史环境记录。
+  ``tiktoken`` 是否可用以实际环境为准。**安装后** ``official_counter_for``
   会自动返回真实计数器并被优先使用，无需改代码、也无需改能力表。
 """
 
@@ -110,7 +110,10 @@ def official_counter_for(deployment: str, model: str) -> Callable[[Sequence[Any]
     def count(messages: Sequence[Any]) -> int:
         total = _REPLY_PRIMER
         for message in messages:
-            total += _MESSAGE_OVERHEAD + len(encoding.encode(message_content(message)))
+            content = message_content(message)
+            # tiktoken会替换孤立代理项，先验证正文能按原内容编码，维持fail-closed。
+            utf8_byte_count(content)
+            total += _MESSAGE_OVERHEAD + len(encoding.encode(content))
         return total
 
     return count

@@ -768,27 +768,6 @@ def test_used_mock_is_true_when_observed_provider_is_faked() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _cloud_provider_available() -> bool:
-    """cloud provider 能否构造——取决于本机是否有 OCR/LLM 凭据（含 .env）。
-
-    没配凭据的机器/CI 上 `OpenAiVisionOcrProvider.from_settings()` 会抛
-    ``ocr_cloud_config_missing``，依赖它的用例必须跳过而不是报红。
-    """
-    try:
-        from app.rag.ocr.openai_vision import OpenAiVisionOcrProvider
-
-        OpenAiVisionOcrProvider.from_settings()
-    except Exception:  # noqa: BLE001 - 任何构造失败都视为不可用
-        return False
-    return True
-
-
-_CLOUD_REQUIRED = pytest.mark.skipif(
-    not _cloud_provider_available(),
-    reason="本机未配置 cloud OCR 凭据（RAG_OCR_* 或 LLM_*），跳过依赖 cloud 的用例",
-)
-
-
 def test_used_mock_is_true_when_only_parser_binding_is_replaced(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -828,15 +807,29 @@ def test_parser_binding_divergence_blocks_gate_end_to_end(monkeypatch: pytest.Mo
     assert polluted["gate"]["meets_gate"] is False
 
 
-@_CLOUD_REQUIRED
-def test_consistent_switch_to_another_real_provider_keeps_used_mock_false() -> None:
+def test_consistent_switch_to_another_real_provider_keeps_used_mock_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """N-03 正例 A：双侧一致地切到另一个真实 provider，不得误判为 mock。
 
-    依赖本机 cloud 凭据；没有凭据的机器会跳过（见 `_cloud_provider_available`），
-    此时由正例 B 兜住「一致性不得误杀真实路径」这条不变式。
+    用合成配置走真实工厂/from_settings；此例只验证构造与绑定，不发OCR请求。
     """
+    import httpx
+
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "RAG_OCR_BASE_URL", "http://127.0.0.1:1/v1")
+    monkeypatch.setattr(settings, "RAG_OCR_API_KEY", "synthetic-ocr-config")
+    monkeypatch.setattr(settings, "RAG_OCR_MODEL", "synthetic-vision-model")
+
+    def forbid_http(*args, **kwargs):
+        raise AssertionError("provider绑定用例不得发起HTTP请求")
+
+    monkeypatch.setattr(httpx, "Client", forbid_http)
+    monkeypatch.setattr(httpx, "AsyncClient", forbid_http)
     probe = _report_mod.build_ocr_probe([], ocr_provider="cloud")
     assert probe["provider_class"] == "app.rag.ocr.openai_vision.OpenAiVisionOcrProvider"
+    assert probe["factory_provider_is_real"] is True
     assert probe["bindings_consistent"] is True
     assert probe["inconsistent_bindings"] == []
     assert probe["used_mock"] is False
@@ -962,11 +955,25 @@ def test_committed_report_is_bound_to_corpus_and_gate(report: dict, corpus: Path
         assert item["status"] == fresh_entry["status"], item["name"]
 
 
-def test_report_file_name_carries_gate_version() -> None:
+@pytest.mark.parametrize("run_date", [datetime(2026, 10, 7), datetime(2026, 10, 10), datetime(2027, 1, 1)])
+def test_report_file_name_carries_gate_version(run_date: datetime, monkeypatch: pytest.MonkeyPatch) -> None:
     """L-04：报告文件名必须带门禁版本，门禁升级后不会静默覆盖旧报告。"""
     name = _report_mod.default_report_name(datetime(2026, 10, 7))
     assert name == f"parse-quality-20261007-gate-{_report_mod.LOCKED_GATE['version'].split('.')[-1]}.json"
-    assert _committed_report_path().name == _report_mod.default_report_name()
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return run_date if tz is None else run_date.replace(tzinfo=tz)
+
+    monkeypatch.setattr(_report_mod, "datetime", FixedDatetime)
+    assert _report_mod.default_report_name() == (
+        f"parse-quality-{run_date.strftime('%Y%m%d')}-gate-{_report_mod.LOCKED_GATE['version'].split('.')[-1]}.json"
+    )
+    path = _committed_report_path()
+    committed = json.loads(path.read_text(encoding="utf-8"))
+    generated_at = datetime.fromisoformat(committed["generated_at"])
+    assert path.name == _report_mod.default_report_name(generated_at)
 
 
 def test_manifest_known_limitation_requires_known_gap(corpus: Path) -> None:

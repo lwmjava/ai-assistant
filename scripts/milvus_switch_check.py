@@ -881,7 +881,8 @@ async def run_apply(
             "MockEmbeddingProvider 仅用于确定性链路对照，不代表生产语义质量。",
             "范数检查证明本次 Mock 样本为单位向量，不等同于生产写入路径已主动执行 L2 归一化。",
             "Milvus 跨库样本由脚本显式补种以保证样本齐备；上传写链路是否真的写入，由 milvus_upload_visible 单独判定。",
-            "Milvus 侧 similarity 取自 pymilvus 返回的 distance（COSINE 度量下的余弦相似度），精度为 float32，与本地 numpy 结果存在约 1e-8 量级差异。",
+            "Milvus 侧 similarity 取自 pymilvus 返回的 distance（COSINE 度量下的余弦相似度），"
+            "精度为 float32，与本地 numpy 结果存在约 1e-8 量级差异。",
         ],
     }
     tcp_error = _tcp_error(probe_uri)

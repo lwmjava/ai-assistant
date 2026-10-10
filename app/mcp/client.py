@@ -86,14 +86,15 @@ class MCPClient:
             return
         _require_mcp()
         from mcp import ClientSession
+        from mcp.client import streamable_http
         from mcp.client.sse import sse_client
         from mcp.client.stdio import stdio_client
+
         # streamable-http 客户端在 mcp 1.x 名为 streamablehttp_client，2.x 改为
         # streamable_http_client；两者都尝试以兼容不同主版本。
-        try:
-            from mcp.client.streamable_http import streamable_http_client
-        except ImportError:  # pragma: no cover - 旧版本回退
-            from mcp.client.streamable_http import streamablehttp_client as streamable_http_client
+        streamable_http_client = getattr(streamable_http, "streamable_http_client", None)
+        if streamable_http_client is None:
+            streamable_http_client = getattr(streamable_http, "streamablehttp_client")
 
         self._stack = AsyncExitStack()
         transport = (self.config.transport or "stdio").lower()

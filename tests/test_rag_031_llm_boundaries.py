@@ -9,10 +9,7 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
-
-import pytest
 
 from app.llm.base import ChatMessage, LLMProvider
 from app.rag.chunking import llm_boundaries as lb
@@ -174,7 +171,6 @@ def _doc_with_fence_and_prose() -> str:
 class TestProtectedSplitIntegration:
     async def test_offsets_partition_text_without_loss_or_reorder(self):
         region_prose = "主题甲的内容。" * 20 + "主题乙的内容。" * 20
-        spans = lb.split_sentence_spans(region_prose)
         # 在第 20 句（主题甲/乙交界）建议一个边界
         p = _ScriptedProvider(responses=["[20]"])
         adv = _advisor(p)
@@ -218,7 +214,9 @@ class TestProtectedSplitIntegration:
         table = await resolve_boundary_table(text, 40, None)
         assert table is None
         again = protected_split(text, 40, None, boundaries=None)
-        sig = lambda cs: [(c.text, c.metadata.get("source_start"), c.metadata.get("source_end")) for c in cs]
+        def sig(cs):
+            return [(c.text, c.metadata.get("source_start"), c.metadata.get("source_end")) for c in cs]
+
         assert sig(baseline) == sig(again)
         # 默认关闭不写入 LLM 元数据
         assert all("llm_boundary_used" not in c.metadata for c in baseline)

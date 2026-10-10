@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from app.core.config import settings
-from app.rag.import_jobs import run_import_jobs_once
+from app.rag.import_jobs import recover_interrupted_import_jobs, run_import_jobs_once
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ async def start_scheduler() -> None:
         return
     if not _is_scheduler_runnable():
         return
+    recover_interrupted_import_jobs()
     _task = asyncio.create_task(_loop())
     logger.info("RAG 导入调度器任务已创建")
 

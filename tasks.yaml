@@ -6364,9 +6364,10 @@ tasks:
         - "pytest tests/test_chat.py tests/test_chat_controls.py -q"
         - "pytest tests/test_p0_regression.py tests/test_rag.py tests/test_workflow.py -q"
     execution:
-      progress: "2026-10-05：按用户直接批准提前整改，不实施NFR-001 CI建设。全量575 passed/2 skipped，RAG回归82 passed/1 skipped，Ruff全量通过、mypy172源文件通过。计划与实现说明见 docs/plans/plan_qa_005_remediation_20261005.md 和 implementation_qa_005_remediation_20261005.md。"
-      blocked_by: "NFR-001依赖尚未完成；本轮整改独立审查及人工验收未记录，不标done。"
+      progress: "2026-10-05用户直接批准提前整改记录保留，见implementation_qa_005_remediation_20261005.md。2026-10-10用户直接要求修复2既有失败/4跳过/6Ruff错误：开工全量1335 passed/2 failed/4 skipped（231.13s），日期漂移与Milvus Mock签名已修；Ruff6条等价修复；补齐现有已声明MCP1.12.4、LlamaIndex0.12.42与text-splitters1.1.3可选组件，原92包未升级降级，新增40包，Deprecated1.2.18/wrapt1.17.3保持mypy311兼容。真实MCP stdio与LlamaIndex用例恢复执行，cloud工厂用例临时合成配置且封HTTP，无付费请求。新SDK类型契约和官方tiktoken孤立代理项拒绝已按新增反例修复，预算0/+1阈值不降。最终全量1364 passed/0 failed/0 skipped（225.63s，exit0）；全仓Ruff0、mypy188源0、pipcheck0、diffcheck0。独立215例+028官方44例+official/fallback共12入口反例通过，无未修复P1/P2。计划、实现说明及独审见2026-10-10 QA005 followup记录，未实施CI，未提交或部署。"
+      blocked_by: "NFR-001依赖尚未完成；用户直接批准的2026-10-10既有问题整改技术通过、独立审查已记录，人工业务验收未替代，保持in_review，不把CI建设写成完成。"
       owner: "个人开发者"
+      acceptance_record: "2026-10-10本轮2失败/4跳过/6Ruff逐项技术闭合：最终完整pytest1364通过、0失败、0跳过，exit0；完整mypy/全仓Ruff/依赖一致性通过。E2真实本机MCP stdio及SQLite/LlamaIndex、隔离provider零请求护栏；确定性日期/日志/构造和静态检查证据在docs/plans/implementation_qa_005_followup_20261010.md和docs/reviews/2026-10-10-QA-005遗留整改独立审查.md（含最终指纹）。不降低门禁、不新增skip、原92包版本不变；没有发现新增回归。未验证：整卡人工业务验收；MCP2.x/远端OCR与生产质量不属于本轮范围；NFR-001未实施。回滚只退本轮QA最小diff，保留RAG-039已有修改及重要数据，无Git发布。"
       nightly:
         eligible: true
         production_access: false
@@ -10120,15 +10121,15 @@ tasks:
 
   - id: "RAG-039"
     title: "导入任务恢复与幂等（单实例）"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ''
     depends_on:
     - "RAG-024"
     context:
-      problem: "MAX_CONCURRENCY 当前作为批次 limit，逐个 await；需原子抢占与中断恢复。"
+      problem: "变更前：MAX_CONCURRENCY 作为批次 limit，逐个 await；需原子抢占与中断恢复。"
       facts:
-      - claim: "评审静态观察或能力缺口，实施前须复核并取得复现；未在本轮修复。"
+      - claim: "开工前历史观察：导入恢复存在缺口；2026-10-10已复现并实施，当前结果见execution及实施说明。"
         evidence: "docs/plans/plan_rag_review_remediation_20261005.md；docs/plans/plan_rag_remediation_cards_20261005.md"
       - claim: "用户2026-10-09批准按单实例调整：解除对OPS-001/002的依赖与阻塞，多worker跨实例验收移出本卡；如未来需要多实例，另行立项。"
         evidence: "docs/plans/plan_tasks_single_instance_rescope_20261009.md"
@@ -10156,7 +10157,7 @@ tasks:
     - "单实例下并发导入不重复发布；running 重启可恢复；并发与批次有实测。"
     risk:
       level: "L2"
-      side_effect: "导入任务恢复与多实例幂等"
+      side_effect: "单实例导入任务恢复、并发抢占与幂等；不保证跨进程并发"
       rollback: "规则/配置/模型候选独立关闭或回退；旧版本/原文保留，重要数据重建另获人工授权。"
     evaluation:
       cases:
@@ -10167,7 +10168,9 @@ tasks:
       - "mypy app/rag/"
     execution:
       owner: "个人开发者"
-      blocked_by: "用户2026-10-09批准调整为单实例：解除对OPS-001/002的依赖与阻塞，验收不包含多worker跨实例；仍不借RAG范围实施OPS或新增队列。如未来需要多实例，按新需求重新立项。"
+      blocked_by: ""
+      progress: "2026-10-10：按2026-10-09单实例批准实施。批次与并发独立（各默认2，范围1–1000），Engine绑定的进程内registry/来源串行、CAS抢占、running恢复、有限重试、取消释放、合法发布凭据复用、失效/软删凭据拒绝、重解析最终事务凭据、URL短事务快照/配额和可靠批次终态；无schema/队列/分布式锁新增。多Agent分工：implement实现，contract独立计划/入口审查，verify独立领域验收，root配置/回归/文档整合。F01抢占提交失败容量泄漏与F02无效凭据重摄取已先红后修复并独立复核；恢复遗漏的脱敏异常日志。最终专项：实现20、独立验收18、独立入口7、配置17均在扩大回归中通过；真实新Python进程恢复由独立验收亲自复跑。RAG-039首次交付时历史RAG子集920 passed/2 failed/4 skipped/415 deselected，exit1（日期漂移、Milvus Mock index签名为改前既有失败）；scoped Ruff0、mypy app/188源0、diffcheck0；全仓Ruff1为6条既有错误。前置RAG-024当前关键10例独立复验通过。说明：docs/plans/implementation_rag_039_single_instance_20261010.md；Evaluation：docs/evaluations/rag039-import-lifecycle-v1.md；独立审查/验收见docs/reviews/2026-10-10-RAG-039*.md。Mock仅E2生命周期，不证明质量；未提交/推送/部署，重要数据未改。后续用户授权QA-005整改已闭合此前基线失败/跳过/Ruff错误，当前全量1364通过/0失败/0跳过，详见QA-005实现说明。 后续独立审核F03/P2已按用户授权先红后修复：新增安全批次恢复聚合、缺任务/错绑定保护与26正式回归；最终串行全仓1390通过、0失败/0跳过，独立复审通过。首轮SQLite锁争用和对照诊断限制详见本轮batch recovery fix实现说明；原技术通过结论属历史，最新人工验收仍待完成。 深度复审发现的F07/P1、F04/P2、F05/P2、F06/P2已按本轮用户授权依次先红后修复：有效来源写权限、普通聚合总量/绑定、软删候选排除、真实持久去重成功确认。新增42实现+31独立验收，20独立入口反例及3补充组通过；实现与独审各186领域专项，独立65通过。扩大中旧活动任务测试同时间戳误取ids[1]已按真实running身份修正，原断言和50ms超时保留。最终串行全仓1463passed/0failed/0skipped285.78s exit0，全仓Ruff与完整mypy188源exit0。最新实施说明docs/plans/implementation_rag_039_deep_review_fixes_20261010.md；人工业务验收仍待完成，重要数据与前次改动保留，无Git发布。 后续用户明确要求单独Agent代行人工验收，新独立rag039_business_acceptance自构6组业务操作/两次fresh Python进程与02410例16passed，并亲自补验当前039/URL/线程/取消/系统管理员69passed，合计85通过。原卡全部必交付E2通过，无未决业务判断；业务指纹与root1463全仓一致，解除此前人工待验阻塞，任务done。正式证据docs/reviews/2026-10-10-RAG-039独立业务操作验收.md；未生产启用或Git发布。"
+      acceptance_record: "2026-10-10最终关闭：用户明确“启用一个单独的Agent做人工验收”，依task-card-delivery代行条款，新独立rag039_business_acceptance本人实际85passed/0skipped/exit0（6组真实HTTP/runner/两次fresh进程及02410例共16passed17.09s，当前线程/URL/取消/系统管理员等69passed39.77s）。原卡全部必交付当前E2通过，无未决业务判断/新增P1/P2，此前人工待验阻塞已解除，状态done。F07权限旁路、F04批次总量/主体、F05软删候选、F06真实持久success确认均已先红后修并独立复审；新增42+31正式回归，root冻结后串行全仓1463passed/0failed/0skipped285.78s exit0、全仓Ruff0、mypy app/188源0。源码指纹A0F0A2E80570959339BFE77FEEE22ED15D2F9CD4ABF7BDB85B2383DFF620F686至本次业务操作验收未变；本轮未改业务或旧测试、不放宽门禁。独立新探针首轮5pass1fail为查询Embedding计数基线误假设，仅修独占探针并如实保留失败。E2隔离SQLite/源/合成provider仅证生命周期，不是质量/生产身份验收。未验证且非本卡必交付：真实Milvus/PostgreSQL/生产JWT/付费质量/全部断电窗口/较长SQLite持写锁争用；跨实例为批准非目标。计划/实现说明/ADR0009/Evaluation及独立业务操作验收报告同步，依赖仍RAG024。回滚先停调度只退相关保护，保留原039/F01-F03/QA005和全部重要数据；未提交/推送/合并/部署。详见docs/reviews/2026-10-10-RAG-039独立业务操作验收.md与docs/plans/implementation_rag_039_deep_review_fixes_20261010.md最终关闭对账。"
       nightly:
         eligible: false
         production_access: false

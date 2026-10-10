@@ -32,6 +32,7 @@ from app.models.rag import (
     DocumentIngestionSnapshot,
     EmbeddingIndex,
     ImportJob,
+    ImportJobStatus,
     IndexStatus,
 )
 from app.models.user import User
@@ -1129,11 +1130,14 @@ class RAGService:
         parsed: ParsedDocument,
         *,
         content_hash: str,
+        import_job_id: str | None = None,
     ) -> Document:
         """准备候选后替换；任何失败回滚，不能让调用方提交旧块删除。"""
         self._reindex_external_attempt = None
         try:
-            return await self._reindex_document_in_place(document, parsed, content_hash=content_hash)
+            return await self._reindex_document_in_place(
+                document, parsed, content_hash=content_hash, import_job_id=import_job_id
+            )
         except (Exception, asyncio.CancelledError) as exc:
             self.session.rollback()
             if self._reindex_external_attempt is not None:
@@ -1162,6 +1166,7 @@ class RAGService:
         parsed: ParsedDocument,
         *,
         content_hash: str,
+        import_job_id: str | None = None,
     ) -> Document:
         """就地替换分块与向量，不改变 is_current 与版本组。"""
         if document.deleted_at is not None:
@@ -1316,6 +1321,19 @@ class RAGService:
             await self._vector_store.add(persisted_rows, identity=identity, target_index_id=target_index_id)
         else:
             await self._vector_store.add(persisted_rows)
+        if import_job_id is not None:
+            job = self.session.get(ImportJob, import_job_id)
+            if (job is None or job.tenant_id != document.tenant_id
+                    or job.reparse_document_id != document.id
+                    or job.status != ImportJobStatus.RUNNING.value):
+                raise ValueError("重解析导入任务绑定不一致")
+            job.document_id = document.id
+            job.status = ImportJobStatus.SUCCESS.value
+            job.error = None
+            if job.storage_path:
+                document.storage_path = job.storage_path
+                document.source_bytes = source_file_size(job.storage_path)
+            self.session.add(job)
         self.session.commit()
         self.session.refresh(document)
         return document

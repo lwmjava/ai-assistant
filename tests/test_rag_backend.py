@@ -214,4 +214,6 @@ def test_llamaindex_vector_store_blocks_writes() -> None:
     with pytest.raises(NotImplementedError, match="RAGService"):
         adapter.vector_store.add([])
     with pytest.raises(NotImplementedError, match="RAGService"):
+        adapter.vector_store.add(())
+    with pytest.raises(NotImplementedError, match="RAGService"):
         adapter.vector_store.delete("doc-1")

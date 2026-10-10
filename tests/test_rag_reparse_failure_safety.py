@@ -19,12 +19,17 @@ class FailingEmbedding(MockEmbeddingProvider):
 @pytest.mark.parametrize(
     "failure", ["embedding", "bad_params", "missing_params", "unknown_version", "database", "external_delete"]
 )
-async def test_failed_reparse_job_preserves_previous_document(monkeypatch, failure):
+async def test_failed_reparse_job_preserves_previous_document(monkeypatch, failure, tmp_path):
     import app.rag.import_jobs as jobs
+    from app.rag import document_storage
+
+    monkeypatch.setattr(document_storage, "_PROJECT_ROOT", tmp_path)
 
     engine = create_engine("sqlite://")
     SQLModel.metadata.create_all(engine)
+    monkeypatch.setattr(jobs, "engine", engine)
     text = "abcdefghij" * 12
+    source_path = document_storage.save_source_file("audit", text.encode(), "audit.txt")
     with Session(engine) as session:
         service = RAGService(session, "audit", embedding_provider=MockEmbeddingProvider(dim=4))
         document = await service.ingest_text(
@@ -43,7 +48,7 @@ async def test_failed_reparse_job_preserves_previous_document(monkeypatch, failu
         session.add(document)
         job = ImportJob(
             tenant_id="audit", user_id="audit", source_type="reparse",
-            source_name="audit.txt", storage_path="virtual-fixture.txt",
+            source_name="audit.txt", storage_path=source_path,
             reparse_document_id=document_id,
         )
         session.add(job)
@@ -56,7 +61,6 @@ async def test_failed_reparse_job_preserves_previous_document(monkeypatch, failu
         ).all()]
         previous_snapshot = session.get(DocumentIngestionSnapshot, document_id).model_dump()
 
-    monkeypatch.setattr(jobs, "read_source_file", lambda path: text.encode())
     provider = FailingEmbedding(dim=4) if failure == "embedding" else MockEmbeddingProvider(dim=4)
     def make_service(session, tenant):
         service = RAGService(session, tenant, provider)
@@ -79,14 +83,15 @@ async def test_failed_reparse_job_preserves_previous_document(monkeypatch, failu
 
             event.listen(DocumentChunk, "before_insert", reject_candidate)
             try:
-                await jobs._process_job(session, session.get(ImportJob, job_id))
+                assert await jobs.run_import_jobs_once(limit=1) == 1
             finally:
                 event.remove(DocumentChunk, "before_insert", reject_candidate)
         else:
-            await jobs._process_job(session, session.get(ImportJob, job_id))
+            assert await jobs.run_import_jobs_once(limit=1) == 1
 
     with Session(engine) as session:
         assert session.get(ImportJob, job_id).status == "failed"
+        assert session.get(ImportJob, job_id).attempt_count == 1
         document = session.get(Document, document_id)
         assert document.chunk_count == len(previous_chunks) == 6
         assert document.chunk_plan == previous_plan

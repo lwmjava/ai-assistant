@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from app.rag.access import ReadScope
@@ -119,7 +119,7 @@ class _ProjectPydanticVectorStore:
                 """骨架适配器无独立客户端，返回底层项目 VectorStore。"""
                 return store
 
-            def add(self, nodes: list[BaseNode], **add_kwargs: Any) -> list[str]:
+            def add(self, nodes: Sequence[BaseNode], **add_kwargs: Any) -> list[str]:
                 raise NotImplementedError("写入统一走 RAGService，避免绕过主库与租户隔离")
 
             def delete(self, ref_doc_id: str, **delete_kwargs: Any) -> None:

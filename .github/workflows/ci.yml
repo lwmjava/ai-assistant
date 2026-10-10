@@ -30,6 +30,16 @@ jobs:
         run: mypy app/
       - name: Pytest
         run: pytest
+      - name: RAG baseline gate
+        env:
+          RAG_BACKEND: native
+          RAG_CHUNK_STRATEGY: structured
+          RAG_VECTOR_STORE: local
+          RAG_EFFECTIVE_DATE_FILTER: 'false'
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+        run: |
+          python scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
+          python scripts/rag_gate_check.py --report evals/reports/rag-v0.1-baseline-ci.json --baseline evals/reports/rag-v0.1-baseline-20260919.json
 
   frontend:
     name: Frontend (typecheck / vitest / eslint / build)

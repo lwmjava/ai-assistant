@@ -8810,7 +8810,7 @@ tasks:
 
   - id: "RAG-017"
     title: "召回率持续测评门禁：基线挂 CI 作 1.0 发布门禁"
-    status: "backlog"
+    status: "in_progress"
     priority: "P1"
     target_date: ''
     depends_on:

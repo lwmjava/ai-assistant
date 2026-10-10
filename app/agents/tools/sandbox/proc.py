@@ -165,6 +165,19 @@ def _terminate_unix_tree(parent_command: list[str], *, cwd: str) -> tuple[int, i
             proc.wait(timeout=5)
 
 
+def _last_error_code() -> int:
+    """读取 Win32 最后一次错误码。
+
+    ctypes.get_last_error 仅在 Windows 平台存在；POSIX 平台的 typeshed
+    stub 不提供该属性，因此在此处做一次精确的类型抑制，避免 Linux CI
+    的 mypy 检查报错。本函数只会在 Windows 分支（_run_windows）执行，
+    POSIX 上永远不可达。
+    """
+    import ctypes
+
+    return ctypes.get_last_error()  # type: ignore[attr-defined]
+
+
 def _windows_kernel32():
     import ctypes
 
@@ -179,7 +192,7 @@ def _run_windows(script_path: str, *, cwd: str, env: dict[str, str], timeout: fl
     _bind_win32(kernel32)
     job = _create_job(kernel32)
     if not job:
-        logger.warning("沙箱无法创建进程隔离，错误码 %s", ctypes.get_last_error())
+        logger.warning("沙箱无法创建进程隔离，错误码 %s", _last_error_code())
         return ProcessOutcome(isolation_error=ISOLATION_FAILURE)
 
     stdout_read = stdout_write = stderr_read = stderr_write = stdin_handle = None
@@ -199,10 +212,10 @@ def _run_windows(script_path: str, *, cwd: str, env: dict[str, str], timeout: fl
             stderr_handle=stderr_write,
         )
         if not process:
-            logger.warning("沙箱无法启动代码进程，错误码 %s", ctypes.get_last_error())
+            logger.warning("沙箱无法启动代码进程，错误码 %s", _last_error_code())
             return ProcessOutcome(isolation_error=ISOLATION_FAILURE, pid=0)
         if not kernel32.AssignProcessToJobObject(job, process):
-            logger.warning("沙箱无法绑定进程隔离，错误码 %s", ctypes.get_last_error())
+            logger.warning("沙箱无法绑定进程隔离，错误码 %s", _last_error_code())
             kernel32.TerminateProcess(process, 1)
             return ProcessOutcome(isolation_error=ISOLATION_FAILURE, pid=pid)
         kernel32.CloseHandle(stdout_write)

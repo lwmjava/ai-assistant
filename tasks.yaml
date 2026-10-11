@@ -9045,7 +9045,7 @@ tasks:
 
   - id: "RAG-019"
     title: "LLM 响应与检索结果缓存（P2）"
-    status: "in_review"
+    status: "done"
     priority: "P2"
     target_date: ''
     depends_on:
@@ -9099,7 +9099,8 @@ tasks:
       implementation_record: "docs/plans/implementation_rag_019_cache_20261011.md"
       verification_record: "docs/reviews/2026-10-11-RAG-019-verification.md"
       review_record: "docs/reviews/2026-10-11-RAG-019-code-review.md"
-      progress: "2026-10-11：独立36项E2通过；最终缓存门禁65 passed，ruff全仓及mypy app/通过；F1/F2/F3三项P2已修复并独立复验。Evaluation cache-safety-v1；命中再授权、数据/索引/实际上下文身份及失效、事务/异步/失败/回滚边界已验证。默认关闭，无付费模型/Milvus生产性能或账单证据；人工业务验收未被委托，保持in_review，未提交/推送/部署。"
+      progress: "2026-10-11：独立36项E2通过；最终缓存门禁65 passed，ruff全仓及mypy app/通过；F1/F2/F3三项P2已修复并独立复验。Evaluation cache-safety-v1；命中再授权、数据/索引/实际上下文身份及失效、事务/异步/失败/回滚边界已验证。默认关闭，无付费模型/Milvus生产性能或账单证据。"
+      acceptance_record: "2026-10-11：两轮独立人工审核（manual-review、manual-review-r2）均通过并建议转done；自动验收通过不代表生产就绪，生产启用、真实Milvus/PostgreSQL、多实例、付费账单与端到端性能等未验证项见实现说明与评审文档；用户确认后任务收尾。"
       nightly:
         eligible: false
         production_access: false

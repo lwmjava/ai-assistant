@@ -8668,7 +8668,8 @@ tasks:
 
   - id: "PROMPT-001"
     title: "Prompt / 模型版本可追踪（登记）"
-    status: "backlog"
+    status: "in_progress"
+    notes: "2026-10-11：源码 Prompt/模型配置登记、只读校验与非敏感配置导出已实现；最终相关回归 141 passed / 0 skipped，全仓 Ruff 与完整后端 mypy（189 files）退出码均为 0。E2 新进程隔离验证证明源码/模型漂移和恢复，基线190份源与Git基点匹配；独立审查见 docs/reviews/2026-10-11-PROMPT-001-code-review.md，独立验证见 docs/reviews/2026-10-11-PROMPT-001-verification.md。计划与关闭对账见 docs/plans/plan_prompt_001_20261011.md、docs/plans/implementation_prompt_001_20261011.md。未验证：人工业务验收；当前调用技能未明确授权 Agent 替代该判断，保持 in_progress。登记为源码/声明配置，不声称生产部署、秘密恢复或模型质量已验证。"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8707,6 +8708,8 @@ tasks:
         - "核对 Prompt 版本登记与回滚路径"
       commands:
         - "git log --oneline -- app/agents/prompts.py"
+        - "python app/agents/version_registry.py check"
+        - "python -m pytest docs/ai-prompts/tests/ -q --basetemp=data/prompt001-registry-tests"
     execution:
       owner: "个人开发者"
       nightly:

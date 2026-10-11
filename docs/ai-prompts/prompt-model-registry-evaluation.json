@@ -1,0 +1,15 @@
+{
+  "dataset_version": "prompt-model-registry-v1",
+  "data_class": "AI-authored Smoke/Adversarial",
+  "evaluator": "direct-file CLI + isolated filesystem/new process",
+  "cases": [
+    {"id":"source-lifecycle","type":"Smoke","expected":"source change fails check; restore succeeds with same source version"},
+    {"id":"model-lifecycle","type":"Smoke","expected":"model change changes identity; exported original parameters restore identity"},
+    {"id":"unknown-model-key","type":"Adversarial","expected":"reject misspelled config instead of silently defaulting"},
+    {"id":"secret-input","type":"Adversarial","expected":"known secrets omitted, endpoint/capability source hashed, no raw value in failure output"},
+    {"id":"numeric-boundary","type":"Adversarial","expected":"reject NaN/Infinity/negative timeout/zero dimensions/bool integers"},
+    {"id":"identity-binding","type":"Adversarial","expected":"new/deleted source fails; LF/CRLF stable; invalid Git baseline fails in original worktree"},
+    {"id":"failure-immutability","type":"Adversarial","expected":"bad JSON/metadata fails without writes or traceback"}
+  ],
+  "limitations": ["No real model requests or quality claim", "No deployment/secret-managed rollback", "Human business acceptance remains required"]
+}

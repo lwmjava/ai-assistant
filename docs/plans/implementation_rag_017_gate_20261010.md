@@ -2,7 +2,7 @@
 
 > 日期：2026-10-10
 > 计划：`docs/plans/plan_rag_017_gate_20261010.md`（含门槛批准记录）
-> 任务卡：`tasks.yaml` `RAG-017`（P1 / 实施中，云端实跑通过后置 done）
+> 任务卡：`tasks.yaml` `RAG-017`（P1 / done；2026-10-11 云端门禁通过且用户明确验收关闭）
 > 分支：`rag-batch-20261007`
 
 ## 1. 功能完成情况
@@ -47,7 +47,7 @@
 
 ## 4. 未做的事与说明
 
-- **云端实跑**：用户已授权推送当前分支，Actions 实跑结果待回填本节（CI 通过后本卡置 done）。
+- **云端实跑已完成（2026-10-11）**：提交 `393bcc1910113cd5251930ff4cf153762aae0ff6` 的 [CI run 38131674052](https://github.com/lwmjava/ai-assistant/actions/runs/38131674052) 全部成功；official 基线及 gate_check 实际执行成功，Recall@1/5/10=0.8095/0.9619/0.9619，MRR=0.9429，nDCG@10=0.9401，越权0/13。pytest为1629 passed/4 skipped，包含CLI退化及非法指标拒绝回归。用户明确验收关闭，详见 `closure_rag_017_20261011.md`。
 - 未做重排实验（REL-004 裁定）、未新增数据集、未把 Mock 当证据。
 - 未修 QA-005/工作区 pytest 其他失败项。
 - **环境问题（上线前技术债关联）**：本机 `data/pytest-tmp/run` 目录 ACL 损坏（连管理员修复都被拒），导致默认 basetemp 下 pytest 全 error——与先前「336 errors」同源；本卡验证改用 `--basetemp=data/pytest-tmp/run2` 绕过（与 conftest 设计一致，不改代码）。CI 为 ubuntu 不受影响。修复需管理员权限，已向用户说明。

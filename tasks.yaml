@@ -4662,6 +4662,7 @@ tasks:
         - "pytest -k 'tool or audit'"
     execution:
       owner: "个人开发者"
+      notes: "2026-10-11：用户拍板权限粒度——运行时 RBAC 强制校验，接入现有身份/租户体系，调用前拦截；L2 及以上默认保守执行。"
       nightly:
         eligible: false
         production_access: false
@@ -8928,6 +8929,7 @@ tasks:
         - 'pytest -k "agent or tool or chat"'
     execution:
       owner: "个人开发者"
+      notes: "2026-10-11：用户拍板落地边界——全量迁移既有 4 个内置工具与中间状态；实施前须按 AGENTS.md §4 先落 ADR（变更 Harness/状态边界），State 持久化方案（含新表）在 ADR 中确定。"
       nightly:
         eligible: false
         production_access: false
@@ -8982,6 +8984,7 @@ tasks:
         - "python scripts/run_agent_chain_eval.py --mode smoke；CI 触发 official"
     execution:
       owner: "个人开发者"
+      notes: "2026-10-11：用户确认 CI 前提——将在 GitHub 配置项目 .env 模型凭证；门禁按 agent-chain-v0.1 官方基线接入。"
       nightly:
         eligible: false
         production_access: false

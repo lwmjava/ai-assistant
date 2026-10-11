@@ -134,7 +134,7 @@ async def web_fetch(arguments: dict) -> str:
 
 def default_tools() -> list[Tool]:
     """返回内置工具列表。"""
-    return [
+    tools = [
         Tool(
             name="calculator",
             description="对数学表达式求值，支持 + - * / ** % 与括号，仅限数值运算。",
@@ -202,3 +202,11 @@ def default_tools() -> list[Tool]:
             func=web_fetch,
         ),
     ]
+    from app.agents.tools.file_ops import file_ops_tool
+    from app.agents.tools.web_search import search_tool
+
+    for factory in (search_tool, file_ops_tool):
+        optional = factory()
+        if optional is not None:
+            tools.append(optional)
+    return tools

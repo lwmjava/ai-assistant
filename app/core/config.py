@@ -345,6 +345,24 @@ class Settings(BaseSettings):
     AGENT_QUALITY_THRESHOLD: float = 0.6  # 质量门合格阈值
     AGENT_MAX_REVISIONS: int = 2  # 「行动」草稿不合格时的最大自纠错轮数
 
+    # ── 国内联网搜索与共享资料只读工具 ──
+    # 未配置密钥时搜索不注册，不影响服务启动。未知 provider 在可用性检查中拒绝。
+    SEARCH_PROVIDER: str = "dashscope"
+    SEARCH_DASHSCOPE_API_KEY: str = ""
+    SEARCH_ZHIPU_API_KEY: str = ""
+    SEARCH_BOCHA_API_KEY: str = ""
+    SEARCH_BAIDU_API_KEY: str = ""
+    SEARCH_DASHSCOPE_MODEL: str = "qwen-plus"
+    SEARCH_ZHIPU_MODEL: str = "web-search-pro"
+    SEARCH_BAIDU_MODEL: str = "ernie-4.5-turbo-32k"
+    SEARCH_TIMEOUT_SECONDS: float = 15.0
+    SEARCH_MAX_RESULTS: int = 5
+    SEARCH_MAX_RESPONSE_BYTES: int = 1048576
+    FILE_OPS_ENABLED: bool = False
+    # 仅限运维授权公开共享资料：JSON 对象 {别名: 绝对根路径}。
+    FILE_OPS_ALLOWED_ROOTS: str = "{}"
+    FILE_OPS_MAX_BYTES: int = 65536
+
     # ── MCP（Model Context Protocol）客户端 ──
     # 将企业系统的 MCP 服务器工具注入 Agent 工具箱，打通「AI ↔ 企业系统」。
     MCP_ENABLED: bool = False  # 是否启用 MCP 客户端（默认关闭，避免无配置时尝试连接）

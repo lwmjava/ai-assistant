@@ -102,9 +102,15 @@ class ToolRegistry:
         try:
             observation = await tool.execute(arguments)
         except Exception as exc:  # noqa: BLE001 — 工具异常不应中断整个管线
+            if call.name in {"web_search", "file_ops"}:
+                logger.warning("工具执行失败：%s type=%s", call.name, type(exc).__name__)
+                return f"[工具执行错误] {call.name}：工具暂时不可用。"
             logger.exception("工具执行失败：%s", call.name)
             return f"[工具执行错误] {call.name}：{exc}"
         shown = arguments
+        if call.name in {"web_search", "file_ops"}:
+            # 即使参数被工具拒绝，也不能把未知密钥字段或绝对主机路径回显给模型。
+            shown = {"input": "[redacted]"}
         if call.name == "code_sandbox":
             from app.agents.tools.sandbox.runtime import sanitize_host_paths
 

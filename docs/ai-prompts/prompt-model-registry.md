@@ -1,6 +1,6 @@
 # Prompt / 模型版本登记
 
-版本格式 v1；维护入口 `app/agents/version_registry.py`。当前 `prompt-model-v1` 是源码默认值登记基线，登记生效时间为该基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
+版本格式 v1；维护入口 `app/agents/version_registry.py`。当前 `prompt-model-v2` 追加登记国内搜索、共享文本工具与其配置/健康/注册入口；`prompt-model-v1` 历史记录保持不变。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
 
 ## 登记范围
 
@@ -21,7 +21,7 @@
 变更时先保留旧登记，再生成一个新的候选记录（以下示例 SHA 请换为实际 `git rev-parse HEAD`）：
 
 ```powershell
-& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' app/agents/version_registry.py snapshot --version prompt-model-v2 --source-commit <40位Git基点SHA> --effective-at 2026-10-11T08:00:00Z --rollback '恢复上一登记源和配置；重启并核对'
+& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' app/agents/version_registry.py snapshot --version prompt-model-v3 --source-commit <40位Git基点SHA> --effective-at 2026-10-11T08:00:00Z --rollback '恢复上一登记源和配置；重启并核对'
 ```
 
 人工审查输出后，将整个记录追加到 `prompt-model-registry.json` 的 `versions` 数组，并令 `current` 指向新版本，旧记录禁止修改/删除/复用名称。Git 评审负责历史不可变性，CLI 检查结构和指纹但不能阻止人工同时篡改历史及其指纹。先跑 `check` 和本目录正式测试，再提交源码、登记与验证证据。生成候选不会自行写登记或声明发布。

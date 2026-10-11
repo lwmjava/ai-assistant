@@ -12,7 +12,7 @@
           "system"
         ],
         "summary": "Health Check",
-        "description": "报告进程、数据库与当前向量库是否连通。任一依赖失败则整体不是 ok。",
+        "description": "报告数据库、向量库连通性及可选工具配置状态。工具未配置不阻塞启动。",
         "operationId": "health_check_api_health_get",
         "responses": {
           "200": {

@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlmodel import Session, select
 
+from app.agents.tools.file_ops import file_ops_availability
+from app.agents.tools.web_search import search_availability
 from app.core.config import settings
 from app.core.database import engine
 from app.llm.factory import llm_availability
@@ -30,6 +32,14 @@ router = APIRouter(tags=["system"])
 
 # 本进程加载路由时记下，供管理页展示启动时间。
 STARTED_AT = datetime.now(UTC)
+
+# 启动加载路由时做本地配置校验；只报状态，不探测网络、不显示密钥或共享根。
+for _tool_name, _availability in (
+    ("web_search", search_availability),
+    ("file_ops", file_ops_availability),
+):
+    _tool_state = _availability()
+    logger.info("optional_tool name=%s status=%s reason=%s", _tool_name, _tool_state["status"], _tool_state["reason"])
 
 
 def _configured_vector_backend() -> str:
@@ -165,7 +175,7 @@ def _embedding_index_view() -> dict:
 
 @router.get("/health")
 def health_check() -> JSONResponse:
-    """报告进程、数据库与当前向量库是否连通。任一依赖失败则整体不是 ok。"""
+    """报告数据库、向量库连通性及可选工具配置状态。工具未配置不阻塞启动。"""
     database = _check(_database_status)
     try:
         vector_status, backend = _vector_store_status()
@@ -193,6 +203,10 @@ def health_check() -> JSONResponse:
                 "embedding_index": index_view,
             },
             "llm": {"mode": llm_availability()},
+            "tools": {
+                "web_search": search_availability(),
+                "file_ops": file_ops_availability(),
+            },
         },
     }
     return JSONResponse(status_code=200 if overall == "ok" else 503, content=body)

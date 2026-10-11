@@ -4555,7 +4555,7 @@ tasks:
 
   - id: "PAGT-001"
     title: "补齐 web_search 与 file_ops 读能力"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -4575,6 +4575,8 @@ tasks:
         - "app/api/routes/"
         - "frontend/src/"
         - "tests/"
+        - "docs/"
+        - "README.md"
         - "tasks.yaml"
       forbidden_paths:
         - ".env"
@@ -4609,6 +4611,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+    notes: "2026-10-11：用户批准 docs/ 与 README.md 范围扩展，按 task-card-delivery 多Agent实现仅国内的四provider搜索及默认关闭公开共享文本读取；无国外fallback、无写接口，health脱敏配置状态可见。F01拒绝参数回显与F03深JSON注册/health异常P2已先落修复计划、补正式Red并修复复验；F02编码协商修复，最终独立审查无未决P1/P2。最终源回归200 passed/0 skipped，任务指定tool选择129 passed/1448 deselected；独立入口30 passed、审查19 passed均0 skipped；Prompt回归59 passed，v2登记check0且旧v1记录不变；全仓Ruff--no-cache0、mypy app/191源0。源指纹、原始契约与E2证据见docs/plans/implementation_pagt_001.md、closure_pagt_001_20261011.md及docs/reviews/2026-10-11-PAGT-001-*.md；Evaluation pagt001-tools-v1。用户本轮明确‘启动单独Agent做人工验收’，按技能授权条款由未参与实现的pagt001_business_acceptance独立执行可复现业务操作：135 passed/0 skipped/exit0，另自建真实文件对话读取与新请求回读、匿名/越界/伪造身份/写动作拒绝、源文件SHA不变、旧对象关闭、旧四工具可用和v1保留全部PASS；当前源指纹一致，v2check0，无新阻断。独立报告docs/reviews/2026-10-11-PAGT-001-business-acceptance.md。委托Agent业务操作验收通过，任务登记done，不伪装真人操作。未验证：真实远端密钥认证、真实收费检索质量、具体生产目录授权、生产启用/生产回滚；E2不声称真实搜索质量。用户后续授权提交全部新增和修改文件，本次创建本地提交；未推送、未部署，不自动推进下一卡。"
 
   - id: "PAGT-002"
     title: "工具十要素契约：权限、风险分级、超时、幂等、审计"

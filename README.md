@@ -767,6 +767,16 @@ mypy app/
 
 已核对的 DashScope `text-embedding-v3` 每输入上限 8192 tokens、每批 10 条。当前输入护栏使用负责人批准的 UTF-8 字节数加 32 预留作为保守估算，六类合成样本已用实际 API usage 校准；这不是精确 tokenizer 或所有输入的数学保证。未知模型/端点缺少已验证政策时拒绝外发，通用模型能力配置仍待后续治理。此护栏不更换模型或维度。结构评测只证明合成样本中的完整性，不代表真实检索质量提升。详见 [实现说明](docs/plans/implementation_rag_021_structure_integrity_20261006.md) 和 [结构评测](evals/chunk_structure_integrity/README.md)。
 
+## 国内联网搜索与共享资料读取
+
+`web_search` 使用独立国内适配器，不改变主对话 LLM。配置 `SEARCH_PROVIDER` 为 `dashscope`、`zhipu`、`bocha` 或 `baidu`，并通过环境变量提供对应 `SEARCH_*_API_KEY`。默认通义 `qwen-plus`；智谱使用 `web-search-pro`；百度使用 `ernie-4.5-turbo-32k`；博查为搜索 API。服务固定国内端点，失败不回退国外服务。`disabled` 关闭搜索；缺密钥或不支持的模型不注册工具。
+
+搜索仅发送调用者明确输入的查询，不附带会话历史或租户知识库内容。配置的密钥可能产生搜索/模型费用，由运维授权启用。结果附来源 URL，作为不可信资料交给 Agent；不能把来源当作权限或执行指令。`SEARCH_TIMEOUT_SECONDS`、`SEARCH_MAX_RESULTS`、`SEARCH_MAX_RESPONSE_BYTES` 限制超时、结果数及远端响应体积。没有真实付费调用证据时，不声称真实搜索质量或生产可用性。
+
+`file_ops` 默认关闭。运维仅可将明确允许所有对话用户阅读的公开共享文本资料配置到 `FILE_OPS_ALLOWED_ROOTS`，格式为 JSON 别名到绝对目录的映射，例如 `{"public":"E:/shared-public"}`，然后启用 `FILE_OPS_ENABLED`。不得配置租户上传目录、数据库、密钥、生产配置或用户私有目录。工具接收 `root` 别名、相对 `path` 和可选 `max_bytes`，只读有限 UTF-8 文本；没有写入、删除或列目录接口。`FILE_OPS_MAX_BYTES` 默认 65536。
+
+`GET /api/health` 的 `checks.tools.web_search` 和 `checks.tools.file_ops` 展示脱敏配置状态，不展示密钥或主机根路径，也不发起收费探测。可选工具不可用不改变既有数据库/向量库连通性判定。运行中关闭搜索或文件开关后，新的对话工具清单回到旧四工具；部署回滚应恢复上一源码发行和匹配的 Prompt 登记。配置默认值见 `.env.example`，本卡验收证据见 `docs/plans/implementation_pagt_001.md`。
+
 ## 贡献
 
 欢迎参与建设！提交 Issue、完善文档或贡献代码前，请先阅读 **[CONTRIBUTING.md](CONTRIBUTING.md)** 了解行为规范、分支策略与提交信息约定。

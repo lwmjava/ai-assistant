@@ -113,6 +113,28 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
     LLM_DEFAULT_MODEL: str = "deepseek-chat"
     LLM_TEMPERATURE: float = 0.7
+    # Process caches are opt-in, bounded, and restricted to authenticated requests.
+    LLM_RESPONSE_CACHE_ENABLED: bool = False
+    RETRIEVAL_CACHE_ENABLED: bool = False
+    CACHE_TTL_SECONDS: float = Field(default=60.0, gt=0, le=3600, allow_inf_nan=False)
+    CACHE_MAX_ENTRIES: int = Field(default=256, ge=1, le=10000)
+    CACHE_MAX_BYTES: int = Field(default=8 * 1024 * 1024, ge=1, le=64 * 1024 * 1024)
+    CACHE_MAX_ENTRY_BYTES: int = Field(default=256 * 1024, ge=1, le=64 * 1024 * 1024)
+
+    @field_validator(
+        "CACHE_TTL_SECONDS", "CACHE_MAX_ENTRIES", "CACHE_MAX_BYTES", "CACHE_MAX_ENTRY_BYTES", mode="before"
+    )
+    @classmethod
+    def _cache_numeric_types(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("cache budgets must be numeric, not boolean")
+        return value
+
+    @model_validator(mode="after")
+    def _cache_size_budget(self) -> "Settings":
+        if self.CACHE_MAX_ENTRY_BYTES > self.CACHE_MAX_BYTES:
+            raise ValueError("CACHE_MAX_ENTRY_BYTES must not exceed CACHE_MAX_BYTES")
+        return self
     LLM_MAX_TOKENS: int = 2048
     LLM_TIMEOUT: float = 60.0
     # 第二家。密钥为空表示没有兜底。

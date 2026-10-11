@@ -5,13 +5,16 @@ OpenAI 官方接口与 Ollama 暴露的 ``/v1`` 接口均兼容同一套请求 /
 ``LLM_DEFAULT_MODEL`` 切换目标服务。
 """
 
+import copy
 import json
 import logging
+import math
 from collections.abc import AsyncIterator
 
 import httpx
 
 from app.core.config import settings
+from app.core.response_cache import BoundedCache, cache_limits, current_cache_snapshot, digest
 from app.llm.base import ChatMessage, LLMOptions, LLMProvider
 from app.llm.budget import enforce_generation_budget
 from app.llm.capabilities import (
@@ -20,6 +23,7 @@ from app.llm.capabilities import (
 )
 
 logger = logging.getLogger(__name__)
+_responses = BoundedCache()
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -96,32 +100,95 @@ class OpenAICompatibleProvider(LLMProvider):
             payload["max_tokens"] = opts.max_tokens
         return payload
 
+    def _cache_request(
+        self, payload: dict, opts: LLMOptions, headers: dict, url: str, timeout: float
+    ) -> tuple[str, str] | None:
+        if not settings.LLM_RESPONSE_CACHE_ENABLED or cache_limits() is None:
+            return None
+        if (opts.temperature is None or not math.isfinite(opts.temperature)
+                or opts.temperature != 0 or (opts.max_tokens is not None and opts.max_tokens <= 0)):
+            return None
+        if not math.isfinite(timeout) or timeout <= 0:
+            return None
+        if opts.timeout is not None and (not math.isfinite(opts.timeout) or opts.timeout <= 0):
+            return None
+        stamp = current_cache_snapshot()
+        if stamp is None:
+            return None
+        key = digest((stamp, url, digest(headers), payload, opts.model_dump(),
+                      timeout, self._effective_capability()))
+        return key, stamp
+
+    @staticmethod
+    def _revalidate(request: tuple[str, str]) -> bool:
+        if not settings.LLM_RESPONSE_CACHE_ENABLED:
+            raise PermissionError("缓存生成开关已变更，请重新发起请求")
+        stamp = current_cache_snapshot()
+        if stamp != request[1]:
+            raise PermissionError("缓存生成请求上下文已变更，请重新发起请求")
+        return True
+
     async def chat(
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> str:
-        self._guard(messages, options)
-        opts = options or LLMOptions()
-        async with httpx.AsyncClient(timeout=opts.timeout or self.timeout) as client:
+        opts = (options or LLMOptions()).model_copy(deep=True)
+        self._guard(messages, opts)
+        payload = copy.deepcopy(self._payload(messages, opts, False))
+        headers = dict(self._headers())
+        url = f"{self.base_url}/chat/completions"
+        timeout = opts.timeout or self.timeout
+        request = self._cache_request(payload, opts, headers, url, timeout)
+        if request is not None:
+            cached = _responses.get(request[0])
+            if isinstance(cached, str) and self._revalidate(request):
+                return cached
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers=self._headers(),
-                json=self._payload(messages, options, False),
+                url,
+                headers=headers,
+                json=payload,
             )
             resp.raise_for_status()
             data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        content = choice["message"]["content"]
+        if request is not None and self._revalidate(request):
+            if (data.get("model") == payload["model"] and choice.get("finish_reason") == "stop"
+                    and isinstance(content, str) and content and not choice["message"].get("tool_calls")
+                    and not choice["message"].get("function_call")):
+                _responses.put(request[0], content)
+        return content
 
     async def stream_chat(
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> AsyncIterator[str]:
-        self._guard(messages, options)
-        opts = options or LLMOptions()
-        async with httpx.AsyncClient(timeout=opts.timeout or self.timeout) as client:
+        opts = (options or LLMOptions()).model_copy(deep=True)
+        self._guard(messages, opts)
+        payload = copy.deepcopy(self._payload(messages, opts, True))
+        headers = dict(self._headers())
+        url = f"{self.base_url}/chat/completions"
+        timeout = opts.timeout or self.timeout
+        request = self._cache_request(payload, opts, headers, url, timeout)
+        if request is not None:
+            cached = _responses.get(request[0])
+            if isinstance(cached, list):
+                for content in cached:
+                    if not self._revalidate(request):
+                        break
+                    yield content
+                else:
+                    return
+        parts: list[str] = []
+        complete = False
+        stopped = False
+        reusable = request is not None
+        size = 0
+        async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
-                f"{self.base_url}/chat/completions",
-                headers=self._headers(),
-                json=self._payload(messages, options, True),
+                url,
+                headers=headers,
+                json=payload,
             ) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
@@ -129,12 +196,32 @@ class OpenAICompatibleProvider(LLMProvider):
                         continue
                     data_str = line[len("data:") :].strip()
                     if data_str == "[DONE]":
+                        complete = True
                         break
                     try:
                         chunk = json.loads(data_str)
                     except json.JSONDecodeError:
+                        reusable = False
                         continue
-                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    choice = chunk.get("choices", [{}])[0]
+                    delta = choice.get("delta", {})
+                    if (chunk.get("model") != payload["model"] or delta.get("tool_calls")
+                            or delta.get("function_call")):
+                        reusable = False
+                    if choice.get("finish_reason") == "stop":
+                        stopped = True
+                    elif choice.get("finish_reason") is not None:
+                        reusable = False
                     content = delta.get("content")
                     if content:
+                        if request is not None:
+                            self._revalidate(request)
+                        size += len(content.encode())
+                        if size > settings.CACHE_MAX_ENTRY_BYTES:
+                            reusable = False
+                            parts.clear()
+                        if reusable:
+                            parts.append(content)
                         yield content
+        if request is not None and reusable and complete and stopped and parts and self._revalidate(request):
+            _responses.put(request[0], parts)

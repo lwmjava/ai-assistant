@@ -31,6 +31,7 @@ from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.rag.service import RAGService, sources_from_hits
+from app.services.cache_scope import cached_chat_scope, cached_stream_scope
 from app.services.quota import accept_user_message
 
 if TYPE_CHECKING:
@@ -279,6 +280,7 @@ class ChatService:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
             return pipeline
 
+    @cached_chat_scope
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> tuple[Conversation, str]:
@@ -339,6 +341,7 @@ class ChatService:
         self._maybe_reflect(conv, result)
         return conv, result.answer
 
+    @cached_stream_scope
     async def chat_stream(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
     ) -> AsyncGenerator[AgentEvent, None]:

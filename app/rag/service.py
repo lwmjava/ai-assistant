@@ -47,6 +47,7 @@ from app.rag.access import (
 )
 from app.rag.backend.base import RagBackend
 from app.rag.backend.factory import get_rag_backend, normalize_rag_backend
+from app.rag.cache import CachedRagBackend
 from app.rag.chunking.base import Chunk, ChunkParams
 from app.rag.chunking.factory import (
     get_chunking_strategy,
@@ -268,6 +269,8 @@ class RAGService:
             tokenizer=self._tokenizer,
             rrf_k=settings.RAG_HYBRID_RRF_K,
         )
+        self._cache_reader = reader
+        self._backend = self._cached_backend(self._backend)
         # 本次写入归属的索引；惰性解析，读取面不需要它。
         self._index: EmbeddingIndex | None = None
         # 显式写目标：重建期间写 preparing 索引（旧 active 继续服务）。
@@ -282,12 +285,20 @@ class RAGService:
         normalized = normalize_rag_backend(backend)
         if normalized == self._backend.name:
             return self._backend
-        return get_rag_backend(
-            self._embedding,
-            self._vector_store,
-            backend=normalized,
-            tokenizer=self._tokenizer,
-            rrf_k=settings.RAG_HYBRID_RRF_K,
+        return self._cached_backend(
+            get_rag_backend(
+                self._embedding,
+                self._vector_store,
+                backend=normalized,
+                tokenizer=self._tokenizer,
+                rrf_k=settings.RAG_HYBRID_RRF_K,
+            )
+        )
+
+    def _cached_backend(self, backend: RagBackend) -> RagBackend:
+        return CachedRagBackend(
+            backend, self.session, self.tenant_id, self._cache_reader,
+            self._embedding, self._vector_store, self._tokenizer,
         )
 
     # ── 摄取 ────────────────────────────────────────
@@ -945,7 +956,8 @@ class RAGService:
         """构造对话路径用的父块展开闭包：绑定 index_id，每把 query 透传。"""
 
         async def expander(hits: list[ChunkResult], *, query: str = "") -> list[ChunkResult]:
-            return await self._expand_parent_chunks(hits, query=query, index_id=index_id)
+            current_index = self._read_index_id() if settings.RETRIEVAL_CACHE_ENABLED else index_id
+            return await self._expand_parent_chunks(hits, query=query, index_id=current_index)
 
         return expander
 

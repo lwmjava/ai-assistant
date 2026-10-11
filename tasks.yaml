@@ -9045,20 +9045,20 @@ tasks:
 
   - id: "RAG-019"
     title: "LLM 响应与检索结果缓存（P2）"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     target_date: ''
     depends_on:
     - "RAG-026"
     - "RAG-032"
     context:
-      problem: "无缓存：相同查询重复打 LLM / 检索，热点场景浪费延迟与成本；全仓无 Redis，仅 config lru_cache 与局部 doc_cache。"
+      problem: "实施前无缓存：相同查询重复打 LLM / 检索，热点场景浪费延迟与成本；全仓无 Redis，仅 config lru_cache 与局部 doc_cache。"
       facts:
-      - claim: "全仓无 LLM 响应缓存 / 检索结果缓存 / Redis 依赖。"
+      - claim: "实施前全仓无 LLM 响应缓存 / 检索结果缓存 / Redis 依赖。"
         evidence: "app/；grep -rln 'redis' app --include='*.py' 无输出"
-      - claim: "现有缓存仅 config.py lru_cache(1)、HTTP no-cache、local.py 函数内 doc_cache。"
+      - claim: "实施前现有缓存仅 config.py lru_cache(1)、HTTP no-cache、local.py 函数内 doc_cache。"
         evidence: "app/core/config.py:258；app/main.py:129；app/rag/vectorstore/local.py:254"
-      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
+      - claim: "原契约调整阶段未实施；2026-10-11新增默认关闭的进程内检索/确定性响应缓存，经独立E2验收与审查，待人工业务验收。"
         evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
@@ -9067,6 +9067,7 @@ tasks:
       - "tests/"
       - "tasks.yaml"
       - "docs/"
+      - "README.md"  # 用户 2026-10-11 授权补充缓存配置、限制与回滚
       forbidden_paths:
       - ".env"
       - "生产密钥"
@@ -9094,6 +9095,11 @@ tasks:
       - "pytest -k 'cache'"
     execution:
       owner: "个人开发者"
+      implementation_plan: "docs/plans/plan_rag_019_cache_20261011.md"
+      implementation_record: "docs/plans/implementation_rag_019_cache_20261011.md"
+      verification_record: "docs/reviews/2026-10-11-RAG-019-verification.md"
+      review_record: "docs/reviews/2026-10-11-RAG-019-code-review.md"
+      progress: "2026-10-11：独立36项E2通过；最终缓存门禁65 passed，ruff全仓及mypy app/通过；F1/F2/F3三项P2已修复并独立复验。Evaluation cache-safety-v1；命中再授权、数据/索引/实际上下文身份及失效、事务/异步/失败/回滚边界已验证。默认关闭，无付费模型/Milvus生产性能或账单证据；人工业务验收未被委托，保持in_review，未提交/推送/部署。"
       nightly:
         eligible: false
         production_access: false

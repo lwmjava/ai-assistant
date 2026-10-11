@@ -387,6 +387,12 @@ docker compose up -d --build
 | `LLM_BUDGET_SAFETY_MARGIN` | 预算余量，覆盖消息框架与工具描述的计数误差 | `512` |
 | `LLM_OUTPUT_RESERVE_TOKENS` | 未显式给出 `max_tokens` 时的输出预留 | `2048` |
 | `RAG_ENABLED` | 是否将检索上下文注入对话。无真实 Embedding 时，开发环境用 Mock，只能证明链路 | `true` |
+| `RETRIEVAL_CACHE_ENABLED` | 认证主体的进程内检索缓存，命中前核对授权、数据与索引身份 | `false` |
+| `LLM_RESPONSE_CACHE_ENABLED` | 认证对话的进程内响应缓存；还要求显式 temperature=0、实际模型匹配和完整文本响应 | `false` |
+| `CACHE_TTL_SECONDS` | 两种缓存的 TTL，必须有限且在 (0,3600] 秒 | `60` |
+| `CACHE_MAX_ENTRIES` | 每种缓存的 LRU 条目上限，1–10000 | `256` |
+| `CACHE_MAX_BYTES` | 每种缓存的总字节预算，上限 64 MiB | `8388608` |
+| `CACHE_MAX_ENTRY_BYTES` | 单条字节上限，不得超过总预算 | `262144` |
 | `RAG_DROP_INJECTED_CHUNKS` | 检索后剔除高置信度注入分块 | `true` |
 | `RAG_RETRIEVAL_CANDIDATE_MULTIPLIER` | 检索过取倍数，供剔除后补位 | `3` |
 | `RAG_KB_SCOPE` | 知识库读范围：`tenant` / `uploader` | `tenant` |
@@ -601,6 +607,14 @@ pymilvus 是同步客户端，查询放进线程池执行。总时限到期或�
 ### 关闭韧性
 
 `RAG_RETRIEVAL_RESILIENCE_ENABLED=false`：不重试（attempt 固定为 1）、不记退避等待，行为退回 RAG-038 之前，便于在休眠/无网环境排障。`RAG_RETRIEVAL_DEADLINE_SECONDS=0` 则连总时限一起关闭。
+
+## 可选进程缓存
+
+缓存默认关闭。检索缓存通过已认证主体、有效读范围、数据库、文档/分块内容与生效状态、实际索引身份和检索参数绑定结果；每次命中仍读取最新授权。发布、删除、重解析、改权和索引切换会使旧键失效。已提交态缓存不能用于未提交写事务；flush、显式 SQL 和嵌套事务中的写入均绕过缓存。不透明自定义后端或实际依赖与 Service 名义依赖不一致也绕过缓存；未知 Embedding 的可变状态可能导致保守不命中。为保证失效完整性，当前实现每次读取本租户文档/分块指纹，仍有 SQL 和哈希开销；减少向量库调用不等于整体延迟已达标。
+
+LLM 响应缓存仅作用于 ChatService 绑定的认证请求和实际 OpenAI 兼容模型单跳。temperature=0 之外，还要求实际消息/上下文、模型、端点、凭据摘要、配置和 Prompt/代码版本相同；响应必须确认实际模型匹配、完整文本 stop 结束。流式响应还须正常读取到 DONE。错误、截断、取消、工具调用响应、无已持久化身份的开发请求与非确定性请求不缓存。兜底链仍逐跳尝试，不把兜底答案记为主模型答案；预算与输出安全检查仍执行。
+
+每种缓存各受 TTL、LRU、总字节和单条预算限制，只在本进程内保留，返回副本；不持久化、不跨实例协调，也不合并并发请求。关闭两个开关即可恢复原调用路径，重启清空缓存；不能将此功能视为 Redis、多实例一致性或生产性能验收。隔离 HTTP/合成 Embedding 测试证明重复调用被省去，未使用真实收费服务验证账单或生成/检索质量。
 
 ## 备份与恢复
 

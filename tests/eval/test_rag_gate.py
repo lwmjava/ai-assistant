@@ -111,3 +111,71 @@ def test_gate_rejects_missing_metric(report_copy: dict, tmp_path: Path) -> None:
     result = run_gate(write_report(tmp_path, report_copy))
     assert result.returncode == 1
     assert "mrr 缺失" in result.stdout
+
+
+METRIC_PATHS = [
+    ("recall", "@1"), ("recall", "@5"), ("recall", "@10"),
+    ("mrr",), ("ndcg@10",),
+]
+
+
+@pytest.mark.parametrize("path", METRIC_PATHS)
+@pytest.mark.parametrize("value", [
+    float("nan"), float("inf"), -float("inf"), -0.1, 1.1,
+    True, False, "1.0", [], {}, 10**400,
+])
+def test_gate_rejects_invalid_metric(report_copy: dict, tmp_path: Path, path: tuple, value: object) -> None:
+    """所有排序指标必须是有限且在 [0, 1] 内的数值，不能用布尔或字符串替代。"""
+    metrics = report_copy["overall"]
+    for key in path[:-1]:
+        metrics = metrics[key]
+    metrics[path[-1]] = value
+    result = run_gate(write_report(tmp_path, report_copy))
+    assert result.returncode == 1
+    assert "非法" in result.stdout
+    assert "Traceback" not in result.stderr
+
+
+@pytest.mark.parametrize("value", [
+    -1, 0.0, 0.5, True, False, float("nan"), float("inf"), -float("inf"), "0", [], {},
+])
+def test_gate_rejects_invalid_violation_count(report_copy: dict, tmp_path: Path, value: object) -> None:
+    """越权案例数必须是非负整数；零容忍不能由负值或其他类型绕过。"""
+    report_copy["overall"]["safety"]["violation_cases"] = value
+    result = run_gate(write_report(tmp_path, report_copy))
+    assert result.returncode == 1
+    assert "非法" in result.stdout
+    assert "Traceback" not in result.stderr
+
+
+@pytest.mark.parametrize("path,value", [
+    (("overall",), []), (("overall", "recall"), "invalid"),
+    (("overall", "safety"), [0]),
+])
+def test_gate_rejects_invalid_metric_structure(report_copy: dict, tmp_path: Path, path: tuple, value: object) -> None:
+    """损坏指标结构以明确门禁问题返回，避免类型错误堆栈。"""
+    parent = report_copy
+    for key in path[:-1]:
+        parent = parent[key]
+    parent[path[-1]] = value
+    result = run_gate(write_report(tmp_path, report_copy))
+    assert result.returncode == 1
+    assert "非法" in result.stdout
+    assert "Traceback" not in result.stderr
+
+
+def test_gate_accepts_metric_upper_bounds(report_copy: dict, tmp_path: Path) -> None:
+    """合法的满分指标及零越权保持可通过。"""
+    report_copy["overall"]["recall"] = dict.fromkeys(["@1", "@5", "@10"], 1)
+    report_copy["overall"]["mrr"] = 1.0
+    report_copy["overall"]["ndcg@10"] = 1
+    result = run_gate(write_report(tmp_path, report_copy))
+    assert result.returncode == 0
+
+
+def test_gate_accepts_approved_thresholds(report_copy: dict, tmp_path: Path) -> None:
+    """批准阈值为包含式下限，修复不提高质量门槛。"""
+    report_copy["overall"]["recall"] = {"@1": 0.78, "@5": 0.94, "@10": 0.94}
+    report_copy["overall"]["mrr"] = 0.92
+    report_copy["overall"]["ndcg@10"] = 0.92
+    assert run_gate(write_report(tmp_path, report_copy)).returncode == 0

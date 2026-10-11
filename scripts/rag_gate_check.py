@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 # 指标门槛（建议档，2026-10-10 批准）
@@ -69,6 +70,23 @@ def check_config(report_cfg: dict, baseline_cfg: dict) -> list[str]:
     return problems
 
 
+def _check_score(value: object, field: str, label: str, threshold: float) -> list[str]:
+    """先验证分数类型、范围和有限性，再比较批准阈值。"""
+    if value is None:
+        return [f"{field} 缺失"]
+    # 先收窄范围，避免超大 JSON 整数转成 float 时溢出。
+    if (
+        not isinstance(value, int | float)
+        or isinstance(value, bool)
+        or not 0 <= value <= 1
+        or not math.isfinite(value)
+    ):
+        return [f"{field} 非法：必须是 [0, 1] 内的有限数值（不接受布尔值）"]
+    if value < threshold:
+        return [f"{label}={value:.4f} < 门槛 {threshold}"]
+    return []
+
+
 def check_metrics(overall: dict) -> list[str]:
     """按批准门槛检查 Recall/MRR/nDCG 与安全切片越权。
 
@@ -76,27 +94,25 @@ def check_metrics(overall: dict) -> list[str]:
     出参：问题列表；为空表示全部达标。
     """
     problems: list[str] = []
-    recall = overall.get("recall") or {}
-    for k, threshold in RECALL_THRESHOLDS.items():
-        value = recall.get(k)
-        if value is None:
-            problems.append(f"overall.recall.{k} 缺失")
-        elif value < threshold:
-            problems.append(f"Recall{k}={value:.4f} < 门槛 {threshold}")
-    mrr = overall.get("mrr")
-    if mrr is None:
-        problems.append("overall.mrr 缺失")
-    elif mrr < MRR_THRESHOLD:
-        problems.append(f"MRR={mrr:.4f} < 门槛 {MRR_THRESHOLD}")
-    ndcg = overall.get("ndcg@10")
-    if ndcg is None:
-        problems.append("overall.ndcg@10 缺失")
-    elif ndcg < NDCG10_THRESHOLD:
-        problems.append(f"nDCG@10={ndcg:.4f} < 门槛 {NDCG10_THRESHOLD}")
-    safety = overall.get("safety") or {}
+    if not isinstance(overall, dict):
+        return ["overall 非法：必须是 JSON 对象"]
+    recall = overall.get("recall", {})
+    if not isinstance(recall, dict):
+        problems.append("overall.recall 非法：必须是 JSON 对象")
+    else:
+        for k, threshold in RECALL_THRESHOLDS.items():
+            problems.extend(_check_score(recall.get(k), f"overall.recall.{k}", f"Recall{k}", threshold))
+    problems.extend(_check_score(overall.get("mrr"), "overall.mrr", "MRR", MRR_THRESHOLD))
+    problems.extend(_check_score(overall.get("ndcg@10"), "overall.ndcg@10", "nDCG@10", NDCG10_THRESHOLD))
+    safety = overall.get("safety", {})
+    if not isinstance(safety, dict):
+        problems.append("overall.safety 非法：必须是 JSON 对象")
+        return problems
     violations = safety.get("violation_cases")
     if violations is None:
         problems.append("overall.safety.violation_cases 缺失")
+    elif type(violations) is not int or violations < 0:
+        problems.append("overall.safety.violation_cases 非法：必须是非负整数（不接受布尔值）")
     elif violations > MAX_VIOLATION_CASES:
         problems.append(f"安全切片越权案例 {violations} > 允许值 {MAX_VIOLATION_CASES}")
     return problems
@@ -109,7 +125,7 @@ def run_gate(report: dict, baseline: dict) -> list[str]:
     出参：问题列表；为空表示通过。
     """
     problems = check_config(report.get("run_config") or {}, baseline.get("run_config") or {})
-    problems.extend(check_metrics(report.get("overall") or {}))
+    problems.extend(check_metrics(report.get("overall", {})))
     return problems
 
 

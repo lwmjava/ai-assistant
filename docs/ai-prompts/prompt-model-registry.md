@@ -1,6 +1,6 @@
 # Prompt / 模型版本登记
 
-版本格式 v1；维护入口 `app/agents/version_registry.py`。当前 `prompt-model-v2` 追加登记国内搜索、共享文本工具与其配置/健康/注册入口；`prompt-model-v1` 历史记录保持不变。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
+版本格式 v1；维护入口 `app/agents/version_registry.py`。当前 `prompt-model-v3` 登记共享文本工具的平台判断修复（Linux mypy 可排除 Windows API）；`prompt-model-v1`、`prompt-model-v2` 历史记录保持不变，模型默认指纹不变。v2 登记国内搜索、共享文本工具与其配置/健康/注册入口。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
 
 ## 登记范围
 

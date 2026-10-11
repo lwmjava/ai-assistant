@@ -10,6 +10,7 @@ import json
 import os
 import re
 import stat
+import sys
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
@@ -107,7 +108,7 @@ def _observation(status: str, code: str, **extra: Any) -> str:
 
 def _handle_path(fd: int) -> Path:
     """Bind validation to the actual opened object, not just the original string."""
-    if os.name == "nt":
+    if sys.platform == "win32":
         import ctypes
         import msvcrt
         from ctypes import wintypes

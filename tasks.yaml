@@ -8876,8 +8876,8 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      blocked_by: "NFR-001/RAG-034 未完成；云端实跑仍受不推送边界约束。质量门槛制定方法已批准，具体发布阈值/容忍量须实测后落盘批准。"
-      progress: "2026-10-06：用户批准按推进清单第8节建议实施；保持CI前置阻塞，不以本地通过替代云端验收。见 docs/plans/plan_rag_remaining_order_20261006.md 第9节。"
+      blocked_by: "云端official评测及退化拦截验收待完成；用户告知已补齐GitHub CI密钥，本地验证不替代云端质量证据。"
+      progress: "2026-10-06批准推进方向；2026-10-10计划记录前置依赖已满足、建议档阈值获批准并接入CI。2026-10-11用户告知已补齐GitHub CI密钥，明确授权修复Linux mypy与非法指标放行，范围含file_ops.py平台判断。门禁拒绝非有限/越界/错误类型分数和非整数/负越权计数，阈值不变；本地门禁与工具测试140 passed，eval/集成/登记回归277 passed，Linux/Windows mypy各191源通过，全仓Ruff通过。计划与证据见docs/plans/plan_rag_017_ci_fix_20261011.md、implementation_rag_017_ci_fix_20261011.md。保持in_progress，数据集完整性校验不在本轮范围，未推送或部署。"
 
   - id: "PAGT-006"
     title: "独立 Tool Executor + State Manager 层（随工具扩展落地）"

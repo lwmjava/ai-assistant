@@ -4672,7 +4672,7 @@ tasks:
 
   - id: "PAGT-003"
     title: "工具调用预算与循环上限"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -4716,6 +4716,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+    notes: "2026-10-11：按 task-card-delivery v1.3.0 多Agent实施工具调用预算与循环上限。实现：AgentPipeline._iter_action_loop for…else 置 tool_budget_exhausted 标志，循环达 AGENT_MAX_TOOL_ROUNDS 后停止；_apply_budget_notice 在 QualityGate 之后、_build_respond 之前注入预算耗尽文案（run/run_stream 短路+完整共四处，被评分 draft 不含 notice）；AGENT_MAX_TOOL_ROUNDS Field(default=10, ge=1, le=100)+类型守卫（bool/浮点/非数值拒绝），默认值 5→10 对齐 PRD §5.1.3，.env.example 同步。计划审查修订 P2-1（notice 注入点方案 B）后进入实现；入口级反例审查 8 反例实证（流式/畸形/短路/配置边界/幂等/自愿停/QualityGate），回归全绿；独立人工审核第 1 轮验收通过（docs/reviews/2026-10-11-PAGT-003-manual-review-1.md），无 P1/P2，4 项 P3 观察已记录。验证：新增 17 passed、pytest -k 'pipeline or budget' 128 passed、tools 基线 70 passed、pytest -k 'tool or audit' 153 passed（PAGT-002 回归）、agent_chain 41 passed、Ruff --no-cache 0、mypy app/ 195 源 0。契约对账、E2 证据与指纹见 docs/plans/plan_pagt_003_20261011.md、implementation_pagt_003.md、closure_pagt_003_20261011.md 及 docs/reviews/2026-10-11-PAGT-003-*.md。未验证：真实 LLM 转述预算文案质量、fast_path _TOOL_ROUND_CAP=2 旁路（越界文件，短路径走既有耗尽文案）、QualityGate 重入累计预算（默认关）、多实例并发 E1、PostgreSQL E1；E2 不声称生产证据。任务登记 done；本次仅本地提交，未推送、未部署，不自动推进下一卡。"
 
   - id: "PAGT-004"
     title: "Plan 从文本计划升级为可编排步骤"

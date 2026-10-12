@@ -53,6 +53,10 @@ _DUPLICATE_OBSERVATION = "相同参数已执行过，请直接使用已有结果
 _INVALID_CALL_OBSERVATION = "[工具调用失败] 调用格式无法解析"
 _DENIED_OBSERVATION = "[工具调用失败] 当前步骤不允许调用该工具。"
 _EXHAUSTED_DRAFT = "工具调用次数已用完，未能得到最终结果。"
+_BUDGET_EXHAUSTED_NOTICE = (
+    "\n\n（系统提示：本次对话已达到工具调用次数上限 {limit} 次，"
+    "后续内容基于已有工具结果生成。）"
+)
 _EXHAUSTED_NOTE = "工具次数已用完，请根据已有结果写草稿，不要再调用工具。"
 _RECENT_MESSAGE_LIMIT = 6
 _PROTECTED_CHARS = 2000
@@ -237,6 +241,8 @@ class AgentState:
     quality_score: float = 0.0  # QualityGate 最近一次质量评分
     revision: int = 0  # QualityGate 自纠错已执行的轮数
     executed_tool_fingerprints: set[str] = field(default_factory=set)
+    # PAGT-003：本次请求的工具行动轮次是否已跑满预算（仅管线循环层置位，跨循环重入保持）
+    tool_budget_exhausted: bool = False
     # 一次 Supervisor 执行里的分派记录，只留在内存，不入库。
     delegations: list[dict[str, str]] = field(default_factory=list)
 
@@ -320,7 +326,7 @@ class AgentPipeline:
         self.options = options or LLMOptions()
         self.retriever = retriever
         self.tools = tools
-        self.max_tool_rounds: int = 5
+        self.max_tool_rounds: int = 10
         # 技能系统：Prompt 注入文本（由 ChatService 匹配技能后设置）
         self.skill_prompt_injection: str = ""
         # 调试追踪
@@ -601,6 +607,7 @@ class AgentPipeline:
                 if self.trace:
                     self.trace.stage_start("行动（短路）")
                 state.draft = await self._run_action_loop(state, _SHORT_PATH_POLICY)
+                self._apply_budget_notice(state)
                 if self.trace:
                     self.trace.stage_end("行动（短路）")
                     self.trace.stage_start("响应")
@@ -640,6 +647,7 @@ class AgentPipeline:
             if self.trace:
                 self.trace.stage_end("行动")
             state.draft = await self._quality_gate_loop(state)
+            self._apply_budget_notice(state)
             # 6. 反思
             if self.trace:
                 self.trace.stage_start("反思")
@@ -745,6 +753,19 @@ class AgentPipeline:
             return _EXHAUSTED_DRAFT
         return draft or ""
 
+    def _apply_budget_notice(self, state: AgentState) -> None:
+        """预算耗尽后在草稿末尾确定性追加说明（PAGT-003，幂等）。
+
+        注入点刻意放在 QualityGate 循环之后、最终应答之前：被质量门评分的
+        draft 不携带该说明，避免改变评分输入（审查 P2-1 方案 B）。
+        """
+        if not state.tool_budget_exhausted:
+            return
+        suffix = _BUDGET_EXHAUSTED_NOTICE.format(limit=self.max_tool_rounds)
+        if suffix.strip() in (state.draft or ""):
+            return
+        state.draft = f"{state.draft}{suffix}"
+
     def _reject_tool_call(self, state: AgentState, intent: ToolIntent, policy: ExecutionPolicy) -> str | None:
         """返回 skip、invalid、denied 或 None。None 表示可以执行。"""
         if intent.status == "invalid" or intent.call is None:
@@ -800,6 +821,10 @@ class AgentPipeline:
                 for item in fresh:
                     yield AgentEvent("code_result", json.dumps(item, ensure_ascii=False))
                 wrap_up = True
+            else:
+                # 循环跑满全部轮次（非 return/break 退出）＝预算耗尽，置标志；
+                # 说明文案不在循环内追加，统一由 _apply_budget_notice 在质量门之后注入。
+                state.tool_budget_exhausted = True
             if wrap_up and inspect_tool_call(state.draft).status != "none":
                 state.draft = await self._finalize_without_tools(state)
         finally:
@@ -830,6 +855,7 @@ class AgentPipeline:
                 yield AgentEvent("stage", "行动")
                 async for event in self._iter_action_loop(state, _SHORT_PATH_POLICY):
                     yield event
+                self._apply_budget_notice(state)
                 yield AgentEvent("stage", "响应")
                 chunks: list[str] = []
                 async for delta in self.llm.stream_chat(
@@ -882,6 +908,7 @@ class AgentPipeline:
                     async for event in self._iter_action_loop(state):
                         yield event
                     state.revision += 1
+            self._apply_budget_notice(state)
             # 6. 反思
             yield AgentEvent("stage", "反思")
             state.reflection = await self._stage(

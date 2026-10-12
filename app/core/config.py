@@ -305,7 +305,9 @@ class Settings(BaseSettings):
     RAG_OCR_MODEL: str = ""
 
     # ── Agent 工具调用（Function Calling）──
-    AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数
+    # 「行动」阶段单次对话最多执行的工具调用次数（PRD §5.1.3 max_tool_calls=10）。
+    # 范围 1~100；达到上限后停止工具行动并在最终回复前说明（PAGT-003）。
+    AGENT_MAX_TOOL_ROUNDS: int = Field(default=10, ge=1, le=100)
 
     # ── 技能系统（Skill System）──
     # YAML 声明式技能注册，Agent 按条件匹配激活（Prompt 注入 / 工具模式）
@@ -435,6 +437,14 @@ class Settings(BaseSettings):
         """环境变量可用整数字符串；布尔值与浮点数不能冒充调度预算。"""
         if isinstance(value, bool) or not isinstance(value, int | str):
             raise ValueError("导入批次与并发上限必须是 1..1000 的整数")
+        return value
+
+    @field_validator("AGENT_MAX_TOOL_ROUNDS", mode="before")
+    @classmethod
+    def _validate_tool_budget_type(cls, value: object) -> object:
+        """环境变量可用整数字符串；布尔值与浮点数不能冒充工具调用预算（PAGT-003）。"""
+        if isinstance(value, bool) or not isinstance(value, int | str):
+            raise ValueError("单次对话工具调用上限必须是 1..100 的整数")
         return value
 
     @model_validator(mode="after")

@@ -60,3 +60,7 @@ class ToolContract:
     conflict_policy: str = "none"
     error_model: str = "observation_string_no_raise"
     audit: bool = True
+    # v1 校验开关：默认 False。False 时 Executor 对缺参/坏参放行（既有 4 个内置工具
+    # 自身已返回友好文案），只把校验结论记入 ExecutorResult.audit_metadata；
+    # True 时 Executor 在执行前硬拒绝（func 零调用）。既有内置工具均不开启。
+    strict_validation: bool = False

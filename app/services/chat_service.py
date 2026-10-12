@@ -22,6 +22,7 @@ from app.agents.route import ChatRoute, RouteKind, route_message
 from app.agents.skills.base import SkillContext
 from app.agents.tools.base import Tool, ToolRegistry
 from app.agents.tools.builtin import default_tools
+from app.agents.tools.executor import ToolExecutor
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
@@ -280,6 +281,32 @@ class ChatService:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
             return pipeline
 
+    def _wire_runtime(
+        self, session, user, conv, tools, pipeline: AgentPipeline, message_id: str
+    ) -> None:
+        """PAGT-006：把独立 Executor 与（可选）状态 store 注入自研管线。
+
+        未注入即走原 Registry.run / 就地状态路径；状态持久化受
+        ``AGENT_STATE_PERSIST_ENABLED`` 开关控制。Supervisor/短路路径不注入。
+        ``message_id`` 绑定真实用户消息行 id，使每条用户消息独占 checkpoint 行
+        （跨消息隔离、唯一约束真实生效）。
+        """
+        if tools is not None:
+            pipeline.executor = ToolExecutor(tools)
+        if not settings.AGENT_STATE_PERSIST_ENABLED:
+            return
+        from app.services.agent_state_service import AgentStateService
+
+        pipeline.state_store = AgentStateService(
+            session, tenant_id=user.tenant_id, user_id=user.id
+        )
+        pipeline.state_binding = {
+            "conversation_id": conv.id,
+            "message_id": message_id,
+            "tenant_id": user.tenant_id,
+            "user_id": user.id,
+        }
+
     @cached_chat_scope
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None
@@ -289,7 +316,7 @@ class ChatService:
         sec_ctx, safe_message = self._apply_input_security(message, user)
         if sec_ctx and sec_ctx.blocked:
             raise self._rejection_error(sec_ctx)
-        conv = self._accept_user_message(session, user, conversation_id, message)
+        conv, user_message_id = self._accept_user_message(session, user, conversation_id, message)
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
         state = AgentState(user_input=safe_message, history=memory.recent_messages)
@@ -313,6 +340,7 @@ class ChatService:
                 pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
                 if isinstance(pipeline, AgentPipeline):
                     pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
+                    self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
                 # 7. 执行
                 result = await pipeline.run(state)
         except ContextBudgetError:
@@ -359,7 +387,7 @@ class ChatService:
                 )
             yield AgentEvent("error", str(self._rejection_error(sec_ctx)))
             return
-        conv = self._accept_user_message(session, user, conversation_id, message)
+        conv, user_message_id = self._accept_user_message(session, user, conversation_id, message)
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
         state = AgentState(user_input=safe_message, history=memory.recent_messages)
@@ -376,6 +404,7 @@ class ChatService:
         pipeline = None if fast is not None else self._build_pipeline(retriever, tools, skill_ctx)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
+            self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
         # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。
         conversation_id = conv.id
         yield AgentEvent("conversation", conversation_id)
@@ -447,7 +476,7 @@ class ChatService:
     # ── 内部辅助 ──────────────────────────────────
     def _accept_user_message(
         self, session: Session, user: User, conversation_id: str | None, message: str
-    ) -> Conversation:
+    ) -> tuple[Conversation, str]:
         return accept_user_message(
             session,
             tenant_id=user.tenant_id,

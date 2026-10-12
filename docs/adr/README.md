@@ -1,7 +1,7 @@
 # ADR 目录
 
-> 状态：八份 Accepted ADR；架构批准不等于能力实现
-> 更新日期：2026-10-06
+> 状态：九份 Accepted ADR；架构批准不等于能力实现
+> 更新日期：2026-10-12
 
 本目录只存放已批准或评审中的架构决策记录。
 
@@ -18,6 +18,7 @@ ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-c
 | ADR-0006 | [0006-rag-cleaning-and-retention-compensation.md](0006-rag-cleaning-and-retention-compensation.md) | Accepted | 保守清洗、原始快照和到期清理补偿 | `RAG-014` |
 | ADR-0007 | [0007-rag-source-verification-permission.md](0007-rag-source-verification-permission.md) | Accepted | 有权命中块只读核验，不扩大整文件下载/管理权；功能仍 Planned | `RAG-027` |
 | ADR-0008 | [0008-embedding-index-identity-and-switching.md](0008-embedding-index-identity-and-switching.md) | Accepted | 索引身份、准备后切换、旧索引回退；实际重要数据重建另授权 | `RAG-032` |
+| ADR-0010 | [0010-agent-runtime-state-boundary.md](0010-agent-runtime-state-boundary.md) | Accepted | 独立 Tool Executor（校验/超时/有限重试/审计/结果归一化）+ StateManager 包装 AgentState；新表 `agent_run_states` 持久化 checkpoint；新表位置在 `app/models/`、待扩展 allowed_paths 批准 | `PAGT-006` |
 
 权限过滤与生效日期过滤实现在 `RAG-006`。本阶段不切换默认向量库。  
 `RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后才改变检索候选集。

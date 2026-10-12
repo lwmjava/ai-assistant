@@ -45,6 +45,7 @@ def init_db(*, auto_migrate: bool = True) -> None:
     # 导入模型以注册表结构（Side-effect import）。
     from app.audit import models as _audit_models  # noqa: F401
     from app.models import (
+        agent_state,  # noqa: F401
         conversation,  # noqa: F401
         rag,  # noqa: F401
         skill,  # noqa: F401

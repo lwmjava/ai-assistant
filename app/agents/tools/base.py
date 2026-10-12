@@ -9,6 +9,8 @@
 工具执行与具体大模型实现无关，因此本模块可在任意 LLM 提供商下工作。
 """
 
+from __future__ import annotations
+
 import asyncio
 import inspect
 import json
@@ -17,9 +19,13 @@ import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from app.agents.tools.contract import ToolContract
 from app.core import log_context
+
+if TYPE_CHECKING:
+    from app.agents.tools.executor import ToolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +65,7 @@ class Tool:
     name: str
     description: str
     parameters: dict
-    func: Callable[[dict], "str | Awaitable[str]"]
+    func: Callable[[dict], str | Awaitable[str]]
     contract: ToolContract | None = None
 
     async def execute(self, arguments: dict) -> str:
@@ -70,11 +76,33 @@ class Tool:
         return str(result)
 
 
+def format_tool_observation(name: str, arguments: dict, observation: str) -> str:
+    """把一次工具执行结果拼装成给模型的观测文本（bound/legacy 两路径唯一实现）。
+
+    打码与路径净化规则与 PAGT-002 保持一致：web_search/file_ops/file_ops_write
+    的参数整体打码；code_sandbox 的宿主路径净化。观测格式
+    ``[name] 参数={shown} 结果={observation}`` 是模型 Prompt 与 golden 回归的契约，
+    不得拆分出第二份实现。
+    """
+    shown: dict = dict(arguments or {})
+    if name in {"web_search", "file_ops", "file_ops_write"}:
+        shown = {"input": "[redacted]"}
+    if name == "code_sandbox":
+        from app.agents.tools.sandbox.runtime import sanitize_host_paths
+
+        shown = {
+            key: sanitize_host_paths(value) if isinstance(value, str) else value
+            for key, value in (arguments or {}).items()
+        }
+    return f"[{name}] 参数={shown} 结果={observation}"
+
+
 class ToolRegistry:
     """按名称管理工具集合。"""
 
     def __init__(self, tools: list[Tool] | None = None) -> None:
         self._tools: dict[str, Tool] = {}
+        self._executor: ToolExecutor | None = None
         if tools:
             for tool in tools:
                 self.register(tool)
@@ -196,8 +224,15 @@ class ToolRegistry:
         except Exception:  # noqa: BLE001 — 审计故障不阻断业务
             logger.exception("工具调用审计写入失败：tool=%s", call.name)
 
+    def bind_executor(self, executor: ToolExecutor) -> None:
+        """绑定独立 Tool Executor；绑定后 run() 薄委托给它（PAGT-006）。"""
+        self._executor = executor
+
     async def run(self, call: ToolCall) -> str:
         """执行一次工具调用，返回结构化观测文本。"""
+        bound = getattr(self, "_executor", None)
+        if bound is not None:
+            return (await bound.execute(call)).observation
         tool = self.get(call.name)
         if tool is None:
             return f"[工具调用失败] 未找到名为「{call.name}」的工具。"
@@ -230,17 +265,7 @@ class ToolRegistry:
         latency_ms = (time.monotonic() - started) * 1000
         await self._record_audit(call, user_id, tenant_id, risk, True, None, latency_ms)
 
-        shown = arguments
-        if call.name in {"web_search", "file_ops", "file_ops_write"}:
-            shown = {"input": "[redacted]"}
-        if call.name == "code_sandbox":
-            from app.agents.tools.sandbox.runtime import sanitize_host_paths
-
-            shown = {
-                key: sanitize_host_paths(value) if isinstance(value, str) else value
-                for key, value in arguments.items()
-            }
-        return f"[{call.name}] 参数={shown} 结果={observation}"
+        return format_tool_observation(call.name, arguments, observation)
 
 
 def inspect_tool_call(text: str) -> ToolIntent:

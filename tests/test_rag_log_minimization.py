@@ -242,7 +242,7 @@ async def test_stream_sources_remain_in_response_but_not_logs(monkeypatch, sourc
     conv = SimpleNamespace(id="conversation-log-regression")
     sources = [{"chunk_id": "chunk-log-regression", "excerpt": EXCERPT, "source": EXCERPT}]
     monkeypatch.setattr(service, "_apply_input_security", lambda *a: (None, QUERY))
-    monkeypatch.setattr(service, "_accept_user_message", lambda *a: conv)
+    monkeypatch.setattr(service, "_accept_user_message", lambda *a: (conv, "user-msg-log-regression"))
     monkeypatch.setattr(
         service, "_build_memory", AsyncMock(return_value=SimpleNamespace(recent_messages=[], memory_context=""))
     )

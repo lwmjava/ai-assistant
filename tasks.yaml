@@ -8884,7 +8884,7 @@ tasks:
 
   - id: "PAGT-006"
     title: "独立 Tool Executor + State Manager 层（随工具扩展落地）"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8931,7 +8931,7 @@ tasks:
         - 'pytest -k "agent or tool or chat"'
     execution:
       owner: "个人开发者"
-      notes: "2026-10-11：用户拍板落地边界——全量迁移既有 4 个内置工具与中间状态；实施前须按 AGENTS.md §4 先落 ADR（变更 Harness/状态边界），State 持久化方案（含新表）在 ADR 中确定。"
+      notes: "2026-10-11：用户拍板落地边界——全量迁移既有 4 个内置工具与中间状态；实施前须按 AGENTS.md §4 先落 ADR（变更 Harness/状态边界），State 持久化方案（含新表）在 ADR 中确定。 2026-10-12：PAGT-006 实现完成并经独立验证+入口级反例审查两轮闭环。落地独立 Tool Executor（参数校验/超时/幂等瞬时重试/RBAC+审计组合委托/共享观测拼装）、StateManager（零 DB import）+ agent_run_states checkpoint 持久化表，构造函数可选注入、未注入走原路径。修复轮关闭 P1-1 跨消息 checkpoint 污染：load_active 仅恢复 running/suspended 行、终态 discard；绑定真实用户消息行 id（quota.accept_user_message 返回）使 UNIQUE 真实生效、跨消息隔离。证据：tests/test_agent_state.py+test_agent_state_resume.py 21 passed；pytest -k \"agent or tool or chat or quota or rag_log\" 279 passed/0 失败；ruff 0；mypy 0（199 源）。实现说明 docs/plans/implementation_pagt_006.md；关闭对账 docs/plans/closure_pagt_006_20261012.md；修复计划 docs/plans/plan_pagt_006_review_fixes_20261012.md；ADR docs/adr/0010-agent-runtime-state-boundary.md。未验证项（原样登记）：①根目录 README.md/.env.example 未同步三个 AGENT_STATE_* 配置（已记录偏差，不越界）；②D-002 NULL 兜底路径未做多进程并发压测（生产 message_id 已非 NULL）；③web_fetch golden 未沉淀为 pytest（独立冒烟实测）；④PostgreSQL E1 生产验证未做（证据为 SQLite E2）。无未修复 P1/P2；状态 in_review，待独立人工审核 Agent 结论与用户业务验收，不自动 done；未 git 提交。 2026-10-12：独立人工审核 Agent 验收通过（docs/reviews/2026-10-12-PAGT-006-manual-review-1.md：9 关键文件指纹、21+279 passed 实跑、关闭对账核对、三条不变量均独立确认，无未修复 P1/P2），建议卡保持 in_review，交用户业务验收决策。"
       nightly:
         eligible: false
         production_access: false

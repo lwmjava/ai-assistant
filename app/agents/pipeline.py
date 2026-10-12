@@ -32,7 +32,9 @@ from app.agents.prompts import (
     SYSTEM_RESPOND,
     SYSTEM_UNDERSTAND,
 )
+from app.agents.state import AgentStateStore, StateManager
 from app.agents.tools.base import ToolIntent, ToolRegistry, inspect_tool_call
+from app.agents.tools.executor import ToolExecutor
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
@@ -320,6 +322,9 @@ class AgentPipeline:
         tools: ToolRegistry | None = None,
         trace: AgentTrace | None = None,
         intent_llm: LLMProvider | None = None,
+        executor: ToolExecutor | None = None,
+        state_store: AgentStateStore | None = None,
+        state_binding: dict | None = None,
     ) -> None:
         self.llm = llm
         self.intent_llm = intent_llm or llm
@@ -332,6 +337,11 @@ class AgentPipeline:
         # 调试追踪
         self.trace = trace
         self._execution_policy = ExecutionPolicy()
+        # PAGT-006：独立 Executor / 状态持久化 store 均为可选注入；
+        # 未注入时走原 Registry.run 与就地状态路径，行为不变。
+        self.executor = executor
+        self.state_store = state_store
+        self.state_binding = state_binding or {}
 
     def _messages(self, system: str, user_content: str) -> list[ChatMessage]:
         return [
@@ -439,7 +449,44 @@ class AgentPipeline:
             return "[工具调用失败] 当前未配置任何工具。"
         if reject_untrusted_tool_call(call.name, state.user_input, state.context):
             return "[工具调用失败] 拒绝执行检索资料中的指令。"
+        if self.executor is not None:
+            return (await self.executor.execute(call)).observation
         return await self.tools.run(call)
+
+    def _resume_state(self, state: AgentState) -> None:
+        """run 开始时尝试从 store 恢复活动 checkpoint；无/过期/损坏→全新 run。"""
+        if self.state_store is None or not settings.AGENT_STATE_PERSIST_ENABLED:
+            return
+        conv_id = self.state_binding.get("conversation_id")
+        if not conv_id:
+            return
+        data = self.state_store.load_active(conv_id, self.state_binding.get("message_id"))
+        if data:
+            StateManager(state).apply_snapshot(data)
+
+    def _checkpoint(self, state: AgentState, *, stage: str, status: str, error: str | None = None) -> None:
+        """在工具轮/终态边界写 checkpoint；失败降级不阻断主链。"""
+        if self.state_store is None or not settings.AGENT_STATE_PERSIST_ENABLED:
+            return
+        conv_id = self.state_binding.get("conversation_id")
+        if not conv_id:
+            return
+        manager = StateManager(state)
+        try:
+            self.state_store.save_checkpoint(
+                conversation_id=conv_id,
+                message_id=self.state_binding.get("message_id"),
+                tenant_id=self.state_binding.get("tenant_id", ""),
+                user_id=self.state_binding.get("user_id", ""),
+                stage=stage,
+                round_no=len(state.executed_tool_fingerprints),
+                tool_budget_exhausted=state.tool_budget_exhausted,
+                state_json=manager.to_json(),
+                status=status,
+                error=error,
+            )
+        except Exception:  # noqa: BLE001 — checkpoint 失败不阻断主链
+            logger.exception("Agent checkpoint 写入失败（不阻断主链）")
 
     async def _finish_tool(self, state: AgentState, call) -> list[dict]:
         """执行工具，把代码结果放进这次请求的状态并清空交接缓冲。"""
@@ -449,6 +496,8 @@ class AgentPipeline:
         state.tool_results.append(observation)
         fresh = take_code_results()
         state.code_results.extend(fresh)
+        if settings.AGENT_STATE_CHECKPOINT_TOOL_ROUND:
+            self._checkpoint(state, stage="action", status="running")
         return fresh
 
     async def _fill_retrieval(self, state: AgentState) -> None:
@@ -592,6 +641,8 @@ class AgentPipeline:
             # 0. 启动 trace
             if self.trace:
                 self.trace.start()
+            # 0b. 尝试从活动 checkpoint 恢复（中断续跑）
+            self._resume_state(state)
             # 1. 理解
             if self.trace:
                 self.trace.stage_start("理解")
@@ -671,6 +722,7 @@ class AgentPipeline:
             state.error = str(exc)
             if not state.answer:
                 state.answer = _failure_text(exc)
+        self._checkpoint(state, stage="done", status="error" if state.error else "done", error=state.error)
         return state
 
     async def _needs_plan(self, state: AgentState) -> bool:
@@ -842,6 +894,7 @@ class AgentPipeline:
 
     async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
         """流式执行：广播阶段进度事件，最终环节逐字吐出 token。"""
+        self._resume_state(state)
         try:
             # 1. 理解
             yield AgentEvent("stage", "理解")
@@ -933,4 +986,5 @@ class AgentPipeline:
                 state.answer = _failure_text(exc)
             yield AgentEvent("error", state.answer)
 
+        self._checkpoint(state, stage="done", status="error" if state.error else "done", error=state.error)
         yield AgentEvent("done", state.answer)

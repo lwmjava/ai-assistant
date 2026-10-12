@@ -117,8 +117,12 @@ def accept_user_message(
     role: str,
     conversation_id: str | None,
     message: str,
-) -> Conversation:
-    """在锁住的租户事务里写入一条用户消息。超限时回滚，不留下新会话。"""
+) -> tuple[Conversation, str]:
+    """在锁住的租户事务里写入一条用户消息。超限时回滚，不留下新会话。
+
+    返回 ``(conversation, user_message_id)``：用户消息行 id 供 PAGT-006 checkpoint 绑定，
+    使每条用户消息独占一行（跨消息隔离、唯一约束真实生效）。
+    """
     _end_read_transaction(session)
     tenant = _lock_tenant(session, tenant_id)
     limit = None if tenant is None else tenant.message_limit
@@ -144,10 +148,12 @@ def accept_user_message(
         )
         session.add(conversation)
         session.flush()
-    session.add(Message(conversation_id=conversation.id, role="user", content=message))
+    user_message = Message(conversation_id=conversation.id, role="user", content=message)
+    session.add(user_message)
     session.commit()
     session.refresh(conversation)
-    return conversation
+    session.refresh(user_message)
+    return conversation, user_message.id
 
 
 def _can_access(conversation: Conversation, user_id: str, tenant_id: str, role: str) -> bool:

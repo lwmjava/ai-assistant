@@ -369,6 +369,12 @@ class Settings(BaseSettings):
     AGENT_QUALITY_THRESHOLD: float = 0.6  # 质量门合格阈值
     AGENT_MAX_REVISIONS: int = 2  # 「行动」草稿不合格时的最大自纠错轮数
 
+    # ── Agent 运行时状态持久化（PAGT-006，ADR-0010 决定3）──
+    # 仅在工具轮/终态写 checkpoint，不逐 token、不逐 LLM 阶段写。
+    AGENT_STATE_PERSIST_ENABLED: bool = True  # 是否落 agent_run_states checkpoint
+    AGENT_STATE_TTL_SECONDS: int = 604800  # checkpoint 存活时长（秒），默认 7 天
+    AGENT_STATE_CHECKPOINT_TOOL_ROUND: bool = True  # 是否在每个工具轮结束时写 checkpoint
+
     # ── 国内联网搜索与共享资料只读工具 ──
     # 未配置密钥时搜索不注册，不影响服务启动。未知 provider 在可用性检查中拒绝。
     SEARCH_PROVIDER: str = "dashscope"

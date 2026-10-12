@@ -14,6 +14,7 @@ import datetime
 from contextvars import ContextVar
 
 from app.agents.tools.base import Tool
+from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 
 # 只在这一次工具调用里交接界面结果。管线取走后清空，不在进程里攒列表。
 _pending_code_results: ContextVar[list[dict[str, str]] | None] = ContextVar(
@@ -134,6 +135,22 @@ async def web_fetch(arguments: dict) -> str:
 
 def default_tools() -> list[Tool]:
     """返回内置工具列表。"""
+    l0 = ToolContract(
+        version="1.0.0",
+        permission=ToolPermission(authenticated=False),
+        risk=RiskLevel.L0,
+        side_effect="none",
+        timeout_seconds=30.0,
+        idempotent=True,
+    )
+    l1 = ToolContract(
+        version="1.0.0",
+        permission=ToolPermission(authenticated=False),
+        risk=RiskLevel.L1,
+        side_effect="network_read",
+        timeout_seconds=30.0,
+        idempotent=True,
+    )
     tools = [
         Tool(
             name="calculator",
@@ -146,6 +163,7 @@ def default_tools() -> list[Tool]:
                 "required": ["expression"],
             },
             func=calculator,
+            contract=l0,
         ),
         Tool(
             name="code_sandbox",
@@ -170,6 +188,7 @@ def default_tools() -> list[Tool]:
                 "required": ["code"],
             },
             func=code_sandbox,
+            contract=l1,
         ),
         Tool(
             name="get_current_datetime",
@@ -184,6 +203,7 @@ def default_tools() -> list[Tool]:
                 },
             },
             func=get_current_datetime,
+            contract=l0,
         ),
         Tool(
             name="web_fetch",
@@ -200,12 +220,13 @@ def default_tools() -> list[Tool]:
                 "required": ["url"],
             },
             func=web_fetch,
+            contract=l1,
         ),
     ]
-    from app.agents.tools.file_ops import file_ops_tool
+    from app.agents.tools.file_ops import file_ops_tool, file_ops_write_tool
     from app.agents.tools.web_search import search_tool
 
-    for factory in (search_tool, file_ops_tool):
+    for factory in (search_tool, file_ops_tool, file_ops_write_tool):
         optional = factory()
         if optional is not None:
             tools.append(optional)

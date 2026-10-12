@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from app.agents.tools.base import Tool
+from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 from app.core.config import get_settings
 
 _ENDPOINTS = {
@@ -249,4 +250,12 @@ def search_tool() -> Tool | None:
             "additionalProperties": False,
         },
         func=web_search,
+        contract=ToolContract(
+            version="1.0.0",
+            permission=ToolPermission(authenticated=False),
+            risk=RiskLevel.L0,
+            side_effect="network_read",
+            timeout_seconds=float(get_settings().SEARCH_TIMEOUT_SECONDS),
+            idempotent=True,
+        ),
     )

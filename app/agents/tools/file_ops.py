@@ -15,7 +15,9 @@ from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from app.agents.tools.base import Tool
+from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 from app.core.config import get_settings
+from app.core.security import Role
 
 _ALIAS = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,31}\Z")
 _EXTENSIONS = {".txt", ".md", ".csv", ".json", ".rst"}
@@ -237,4 +239,136 @@ def file_ops_tool() -> Tool | None:
             "additionalProperties": False,
         },
         func=file_ops,
+        contract=ToolContract(
+            version="1.0.0",
+            permission=ToolPermission(authenticated=False),
+            risk=RiskLevel.L0,
+            side_effect="none",
+            timeout_seconds=10.0,
+            idempotent=True,
+        ),
+    )
+
+
+# ── 显式开启三闸：settings.FILE_OPS_ENABLED + 环境变量 FILE_OPS_WRITE_ENABLED=true + 有效根 ──
+def file_ops_write_availability() -> dict[str, str]:
+    """写路径可用性：默认关闭；必须显式开启且根有效才可注册。"""
+    if not get_settings().FILE_OPS_ENABLED:
+        return {"status": "unavailable", "reason": "file_ops_disabled"}
+    if os.environ.get("FILE_OPS_WRITE_ENABLED") != "true":
+        return {"status": "unavailable", "reason": "write_switch_off"}
+    try:
+        roots = _approved_roots()
+    except (OSError, ValueError, TypeError):
+        return {"status": "unavailable", "reason": "no_valid_root"}
+    if not roots:
+        return {"status": "unavailable", "reason": "no_valid_root"}
+    return {"status": "available", "reason": "ok"}
+
+
+def _write(root: Path, relative: str, content: str, maximum: int) -> str:
+    """新建 UTF-8 文本文件；目标已存在即冲突，不覆盖（重试不重复副作用）。"""
+    windows = PureWindowsPath(relative)
+    if (
+        not relative
+        or len(relative) > 1024
+        or windows.drive
+        or windows.root
+        or "\\" in relative
+        or any(c in relative for c in ":\x00")
+        or any(ord(c) < 32 for c in relative)
+    ):
+        raise ValueError("invalid_path")
+    parts = relative.split("/")
+    if any(p in {"", ".", ".."} or p.endswith((".", " ")) or _private_component(p) for p in parts):
+        raise ValueError("invalid_path")
+    target = root.joinpath(*parts)
+    if target.suffix.casefold() not in _EXTENSIONS:
+        raise ValueError("unsupported_file")
+    _check_chain(target.parent)
+    # 先编码并校验长度：超限直接抛错，不落盘、不留 0 字节空壳。
+    data = content.encode("utf-8")
+    if len(data) > maximum:
+        raise ValueError("content_too_large")
+    # create-only：目标已存在即冲突，不覆盖。
+    fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+    return relative
+
+
+async def file_ops_write(arguments: dict) -> str:
+    """Create a bounded new UTF-8 file under an explicitly shared root alias."""
+    if file_ops_write_availability()["status"] != "available":
+        return _observation("unavailable", file_ops_write_availability()["reason"])
+    alias = arguments.get("root")
+    relative = arguments.get("path")
+    content = arguments.get("content", "")
+    maximum = arguments.get("max_bytes", get_settings().FILE_OPS_MAX_BYTES)
+    if (
+        set(arguments) - {"root", "path", "content", "max_bytes"}
+        or not isinstance(alias, str)
+        or not isinstance(relative, str)
+        or not isinstance(content, str)
+        or type(maximum) is not int
+        or not 1 <= maximum <= get_settings().FILE_OPS_MAX_BYTES
+    ):
+        return _observation("error", "invalid_arguments")
+    try:
+        roots = _approved_roots()
+        root = roots.get(alias)
+        if root is None:
+            return _observation("error", "access_denied")
+        written = await asyncio.to_thread(_write, root, relative, content, maximum)
+        return _observation("ok", "ok", root=alias, path=written)
+    except FileExistsError:
+        return _observation("conflict", "file_exists")
+    except ValueError as exc:
+        # 保留可观测的具体错误码（content_too_large / invalid_path / unsupported_file）。
+        return _observation("error", str(exc))
+    except (OSError, TypeError):
+        return _observation("error", "access_denied")
+
+
+def file_ops_write_tool() -> Tool | None:
+    if file_ops_write_availability()["status"] != "available":
+        return None
+    try:
+        aliases = list(_approved_roots())
+    except (OSError, ValueError, TypeError):
+        return None
+    return Tool(
+        name="file_ops_write",
+        description="在显式授权公开共享目录下新建 UTF-8 文本文件（create-only，不覆盖）。默认关闭，需显式开启。",
+        parameters={
+            "type": "object",
+            "properties": {
+                "root": {"type": "string", "enum": aliases},
+                "path": {"type": "string", "minLength": 1, "maxLength": 1024},
+                "content": {"type": "string", "maxLength": 100_000},
+                "max_bytes": {"type": "integer", "minimum": 1, "maximum": get_settings().FILE_OPS_MAX_BYTES},
+            },
+            "required": ["root", "path", "content"],
+            "additionalProperties": False,
+        },
+        func=file_ops_write,
+        contract=ToolContract(
+            version="1.0.0",
+            permission=ToolPermission(
+                authenticated=True,
+                allowed_roles=frozenset({Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value}),
+                tenant_scoped=True,
+                resource="tools",
+                action="write",
+            ),
+            risk=RiskLevel.L2,
+            side_effect="file_write_create_only",
+            timeout_seconds=10.0,
+            idempotent=True,
+            conflict_policy="reject_existing",
+            error_model="observation_string_no_raise",
+            audit=True,
+        ),
     )

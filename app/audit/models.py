@@ -80,6 +80,9 @@ class AuditAction(str, Enum):
     # ── CLI 危险操作 ──
     CLI_DANGEROUS_OP = "cli_dangerous_op"
 
+    # ── 工具调用（PAGT-002）──
+    TOOL_CALL = "tool_call"
+
     # ── 其他 ──
     OTHER = "other"
 

@@ -4615,7 +4615,7 @@ tasks:
 
   - id: "PAGT-002"
     title: "工具十要素契约：权限、风险分级、超时、幂等、审计"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -4668,6 +4668,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+    notes: "2026-10-11：按 task-card-delivery v1.3.0 多Agent实施工具十要素契约。实现：app/agents/tools/contract.py 契约模型（RiskLevel/ToolPermission/ToolContract，AGENTS.md §7 十要素含权限/风险/副作用/超时/幂等/错误模型/审计/版本）；全部默认工具挂契约，注册表 describe_contracts 输出十要素；run() 调用前 RBAC 强制校验（接入现有身份/租户体系、调用前拦截）+超时包裹+每次调用写审计（AuditAction.TOOL_CALL，details 不含 arguments/密钥）；file_ops 写路径按 L2 契约交付（三闸默认关闭、显式开启、create-only、先校验长度后建文件不留空壳）；L3 注册期拒绝。计划审查修订 P2-1（contract=None 语义定义）与 P2-2（分层偏差登记）后进入实现；入口级反例审查 12 反例实证发现 P2-1（超限写残留 0 字节空壳+错误码吞成 access_denied）与 P2-2（contract=None 注释言过其实）经修复回路清除（先编码校验后 O_EXCL、方案 B 修正注释并登记「启用 MCP 前必须先补契约」运维前置链 PMCP 卡），修复复核 18 passed；独立人工审核第 1 轮验收通过（docs/reviews/2026-10-11-PAGT-002-manual-review-1.md），无 P1/P2，4 项 P3 观察已记录。验证：基线 70 passed、新增 15 passed、pytest -k 'tool or audit' 152 passed/1580 deselected、Ruff --no-cache 0、mypy app/ 195 源 0。契约对账、E2 证据与指纹见 docs/plans/plan_pagt_002_20261011.md、implementation_pagt_002.md、closure_pagt_002_20261011.md 及 docs/reviews/2026-10-11-PAGT-002-*.md。未验证：sync 沙箱超时中断、权限矩阵化一致性、MCP 工具契约化、PostgreSQL E1；E2 不声称生产证据。任务登记 done；本次仅本地提交，未推送、未部署，不自动推进下一卡。"
 
   - id: "PAGT-003"
     title: "工具调用预算与循环上限"

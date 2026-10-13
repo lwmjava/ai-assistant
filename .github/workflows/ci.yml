@@ -72,7 +72,15 @@ jobs:
           python scripts/run_agent_chain_eval.py --mode official --out evals/reports/agent-ci/official.json
       - name: Agent report gate and regression probes
         run: |
-          endpoint_hash=$(python -c "import os; from scripts.run_agent_chain_eval import endpoint_hash; print(endpoint_hash(os.environ['LLM_BASE_URL']))")
+          endpoint_hash=$(python - <<'PY'
+          import contextlib
+          import os
+          import sys
+          with contextlib.redirect_stdout(sys.stderr):
+              from scripts.run_agent_chain_eval import endpoint_hash
+          print(endpoint_hash(os.environ['LLM_BASE_URL']))
+          PY
+          )
           python scripts/agent_gate_check.py --report evals/reports/agent-ci/official.json --expected-model "$LLM_DEFAULT_MODEL" --expected-endpoint-hash "$endpoint_hash"
           python scripts/agent_gate_probe.py --report evals/reports/agent-ci/official.json --expected-model "$LLM_DEFAULT_MODEL" --expected-endpoint-hash "$endpoint_hash" --out-dir evals/reports/agent-ci/synthetic-probes
       - name: Upload Agent evidence

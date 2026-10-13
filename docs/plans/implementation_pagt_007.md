@@ -1,6 +1,6 @@
 # PAGT-007 Agent 基线 CI 门禁实现说明
 
-日期：2026-10-13。状态：本地实现与验证通过，in_review；尚无真实 GitHub CI 验收，不标 done。用户批准范围 docs/、推荐方案及一次12次 official 调用，随后明确将本地模型改为 deepseek-flash。后续用户明确批准仅本卡提交、推送独立分支及一次 GitHub CI（最多12次新增模型请求，无重试）；不合并或部署。
+日期：2026-10-13。状态：本地实现与验证通过，in_review；首次真实 GitHub CI 的 official 通过、gate失败；修后CI未验证，不标 done。用户批准范围 docs/、推荐方案及一次12次 official 调用，随后明确将本地模型改为 deepseek-flash。后续用户明确批准仅本卡提交、推送独立分支及一次 GitHub CI（最多12次新增模型请求，无重试）；不合并或部署。
 
 ## 实际行为与代码
 
@@ -71,10 +71,18 @@ $env:LLM_CAPABILITY_GUARD_ENABLED='true'
 
 普通沙箱拒绝脚本换行写入，自动审批随后允许已批准六文件的CRLF→LF规范；原标准diff检查exit1、修后exit0，未放宽门禁。真实模型网络调用同样由自动审批允许用户明确授权的12请求。无自动审批拒绝遗留项。
 
-真实GitHub CI尚未运行，无run URL；实际GitHubSecrets/Variables未核验、本地.env改动不会自动同步GitHub；required check分支保护未配置或未核验。不把本地E1或合成探针写成GitHub已通过。
+首次真实GitHub CI已运行（run38397622273），配置实际支撑12次模型请求及三项1.0，但gate因端点摘要捕获警告污染exit2；F07本地修复后尚未重跑；required check分支保护未配置或未核验。不把本地E1或合成探针写成GitHub已通过。
 
 自动验收必交付中的真实CI仍未验证，关闭对账不能通过；因此暂不启动最终人工审核Agent。用户未委托业务验收，不自动done。后续补真实CI、关闭对账通过后，按技能安排未参与实现/既有审查的最终审核Agent，再由用户决定业务验收。
 
 ## 非目标与回滚
 
-未扩容十例、未重排/Query Rewrite、未改运行时Agent架构/API/数据库或生产配置、未关闭护栏/改阈值、未用Mock证实质量。无业务数据迁移；撤销独立job可恢复手工运行。已有模型/审查证据保留，不自动删除。不执行commit/push/merge/deploy。
+未扩容十例、未重排/Query Rewrite、未改运行时Agent架构/API/数据库或生产配置、未关闭护栏/改阈值、未用Mock证实质量。无业务数据迁移；撤销独立job可恢复手工运行。已有模型/审查证据保留，不自动删除。用户新增授权后仅本卡已提交推送7bf432820c47963bd657b39da8b3987087cc8d1c；不合并部署。修订后再次CI待新增授权。
+
+## 发布后真实 CI 与 F07修复
+
+完整发布/失败记录见docs/plans/publication_pagt_007_20261013.md、docs/reviews/pagt007_ci_execution_20261013.json。F07正式新增反例直接执行YAML中的端点命令，在import处注入stdout警告；修前1failed/exit1，修后2passed/exit0，范围ruff0。修复将依赖import的stdout重定向stderr，只保留真实摘要stdout，保留导入失败非零及严格gate。没有再调用模型，第二次推送/CI待授权；最终独立人工验收仍不满足前置。
+
+F07独立修后验收：pagt007_entry_validation_v2，2passed/0skip/exit0（3.27s）；实际YAML端点命令stdout仅64hex摘要、真实警告进入stderr；Git Bash完整heredoc语法exit0。范围ruff及隔离diffcheck0。旧counter审查Agent两次capacity失败，未作为修后验收证据。
+
+同一CI另有既有后端并发测试失败：1852passed/1failed/4skipped（377.90s），tests/test_rag_039_acceptance.py::test_thread_event_loops_share_actual_process_concurrency_cap，SQLite database is locked；该测试及其运行时代码未包含在本卡发布diff，无DB操作/运行时修改，不顺手改RAG并发。Agent job为独立任务，失败已隔离记录；全工作流不满足发布通过，RAG gate被跳过。前端job全部通过，后端ruff/mypy通过。

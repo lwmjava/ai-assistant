@@ -14,3 +14,10 @@
 | F06 | 主 Agent / Ubuntu CI 的冻结数据入口 | Windows 工作区 CRLF 原字节 SHA 与 Git blob LF 不同，现有冻结常量会使 Ubuntu official 一律失败 | 先正式 isolated official 测试使用 Git blob LF 字节实跑红；统一 cases/index 仅 CRLF→LF 后 SHA256，锁原Gitblob摘要、记录算法，不改语料；重验回归及独立CLI/换行对照 |
 
 F01/F02 为实施初版核对中发现，修复与结果记录在 gate 实现验证和最终实现说明。F03 先落本计划、正式反例和红证据，修复后更新此记录。任何未修复 P1/P2 禁止关闭卡。
+# F07 真实 CI 端点捕获受依赖 stdout 警告污染
+
+原始 run 38397622273（提交7bf432820c47963bd657b39da8b3987087cc8d1c）的 official 12请求三指标均1.0，但后续gate exit2。下载产物原封不动，在同提交下用独立干净端点摘要重验gate exit0；实际工作流捕获命令的stdout有fitz警告和摘要两行，整个捕获值传gate复现exit2。无新增模型调用。
+
+正式反例 tests/eval/test_agent_ci_endpoint_capture.py 直接执行实际YAML端点命令，在依赖import处注入stdout警告。修前1failed/exit1：stdout同时包含受控警告、fitz警告及正确摘要，确认为业务红。最初写入受沙箱拒绝、未运行断言，不作为业务红。
+
+修复只将import置于contextlib.redirect_stdout(sys.stderr)，不过滤摘要内容、不降低身份校验、不修改评分或模型调用。修后跑反例与工作流契约回归，并由独立Agent复验。一次CI费用授权已用完，不自动推送修订或重跑；修订完成后申请一次新CI授权。

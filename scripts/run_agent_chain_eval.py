@@ -11,10 +11,13 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -25,13 +28,24 @@ from app.agents.pipeline import (  # noqa: E402
     build_tool_choice_messages,
     preflight_needs_full_pipeline,
 )
-from app.agents.prompts import SYSTEM_PREFLOW  # noqa: E402
 from app.agents.tools.base import inspect_tool_call  # noqa: E402
+from app.core.config import settings  # noqa: E402
 from app.llm.base import LLMOptions  # noqa: E402
-from app.llm.factory import get_llm_provider, llm_availability  # noqa: E402
+from app.llm.factory import get_llm_provider  # noqa: E402
+from app.llm.openai_compatible import OpenAICompatibleProvider  # noqa: E402
 
 EVALUATOR_VERSION = "agent-chain-eval-0.2.0"
+# Compatibility declaration: no Tool/DB/RAG execution; these are NOT runtime counters.
 SIDE_EFFECTS = {"sandbox": 0, "mcp": 0, "network": 0, "rag": 0, "database": 0}
+REPORT_SCHEMA_VERSION = "agent-chain-report-1.0.0"
+GATE_VERSION = "agent-chain-gate-1.0.0"
+FROZEN_CASES_HASH = "5bfad42d3a2d765363d3489036ea1b91346c6fff49ca58d13fe9147ff974905b"
+FROZEN_INDEX_HASH = "8cc903dbc9f406bc070bea620952396a2323e3b41a8eb44ca0a72044bc57669d"
+DATA_HASH_ALGORITHM = "sha256-utf8-crlf-to-lf-v1"
+MAX_REPORT_BYTES = 1024 * 1024
+MAX_REPLY_BYTES = 16 * 1024
+CALL_TIMEOUT = 60.0
+TOTAL_TIMEOUT = 780.0
 CASES_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1" / "cases.json"
 INDEX_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1" / "index.json"
 REPORT_DIR = REPO_ROOT / "evals" / "reports"
@@ -81,12 +95,52 @@ def load_cases() -> list[dict]:
     return payload
 
 
-def prompt_hash() -> str:
-    return hashlib.sha256(SYSTEM_PREFLOW.encode("utf-8")).hexdigest()
+def prompt_hash(cases: list[dict] | None = None) -> str:
+    inputs = []
+    for case in cases if cases is not None else load_cases():
+        stages = [("route", build_preflight_messages(case["history"], case["user_input"]))]
+        if case.get("expected_tools"):
+            stages.append(("tool", build_tool_choice_messages(case["history"], case["user_input"])))
+        for stage, messages in stages:
+            inputs.append({"case_id": case["case_id"], "stage": stage,
+                           "messages": [message.model_dump(mode="json") for message in messages]})
+    return hashlib.sha256(json.dumps(inputs, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def endpoint_hash(url: str) -> str:
+    parts = urlsplit(url)
+    if (parts.scheme not in {"https", "http"} or not parts.hostname or parts.username is not None
+            or parts.password is not None or parts.query or parts.fragment):
+        raise ValueError("invalid_endpoint")
+    # Preserve path case and explicit port: the hash identifies the actual configured endpoint.
+    normalized = f"{parts.scheme.lower()}://{parts.netloc.lower()}{parts.path.rstrip('/')}"
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def report_identity(cases: list[dict] | None = None) -> dict:
+    index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+    paths = sorted((REPO_ROOT / "app" / "agents").rglob("*.py"))
+    paths += [REPO_ROOT / "app/llm/factory.py", REPO_ROOT / "app/llm/openai_compatible.py",
+              REPO_ROOT / "app/llm/base.py", REPO_ROOT / "app/llm/budget.py", REPO_ROOT / "app/llm/capabilities.py",
+              REPO_ROOT / ".github/workflows/ci.yml",
+              REPO_ROOT / "scripts/run_agent_chain_eval.py", REPO_ROOT / "scripts/agent_gate_check.py",
+              REPO_ROOT / "scripts/agent_gate_probe.py"]
+    return {
+        "dataset_version": index["dataset_version"], "dataset_hash": dataset_hash(),
+        "index_hash": content_hash(INDEX_PATH), "data_hash_algorithm": DATA_HASH_ALGORITHM,
+        "prompt_version": index["prompt_version"], "prompt_hash": prompt_hash(cases),
+        "evaluator_version": EVALUATOR_VERSION,
+        "source_hashes": {str(path.relative_to(REPO_ROOT)).replace("\\", "/"):
+                          hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},
+    }
+
+
+def content_hash(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def dataset_hash() -> str:
-    return hashlib.sha256(CASES_PATH.read_bytes()).hexdigest()
+    return content_hash(CASES_PATH)
 
 
 def score(cases: list[dict], predictions: list[str]) -> dict:
@@ -139,7 +193,7 @@ def score_tools(cases: list[dict], chosen: list[list[str]]) -> dict:
 
 async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], list[str]]:
     """只记录模型选出的工具名。不调用工具实现。"""
-    options = LLMOptions(temperature=0)
+    options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
     chosen: list[list[str]] = []
     raws: list[str] = []
     for case in cases:
@@ -151,7 +205,7 @@ async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], l
         blob = "\n".join(message.content for message in messages)
         if any(token in blob for token in ("expected_route", "expected_tools", "critical_followup")):
             raise RuntimeError("工具选择提示包含标准答案字段")
-        raw = await provider.chat(messages, options)
+        raw = await model_reply(provider, messages, options)
         intent = inspect_tool_call(raw)
         name = intent.call.name if intent.status == "ok" and intent.call is not None else ""
         chosen.append([name] if name else [])
@@ -160,7 +214,7 @@ async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], l
 
 
 async def predict(provider, cases: list[dict]) -> tuple[list[str], list[str]]:
-    options = LLMOptions(temperature=0)
+    options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
     routes: list[str] = []
     raws: list[str] = []
     for case in cases:
@@ -168,70 +222,113 @@ async def predict(provider, cases: list[dict]) -> tuple[list[str], list[str]]:
         blob = "\n".join(message.content for message in messages)
         if any(token in blob for token in ("expected_route", "expected_tools", "critical_followup")):
             raise RuntimeError("评测提示包含标准答案字段")
-        raw = await provider.chat(messages, options)
+        raw = await model_reply(provider, messages, options)
         route = "short" if not preflight_needs_full_pipeline(raw) else "full"
         routes.append(route)
         raws.append(raw)
     return routes, raws
 
 
+async def model_reply(provider, messages, options) -> str:
+    async with asyncio.timeout(CALL_TIMEOUT):
+        raw = await provider.chat(messages, options)
+    if not isinstance(raw, str) or len(raw.encode("utf-8")) > MAX_REPLY_BYTES:
+        raise ValueError("invalid_reply")
+    key = getattr(provider, "api_key", "")
+    if key and key in raw:
+        raise ValueError("unsafe_reply")
+    return raw
+
+
+def allowed_report_path(path: Path) -> bool:
+    allowed = [REPO_ROOT / "evals", REPO_ROOT / "data", Path(tempfile.gettempdir())]
+    return any(path.resolve().is_relative_to(root.resolve()) for root in allowed)
+
+
 def write_report(path: Path, payload: dict) -> None:
-    if path.exists():
-        raise FileExistsError(f"拒绝覆盖已有报告：{path}")
+    if not allowed_report_path(path):
+        raise ValueError("report_path_out_of_scope")
+    blob = json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8")
+    if len(blob) > MAX_REPORT_BYTES:
+        raise ValueError("report_too_large")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Prepare fully before publishing. The hard link atomically creates without replacing evidence.
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(blob)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
-async def run(mode: str, report_dir: Path) -> int:
+def build_report(mode, provider, cases, routes, raws, tool_names, tool_raws) -> dict:
+    metrics = score(cases, routes)
+    tool_metrics = score_tools(cases, tool_names)
+    real = type(provider) is OpenAICompatibleProvider
+    return {
+        **report_identity(cases), "report_schema_version": REPORT_SCHEMA_VERSION, "gate_version": GATE_VERSION,
+        "provider": "openai-compatible" if real else "smoke",
+        "model": provider.model, "endpoint_hash": endpoint_hash(provider.base_url) if real else "",
+        "temperature": 0, "seed_supported": False, "git_commit": git_commit(), "mode": mode,
+        "model_requests": len(cases) + sum(bool(case.get("expected_tools")) for case in cases),
+        "route_accuracy": metrics["route_accuracy"], "followup_recall": metrics["followup_recall"],
+        "tool_selection_recall": tool_metrics["tool_selection_recall"],
+        "side_effects": dict(SIDE_EFFECTS),
+        "side_effects_evidence": "selection-only-design-not-runtime-counters",
+        "cases": [
+            {**row, "raw_reply": raw, "tool_reply": tool_raw, "predicted_tools": tools["predicted_tools"]}
+            for row, raw, tool_raw, tools in zip(metrics["rows"], raws, tool_raws, tool_metrics["rows"], strict=True)
+        ],
+    }
+
+
+async def run(mode: str, report_dir: Path, out: Path | None = None) -> int:
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    report_path = out if out is not None else report_dir / f"agent-chain-v0.1-{mode}-{stamp}.json"
+    if not allowed_report_path(report_path):
+        print("AGENT_EVAL_ERROR:report_path_out_of_scope")
+        return 2
+    if report_path.exists():
+        print("AGENT_EVAL_ERROR:report_exists")
+        return 2
     cases = load_cases()
     index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
     if mode == "official":
-        if llm_availability() != "real":
-            print("正式评测需要真实模型，当前不可用。")
+        if (dataset_hash() != FROZEN_CASES_HASH
+                or content_hash(INDEX_PATH) != FROZEN_INDEX_HASH):
+            print("AGENT_EVAL_ERROR:frozen_dataset_required")
             return 2
         provider = get_llm_provider("intent")
+        if (type(provider) is not OpenAICompatibleProvider or not provider.api_key.strip()
+                or not provider.model.strip() or "mock" in provider.model.lower()
+                or "smoke" in provider.model.lower() or provider.model == "unknown"
+                or settings.LLM_RESPONSE_CACHE_ENABLED):
+            print("AGENT_EVAL_ERROR:real_single_uncached_intent_required")
+            return 2
+        endpoint_hash(provider.base_url)
+        if not settings.LLM_CAPABILITY_GUARD_ENABLED or provider._effective_capability() is None:
+            print("AGENT_EVAL_ERROR:approved_model_capability_required")
+            return 2
     elif mode == "smoke":
         provider = SmokeIntentModel()
     else:
         print("mode 只能是 smoke 或 official")
         return 2
-    routes, raws = await predict(provider, cases)
-    tool_names, tool_raws = await predict_tools(provider, cases)
-    metrics = score(cases, routes)
-    tool_metrics = score_tools(cases, tool_names)
-    if any(SIDE_EFFECTS.values()):
-        print("评测产生了真实副作用，拒绝写报告。")
-        return 2
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    report_path = report_dir / f"agent-chain-v0.1-{mode}-{stamp}.json"
-    report = {
-        "dataset_version": index["dataset_version"],
-        "dataset_hash": dataset_hash(),
-        "prompt_hash": prompt_hash(),
-        "prompt_version": index["prompt_version"],
-        "evaluator_version": EVALUATOR_VERSION,
-        "model": getattr(provider, "model", "unknown"),
-        "temperature": 0,
-        "seed_supported": False,
-        "git_commit": git_commit(),
-        "mode": mode,
-        "route_accuracy": metrics["route_accuracy"],
-        "followup_recall": metrics["followup_recall"],
-        "tool_selection_recall": tool_metrics["tool_selection_recall"],
-        "side_effects": dict(SIDE_EFFECTS),
-        "cases": [
-            {**row, "raw_reply": raw, "tool_reply": tool_raw, "predicted_tools": tools["predicted_tools"]}
-            for row, raw, tool_raw, tools in zip(
-                metrics["rows"], raws, tool_raws, tool_metrics["rows"], strict=True
-            )
-        ],
-    }
+    async with asyncio.timeout(TOTAL_TIMEOUT):
+        routes, raws = await predict(provider, cases)
+        tool_names, tool_raws = await predict_tools(provider, cases)
+    report = build_report(mode, provider, cases, routes, raws, tool_names, tool_raws)
     write_report(report_path, report)
     print(report_path)
     if mode == "official":
-        accuracy_ok = metrics["route_accuracy"] >= index["thresholds"]["route_accuracy"]
-        recall_ok = metrics["followup_recall"] >= index["thresholds"]["followup_recall"]
-        tool_ok = tool_metrics["tool_selection_recall"] >= index["thresholds"]["tool_selection_recall"]
+        accuracy_ok = report["route_accuracy"] >= index["thresholds"]["route_accuracy"]
+        recall_ok = report["followup_recall"] >= index["thresholds"]["followup_recall"]
+        tool_ok = report["tool_selection_recall"] >= index["thresholds"]["tool_selection_recall"]
         return 0 if accuracy_ok and recall_ok and tool_ok else 1
     return 0
 
@@ -240,8 +337,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["smoke", "official"], required=True)
     parser.add_argument("--report-dir", type=Path, default=REPORT_DIR)
+    parser.add_argument("--out", type=Path)
     args = parser.parse_args()
-    raise SystemExit(asyncio.run(run(args.mode, args.report_dir)))
+    try:
+        result = asyncio.run(run(args.mode, args.report_dir, args.out))
+    except (Exception, KeyboardInterrupt) as exc:  # noqa: BLE001 -- no API error bodies or credentials in logs
+        print(f"AGENT_EVAL_ERROR:{type(exc).__name__}")
+        result = 2
+    raise SystemExit(result)
 
 
 if __name__ == "__main__":

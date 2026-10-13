@@ -8940,7 +8940,7 @@ tasks:
 
   - id: "PAGT-007"
     title: "Agent 编排持续测评门禁：基线挂 CI"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     target_date: ""
     depends_on:
@@ -8960,6 +8960,7 @@ tasks:
         - ".github/workflows/ci.yml"
         - "scripts/"
         - "tasks.yaml"
+        - "docs/"
       forbidden_paths:
         - ".env"
         - "生产密钥"
@@ -8986,7 +8987,7 @@ tasks:
         - "python scripts/run_agent_chain_eval.py --mode smoke；CI 触发 official"
     execution:
       owner: "个人开发者"
-      notes: "2026-10-11：用户确认 CI 前提——将在 GitHub 配置项目 .env 模型凭证；门禁按 agent-chain-v0.1 官方基线接入。"
+      notes: "2026-10-11：用户确认 CI 前提——将在 GitHub 配置项目 .env 模型凭证；门禁按 agent-chain-v0.1 官方基线接入。 2026-10-13：用户批准 allowed_paths 扩展到 docs/；实施计划 docs/plans/plan_pagt_007_20261013.md 已落盘，待独立计划审查与具体设计确认。AGT-003 当前关键回归71passed/0skipped/exit0，依赖复核见 docs/reviews/2026-10-13-PAGT-007-dependency-recheck.md。用户随后批准推荐方案与本轮 official 调用（12次串行请求，每次≤60秒，无新增重试；不含Git提交推送）。独立计划审查 docs/reviews/2026-10-13-PAGT-007-plan-review.md 的设计P1/P2已修订闭合。本地实现完成并独立复验：runner/gate67passed、独立CLI25passed/0skipped、独立反例37项通过，ruff0、mypy0（205源），最终diffcheck0；F01-F06修复闭合，源码指纹及中间失败见docs/plans/implementation_pagt_007.md与docs/reviews/pagt007_delivery_evidence_20261013.json。用户将模型切为deepseek-flash后本轮唯一真实official12请求三指标1.0/1.0/1.0、gate0、新鲜派生三探针各目标exit1，未新增模型请求。状态in_review不done。未验证项（原样登记）：真实GitHubCI实际运行、触发及三类退化拦截尚未验证，无run URL；本地.env模型改动未自动同步GitHubSecrets/Variables。 required-check分支保护配置未核验，不能仅凭workflow称强制发布保护已启用。 最终独立人工审核尚未执行（原卡CI自动验收未通过，不满足技能前置）；用户业务验收未委托，仍需用户决策。 用户后续明确批准仅本卡提交、推送独立分支codex/agent-baseline-gate及一次CI（最多12次新增模型请求，无重试），通过后执行独立最终验收；不合并部署。隔离副本92passed/exit0、ruff0、diffcheck0。发布记录docs/plans/publication_pagt_007_20261013.md；关闭对账docs/plans/closure_pagt_007_20261013.md。"
       nightly:
         eligible: false
         production_access: false

@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-13",
+  "timezone": "Asia/Shanghai",
+  "task": "PAGT-007",
+  "status": "in_review",
+  "head": "a0d02eb411a53c3191e81f0fc99528ea60d0d3c4",
+  "files_sha256": {
+    ".github/workflows/ci.yml": "f5a0c1b22b2e50148b1bc3b529410089c276ebe0be07321fc3f31ca143535d93",
+    "scripts/run_agent_chain_eval.py": "0cce4c41abef7887067d4f30d9d2ac02ef95fbf9674c5c92b677c4196dab319d",
+    "scripts/agent_gate_check.py": "e157a355c34e7854989bdb5f1384832f5ed0bc28f46de74d0baa992fdb0288f7",
+    "scripts/agent_gate_probe.py": "2f867d4845861bd2619358838c1f638f91afab359dd482c93ba390ba5377961d",
+    "tests/eval/test_agent_eval_runner.py": "9ecc0d542691b2ee8920c0820d4b9d2764d2efc9146333f43a703b68b588aa5e",
+    "tests/eval/test_agent_gate.py": "90dd37b81e0702d5a7b021637e46edf3ce4f803533d2c3b0d0547cacdca4cb95",
+    "tests/eval/test_agent_gate_entry.py": "de1b29cc229096028af6095fe7e58ac6ded835e719a3d1a486777e306fb29e80",
+    "docs/reviews/2026-10-13-PAGT-007-dependency-recheck.md": "523680e23e6ebfae63881617a2a7ba9ca760983b512096d06203d0964919e892",
+    "docs/reviews/2026-10-13-PAGT-007-plan-review.md": "3a925d4cee7faa19ed591163390a4a7cbe889c8e03f4ecc0335c32c512228d5e",
+    "docs/reviews/2026-10-13-PAGT-007-entry-validation.md": "f389070fdc7cf12cef9457f598a15319d75bb07ecdbfdfa8dcec1ee75f381cba",
+    "docs/reviews/2026-10-13-PAGT-007-counterexample-review.md": "27957f572a12dd328a89dc9403423df549ce36181fcb5493ca991791deae58fe",
+    "evals/reports/agent-chain-v0.1-official-pagt007-20261013.json": "f99b1e4dd7f52024765885534fd0254c211bb749e81a17bb1456b63adb5e895f",
+    "evals/reports/agent-chain-v0.1-synthetic-probes-pagt007-20261013/manifest.json": "a09f6d76b7993e9b931b5a297e4ce1c8f3a92be90ed8ed0f45cd6cc3bcf55f35"
+  },
+  "official_local": {
+    "evidence": "E1-real-model-local-not-GitHub",
+    "exit_code": 0,
+    "model": "deepseek-flash",
+    "model_requests": 12,
+    "dataset_version": "0.1.0",
+    "data_hash_algorithm": "sha256-utf8-crlf-to-lf-v1",
+    "dataset_hash": "5bfad42d3a2d765363d3489036ea1b91346c6fff49ca58d13fe9147ff974905b",
+    "index_hash": "8cc903dbc9f406bc070bea620952396a2323e3b41a8eb44ca0a72044bc57669d",
+    "prompt_version": "preflight-history-v1",
+    "prompt_hash": "27ae61869d20780be6a10cb0aeb2cd756ef030a3dbd03ef9978f2b808347f7c9",
+    "metrics": {
+      "route_accuracy": 1.0,
+      "followup_recall": 1.0,
+      "tool_selection_recall": 1.0
+    },
+    "gate_exit_code": 0
+  },
+  "probes_local": {
+    "evidence": "E2-synthetic-controlled-faults-not-quality",
+    "overall_exit_code": 0,
+    "results": [
+      {
+        "probe": "route",
+        "exit_code": 1,
+        "target_metric": "route_accuracy",
+        "reason_codes": [
+          "AGENT_GATE_METRIC:route_accuracy"
+        ]
+      },
+      {
+        "probe": "followup",
+        "exit_code": 1,
+        "target_metric": "followup_recall",
+        "reason_codes": [
+          "AGENT_GATE_METRIC:followup_recall"
+        ]
+      },
+      {
+        "probe": "tool",
+        "exit_code": 1,
+        "target_metric": "tool_selection_recall",
+        "reason_codes": [
+          "AGENT_GATE_METRIC:tool_selection_recall"
+        ]
+      }
+    ]
+  },
+  "checks": {
+    "dependency": {
+      "passed": 71,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    "runner_gate_final": {
+      "passed": 67,
+      "exit_code": 0
+    },
+    "independent_entry_final": {
+      "passed": 25,
+      "skipped": 0,
+      "exit_code": 0,
+      "seconds": 59.5
+    },
+    "independent_counterexamples": {
+      "observations": 37,
+      "exit_code": 0
+    },
+    "ruff": {
+      "exit_code": 0
+    },
+    "mypy_app": {
+      "exit_code": 0,
+      "source_files": 205
+    },
+    "diff_check": {
+      "exit_code": 0
+    }
+  },
+  "unverified": [
+    "真实GitHubCI实际运行、触发及三类退化拦截尚未验证，无run URL；本地.env模型改动未自动同步GitHubSecrets/Variables。",
+    "required-check分支保护配置未核验，不能仅凭workflow称强制发布保护已启用。",
+    "最终独立人工审核尚未执行（原卡CI自动验收未通过，不满足技能前置）；用户业务验收未委托，仍需用户决策。"
+  ],
+  "git_operations": "no commit/push/merge/deploy"
+}

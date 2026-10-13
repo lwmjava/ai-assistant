@@ -1,20 +1,26 @@
 """意图分流和工具选择评测。
 
 冒烟模式使用不读取标准答案的本地模型，只证明提示、评分和报告链路。
-正式模式只调用真实模型。工具选择只解析输出并记在内存里，不执行工具，
+正式模式只调用真实模型。工具提议经参数校验后交给内存记录工具，不执行真实工具，
 不创建会话，不连接检索、沙箱、MCP 或数据库。
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import asyncio
 import hashlib
 import json
+import math
+import os
+import re
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -24,16 +30,30 @@ from app.agents.pipeline import (  # noqa: E402
     build_preflight_messages,
     build_tool_choice_messages,
     preflight_needs_full_pipeline,
+    selection_tool_registry,
 )
-from app.agents.prompts import SYSTEM_PREFLOW  # noqa: E402
-from app.agents.tools.base import inspect_tool_call  # noqa: E402
+from app.agents.tools.base import Tool, inspect_tool_call  # noqa: E402
+from app.core.config import settings  # noqa: E402
 from app.llm.base import LLMOptions  # noqa: E402
-from app.llm.factory import get_llm_provider, llm_availability  # noqa: E402
+from app.llm.factory import get_llm_provider  # noqa: E402
+from app.llm.openai_compatible import OpenAICompatibleProvider  # noqa: E402
 
-EVALUATOR_VERSION = "agent-chain-eval-0.2.0"
+EVALUATOR_VERSION = "agent-chain-eval-0.3.0"
+# Compatibility declaration: no Tool/DB/RAG execution; these are NOT runtime counters.
 SIDE_EFFECTS = {"sandbox": 0, "mcp": 0, "network": 0, "rag": 0, "database": 0}
-CASES_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1" / "cases.json"
-INDEX_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1" / "index.json"
+REPORT_SCHEMA_VERSION = "agent-chain-report-2.0.0"
+GATE_VERSION = "agent-chain-gate-2.0.0"
+CALL_VALIDITY_THRESHOLD = 1.0
+SIDE_EFFECTS_EVIDENCE = "recording-only-no-real-tool-execution-design-not-runtime-counters"
+FROZEN_CASES_HASH = "77ff27c8c67c68afb55eed51384e20dd07171b1d047de6cde346c976f38f5ad6"
+FROZEN_INDEX_HASH = "929e4114ef2f548de0e2d89e3d28f8ebb174f57caee39273c911fd3518c58251"
+DATA_HASH_ALGORITHM = "sha256-utf8-crlf-to-lf-v1"
+MAX_REPORT_BYTES = 1024 * 1024
+MAX_REPLY_BYTES = 16 * 1024
+CALL_TIMEOUT = 60.0
+TOTAL_TIMEOUT = 780.0
+CASES_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1.1" / "cases.json"
+INDEX_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1.1" / "index.json"
 REPORT_DIR = REPO_ROOT / "evals" / "reports"
 
 
@@ -45,9 +65,13 @@ class SmokeIntentModel:
     async def chat(self, messages, options=None) -> str:
         user = messages[-1].content if messages else ""
         if "## 可用外部工具" in user:
-            latest = user.split("## 用户最新消息", 1)[-1].strip()
+            latest = user.split("## 用户消息\n", 1)[-1].split("\n\n", 1)[0].strip()
             if "code_sandbox" in user and latest in {"1", "好的"}:
-                return '<tool_call>{"name": "code_sandbox", "arguments": {"code": "print(1)"}}</tool_call>'
+                code = "print(1)"
+                if "```python\n" in user:
+                    code = user.split("```python\n", 1)[1].split("```", 1)[0]
+                payload = json.dumps({"name": "code_sandbox", "arguments": {"code": code}})
+                return "<tool_call>" + payload + "</tool_call>"
             return "不调用工具"
         latest = user.split("## 用户最新消息", 1)[-1].strip()
         short_exact = {"你好", "在吗", "哈哈", "谢谢", "一加一等于几", "什么是质数，用一句话回答"}
@@ -81,12 +105,52 @@ def load_cases() -> list[dict]:
     return payload
 
 
-def prompt_hash() -> str:
-    return hashlib.sha256(SYSTEM_PREFLOW.encode("utf-8")).hexdigest()
+def prompt_hash(cases: list[dict] | None = None) -> str:
+    inputs = []
+    for case in cases if cases is not None else load_cases():
+        stages = [("route", build_preflight_messages(case["history"], case["user_input"]))]
+        if case.get("expected_tools"):
+            stages.append(("tool", build_tool_choice_messages(case["history"], case["user_input"])))
+        for stage, messages in stages:
+            inputs.append({"case_id": case["case_id"], "stage": stage,
+                           "messages": [message.model_dump(mode="json") for message in messages]})
+    return hashlib.sha256(json.dumps(inputs, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def endpoint_hash(url: str) -> str:
+    parts = urlsplit(url)
+    if (parts.scheme not in {"https", "http"} or not parts.hostname or parts.username is not None
+            or parts.password is not None or parts.query or parts.fragment):
+        raise ValueError("invalid_endpoint")
+    # Preserve path case and explicit port: the hash identifies the actual configured endpoint.
+    normalized = f"{parts.scheme.lower()}://{parts.netloc.lower()}{parts.path.rstrip('/')}"
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def report_identity(cases: list[dict] | None = None) -> dict:
+    index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+    paths = sorted((REPO_ROOT / "app" / "agents").rglob("*.py"))
+    paths += [REPO_ROOT / "app/llm/factory.py", REPO_ROOT / "app/llm/openai_compatible.py",
+              REPO_ROOT / "app/llm/base.py", REPO_ROOT / "app/llm/budget.py", REPO_ROOT / "app/llm/capabilities.py",
+              REPO_ROOT / ".github/workflows/ci.yml",
+              REPO_ROOT / "scripts/run_agent_chain_eval.py", REPO_ROOT / "scripts/agent_gate_check.py",
+              REPO_ROOT / "scripts/agent_gate_probe.py"]
+    return {
+        "dataset_version": index["dataset_version"], "dataset_hash": dataset_hash(),
+        "index_hash": content_hash(INDEX_PATH), "data_hash_algorithm": DATA_HASH_ALGORITHM,
+        "prompt_version": index["prompt_version"], "prompt_hash": prompt_hash(cases),
+        "evaluator_version": EVALUATOR_VERSION,
+        "source_hashes": {str(path.relative_to(REPO_ROOT)).replace("\\", "/"):
+                          hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},
+    }
+
+
+def content_hash(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def dataset_hash() -> str:
-    return hashlib.sha256(CASES_PATH.read_bytes()).hexdigest()
+    return content_hash(CASES_PATH)
 
 
 def score(cases: list[dict], predictions: list[str]) -> dict:
@@ -137,30 +201,194 @@ def score_tools(cases: list[dict], chosen: list[list[str]]) -> dict:
     }
 
 
-async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], list[str]]:
-    """只记录模型选出的工具名。不调用工具实现。"""
-    options = LLMOptions(temperature=0)
+def schema_valid(value, schema: dict) -> bool:
+    """Fail-closed validator for the declared Schema subset; no extra dependency.
+
+    Unsupported validation keywords are an evaluator configuration error,
+    never silently ignored. Used for the production tools and case contracts.
+    """
+    supported = {"$schema", "$id", "title", "description", "default", "type", "properties", "required",
+                 "additionalProperties", "enum", "const", "items", "minItems", "maxItems",
+                 "minLength", "maxLength", "pattern", "minimum", "maximum"}
+    if set(schema) - supported:
+        raise ValueError("unsupported_schema")
+    kind = schema.get("type")
+    types = {"object": dict, "array": list, "string": str, "boolean": bool, "integer": int}
+    if kind == "number":
+        if type(value) not in {int, float}:
+            return False
+        try:
+            if not math.isfinite(value):
+                return False
+        except OverflowError:
+            return False
+    elif kind is not None:
+        if kind not in types:
+            raise ValueError("unsupported_schema_type")
+        if type(value) is not types[kind]:
+            return False
+    if "enum" in schema and value not in schema["enum"]:
+        return False
+    if "const" in schema and (type(value) is not type(schema["const"]) or value != schema["const"]):
+        return False
+    if kind == "object":
+        properties = schema.get("properties", {})
+        if any(key not in value for key in schema.get("required", [])):
+            return False
+        if schema.get("additionalProperties") is False and set(value) - properties.keys():
+            return False
+        if any(not schema_valid(item, properties[key]) for key, item in value.items() if key in properties):
+            return False
+    if kind in {"array", "string"}:
+        lo, hi = ("minItems", "maxItems") if kind == "array" else ("minLength", "maxLength")
+        if len(value) < schema.get(lo, 0) or len(value) > schema.get(hi, math.inf):
+            return False
+    if kind == "array" and "items" in schema:
+        return all(schema_valid(item, schema["items"]) for item in value)
+    if kind == "string" and "pattern" in schema and re.search(schema["pattern"], value) is None:
+        return False
+    if kind in {"number", "integer"}:
+        if value < schema.get("minimum", -math.inf) or value > schema.get("maximum", math.inf):
+            return False
+    return True
+
+
+def _unique_call(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("invalid_envelope")
+        value[key] = item
+    return value
+
+
+def _nonfinite_call(value: str) -> None:
+    raise ValueError("invalid_parameters")
+
+
+def _validate_call(case: dict, raw: str) -> dict:
+    record = {"intent": "not_requested", "tool_name": "", "arguments_valid": False,
+              "error_code": "", "arguments_hash": "", "recording_attempts": 0,
+              "recorded_calls": 0, "recording_result": "not_attempted"}
+    if not case.get("expected_tools"):
+        return record
+    try:
+        intent = inspect_tool_call(raw)
+        record["intent"] = intent.status
+        if intent.status != "ok" or intent.call is None:
+            record["error_code"] = "no_tool_call" if intent.status == "none" else "invalid_envelope"
+            return record
+        # Reject duplicate keys and nonfinite numbers instead of silently taking the last value.
+        payload = raw.split("<tool_call>", 1)[1].split("</tool_call>", 1)[0]
+        json.loads(payload, object_pairs_hook=_unique_call,
+                   parse_constant=_nonfinite_call)
+        record["tool_name"] = intent.call.name
+        tool = selection_tool_registry().get(intent.call.name)
+        if tool is None:
+            record["error_code"] = "tool_not_allowed"
+            return record
+        arguments = intent.call.arguments
+        if not schema_valid(arguments, tool.parameters):
+            record["error_code"] = "invalid_parameters"
+            return record
+        code = arguments.get("code") if tool.name == "code_sandbox" else None
+        if tool.name == "code_sandbox":
+            timeout = arguments.get("timeout", 30)
+            if not code.strip() or timeout <= 0:
+                record["error_code"] = "invalid_parameters"
+                return record
+            try:
+                tree = ast.parse(code)
+                if not tree.body:
+                    record["error_code"] = "invalid_code"
+                    return record
+            except (SyntaxError, ValueError, RecursionError):
+                record["error_code"] = "invalid_code"
+                return record
+            if case["case_id"] == "agent-004":
+                prior = [turn["content"] for turn in case["history"]
+                         if turn["role"] == "assistant" and "```python\n" in turn["content"]]
+                if not prior:
+                    record["error_code"] = "missing_prior_code"
+                    return record
+                expected = prior[-1].split("```python\n", 1)[1].split("```", 1)[0]
+                if ast.dump(tree) != ast.dump(ast.parse(expected)):
+                    record["error_code"] = "prior_code_mismatch"
+                    return record
+        if tool.name == "calculator" and not arguments["expression"].strip():
+            record["error_code"] = "invalid_parameters"
+            return record
+        record["arguments_hash"] = hashlib.sha256(json.dumps(
+            arguments, sort_keys=True, ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
+        record["arguments_valid"] = True
+        return record
+    except (ValueError, TypeError, RecursionError):
+        record["error_code"] = "invalid_parameters"
+        return record
+
+
+def expected_tool_record(case: dict, raw: str) -> dict:
+    """Pure replay contract; not a claim that the recording callback was invoked."""
+    record = _validate_call(case, raw)
+    if record["arguments_valid"]:
+        record.update(recording_attempts=1, recorded_calls=1, recording_result="recorded")
+    return record
+
+
+async def record_tool_call(case: dict, raw: str) -> dict:
+    """Execute only an isolated Tool callback which records a valid proposal."""
+    record = _validate_call(case, raw)
+    if not record["arguments_valid"]:
+        return record
+    intent = inspect_tool_call(raw)
+    assert intent.call is not None
+    metadata = selection_tool_registry().get(intent.call.name)
+    assert metadata is not None
+
+    def recording_fake(arguments: dict) -> str:
+        record["recorded_calls"] += 1
+        return "recorded"
+
+    fake = Tool(metadata.name, metadata.description, metadata.parameters, recording_fake, metadata.contract)
+    record["recording_attempts"] += 1
+    record["recording_result"] = await fake.execute(intent.call.arguments)
+    return record
+
+
+def score_valid_calls(cases: list[dict], records: list[dict]) -> float:
+    hits = [record["arguments_valid"] and record["recorded_calls"] == 1
+            and record["tool_name"] in case["expected_tools"]
+            for case, record in zip(cases, records, strict=True) if case.get("expected_tools")]
+    return sum(hits) / len(hits) if hits else 1.0
+
+
+async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], list[str], list[dict]]:
+    """Propose once, validate, then invoke an in-memory recording Tool only."""
+    options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
     chosen: list[list[str]] = []
     raws: list[str] = []
+    records: list[dict] = []
     for case in cases:
         if not case.get("expected_tools"):
             chosen.append([])
             raws.append("")
+            records.append(await record_tool_call(case, ""))
             continue
         messages = build_tool_choice_messages(case["history"], case["user_input"])
         blob = "\n".join(message.content for message in messages)
         if any(token in blob for token in ("expected_route", "expected_tools", "critical_followup")):
             raise RuntimeError("工具选择提示包含标准答案字段")
-        raw = await provider.chat(messages, options)
+        raw = await model_reply(provider, messages, options)
         intent = inspect_tool_call(raw)
         name = intent.call.name if intent.status == "ok" and intent.call is not None else ""
         chosen.append([name] if name else [])
         raws.append(raw)
-    return chosen, raws
+        records.append(await record_tool_call(case, raw))
+    return chosen, raws, records
 
 
 async def predict(provider, cases: list[dict]) -> tuple[list[str], list[str]]:
-    options = LLMOptions(temperature=0)
+    options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
     routes: list[str] = []
     raws: list[str] = []
     for case in cases:
@@ -168,71 +396,118 @@ async def predict(provider, cases: list[dict]) -> tuple[list[str], list[str]]:
         blob = "\n".join(message.content for message in messages)
         if any(token in blob for token in ("expected_route", "expected_tools", "critical_followup")):
             raise RuntimeError("评测提示包含标准答案字段")
-        raw = await provider.chat(messages, options)
+        raw = await model_reply(provider, messages, options)
         route = "short" if not preflight_needs_full_pipeline(raw) else "full"
         routes.append(route)
         raws.append(raw)
     return routes, raws
 
 
+async def model_reply(provider, messages, options) -> str:
+    async with asyncio.timeout(CALL_TIMEOUT):
+        raw = await provider.chat(messages, options)
+    if not isinstance(raw, str) or len(raw.encode("utf-8")) > MAX_REPLY_BYTES:
+        raise ValueError("invalid_reply")
+    key = getattr(provider, "api_key", "")
+    if key and key in raw:
+        raise ValueError("unsafe_reply")
+    return raw
+
+
+def allowed_report_path(path: Path) -> bool:
+    allowed = [REPO_ROOT / "evals", REPO_ROOT / "data", Path(tempfile.gettempdir())]
+    return any(path.resolve().is_relative_to(root.resolve()) for root in allowed)
+
+
 def write_report(path: Path, payload: dict) -> None:
-    if path.exists():
-        raise FileExistsError(f"拒绝覆盖已有报告：{path}")
+    if not allowed_report_path(path):
+        raise ValueError("report_path_out_of_scope")
+    blob = json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8")
+    if len(blob) > MAX_REPORT_BYTES:
+        raise ValueError("report_too_large")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Prepare fully before publishing. The hard link atomically creates without replacing evidence.
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(blob)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
-async def run(mode: str, report_dir: Path) -> int:
+def build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, records) -> dict:
+    metrics = score(cases, routes)
+    tool_metrics = score_tools(cases, tool_names)
+    real = type(provider) is OpenAICompatibleProvider
+    return {
+        **report_identity(cases), "report_schema_version": REPORT_SCHEMA_VERSION, "gate_version": GATE_VERSION,
+        "provider": "openai-compatible" if real else "smoke",
+        "model": provider.model, "endpoint_hash": endpoint_hash(provider.base_url) if real else "",
+        "temperature": 0, "seed_supported": False, "git_commit": git_commit(), "mode": mode,
+        "model_requests": len(cases) + sum(bool(case.get("expected_tools")) for case in cases),
+        "route_accuracy": metrics["route_accuracy"], "followup_recall": metrics["followup_recall"],
+        "tool_selection_recall": tool_metrics["tool_selection_recall"],
+        "tool_call_validity_recall": score_valid_calls(cases, records),
+        "side_effects": dict(SIDE_EFFECTS),
+        "side_effects_evidence": SIDE_EFFECTS_EVIDENCE,
+        "cases": [
+            {**row, "raw_reply": raw, "tool_reply": tool_raw, "predicted_tools": tools["predicted_tools"],
+             "tool_record": record}
+            for row, raw, tool_raw, tools, record in zip(
+                metrics["rows"], raws, tool_raws, tool_metrics["rows"], records, strict=True)
+        ],
+    }
+
+
+async def run(mode: str, report_dir: Path, out: Path | None = None) -> int:
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    report_path = out if out is not None else report_dir / f"agent-chain-v0.1-{mode}-{stamp}.json"
+    if not allowed_report_path(report_path):
+        print("AGENT_EVAL_ERROR:report_path_out_of_scope")
+        return 2
+    if report_path.exists():
+        print("AGENT_EVAL_ERROR:report_exists")
+        return 2
     cases = load_cases()
     index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
     if mode == "official":
-        if llm_availability() != "real":
-            print("正式评测需要真实模型，当前不可用。")
+        if (dataset_hash() != FROZEN_CASES_HASH
+                or content_hash(INDEX_PATH) != FROZEN_INDEX_HASH):
+            print("AGENT_EVAL_ERROR:frozen_dataset_required")
             return 2
         provider = get_llm_provider("intent")
+        if (type(provider) is not OpenAICompatibleProvider or not provider.api_key.strip()
+                or not provider.model.strip() or "mock" in provider.model.lower()
+                or "smoke" in provider.model.lower() or provider.model == "unknown"
+                or settings.LLM_RESPONSE_CACHE_ENABLED):
+            print("AGENT_EVAL_ERROR:real_single_uncached_intent_required")
+            return 2
+        endpoint_hash(provider.base_url)
+        if not settings.LLM_CAPABILITY_GUARD_ENABLED or provider._effective_capability() is None:
+            print("AGENT_EVAL_ERROR:approved_model_capability_required")
+            return 2
     elif mode == "smoke":
         provider = SmokeIntentModel()
     else:
         print("mode 只能是 smoke 或 official")
         return 2
-    routes, raws = await predict(provider, cases)
-    tool_names, tool_raws = await predict_tools(provider, cases)
-    metrics = score(cases, routes)
-    tool_metrics = score_tools(cases, tool_names)
-    if any(SIDE_EFFECTS.values()):
-        print("评测产生了真实副作用，拒绝写报告。")
-        return 2
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    report_path = report_dir / f"agent-chain-v0.1-{mode}-{stamp}.json"
-    report = {
-        "dataset_version": index["dataset_version"],
-        "dataset_hash": dataset_hash(),
-        "prompt_hash": prompt_hash(),
-        "prompt_version": index["prompt_version"],
-        "evaluator_version": EVALUATOR_VERSION,
-        "model": getattr(provider, "model", "unknown"),
-        "temperature": 0,
-        "seed_supported": False,
-        "git_commit": git_commit(),
-        "mode": mode,
-        "route_accuracy": metrics["route_accuracy"],
-        "followup_recall": metrics["followup_recall"],
-        "tool_selection_recall": tool_metrics["tool_selection_recall"],
-        "side_effects": dict(SIDE_EFFECTS),
-        "cases": [
-            {**row, "raw_reply": raw, "tool_reply": tool_raw, "predicted_tools": tools["predicted_tools"]}
-            for row, raw, tool_raw, tools in zip(
-                metrics["rows"], raws, tool_raws, tool_metrics["rows"], strict=True
-            )
-        ],
-    }
+    async with asyncio.timeout(TOTAL_TIMEOUT):
+        routes, raws = await predict(provider, cases)
+        tool_names, tool_raws, records = await predict_tools(provider, cases)
+    report = build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, records)
     write_report(report_path, report)
     print(report_path)
     if mode == "official":
-        accuracy_ok = metrics["route_accuracy"] >= index["thresholds"]["route_accuracy"]
-        recall_ok = metrics["followup_recall"] >= index["thresholds"]["followup_recall"]
-        tool_ok = tool_metrics["tool_selection_recall"] >= index["thresholds"]["tool_selection_recall"]
-        return 0 if accuracy_ok and recall_ok and tool_ok else 1
+        accuracy_ok = report["route_accuracy"] >= index["thresholds"]["route_accuracy"]
+        recall_ok = report["followup_recall"] >= index["thresholds"]["followup_recall"]
+        tool_ok = report["tool_selection_recall"] >= index["thresholds"]["tool_selection_recall"]
+        valid_ok = report["tool_call_validity_recall"] >= CALL_VALIDITY_THRESHOLD
+        return 0 if accuracy_ok and recall_ok and tool_ok and valid_ok else 1
     return 0
 
 
@@ -240,8 +515,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["smoke", "official"], required=True)
     parser.add_argument("--report-dir", type=Path, default=REPORT_DIR)
+    parser.add_argument("--out", type=Path)
     args = parser.parse_args()
-    raise SystemExit(asyncio.run(run(args.mode, args.report_dir)))
+    try:
+        result = asyncio.run(run(args.mode, args.report_dir, args.out))
+    except (Exception, KeyboardInterrupt) as exc:  # noqa: BLE001 -- no API error bodies or credentials in logs
+        print(f"AGENT_EVAL_ERROR:{type(exc).__name__}")
+        result = 2
+    raise SystemExit(result)
 
 
 if __name__ == "__main__":

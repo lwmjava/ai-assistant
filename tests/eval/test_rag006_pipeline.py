@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.agents.pipeline import AgentPipeline, AgentState
 from app.agents.prompts import (
     SYSTEM_ACT,
     SYSTEM_PLAN,
+    SYSTEM_PLAN_LEGACY,
     SYSTEM_PREFLOW,
     SYSTEM_REFLECT,
     SYSTEM_RESPOND,
@@ -78,7 +80,7 @@ class _InjectionProbeLLM(LLMProvider):
             return "YES"
         if system == SYSTEM_UNDERSTAND:
             return "用户询问演示打印机型号"
-        if system == SYSTEM_PLAN:
+        if system in (SYSTEM_PLAN, SYSTEM_PLAN_LEGACY):
             return "1. 检索知识库 2. 回答型号"
         if system == SYSTEM_ACT:
             untrusted = _untrusted_span(blob)
@@ -141,6 +143,7 @@ def _refund_spy() -> tuple[dict[str, int], ToolRegistry]:
     return called, tools
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_merges_memory_with_rag():
     async def retrieve(query: str, plan: str) -> str:
         return "[UNTRUSTED_SOURCE]\n检索到现行月费 199。\n[/UNTRUSTED_SOURCE]"
@@ -155,6 +158,7 @@ async def test_pipeline_merges_memory_with_rag():
     assert "199" in result.context
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_untrusted_tool_call_is_not_executed():
     called = {"n": 0}
 
@@ -241,6 +245,7 @@ async def test_retrieved_injection_chunk_dropped_facts_kept(tmp_path: Path, monk
         session.close()
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_rejects_tool_from_retrieved_injection(tmp_path: Path, monkeypatch):
     """关闭剔块后，检索仍会带出 refund_tool；管线不得执行。"""
     monkeypatch.setattr("app.core.config.settings.RAG_DROP_INJECTED_CHUNKS", False)
@@ -266,6 +271,7 @@ async def test_pipeline_rejects_tool_from_retrieved_injection(tmp_path: Path, mo
         session.close()
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_chat_service_rag_injects_facts_without_executing_dropped_injection(
     tmp_path: Path, monkeypatch
 ):

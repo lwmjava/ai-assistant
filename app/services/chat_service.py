@@ -32,6 +32,12 @@ from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.rag.service import RAGService, sources_from_hits
+from app.services.agent_execution_guard import (
+    ResumeRejectedError,
+    claim_execution,
+    guarded_chat,
+    guarded_stream,
+)
 from app.services.cache_scope import cached_chat_scope, cached_stream_scope
 from app.services.quota import accept_user_message
 
@@ -306,17 +312,58 @@ class ChatService:
             "tenant_id": user.tenant_id,
             "user_id": user.id,
         }
+        if "agent_resume_snapshot" in session.info:
+            pipeline.state_binding["resume_snapshot"] = session.info["agent_resume_snapshot"]
+
+    def _prepare_user_message(
+        self, session: Session, user: User, conversation_id: str | None, message: str,
+        resume_message_id: str | None, claims: list[tuple[int, str, str, str]],
+    ) -> tuple[Conversation, str]:
+        """Authorize recovery before reusing a message; new requests use the quota path."""
+        session.info.pop("agent_resume_snapshot", None)
+        conv: Conversation | None
+        if resume_message_id is None:
+            conv, message_id = self._accept_user_message(session, user, conversation_id, message)
+            claim_execution(session, user.tenant_id, conv.id, message_id, claims)
+        else:
+            if not conversation_id:
+                raise ResumeRejectedError("续跑需要 conversation_id", 400)
+            if not settings.AGENT_STATE_PERSIST_ENABLED or settings.AGENT_ORCHESTRATION != "self":
+                raise ResumeRejectedError("当前编排不支持续跑")
+            conv = session.get(Conversation, conversation_id)
+            original = session.get(Message, resume_message_id)
+            if (conv is None or conv.tenant_id != user.tenant_id or conv.user_id != user.id
+                    or original is None or original.conversation_id != conv.id or original.role != "user"):
+                raise ResumeRejectedError("会话或消息不存在或无权访问", 404)
+            if original.content != message:
+                raise ResumeRejectedError("续跑消息内容与原消息不一致", 400)
+            claim_execution(session, user.tenant_id, conv.id, original.id, claims)
+            from app.services.agent_state_service import AgentStateService
+
+            snapshot = AgentStateService(session, tenant_id=user.tenant_id, user_id=user.id).load_active(
+                conv.id, original.id)
+            if snapshot is None:
+                raise ResumeRejectedError("没有可恢复的活动执行")
+            session.info["agent_resume_snapshot"] = snapshot
+            message_id = original.id
+        session.info["agent_message_id"] = message_id
+        return conv, message_id
 
     @cached_chat_scope
+    @guarded_chat
     async def chat(
-        self, session: Session, user: User, message: str, conversation_id: str | None = None
+        self, session: Session, user: User, message: str, conversation_id: str | None = None,
+        *, resume_message_id: str | None = None,
+        _execution_claims: list[tuple[int, str, str, str]] | None = None,
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
         # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
         sec_ctx, safe_message = self._apply_input_security(message, user)
         if sec_ctx and sec_ctx.blocked:
             raise self._rejection_error(sec_ctx)
-        conv, user_message_id = self._accept_user_message(session, user, conversation_id, message)
+        conv, user_message_id = self._prepare_user_message(
+            session, user, conversation_id, message, resume_message_id,
+            _execution_claims if _execution_claims is not None else [])
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
         state = AgentState(user_input=safe_message, history=memory.recent_messages)
@@ -330,7 +377,7 @@ class ChatService:
         # 5. 调试追踪
         trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
-        fast = self._fast_route(safe_message)
+        fast = None if resume_message_id else self._fast_route(safe_message)
         try:
             if fast is not None:
                 async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx):
@@ -370,8 +417,11 @@ class ChatService:
         return conv, result.answer
 
     @cached_stream_scope
+    @guarded_stream
     async def chat_stream(
-        self, session: Session, user: User, message: str, conversation_id: str | None = None
+        self, session: Session, user: User, message: str, conversation_id: str | None = None,
+        *, resume_message_id: str | None = None,
+        _execution_claims: list[tuple[int, str, str, str]] | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
         # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
@@ -387,7 +437,9 @@ class ChatService:
                 )
             yield AgentEvent("error", str(self._rejection_error(sec_ctx)))
             return
-        conv, user_message_id = self._accept_user_message(session, user, conversation_id, message)
+        conv, user_message_id = self._prepare_user_message(
+            session, user, conversation_id, message, resume_message_id,
+            _execution_claims if _execution_claims is not None else [])
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
         state = AgentState(user_input=safe_message, history=memory.recent_messages)
@@ -400,7 +452,7 @@ class ChatService:
 
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
-        fast = self._fast_route(safe_message)
+        fast = None if resume_message_id else self._fast_route(safe_message)
         pipeline = None if fast is not None else self._build_pipeline(retriever, tools, skill_ctx)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
@@ -408,6 +460,7 @@ class ChatService:
         # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。
         conversation_id = conv.id
         yield AgentEvent("conversation", conversation_id)
+        yield AgentEvent("message", user_message_id)
 
         collected: list[str] = []
         sources: list[dict] = []

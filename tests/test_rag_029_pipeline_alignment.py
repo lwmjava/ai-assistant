@@ -97,6 +97,7 @@ async def test_pipeline_budget_exhausted_disclosed_to_model(monkeypatch) -> None
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_budget_exhausted_in_final_sync_reply(monkeypatch) -> None:
     """同步 ``run`` 的最终回答必须确定性前置超预算披露。"""
     monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 300)
@@ -110,6 +111,7 @@ async def test_pipeline_budget_exhausted_in_final_sync_reply(monkeypatch) -> Non
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_budget_exhausted_in_final_stream_reply(monkeypatch) -> None:
     """流式 ``run_stream`` 的 token 序列里必须先吐出超预算披露。"""
     monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 300)
@@ -376,6 +378,7 @@ class _TwoRoundStaleRetriever:
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_unavailable_ignores_residual_hits(monkeypatch) -> None:
     """P2-01/CE-04：unavailable 时 last_selected/来源必须为空，陈旧证据不进模型 payload。"""
     monkeypatch.setattr(settings, "RAG_CONTEXT_CHARS", 300)

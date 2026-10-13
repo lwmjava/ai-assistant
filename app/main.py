@@ -68,8 +68,16 @@ async def lifespan(app: FastAPI):
 
     await start_evolution()
 
+    from app.services.agent_state_cleanup import start_cleanup
+
+    await start_cleanup()
+
     yield
     logger.info("ai-assistant 正在关闭。")
+
+    from app.services.agent_state_cleanup import stop_cleanup
+
+    await stop_cleanup()
 
     # 关闭时停止调度器（幂等）
     from app.workflow.scheduler import stop_scheduler

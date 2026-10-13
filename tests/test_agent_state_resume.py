@@ -212,7 +212,19 @@ def test_concurrent_conflict_does_not_corrupt_other_rows(conv_pair) -> None:
         assert by_msg[conv_pair["m2"]].state_json == '{"plan":"m2"}'  # 他行未被覆盖
 
 
-def test_all_builtin_tools_bound_legacy_observation_golden() -> None:
+def test_all_builtin_tools_bound_legacy_observation_golden(monkeypatch) -> None:
+    from datetime import datetime
+    from types import SimpleNamespace
+
+    from app.agents.tools import builtin
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 13, 12, 0, 0)
+
+    # Equality compares transport behavior, so both real calls use the same clock.
+    monkeypatch.setattr(builtin, "datetime", SimpleNamespace(datetime=FixedDatetime))
     reg = ToolRegistry(default_tools())
     cases = [
         ToolCall(name="calculator", arguments={"expression": "1+1"}),

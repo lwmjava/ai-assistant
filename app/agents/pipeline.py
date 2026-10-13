@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -22,9 +23,12 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from app.debug.trace import AgentTrace
 
+from app.agents.plan import PlanValidationError, parse_plan
+from app.agents.plan_runtime import PlanExecutionError, iterate_plan, model_timeout
 from app.agents.prompts import (
     SYSTEM_ACT,
     SYSTEM_PLAN,
+    SYSTEM_PLAN_LEGACY,
     SYSTEM_PREFLOW,
     SYSTEM_QUALITY_CRITIQUE,
     SYSTEM_QUALITY_GATE,
@@ -33,7 +37,7 @@ from app.agents.prompts import (
     SYSTEM_UNDERSTAND,
 )
 from app.agents.state import AgentStateStore, StateManager
-from app.agents.tools.base import ToolIntent, ToolRegistry, inspect_tool_call
+from app.agents.tools.base import Tool, ToolIntent, ToolRegistry, inspect_tool_call
 from app.agents.tools.executor import ToolExecutor
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
@@ -81,6 +85,8 @@ def _failure_text(exc: Exception, generic: str | None = None) -> str:
         return str(exc)
     if isinstance(exc, ContextBudgetError):
         return BUDGET_EXCEEDED_MESSAGE
+    if isinstance(exc, PlanExecutionError):
+        return str(exc)
     return generic if generic is not None else _GENERIC_FAILURE
 
 
@@ -179,17 +185,52 @@ def build_preflight_user_content(history: Sequence[ChatMessage | dict], user_inp
     return f"## 最近对话\n{recent_dialogue(history)}\n\n## 用户最新消息\n{user_input}"
 
 
-def build_tool_choice_messages(history: Sequence[ChatMessage | dict], user_input: str) -> list[ChatMessage]:
-    """构造工具选择请求。只列出短路允许的三个工具，不执行它们。"""
-    names = "\n".join(f"- {name}" for name in sorted(_SHORT_PATH_TOOLS))
-    user = (
-        f"## 最近对话\n{recent_dialogue(history)}\n\n"
-        "## 可用外部工具\n"
-        f"{names}\n\n"
-        "如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
-        '<tool_call>{"name": "工具名", "arguments": {}}</tool_call>\n\n'
-        f"## 用户最新消息\n{user_input}"
+def selection_tool_registry() -> ToolRegistry:
+    """Copy production metadata only; no production function can be invoked here."""
+    from app.agents.tools.builtin import default_tools
+
+    def unavailable(arguments: dict) -> str:
+        raise RuntimeError("selection_only_registry")
+
+    return ToolRegistry([
+        Tool(tool.name, tool.description, tool.parameters, unavailable, tool.contract)
+        for tool in default_tools() if tool.name in _SHORT_PATH_TOOLS
+    ])
+
+
+def action_user_content(state: AgentState, registry: ToolRegistry | None, include_tools: bool) -> str:
+    """One action Prompt builder for runtime and isolated tool evaluation."""
+    tools_text = ""
+    if not include_tools:
+        tools_text = _EXHAUSTED_NOTE
+    elif registry is not None:
+        tools_text = (
+            "## 可用外部工具\n" + registry.describe()
+            + "\n\n如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
+            '<tool_call>{"name": "工具名", "arguments": {参数键值对}}</tool_call>'
+        )
+    tool_results = ""
+    if state.tool_results:
+        tool_results = "## 已调用工具结果\n" + "\n".join(state.tool_results)
+    notice = f"\n\n{state.retrieval_notice}\n\n" if state.retrieval_notice else ""
+    context = state.context or "（未接入外部检索，仅基于模型知识作答）"
+    return (
+        f"## 回答计划\n{state.plan}\n\n"
+        f"## 步骤状态\n{json.dumps(state.plan_progress, ensure_ascii=False)}\n\n"
+        f"## 外部上下文\n{context}\n\n"
+        f"{tools_text}\n\n"
+        f"{tool_results}\n\n"
+        f"## 最近对话\n{recent_dialogue(state.history)}\n\n"
+        f"## 用户消息\n{state.user_input}\n\n"
+        f"{notice}"
+        "请按系统要求撰写回答草稿，或输出工具调用指令。"
     )
+
+
+def build_tool_choice_messages(history: Sequence[ChatMessage | dict], user_input: str) -> list[ChatMessage]:
+    """Use the runtime action Prompt with metadata-only short-path tools."""
+    state = AgentState(user_input=user_input, history=_as_history(history))
+    user = action_user_content(state, selection_tool_registry(), True)
     return [
         ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_ACT),
         ChatMessage(role=ChatRole.USER, content=user),
@@ -229,6 +270,10 @@ class AgentState:
     history: list[ChatMessage] = field(default_factory=list)
     understanding: str = ""
     plan: str = ""
+    structured_plan: dict | None = None
+    plan_progress: list[dict] = field(default_factory=list)
+    plan_cursor: int = 0
+    failed_step_id: str | None = None
     context: str = ""  # 检索产出的外部上下文
     retrieval_status: str = ""  # 检索终态：ok / no_hit / below_threshold / unavailable
     retrieval_notice: str = ""  # 非 ok 时必须向用户披露的要求（指令块，非资料）
@@ -243,6 +288,7 @@ class AgentState:
     quality_score: float = 0.0  # QualityGate 最近一次质量评分
     revision: int = 0  # QualityGate 自纠错已执行的轮数
     executed_tool_fingerprints: set[str] = field(default_factory=set)
+    tool_rounds_used: int = 0
     # PAGT-003：本次请求的工具行动轮次是否已跑满预算（仅管线循环层置位，跨循环重入保持）
     tool_budget_exhausted: bool = False
     # 一次 Supervisor 执行里的分派记录，只留在内存，不入库。
@@ -325,6 +371,7 @@ class AgentPipeline:
         executor: ToolExecutor | None = None,
         state_store: AgentStateStore | None = None,
         state_binding: dict | None = None,
+        structured_plans_enabled: bool = True,
     ) -> None:
         self.llm = llm
         self.intent_llm = intent_llm or llm
@@ -339,6 +386,7 @@ class AgentPipeline:
         self._execution_policy = ExecutionPolicy()
         # PAGT-006：独立 Executor / 状态持久化 store 均为可选注入；
         # 未注入时走原 Registry.run 与就地状态路径，行为不变。
+        self.structured_plans_enabled = structured_plans_enabled
         self.executor = executor
         self.state_store = state_store
         self.state_binding = state_binding or {}
@@ -350,13 +398,18 @@ class AgentPipeline:
         ]
 
     async def _stage(self, system: str, builder_name: str, state: AgentState) -> str:
+        is_action_stage = system == SYSTEM_ACT
         builder = getattr(self, builder_name)
         content = builder(state)
         # 注入技能提示词（若已激活）
         if self.skill_prompt_injection:
             system = f"{system}\n\n---\n# 激活的技能指令\n{self.skill_prompt_injection}"
         t0 = time.monotonic()
-        result = await self.llm.chat(self._messages(system, content), self.options)
+        if self.structured_plans_enabled or state.structured_plan is not None:
+            async with asyncio.timeout(model_timeout(self)):
+                result = await self.llm.chat(self._messages(system, content), self.options)
+        else:
+            result = await self.llm.chat(self._messages(system, content), self.options)
         elapsed = (time.monotonic() - t0) * 1000
         # 记录 LLM 调用 trace
         if self.trace and self.trace.debug_mode:
@@ -367,6 +420,11 @@ class AgentPipeline:
                 latency_ms=elapsed,
                 stage=builder_name,
             )
+        if state.structured_plan is not None and is_action_stage:
+            if not isinstance(result, str) or not result.strip() or len(result) > 8000:
+                raise PlanExecutionError("INVALID_STEP_OUTPUT", "draft")
+        if is_action_stage and isinstance(result, str) and not result.strip():
+            raise ValueError("EMPTY_ACTION_OUTPUT")
         return result.strip()
 
     # ── 各环节内容构造 ──────────────────────────────
@@ -393,11 +451,62 @@ class AgentPipeline:
         )
 
     def _build_plan(self, state: AgentState) -> str:
+        tools = self.tools.describe() if self.tools is not None else "（无工具，只能规划 reason 步骤）"
         return (
             f"## 用户意图理解\n{state.understanding}\n\n"
             f"## 用户最新消息\n{state.user_input}\n\n"
-            "请按系统要求制定步骤计划。"
+            f"## 注册工具与参数\n{tools}\n\n请按系统要求制定步骤计划。"
         )
+
+    @staticmethod
+    def _clear_rejected_plan(state: AgentState) -> None:
+        # Raw rejected payloads must never reach terminal checkpoints.
+        state.plan = ""
+        state.structured_plan = None
+        state.plan_progress = []
+        state.plan_cursor = 0
+        state.failed_step_id = None
+
+    def _validate_executable_plan(self, plan: dict) -> None:
+        from app.debug.trace import sanitize_trace_text
+
+        for step in plan["steps"]:
+            encoded = json.dumps(step, ensure_ascii=False)
+            if sanitize_trace_text(encoded) != encoded:
+                raise PlanExecutionError("SENSITIVE_PLAN_ARGUMENT", step["id"])
+            if step["kind"] != "tool":
+                continue
+            tool = self.tools.get(step["tool"]) if self.tools is not None else None
+            if tool is None:
+                raise PlanExecutionError("TOOL_UNAVAILABLE", step["id"])
+            if not ToolExecutor._validate(tool, step["arguments"])["passed"]:
+                raise PlanExecutionError("INVALID_ARGUMENTS", step["id"])
+
+    def _prepare_structured_plan(self, state: AgentState) -> None:
+        if not self.structured_plans_enabled:
+            return
+        try:
+            plan = parse_plan(state.plan)
+            self._validate_executable_plan(plan)
+        except (PlanValidationError, PlanExecutionError) as exc:
+            self._clear_rejected_plan(state)
+            raise PlanExecutionError(exc.code, exc.step_id or "plan") from None
+        state.structured_plan = plan
+        state.plan_progress = [dict(id=s["id"], status="pending", output="", error_code=None)
+                               for s in plan["steps"]]
+        state.plan_cursor = 0
+        self._checkpoint(state, stage="plan", status="running")
+
+    async def _stream_final(self, state: AgentState) -> AsyncIterator[str]:
+        if self.structured_plans_enabled or state.structured_plan is not None:
+            async with asyncio.timeout(model_timeout(self)):
+                async for delta in self.llm.stream_chat(
+                    self._messages(_FINAL_SYSTEM, self._build_respond(state)), self.options):
+                    yield delta
+        else:
+            async for delta in self.llm.stream_chat(
+                self._messages(_FINAL_SYSTEM, self._build_respond(state)), self.options):
+                yield delta
 
     def _tools_for_policy(self, policy: ExecutionPolicy) -> ToolRegistry | None:
         if self.tools is None or not policy.include_tools:
@@ -410,34 +519,9 @@ class AgentPipeline:
         return ToolRegistry(selected)
 
     def _build_act(self, state: AgentState) -> str:
-        context = state.context or "（未接入外部检索，仅基于模型知识作答）"
         policy = self._execution_policy
-        tools_text = ""
-        if not policy.include_tools:
-            tools_text = _EXHAUSTED_NOTE
-        else:
-            registry = self._tools_for_policy(policy)
-            if registry is not None:
-                tools_text = (
-                    "## 可用外部工具\n"
-                    + registry.describe()
-                    + "\n\n如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
-                    '<tool_call>{"name": "工具名", "arguments": {参数键值对}}</tool_call>'
-                )
-        tool_results = ""
-        if state.tool_results:
-            tool_results = "## 已调用工具结果\n" + "\n".join(state.tool_results)
-        notice = f"\n\n{state.retrieval_notice}\n\n" if state.retrieval_notice else ""
-        return (
-            f"## 回答计划\n{state.plan}\n\n"
-            f"## 外部上下文\n{context}\n\n"
-            f"{tools_text}\n\n"
-            f"{tool_results}\n\n"
-            f"## 最近对话\n{recent_dialogue(state.history)}\n\n"
-            f"## 用户消息\n{state.user_input}\n\n"
-            f"{notice}"
-            "请按系统要求撰写回答草稿，或输出工具调用指令。"
-        )
+        registry = self._tools_for_policy(policy) if policy.include_tools else None
+        return action_user_content(state, registry, policy.include_tools)
 
     async def _run_action_once(self, state: AgentState) -> str:
         """执行一次「行动」环节，返回模型原始输出（可能是草稿或工具调用）。"""
@@ -453,16 +537,38 @@ class AgentPipeline:
             return (await self.executor.execute(call)).observation
         return await self.tools.run(call)
 
-    def _resume_state(self, state: AgentState) -> None:
+    def _resume_state(self, state: AgentState) -> bool:
         """run 开始时尝试从 store 恢复活动 checkpoint；无/过期/损坏→全新 run。"""
         if self.state_store is None or not settings.AGENT_STATE_PERSIST_ENABLED:
-            return
+            return False
         conv_id = self.state_binding.get("conversation_id")
         if not conv_id:
-            return
-        data = self.state_store.load_active(conv_id, self.state_binding.get("message_id"))
-        if data:
-            StateManager(state).apply_snapshot(data)
+            return False
+        try:
+            current_memory = state.context
+            data = self.state_binding.pop("resume_snapshot", None)
+            if data is None:
+                data = self.state_store.load_active(conv_id, self.state_binding.get("message_id"))
+            if data and StateManager(state).apply_snapshot(data):
+                if state.structured_plan is not None:
+                    try:
+                        self._validate_executable_plan(state.structured_plan)
+                    except PlanExecutionError:
+                        self._clear_rejected_plan(state)
+                        raise
+                    # A v1 snapshot has one authoritative plan. Rebuild its text
+                    # view before retrieval or model calls can consume stale data.
+                    state.plan = json.dumps(state.structured_plan, ensure_ascii=False)
+                state.context = current_memory
+                state.retrieval_status = ""
+                state.retrieval_notice = ""
+                state.retrieval_disclosure = ""
+                return True
+        except PlanExecutionError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Agent checkpoint restore unavailable error_type=%s", type(exc).__name__)
+        return False
 
     def _checkpoint(self, state: AgentState, *, stage: str, status: str, error: str | None = None) -> None:
         """在工具轮/终态边界写 checkpoint；失败降级不阻断主链。"""
@@ -479,7 +585,7 @@ class AgentPipeline:
                 tenant_id=self.state_binding.get("tenant_id", ""),
                 user_id=self.state_binding.get("user_id", ""),
                 stage=stage,
-                round_no=len(state.executed_tool_fingerprints),
+                round_no=state.tool_rounds_used,
                 tool_budget_exhausted=state.tool_budget_exhausted,
                 state_json=manager.to_json(),
                 status=status,
@@ -496,8 +602,6 @@ class AgentPipeline:
         state.tool_results.append(observation)
         fresh = take_code_results()
         state.code_results.extend(fresh)
-        if settings.AGENT_STATE_CHECKPOINT_TOOL_ROUND:
-            self._checkpoint(state, stage="action", status="running")
         return fresh
 
     async def _fill_retrieval(self, state: AgentState) -> None:
@@ -642,17 +746,19 @@ class AgentPipeline:
             if self.trace:
                 self.trace.start()
             # 0b. 尝试从活动 checkpoint 恢复（中断续跑）
-            self._resume_state(state)
+            resumed = self._resume_state(state)
             # 1. 理解
             if self.trace:
                 self.trace.stage_start("理解")
-            state.understanding = await self._stage(
-                SYSTEM_UNDERSTAND, "_build_understand", state
-            )
+            if not resumed:
+                state.understanding = await self._stage(
+                    SYSTEM_UNDERSTAND, "_build_understand", state
+                )
             if self.trace:
                 self.trace.stage_end("理解")
             # 2. Preflight 意图短路
-            state.needs_full_pipeline = await self._needs_plan(state)
+            if not resumed:
+                state.needs_full_pipeline = await self._needs_plan(state)
             if not state.needs_full_pipeline:
                 # 简单问题：跳过规划/检索/反思，直接行动 → 响应
                 if self.trace:
@@ -668,12 +774,16 @@ class AgentPipeline:
                 if self.trace:
                     self.trace.stage_end("响应")
                     self.trace.finish()
+                self._checkpoint(state, stage="done", status="done")
                 return state
 
             # 3. 规划
             if self.trace:
                 self.trace.stage_start("规划")
-            state.plan = await self._stage(SYSTEM_PLAN, "_build_plan", state)
+            if not resumed:
+                state.plan = await self._stage(
+                    SYSTEM_PLAN if self.structured_plans_enabled else SYSTEM_PLAN_LEGACY, "_build_plan", state)
+                self._prepare_structured_plan(state)
             if self.trace:
                 self.trace.stage_end("规划")
             # 4. 检索（可选；与记忆合并）
@@ -690,6 +800,7 @@ class AgentPipeline:
                 state.draft = terminal
                 if self.trace:
                     self.trace.finish()
+                self._checkpoint(state, stage="done", status="done")
                 return state
             # 5. 行动 → QualityGate 自纠错
             if self.trace:
@@ -719,7 +830,7 @@ class AgentPipeline:
             if self.trace:
                 self.trace.finish(error=str(exc))
             logger.exception("Agent 管线执行失败")
-            state.error = str(exc)
+            state.error = str(exc) or type(exc).__name__
             if not state.answer:
                 state.answer = _failure_text(exc)
         self._checkpoint(state, stage="done", status="error" if state.error else "done", error=state.error)
@@ -730,10 +841,13 @@ class AgentPipeline:
 
         解析失败时默认走完整流程（不轻易短路），避免漏掉需要检索/推理的问题。
         """
-        decision = await self.intent_llm.chat(
-            build_preflight_messages(state.history, state.user_input),
-            self.options,
-        )
+        if self.structured_plans_enabled or state.structured_plan is not None:
+            async with asyncio.timeout(model_timeout(self)):
+                decision = await self.intent_llm.chat(
+                    build_preflight_messages(state.history, state.user_input), self.options)
+        else:
+            decision = await self.intent_llm.chat(
+                build_preflight_messages(state.history, state.user_input), self.options)
         return preflight_needs_full_pipeline(decision)
 
     async def _quality_gate_loop(self, state: AgentState) -> str:
@@ -764,13 +878,15 @@ class AgentPipeline:
             f"## 回答草稿\n{draft}\n\n"
             "请输出 0~1 的质量评分。"
         )
-        raw = await self.llm.chat(
-            [
-                ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_QUALITY_GATE),
-                ChatMessage(role=ChatRole.USER, content=prompt),
-            ],
-            self.options,
-        )
+        messages = [
+            ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_QUALITY_GATE),
+            ChatMessage(role=ChatRole.USER, content=prompt),
+        ]
+        if self.structured_plans_enabled or state.structured_plan is not None:
+            async with asyncio.timeout(model_timeout(self)):
+                raw = await self.llm.chat(messages, self.options)
+        else:
+            raw = await self.llm.chat(messages, self.options)
         try:
             return float((raw or "").strip())
         except (ValueError, TypeError):
@@ -839,18 +955,38 @@ class AgentPipeline:
     ) -> AsyncIterator[AgentEvent]:
         """产出 tool 与 code_result，并把草稿写进 state.draft。"""
         policy = execution_policy or ExecutionPolicy()
+        if state.structured_plan is not None:
+            try:
+                if not StateManager(state).valid_snapshot(StateManager(state).snapshot()):
+                    raise PlanExecutionError("INVALID_PLAN_STATE")
+                self._validate_executable_plan(state.structured_plan)
+            except PlanExecutionError:
+                self._clear_rejected_plan(state)
+                raise
+            async for event in iterate_plan(self, state):
+                yield event
+            return
         self._execution_policy = policy
+        persisted_budget = self.state_store is not None and settings.AGENT_STATE_PERSIST_ENABLED
+        if not persisted_budget:
+            state.tool_rounds_used = 0
         try:
-            if self.max_tool_rounds <= 0:
+            if (self.max_tool_rounds <= 0 or (persisted_budget and state.tool_budget_exhausted)
+                    or state.tool_rounds_used >= self.max_tool_rounds):
+                state.tool_budget_exhausted = True
                 state.draft = await self._finalize_without_tools(state)
                 return
             wrap_up = False
-            for round_no in range(1, self.max_tool_rounds + 1):
+            for round_no in range(state.tool_rounds_used + 1, self.max_tool_rounds + 1):
                 state.draft = await self._run_action_once(state)
                 intent = inspect_tool_call(state.draft)
                 if intent.status == "none":
                     return
+                state.tool_rounds_used = round_no
+                state.tool_budget_exhausted = persisted_budget and round_no >= self.max_tool_rounds
                 decision = self._reject_tool_call(state, intent, policy)
+                if decision is not None and settings.AGENT_STATE_CHECKPOINT_TOOL_ROUND:
+                    self._checkpoint(state, stage="action", status="running")
                 if decision == "skip":
                     self._record_tool_trace(intent.call.name if intent.call else "tool", "skipped", round_no, 0.0)
                     wrap_up = True
@@ -869,6 +1005,9 @@ class AgentPipeline:
                 fresh = await self._finish_tool(state, call)
                 latency_ms = (time.monotonic() - started) * 1000
                 state.executed_tool_fingerprints.add(tool_fingerprint(call.name, call.arguments))
+                state.tool_budget_exhausted = state.tool_budget_exhausted or round_no >= self.max_tool_rounds
+                if settings.AGENT_STATE_CHECKPOINT_TOOL_ROUND:
+                    self._checkpoint(state, stage="action", status="running")
                 self._record_tool_trace(call.name, "executed", round_no, latency_ms)
                 for item in fresh:
                     yield AgentEvent("code_result", json.dumps(item, ensure_ascii=False))
@@ -894,16 +1033,18 @@ class AgentPipeline:
 
     async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
         """流式执行：广播阶段进度事件，最终环节逐字吐出 token。"""
-        self._resume_state(state)
         try:
+            resumed = self._resume_state(state)
             # 1. 理解
             yield AgentEvent("stage", "理解")
-            state.understanding = await self._stage(
-                SYSTEM_UNDERSTAND, "_build_understand", state
-            )
+            if not resumed:
+                state.understanding = await self._stage(
+                    SYSTEM_UNDERSTAND, "_build_understand", state
+                )
             # 2. Preflight 意图短路
             yield AgentEvent("stage", "意图分流")
-            state.needs_full_pipeline = await self._needs_plan(state)
+            if not resumed:
+                state.needs_full_pipeline = await self._needs_plan(state)
             if not state.needs_full_pipeline:
                 yield AgentEvent("stage", "行动")
                 async for event in self._iter_action_loop(state, _SHORT_PATH_POLICY):
@@ -911,19 +1052,20 @@ class AgentPipeline:
                 self._apply_budget_notice(state)
                 yield AgentEvent("stage", "响应")
                 chunks: list[str] = []
-                async for delta in self.llm.stream_chat(
-                    self._messages(_FINAL_SYSTEM, self._build_respond(state)),
-                    self.options,
-                ):
+                async for delta in self._stream_final(state):
                     chunks.append(delta)
                     yield AgentEvent("token", delta)
                 state.answer = "".join(chunks)
+                self._checkpoint(state, stage="done", status="done")
                 yield AgentEvent("done", state.answer)
                 return
 
             # 3. 规划
             yield AgentEvent("stage", "规划")
-            state.plan = await self._stage(SYSTEM_PLAN, "_build_plan", state)
+            if not resumed:
+                state.plan = await self._stage(
+                    SYSTEM_PLAN if self.structured_plans_enabled else SYSTEM_PLAN_LEGACY, "_build_plan", state)
+                self._prepare_structured_plan(state)
             # 4. 检索（可选；与记忆合并）
             if self.retriever is not None:
                 yield AgentEvent("stage", "检索")
@@ -935,6 +1077,7 @@ class AgentPipeline:
                 state.draft = terminal
                 for piece in _chunk_text(terminal):
                     yield AgentEvent("token", piece)
+                self._checkpoint(state, stage="done", status="done")
                 yield AgentEvent("done", terminal)
                 return
             # 4c. 披露语先吐给用户：即使后续模型完全忽略 prompt 里的指令，
@@ -970,10 +1113,7 @@ class AgentPipeline:
             # 7. 响应
             yield AgentEvent("stage", "响应")
             response_chunks: list[str] = []
-            async for delta in self.llm.stream_chat(
-                self._messages(_FINAL_SYSTEM, self._build_respond(state)),
-                self.options,
-            ):
+            async for delta in self._stream_final(state):
                 response_chunks.append(delta)
                 yield AgentEvent("token", delta)
             # 披露语已作为 token 先行吐出，这里补回 state.answer，
@@ -981,7 +1121,7 @@ class AgentPipeline:
             state.answer = self._with_disclosure(state, "".join(response_chunks))
         except Exception as exc:  # noqa: BLE001
             logger.exception("Agent 流式管线执行失败")
-            state.error = str(exc)
+            state.error = str(exc) or type(exc).__name__
             if not state.answer:
                 state.answer = _failure_text(exc)
             yield AgentEvent("error", state.answer)

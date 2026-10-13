@@ -262,7 +262,7 @@ async def test_stream_sources_remain_in_response_but_not_logs(monkeypatch, sourc
     monkeypatch.setattr(service, "_persist_assistant", persisted)
     monkeypatch.setattr(service, "_model_name", lambda: "synthetic-model")
     monkeypatch.setattr(ChatService, "_conversation_after_reply", lambda *a: None)
-    result = [event async for event in service.chat_stream(Mock(), Mock(), QUERY)]
+    result = [event async for event in service.chat_stream(Mock(info={}), Mock(), QUERY)]
     assert json.loads(next(event.data for event in result if event.type == "sources")) == sources
     assert persisted.call_args.args[4] is sources
     message = assert_minimized(source_records, "app.services.chat_service")
@@ -397,6 +397,7 @@ async def test_pipeline_final_handlers_omit_exception_text(real_filtered_records
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_retrieval_failure_converges_without_leaking_text(real_filtered_records, stream):
     """RAG-037：检索失败收敛为 unavailable，收敛点同样不得夹带异常正文。
 

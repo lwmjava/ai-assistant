@@ -398,6 +398,15 @@
               }
             }
           },
+          "400": {
+            "description": "消息为空或恢复内容不一致"
+          },
+          "404": {
+            "description": "恢复会话或消息不存在或无权访问"
+          },
+          "409": {
+            "description": "执行仍在进行、快照不可恢复或当前编排不支持恢复"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -444,6 +453,15 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "消息为空或恢复内容不一致"
+          },
+          "404": {
+            "description": "恢复会话或消息不存在或无权访问"
+          },
+          "409": {
+            "description": "执行仍在进行、快照不可恢复或当前编排不支持恢复"
           },
           "422": {
             "description": "Validation Error",
@@ -1342,6 +1360,80 @@
         }
       }
     },
+    "/api/rag/chunks/{chunk_id}/evidence": {
+      "get": {
+        "tags": [
+          "rag"
+        ],
+        "summary": "Get Chunk Evidence",
+        "description": "核验命中块的引用原文与定位信息（ADR-0007 只读核验）。\n\n只返回**该命中块本身**的正文，以及标题、版本状态、块序、页码 / 段落、\n源范围这些必要定位信息；不返回整章、整文档正文或源文件。\n\n每次请求都重新鉴权：主体权限 → 同租户 → Document/Chunk 真实关联 →\n未软删 → 当前版本与时效规则 → uploader 模式下限定上传者。任一项不满足\n统一返回 404 与固定文案，不返回正文，也不泄漏存在性细节。\n\n请求参数:\n    chunk_id: 待核验块 ID；只是待核验线索，不是授权证明。\n    document_id: 调用方声称的所属文档；与实际关联不一致即拒绝。\n    include_parent_content: 是否返回父块正文；默认只给父块定位信息，\n        即便开启也要对父块独立复核同文档关系与同一检索授权。\n\n异常:\n    404: 块不存在、无权核验、已软删、非当前版本或关联不自洽（文案一致）。",
+        "operationId": "get_chunk_evidence_api_rag_chunks__chunk_id__evidence_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chunk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chunk Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "include_parent_content",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Parent Content"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkEvidenceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/rag/documents/{document_id}/reparse": {
       "post": {
         "tags": [
@@ -1704,7 +1796,7 @@
           "rag"
         ],
         "summary": "Search",
-        "description": "按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。",
+        "description": "按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。\n\n检索状态与「实际生效后端」通过响应头暴露：后端工厂会在缺依赖时把\nlangchain / llamaindex 静默降级为 native，调用方需要能观察到真实生效值。\n本端点不做相似度阈值过滤，因此状态只有 ok / no_hit 两种；检索失败仍以\n503 呈现——显式检索接口不应把故障伪装成空结果。",
         "operationId": "search_api_rag_search_post",
         "requestBody": {
           "content": {
@@ -3879,6 +3971,19 @@
               }
             ],
             "title": "Conversation Id"
+          },
+          "resume_message_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Message Id",
+            "description": "恢复同一次未完成执行的原用户消息 ID"
           }
         },
         "type": "object",
@@ -3893,6 +3998,18 @@
           "conversation_id": {
             "type": "string",
             "title": "Conversation Id"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id",
+            "description": "本次执行对应的用户消息 ID"
           },
           "reply": {
             "type": "string",
@@ -3941,6 +4058,184 @@
         ],
         "title": "ChatResponse",
         "description": "非流式对话响应。"
+      },
+      "ChunkEvidenceOut": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "document_id": {
+            "type": "string",
+            "title": "Document Id"
+          },
+          "document_title": {
+            "type": "string",
+            "title": "Document Title"
+          },
+          "version_state": {
+            "type": "string",
+            "title": "Version State"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "source_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Start"
+          },
+          "source_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source End"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChunkLocatorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "document_id",
+          "document_title",
+          "version_state",
+          "chunk_index",
+          "content"
+        ],
+        "title": "ChunkEvidenceOut",
+        "description": "引用原文核验结果：命中块正文 + 必要定位信息。\n\n刻意不含整文档正文、源文件、资源 ACL 或任何控制面字段：核验只回答\n「这个命中块的原文是什么、在哪里」，不提供整章 / 整文件的旁路读取。"
+      },
+      "ChunkLocatorOut": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "source_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Start"
+          },
+          "source_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source End"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "chunk_index"
+        ],
+        "title": "ChunkLocatorOut",
+        "description": "块的定位信息。没有的部分显式为 ``None``，不推断、不编造。"
       },
       "CodeResultOut": {
         "properties": {

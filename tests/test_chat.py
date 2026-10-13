@@ -258,6 +258,7 @@ def _code_result_rows(body: str) -> list[dict]:
     return rows
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_code_result_persists_on_complete(client: TestClient) -> None:
     """一次性对话的响应和会话详情都带上标准输出，且没有宿主机路径。"""
     set_llm_provider_override(_CodeResultLLM())
@@ -275,6 +276,7 @@ def test_code_result_persists_on_complete(client: TestClient) -> None:
     assert _PATH_SENTINEL not in detail.text
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_code_result_persists_on_stream(client: TestClient) -> None:
     """流式事件和刷新后的消息都有同一次标准输出。"""
     set_llm_provider_override(_CodeResultLLM())
@@ -298,6 +300,7 @@ def test_code_result_persists_on_stream(client: TestClient) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_code_result_persists_when_stopped(client: TestClient) -> None:
     """生成在最终回复前停下时，已经跑完的代码结果仍写在停止消息上。"""
 

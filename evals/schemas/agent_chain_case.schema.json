@@ -19,7 +19,7 @@
   ],
   "properties": {
     "case_id": {"type": "string", "pattern": "^agent-[0-9]{3}$"},
-    "dataset_version": {"type": "string", "const": "0.1.0"},
+    "dataset_version": {"type": "string", "enum": ["0.1.0", "0.1.1"]},
     "tier": {"type": "string", "const": "silver"},
     "synthetic": {"type": "boolean", "const": true},
     "history": {

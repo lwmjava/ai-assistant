@@ -82,6 +82,7 @@ def _configure_http(monkeypatch, handler):
 
 
 @pytest.mark.parametrize("provider", tuple(_RESPONSES))
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_tool_search_four_domestic_providers_through_agent(monkeypatch, provider):
     monkeypatch.setattr(settings, "SEARCH_PROVIDER", provider)
     monkeypatch.setattr(settings, f"SEARCH_{provider.upper()}_API_KEY", "synthetic-search-key")
@@ -123,6 +124,7 @@ def test_tool_health_missing_keys_and_disabled_files(monkeypatch):
 
 
 @pytest.mark.parametrize("provider", tuple(_RESPONSES))
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_tool_search_chat_api_persists_source_reply(monkeypatch, provider):
     from fastapi.testclient import TestClient
 
@@ -166,6 +168,7 @@ def test_tool_search_chat_api_persists_source_reply(monkeypatch, provider):
         set_llm_provider_override(None)
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_tool_file_read_agent_and_disable_rollback(monkeypatch, tmp_path):
     public = tmp_path / "public"
     public.mkdir()
@@ -211,6 +214,7 @@ def test_tool_file_rejects_unauthorized_inputs_without_side_effect(monkeypatch, 
 
 
 @pytest.mark.parametrize("failure", ["timeout", "429", "500", "invalid-json", "oversize"])
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_tool_search_failure_preserves_old_tools(monkeypatch, failure):
     monkeypatch.setattr(settings, "SEARCH_PROVIDER", "dashscope")
     monkeypatch.setattr(settings, "SEARCH_DASHSCOPE_API_KEY", "synthetic-search-key")

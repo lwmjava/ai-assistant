@@ -115,6 +115,7 @@ def test_budget_config_above_upper_bound_rejected() -> None:
 # ── 2. 失败路径 ─────────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_looping_calls_truncated_at_budget_and_notice_in_draft() -> None:
     seen = {"n": 0}
 
@@ -129,6 +130,7 @@ def test_looping_calls_truncated_at_budget_and_notice_in_draft() -> None:
     assert state.draft.count(NOTICE_MARK) == 1  # 确定性追加且幂等
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_failing_tool_still_consumes_budget() -> None:
     seen = {"n": 0}
 
@@ -144,6 +146,7 @@ def test_failing_tool_still_consumes_budget() -> None:
     assert NOTICE_MARK in state.draft
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_budget_notice_coexists_with_exhausted_sentinel() -> None:
     """跑满后 finalize 阶段 LLM 仍发工具调用：既有 _EXHAUSTED_DRAFT 与本卡 notice 并存。"""
     seen = {"n": 0}
@@ -160,6 +163,7 @@ def test_budget_notice_coexists_with_exhausted_sentinel() -> None:
     assert NOTICE_MARK in state.draft
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_quality_gate_on_scored_draft_excludes_notice() -> None:
     """方案 B：质量门开启时，被评分 draft 不含 notice；最终 draft 仍带 notice 且仅一份。"""
     saved_enabled = settings.AGENT_QUALITY_GATE_ENABLED
@@ -190,6 +194,7 @@ def test_quality_gate_on_scored_draft_excludes_notice() -> None:
 # ── 3. 权限与租户 ──────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_budget_is_per_request_not_global() -> None:
     """两个独立 pipeline/registry 各自跑满预算，计数互不共享。"""
     seen1 = {"n": 0}
@@ -217,6 +222,7 @@ def test_budget_is_per_request_not_global() -> None:
 # ── 4. 身份与绑定 ──────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_no_notice_on_duplicate_break() -> None:
     """同参数重复调用走 skip-break：不是预算耗尽，draft 不得带 notice（防误报）。"""
     call = '<tool_call>{"name": "echo", "arguments": {"q": "same"}}</tool_call>'
@@ -228,6 +234,7 @@ def test_no_notice_on_duplicate_break() -> None:
 
 
 @pytest.mark.parametrize(("rounds", "expected"), [(2, 2), (3, 3)])
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_rounds_attribute_drives_truncation_point(rounds: int, expected: int) -> None:
     seen = {"n": 0}
 
@@ -243,6 +250,7 @@ def test_rounds_attribute_drives_truncation_point(rounds: int, expected: int) ->
 # ── 5. 回滚与幂等 ──────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_no_notice_when_llm_stops_voluntarily() -> None:
     """未达上限（LLM 自愿停）= 现状行为：正常草稿，不带 notice。"""
     calls = {"n": 0}
@@ -261,6 +269,7 @@ def test_no_notice_when_llm_stops_voluntarily() -> None:
     assert "收尾草稿" in state.draft
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_at_budget_no_extra_side_effects() -> None:
     """跑满上限后计数器不再增长、无第 N+1 次调用。"""
     seen = {"n": 0}

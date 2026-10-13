@@ -283,6 +283,7 @@ def test_code_result_contexts_do_not_mix():
     asyncio.run(both())
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_pipeline_stream_emits_code_result():
     """假模型触发代码工具后，流式事件带上标准输出，观测里没有哨兵路径。"""
     import asyncio

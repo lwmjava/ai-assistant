@@ -100,3 +100,22 @@ def _reset_overrides():
 
     app.dependency_overrides.clear()
     set_llm_provider_override(None)
+
+
+@pytest.fixture
+def legacy_plan_mode(monkeypatch):
+    """Explicit rollback coverage for fixtures implementing the old text planner.
+
+    This is opt-in per test; new Plan tests and unmarked API tests keep the strict
+    default. Existing action-loop assertions are retained under the approved
+    constructor rollback mode, rather than accepting invalid new plans.
+    """
+    from app.agents.pipeline import AgentPipeline
+
+    original = AgentPipeline.__init__
+
+    def initialize(self, *args, **kwargs):
+        kwargs.setdefault("structured_plans_enabled", False)
+        original(self, *args, **kwargs)
+
+    monkeypatch.setattr(AgentPipeline, "__init__", initialize)

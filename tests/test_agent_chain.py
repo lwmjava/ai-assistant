@@ -393,6 +393,7 @@ def test_quality_gate_does_not_reexecute_same_call() -> None:
     assert counter["n"] == 1
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_stream_quality_gate_emits_tool_event() -> None:
     saved_enabled = settings.AGENT_QUALITY_GATE_ENABLED
     saved_revisions = settings.AGENT_MAX_REVISIONS
@@ -443,6 +444,7 @@ def test_stream_quality_gate_emits_tool_event() -> None:
     assert types[-1] == "done"
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_trace_records_tool_statuses_without_secrets() -> None:
     def reply(system: str, user: str) -> str:
         if "意图分析器" in system:
@@ -566,6 +568,7 @@ def test_short_path_without_tool_keeps_call_count() -> None:
 
 
 @pytest.mark.parametrize("preflight", ["YES", "NO"])
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_followup_executes_sandbox_on_full_and_short_paths(preflight: str) -> None:
     registry, counter = _mixed_registry()
     llm = _RouteLLM(preflight, act=_SANDBOX_CALL)
@@ -623,6 +626,7 @@ def test_short_path_stream_emits_tool_for_safe_tool() -> None:
     assert types[-1] == "done"
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_chat_service_persists_code_results_for_both_routes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "RAG_ENABLED", False)
     monkeypatch.setattr(settings, "MCP_ENABLED", False)

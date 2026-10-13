@@ -1,0 +1,43 @@
+{
+  "checkpoint_after_completed_tool": {
+    "tool_results_count": 1,
+    "fingerprints": [],
+    "round_no": 0
+  },
+  "repeat_after_resume": [
+    1,
+    1
+  ],
+  "budget_after_resume": {
+    "limit": 3,
+    "prior_rounds": 2,
+    "new_calls": [
+      3,
+      4,
+      5
+    ]
+  },
+  "successful_short_run_status": "running",
+  "successful_short_stream": {
+    "status": "running",
+    "events": [
+      "stage",
+      "stage",
+      "stage",
+      "tool",
+      "stage",
+      "token",
+      "done"
+    ]
+  },
+  "stream_read_failure_escapes": true,
+  "strict_invalid_types": {
+    "status": "ok",
+    "function_calls": 1
+  },
+  "chat_retry_binding": {
+    "new_message_id": true,
+    "retry_load_found": false,
+    "original_load_found": true
+  }
+}

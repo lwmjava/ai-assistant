@@ -1,0 +1,93 @@
+{
+  "task": "PAGT-005",
+  "date": "2026-10-13",
+  "head": "a0d02eb411a53c3191e81f0fc99528ea60d0d3c4",
+  "status": "in_review",
+  "environment": {
+    "python": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+    "RAG_BACKEND": "native",
+    "DATABASE_URL": "sqlite:///./data/test_ai_assistant.db",
+    "tests_serial": true
+  },
+  "content_algorithm": "skill-content-canonical-v1",
+  "files": {
+    "app/agents/skills/base.py": "762ad5c9e0560e639f2e2cc1ab29dd0f0f384806817ec61264ef6bbcb2dcf5ce",
+    "app/agents/skills/loader.py": "c347a53a270bd1ecd0cce7c5f06525b1007d64d2fc64c491c0128ce95a72d0aa",
+    "app/agents/skills/manager.py": "29c8ee266842dafcbbad12813525b0b4aa10232a453f9a37554115a84272a809",
+    "app/agents/skills/versioning.py": "e87082e90da844e5ee26f61624783f469240df7a84c49f0ebf28280a40b998b0",
+    "app/agents/skills/builtin/releases.json": "5095600808f22c11ddafb3c1fd3cf5a6adfa1b39ee5bd1b9a97ff19d246a9a15",
+    "app/agents/skills/builtin/code_review.yaml": "393163fa0120c352b40e51f3498d304d92a5ee0929f330fe3d5cc4c2b32500ef",
+    "app/agents/skills/builtin/translator.yaml": "b26ce002d2440433dda2e5ffbb84b5cb18241ff2510d4cf21f0407d39e15e262",
+    "app/services/skill_service.py": "5d0050794ac3505ad4834deecb922163c16ceb578c18c376bd10dea3aad250e3",
+    "app/services/chat_service.py": "616ad0d7db6d4c371246547a1ccab35b957b02349b1cc91725104d7fbe947868",
+    "tests/test_skill_versioning.py": "c816decd0a15abfca8d969f29fcdd80c19bbb054a3aef2669c0a51fa6337957c",
+    "tests/test_skill_manager_versions.py": "88d93e8d37f5186125a24e3bb7b3481b495b6a9b36015f81737a87e6a8aba7a3",
+    "tests/test_skill_version_entry.py": "12c3586d8e76b27ae021d4a48d252afd46052ca044cb447e65b32c09606c68b4",
+    "tests/test_skill_version_counterexamples.py": "88df10df16859a1fbc7769cae7b00c27d258894e8589a34f03a81b99135fa22c",
+    "tests/test_skill_selection.py": "351fd8b29aa7f314cb2578abbaf2da87ea0bd2f44733b351c13de1e12d41f99e",
+    "tests/eval/test_skill_tenant_selection.py": "045fb59fa5b64dd5140c1af7184aed1a16df34a021bc2cf11c1ae4cce502d351",
+    "tests/test_skill_smoke.py": "9a8b011ea0f5ee8f8588d61c946c9a4ad035025655a9b43919befc5fabd2b152",
+    "docs/agents/skill-version-spec-v1.md": "d4434924ac9979779966513cfcbd5f6b4d7f72aaf08763837d301fa3ebac79c4",
+    "docs/evaluations/skill-version-regression-v1.md": "b94b4d3c6ae392275be306f2db3b17bddac2350235fc8cd60bcb2dcbe970cefa",
+    "docs/plans/plan_pagt_005_20261013.md": "b1df3497e34834863cc0b36450613f617bb9038c8b180df912a414d5070a774e",
+    "docs/plans/plan_pagt_005_review_fixes_20261013.md": "96dfa6cddb05f4e97022ce9899193e977e66d4035ff2de003b24265af2becbe1"
+  },
+  "junit": {
+    "data/pagt005-final-skill.xml": {
+      "sha256": "52c1ee79ef3a68f99fdfa55433f92cc94a141c763f7f85902e7be152e8579bcc",
+      "summary": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "103",
+        "time": "38.622",
+        "timestamp": "2026-10-13T17:15:49.944699+08:00",
+        "hostname": "DESKTOP-NSMV8MF"
+      }
+    },
+    "data/pagt005-caller-regression.xml": {
+      "sha256": "41584769ba887f1b664421cc1aee9256bb4ff0ee3cb3d21b8b519b51940cf619",
+      "summary": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "142",
+        "time": "16.693",
+        "timestamp": "2026-10-13T17:18:38.815815+08:00",
+        "hostname": "DESKTOP-NSMV8MF"
+      }
+    }
+  },
+  "dependency": {
+    "matched": {
+      "app/agents/tools/web_search.py": true,
+      "app/agents/tools/file_ops.py": true,
+      "app/agents/tools/base.py": true,
+      "app/agents/tools/builtin.py": true,
+      "app/agents/tools/executor.py": true,
+      "app/core/config.py": true,
+      "app/api/routes/health.py": true,
+      "tests/test_pagt001_tools.py": true,
+      "tests/test_pagt001_review.py": true,
+      "tests/test_pagt001_integration.py": true,
+      "tests/conftest.py": true
+    },
+    "critical_tests_passed": 119,
+    "report": "docs/reviews/2026-10-13-PAGT-005-dependency-recheck.md"
+  },
+  "unchanged_builtin_and_services": [
+    "app/agents/skills/builtin/code_review.yaml",
+    "app/agents/skills/builtin/translator.yaml",
+    "app/services/skill_service.py",
+    "app/services/chat_service.py"
+  ],
+  "task_card_sha256": "c992e027e058af45fb593a41d2cb4155c938fd0da3047f6028915b989f09cf4e",
+  "unverified": [
+    "user_business_acceptance",
+    "real_llm_answer_quality",
+    "persistent_user_version_chain",
+    "production_concurrency_and_performance"
+  ]
+}

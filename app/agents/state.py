@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Protocol
 
+from app.agents.plan import validate_plan, validate_progress
+
 if TYPE_CHECKING:
     from app.agents.pipeline import AgentState
 
@@ -60,6 +62,13 @@ class StateManager:
         "retrieval_disclosure",
         "tool_results",
         "tool_budget_exhausted",
+        "tool_rounds_used",
+        "needs_full_pipeline",
+        "code_results",
+        "structured_plan",
+        "plan_progress",
+        "plan_cursor",
+        "failed_step_id",
     )
 
     def __init__(self, state: AgentState) -> None:
@@ -77,13 +86,72 @@ class StateManager:
     def to_json(self) -> str:
         return json.dumps(self.snapshot(), ensure_ascii=False)
 
-    def apply_snapshot(self, data: dict) -> None:
-        """把快照恢复进被包装的 AgentState（幂等恢复，不抛异常给主链）。"""
+    @classmethod
+    def valid_snapshot(cls, data: dict) -> bool:
+        """Validate all known fields before changing any runtime state."""
+        for name in cls._SNAPSHOT_FIELDS:
+            if name not in data:
+                continue
+            value = data[name]
+            if name in {"structured_plan", "plan_progress", "plan_cursor", "failed_step_id"}:
+                continue
+            if name in {"tool_budget_exhausted", "needs_full_pipeline"}:
+                if not isinstance(value, bool):
+                    return False
+            elif name == "tool_rounds_used":
+                if type(value) is not int or value < 0:
+                    return False
+            elif name == "tool_results":
+                if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+                    return False
+            elif name == "code_results":
+                if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+                    return False
+            elif not isinstance(value, str):
+                return False
+        fps = data.get("executed_tool_fingerprints", [])
+        if (not isinstance(fps, list) or not all(isinstance(item, str) for item in fps)
+                or ("_round_no" in data and (type(data["_round_no"]) is not int or data["_round_no"] < 0))):
+            return False
+        plan = data.get("structured_plan")
+        progress = data.get("plan_progress", [])
+        cursor = data.get("plan_cursor", 0)
+        failed = data.get("failed_step_id")
+        if plan is None:
+            if progress != [] or type(cursor) is not int or cursor != 0 or failed is not None:
+                return False
+        else:
+            if not validate_plan(plan) or not validate_progress(plan, progress, cursor):
+                return False
+            expected_failed = next((p["id"] for p in progress if p["status"] == "failed"), None)
+            if failed != expected_failed:
+                return False
+            # Persisted success must agree with the already consumed tool budget.
+            # Import lazily: Pipeline itself depends on StateManager at module load.
+            from app.agents.pipeline import tool_fingerprint
+
+            rounds = data.get("tool_rounds_used")
+            completed = [tool_fingerprint(step["tool"], step["arguments"])
+                         for step in plan["steps"][:cursor] if step["kind"] == "tool"]
+            if (type(rounds) is not int or rounds < len(completed)
+                    or len(set(completed)) != len(completed)
+                    or len(set(fps)) != len(fps) or rounds < len(fps)
+                    or not set(completed).issubset(fps)
+                    or ("_round_no" in data and data["_round_no"] != rounds)):
+                return False
+        return True
+
+    def apply_snapshot(self, data: dict) -> bool:
+        """Restore a validated snapshot atomically; reject malformed fields."""
+        if not self.valid_snapshot(data):
+            return False
         for name in self._SNAPSHOT_FIELDS:
             if name in data:
                 setattr(self.state, name, data[name])
         fps = data.get("executed_tool_fingerprints") or []
         self.state.executed_tool_fingerprints = set(fps)
+        self.state.tool_rounds_used = data.get("_round_no", data.get("tool_rounds_used", len(fps)))
+        return True
 
     @classmethod
     def restore_from_json(cls, state: AgentState, text: str | None) -> StateManager | None:
@@ -97,5 +165,6 @@ class StateManager:
         if not isinstance(data, dict):
             return None
         manager = cls(state)
-        manager.apply_snapshot(data)
+        if not manager.apply_snapshot(data):
+            return None
         return manager

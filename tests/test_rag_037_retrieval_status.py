@@ -217,6 +217,7 @@ def test_directive_is_instruction_not_untrusted_data() -> None:
 # ── 2. 同步入口：自研管线 ───────────────────────────────────
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_survives_retrieval_failure_and_discloses() -> None:
     """改造前：异常冒到管线级兜底，请求失败。改造后：完成且强制披露。
 
@@ -233,6 +234,7 @@ async def test_pipeline_survives_retrieval_failure_and_discloses() -> None:
     assert "答案" in state.answer
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_final_reply_is_deterministic_even_if_llm_ignores() -> None:
     """审查 F-02 反例：模型忽略披露指令时，最终回复仍不得冒充知识回答。"""
     llm = _IgnoreNoticeLLM()
@@ -242,6 +244,7 @@ async def test_pipeline_final_reply_is_deterministic_even_if_llm_ignores() -> No
     assert "根据知识库" in state.answer  # 模型正文仍在，但已被明确标注
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_low_score_terminal_reply_is_the_refusal_text() -> None:
     """全低分是终态拒答：回复就是拒答语本身，不交给模型改写。"""
     llm = _IgnoreNoticeLLM()
@@ -256,6 +259,7 @@ async def test_pipeline_low_score_terminal_reply_is_the_refusal_text() -> None:
     assert not any("审查意见" in p for p in llm.prompts)
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_stream_terminal_reply_and_disclosure() -> None:
     """流式同样确定性：终态直接吐拒答语，故障先吐披露语再接模型正文。"""
     llm = _IgnoreNoticeLLM()
@@ -276,6 +280,7 @@ async def test_pipeline_stream_terminal_reply_and_disclosure() -> None:
     assert "根据知识库" in tokens2
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_ok_has_no_disclosure() -> None:
     llm = _CaptureLLM()
     pipeline = AgentPipeline(llm, LLMOptions(), retriever=_retriever(_Backend([_hit(0.9, "a")])))
@@ -285,6 +290,7 @@ async def test_pipeline_ok_has_no_disclosure() -> None:
     assert DISCLOSURE_PREFIX not in "".join(llm.prompts)
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_no_hit_final_text_carries_disclosure() -> None:
     """复审 N-01：no_hit 分支此前只断言状态与模型侧指令，没断言最终回复文本。"""
     llm = _IgnoreNoticeLLM()
@@ -296,6 +302,7 @@ async def test_pipeline_no_hit_final_text_carries_disclosure() -> None:
     assert "根据知识库" in state.answer
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_stream_disclosure_is_separated_from_body() -> None:
     """复审 N-12：流式披露语与正文之间必须有分隔，否则会粘连成一句。
 
@@ -474,6 +481,7 @@ async def test_none_backend_result_is_unavailable() -> None:
     assert out == ""
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_pipeline_foreign_retriever_exception_is_unavailable() -> None:
     """审查 F-04：自研管线对外部 Retriever 异常也要收敛，而不是通用失败。"""
 
@@ -650,6 +658,7 @@ async def test_notice_off_keeps_short_path_status_text(monkeypatch: pytest.Monke
         object.__setattr__(settings, "RAG_STATUS_NOTICE_ENABLED", True)
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_chat_service_stream_persists_disclosure() -> None:
     """审查 F-02：`ChatService.chat_stream` 的落库正文也必须带披露，不只是 prompt。"""
     from sqlmodel import Session, SQLModel, select
@@ -690,6 +699,7 @@ async def test_chat_service_stream_persists_disclosure() -> None:
         assert mine, f"流式结束必须落库且带披露；实际 {len(rows)} 条助手消息"
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_chat_service_sync_final_text_carries_disclosure() -> None:
     """复审 N-14：同步对话入口此前完全没被覆盖，只有流式有断言。"""
     from sqlmodel import Session, SQLModel

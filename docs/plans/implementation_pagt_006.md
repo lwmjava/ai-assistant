@@ -72,3 +72,7 @@
 - **Repository 独立层不在本卡交付**：新代码走服务层薄封装 `app/services/agent_state_service.py`（与 ADR-0010、non_goal① 一致）。
 - **PostgreSQL 生产验证（E1）未做**：本卡验证基于 SQLite 隔离库（E2），未在 PostgreSQL 实测。
 - 本阶段未 git 提交/推送/合并；未写人工审核结论。
+
+## 2026-10-13 评审修复补记
+
+本页以上为原实现历史证据。后续评审发现 F01–F07，并在用户批准恢复入口及范围扩展后修复；README/.env.example 未同步的偏差已关闭。最新实际行为、验证、独立复审及残余限制以 [本轮实现说明](implementation_pagt_006_review_fixes_20261013.md) 为准，不沿用旧无 P1/P2 结论替代本轮检查。

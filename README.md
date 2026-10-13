@@ -36,7 +36,7 @@
 
 ### 当前实现（As-Is）
 
-当前对话主链以 `ChatService` + 自研五阶段 `AgentPipeline`（可选 LangGraph Supervisor）为中心。独立 Agent Harness、Context Builder、Tool Executor、State Manager 和结构化 Citation 仍属目标治理，不得写成已完成。版本化 Evaluation（rag-v0.1）与 VectorStore ADR-0002 已落地。
+当前对话主链以 `ChatService` + 自研五阶段 `AgentPipeline`（可选 LangGraph Supervisor）为中心。默认自研管线已接入独立 Tool Executor 和 State Manager，checkpoint 持久化与同消息续跑为 `Partial`（单实例、SQLite 隔离证据，未完成生产验收）。独立 Agent Harness 仍属目标治理。版本化 Evaluation（rag-v0.1）与 VectorStore ADR-0002 已落地。
 
 ```mermaid
 flowchart LR
@@ -239,8 +239,8 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 租户 | `PATCH` | `/api/admin/tenants/{tenant_id}` | 修改未停用租户的名称 |
 | 租户 | `POST` | `/api/admin/tenants/{tenant_id}/deactivate` | 停用租户；当前在该租户中的成员不能继续访问 |
 | 系统 | `GET` | `/api/admin/system/status` | 系统管理员查看数据库、向量库、版本和启动时间 |
-| 对话 | `POST` | `/api/chat` | 非流式对话。响应含 `sources` 与 `code_results`（代码执行的 `status`、`stdout`、`reason`，不含宿主机路径） |
-| 对话 | `POST` | `/api/chat/stream` | SSE 流式对话。`code_result` 事件带同结构的单次执行结果 |
+| 对话 | `POST` | `/api/chat` | 非流式对话。响应含用户 `message_id`、`sources` 与 `code_results`；可用 `resume_message_id` 恢复本人的未完成执行 |
+| 对话 | `POST` | `/api/chat/stream` | SSE 流式对话。`conversation` 后的 `message` 事件返回用户消息 ID；支持同消息续跑；`code_result` 事件带代码执行结果 |
 | 对话 | `GET` | `/api/chat/conversations` | 会话列表 |
 | 对话 | `GET` | `/api/chat/conversations/{conversation_id}` | 会话详情。助手消息含 `code_results`，刷新后仍在 |
 | 对话 | `PATCH` | `/api/chat/conversations/{conversation_id}` | 重命名会话（请求体只有 `title`） |
@@ -447,10 +447,21 @@ docker compose up -d --build
 
 对话限流使用本进程内存中的令牌桶。默认每秒补充 60 个、容量 60。补充速率大于 0 且被拒绝时，响应给出等待秒数；速率小于或等于 0 时拒绝，且不计算等待秒数。计数只在本进程有效，重启即清空。完成 `OPS-001` 之前不要水平扩展 API 进程，否则每个进程各计各的。
 | `AGENT_ORCHESTRATION` | 编排实现：`self` / `langgraph`。后者要先装 extra，没装时回退五阶段 | `self` |
+| `AGENT_STATE_PERSIST_ENABLED` | 默认自研管线持久化运行快照；关闭时拒绝显式续跑，停止新写入和过期清理 | `true` |
+| `AGENT_STATE_TTL_SECONDS` | 快照有效期；到期后不可恢复，启动及每分钟分批删除（每批至多 100 行） | `604800` |
+| `AGENT_STATE_CHECKPOINT_TOOL_ROUND` | 每个工具行动轮次完成后提交快照；关闭时只有终态快照，无法恢复工具中间进度 | `true` |
 | `SERVE_FRONTEND` | 是否由本进程托管 `frontend/dist`（开启后 `GET /` 返回控制台） | `false` |
 | `CORS_ORIGINS` | 允许的跨域来源（前后端分离部署时必填） | `*` |
 
 完整配置项见 [`.env.example`](.env.example)。
+
+### 同一次对话执行续跑
+
+`POST /api/chat` 和 `/api/chat/stream` 请求可携带 `resume_message_id`，并提供原 `conversation_id` 与完全相同的 `message`。非流式响应的 `message_id`、流式 `conversation` 后的 `message` 事件，以及会话详情中的用户消息 ID 都可以识别原消息。旧请求无需增加字段。
+
+恢复只支持当前用户本人的自研管线活动执行，复用原用户消息，不新增消息或重复扣配额；系统管理员也不能代恢复他人的执行。归属不符返回 404，文本不符返回 400，无有效活动快照、执行仍在进行或编排/持久化开关不支持时返回 409；缺少会话 ID 返回 422。终态和过期执行不恢复，普通重发文本仍创建新消息。
+
+恢复保留已完成工具的观测和指纹，剩余工具轮次不会重置。默认持久化管线把质量门重入也计入同一次执行的工具预算；未注入 store 的兼容路径仍保持原来的每循环预算。进程内互斥不等同于跨实例租约。工具副作用与快照提交之间的断电窗口不提供 exactly-once 保证；不要用这些单实例证据宣称多实例或 PostgreSQL 生产恢复已通过。当前控制台尚无自动续跑按钮，API 调用方需显式提交恢复请求。
 
 ### 单实例知识库导入恢复
 

@@ -62,6 +62,7 @@ def test_mcp_tool_registered_and_described() -> None:
     assert "mcp__crm__get_order" in reg.describe()
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_pipeline_invokes_mcp_tool() -> None:
     """AI 在「行动」阶段调用 MCP 映射工具，观测结果回灌草稿。"""
     client = FakeMCPClient({"get_order": "订单详情：状态=已发货"})

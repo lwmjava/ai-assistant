@@ -10,7 +10,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlmodel import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.models.conversation import Conversation
 from app.models.user import User
 from app.security.types import SecurityRejectedError
+from app.services.agent_execution_guard import ResumeRejectedError
 from app.services.chat_service import ChatService
 from app.services.quota import QuotaExceededError
 
@@ -37,6 +38,13 @@ class ChatRequest(BaseModel):
 
     message: str
     conversation_id: str | None = None
+    resume_message_id: str | None = Field(default=None, min_length=1, description="恢复同一次未完成执行的原用户消息 ID")
+
+    @model_validator(mode="after")
+    def validate_resume_binding(self):
+        if self.resume_message_id is not None and not self.conversation_id:
+            raise ValueError("续跑需要 conversation_id")
+        return self
 
 
 class SourceOut(BaseModel):
@@ -62,6 +70,7 @@ class ChatResponse(BaseModel):
     """非流式对话响应。"""
 
     conversation_id: str
+    message_id: str | None = Field(default=None, description="本次执行对应的用户消息 ID")
     reply: str
     model: str | None = None
     sources: list[SourceOut] = []
@@ -217,7 +226,11 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
     return ConversationDetail(**base)
 
 
-@router.post("", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse, responses={
+    400: {"description": "消息为空或恢复内容不一致"},
+    404: {"description": "恢复会话或消息不存在或无权访问"},
+    409: {"description": "执行仍在进行、快照不可恢复或当前编排不支持恢复"},
+})
 async def chat(
     req: ChatRequest,
     current_user: User = Depends(require_permission("conversations", "write")),
@@ -228,8 +241,11 @@ async def chat(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="message 不能为空")
     try:
         conv, reply = await _service.chat(
-            session, current_user, req.message, req.conversation_id
+            session, current_user, req.message, req.conversation_id,
+            **({"resume_message_id": req.resume_message_id} if req.resume_message_id is not None else {}),
         )
+    except ResumeRejectedError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
     except QuotaExceededError as exc:
         return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
     except SecurityRejectedError as exc:
@@ -249,6 +265,7 @@ async def chat(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     return ChatResponse(
         conversation_id=conv.id,
+        message_id=session.info.get("agent_message_id"),
         reply=reply,
         model=getattr(_service.llm, "model", None),
         sources=_latest_assistant_sources(conv),
@@ -261,6 +278,9 @@ async def chat(
     "/stream",
     response_class=EventSourceResponse,
     responses={
+        400: {"description": "消息为空或恢复内容不一致"},
+        404: {"description": "恢复会话或消息不存在或无权访问"},
+        409: {"description": "执行仍在进行、快照不可恢复或当前编排不支持恢复"},
         200: {
             "description": "以 text/event-stream 持续返回对话事件",
             "content": {"text/event-stream": {"schema": {"type": "string"}}},
@@ -294,12 +314,18 @@ async def chat_stream(
             return {"retry_after_seconds": None}
         return raw
 
-    stream = _service.chat_stream(session, current_user, req.message, req.conversation_id)
+    stream = _service.chat_stream(
+        session, current_user, req.message, req.conversation_id,
+        **({"resume_message_id": req.resume_message_id} if req.resume_message_id is not None else {}),
+    )
     try:
         first = await stream.__anext__()
     except StopAsyncIteration:
         await stream.aclose()
         return EventSourceResponse(iter(()))
+    except ResumeRejectedError as exc:
+        await stream.aclose()
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
     except QuotaExceededError as exc:
         await stream.aclose()
         return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())

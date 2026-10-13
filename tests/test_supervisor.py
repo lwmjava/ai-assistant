@@ -87,6 +87,7 @@ def test_preflight_short_circuit_skips_plan_and_reflect() -> None:
     assert result.answer == "直接回答"
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_preflight_full_pipeline_runs_when_yes() -> None:
     llm = ScriptedLLM(preflight="YES", answer="完整回答")
     pipeline = AgentPipeline(llm)
@@ -101,6 +102,7 @@ def test_preflight_full_pipeline_runs_when_yes() -> None:
 
 
 # ── QualityGate 自纠错 ────────────────────────────────
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_quality_gate_disabled_does_not_revise() -> None:
     saved = settings.AGENT_QUALITY_GATE_ENABLED
     settings.AGENT_QUALITY_GATE_ENABLED = False
@@ -115,6 +117,7 @@ def test_quality_gate_disabled_does_not_revise() -> None:
         settings.AGENT_QUALITY_GATE_ENABLED = saved
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_quality_gate_revises_when_below_threshold() -> None:
     saved_enabled = settings.AGENT_QUALITY_GATE_ENABLED
     saved_threshold = settings.AGENT_QUALITY_THRESHOLD
@@ -140,6 +143,7 @@ def test_quality_gate_revises_when_below_threshold() -> None:
         settings.AGENT_MAX_REVISIONS = saved_revisions
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_quality_gate_no_revision_when_above_threshold() -> None:
     saved_enabled = settings.AGENT_QUALITY_GATE_ENABLED
     saved_threshold = settings.AGENT_QUALITY_THRESHOLD

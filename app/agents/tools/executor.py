@@ -25,6 +25,7 @@ import time
 from dataclasses import dataclass, field
 
 from app.agents.tools.base import ToolCall, ToolRegistry, format_tool_observation
+from app.agents.tools.outcome import ToolOutput
 from app.core import log_context
 
 # 瞬时错误类型：仅这类错误在幂等契约下才允许重试。
@@ -44,6 +45,7 @@ class ExecutorResult:
     redacted_args: dict = field(default_factory=dict)
     # 参数校验结论（供 Trace）：{"passed": bool, "errors": [...], "strict": bool}
     audit_metadata: dict = field(default_factory=dict)
+    error_code: str | None = None
 
 
 class ToolExecutor:
@@ -73,12 +75,16 @@ class ToolExecutor:
                 continue
             if expected == "string" and not isinstance(value, str):
                 errors.append(f"参数 {key} 应为 string，实际 {type(value).__name__}")
-            elif expected == "integer" and not isinstance(value, int):
+            elif expected == "integer" and type(value) is not int:
                 errors.append(f"参数 {key} 应为 integer，实际 {type(value).__name__}")
-            elif expected == "number" and not isinstance(value, int | float):
+            elif expected == "number" and (isinstance(value, bool) or not isinstance(value, int | float)):
                 errors.append(f"参数 {key} 应为 number，实际 {type(value).__name__}")
             elif expected == "boolean" and not isinstance(value, bool):
                 errors.append(f"参数 {key} 应为 boolean，实际 {type(value).__name__}")
+            elif expected == "object" and not isinstance(value, dict):
+                errors.append(f"参数 {key} 应为 object，实际 {type(value).__name__}")
+            elif expected == "array" and not isinstance(value, list):
+                errors.append(f"参数 {key} 应为 array，实际 {type(value).__name__}")
         return {"passed": not errors, "errors": errors}
 
     async def execute(self, call: ToolCall) -> ExecutorResult:
@@ -98,6 +104,7 @@ class ToolExecutor:
                 latency_ms=0.0,
                 redacted_args={},
                 audit_metadata={},
+                error_code="tool_not_found",
             )
 
         validation = self._validate(tool, arguments)
@@ -116,6 +123,7 @@ class ToolExecutor:
                 latency_ms=latency_ms,
                 redacted_args={},
                 audit_metadata=validation,
+                error_code="invalid_arguments",
             )
 
         # RBAC：组合委托既有拦截逻辑。
@@ -131,6 +139,7 @@ class ToolExecutor:
                 latency_ms=latency_ms,
                 redacted_args={},
                 audit_metadata=validation,
+                error_code=reason,
             )
 
         timeout = tool.contract.timeout_seconds if tool.contract else 30.0
@@ -140,6 +149,7 @@ class ToolExecutor:
         observation = ""
         attempts = 0
         status = "ok"
+        error_code: str | None = None
         last_exc: BaseException | None = None
         while True:
             attempts += 1
@@ -147,12 +157,14 @@ class ToolExecutor:
             try:
                 async with asyncio.timeout(timeout):
                     observation = await tool.execute(arguments)
-                status = "ok"
+                status = observation.status if isinstance(observation, ToolOutput) else "ok"
+                error_code = observation.error_code if isinstance(observation, ToolOutput) else None
                 break
             except TimeoutError:
                 last_exc = TimeoutError()
                 observation = f"[工具执行错误] {call.name}：执行超时。"
                 status = "timeout"
+                error_code = "tool_timeout"
             except Exception as exc:  # noqa: BLE001 — 工具异常不中断管线
                 last_exc = exc
                 if call.name in _GENERIC_ERROR_TOOLS:
@@ -160,6 +172,7 @@ class ToolExecutor:
                 else:
                     observation = f"[工具执行错误] {call.name}：{exc}"
                 status = "error"
+                error_code = "tool_error"
             # 重试决策：仅幂等 + 瞬时错误 + 未达上限。
             transient = isinstance(last_exc, _TRANSIENT_ERRORS)
             if idempotent and transient and attempts <= max_retries:
@@ -178,4 +191,5 @@ class ToolExecutor:
             latency_ms=latency_ms,
             redacted_args=arguments,
             audit_metadata=validation,
+            error_code=error_code,
         )

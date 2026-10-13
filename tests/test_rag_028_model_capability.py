@@ -816,6 +816,7 @@ def test_each_profile_is_judged_by_its_own_window(monkeypatch: pytest.MonkeyPatc
 
 
 # ── 13. 工具循环端到端：工具返回把下一跳顶出窗口 ───
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_tool_result_blocks_the_next_round_end_to_end(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         settings, "LLM_CAPABILITY_DECLARED", "gateway.internal/v1!tool-model=20000:4096"

@@ -186,6 +186,7 @@ def local_llm():
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("legacy_plan_mode")
 async def test_cache_acceptance_default_chatservice_actual_http_count(cache_env, local_llm, monkeypatch):
     from app.rag.embeddings.factory import set_embedding_override
 

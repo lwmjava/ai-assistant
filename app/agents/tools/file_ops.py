@@ -16,6 +16,7 @@ from typing import Any
 
 from app.agents.tools.base import Tool
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
+from app.agents.tools.outcome import ToolOutput
 from app.core.config import get_settings
 from app.core.security import Role
 
@@ -105,7 +106,8 @@ def file_ops_availability() -> dict[str, str]:
 
 
 def _observation(status: str, code: str, **extra: Any) -> str:
-    return json.dumps({"status": status, "code": code, "untrusted": True, **extra}, ensure_ascii=False)
+    text = json.dumps({"status": status, "code": code, "untrusted": True, **extra}, ensure_ascii=False)
+    return text if status == "ok" else ToolOutput(text, status="error", error_code=code)
 
 
 def _handle_path(fd: int) -> Path:

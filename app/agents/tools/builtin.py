@@ -11,10 +11,12 @@
 
 import ast
 import datetime
+import math
 from contextvars import ContextVar
 
 from app.agents.tools.base import Tool
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
+from app.agents.tools.outcome import ToolOutput
 
 # 只在这一次工具调用里交接界面结果。管线取走后清空，不在进程里攒列表。
 _pending_code_results: ContextVar[list[dict[str, str]] | None] = ContextVar(
@@ -52,11 +54,13 @@ async def calculator(arguments: dict) -> str:
     """计算给定的算术表达式。"""
     expr = str(arguments.get("expression", "")).strip()
     if not expr:
-        return "未提供 expression 参数。"
+        return ToolOutput("未提供 expression 参数。", status="error", error_code="missing_expression")
     try:
         value = _safe_eval(expr)
-    except (SyntaxError, ValueError, ZeroDivisionError, TypeError) as exc:
-        return f"计算失败：{exc}"
+    except (SyntaxError, ValueError, ZeroDivisionError, TypeError, OverflowError) as exc:
+        return ToolOutput(f"计算失败：{exc}", status="error", error_code="invalid_expression")
+    if not isinstance(value, int | float) or (isinstance(value, float) and not math.isfinite(value)):
+        return ToolOutput("计算失败：结果不是有限数值。", status="error", error_code="non_finite_result")
     return str(value)
 
 
@@ -102,7 +106,7 @@ async def code_sandbox(arguments: dict) -> str:
         publish_code_result(
             {"status": "error", "stdout": "", "reason": "未提供 code 参数。"}
         )
-        return "未提供 code 参数。"
+        return ToolOutput("未提供 code 参数。", status="error", error_code="missing_code")
     raw_timeout = arguments.get("timeout", 30)
     try:
         timeout = float(raw_timeout)
@@ -112,7 +116,16 @@ async def code_sandbox(arguments: dict) -> str:
     config = SandboxConfig(timeout_seconds=effective_timeout(timeout))
     result = await sandbox.execute(code, config)
     publish_code_result(result.public_view())
-    return result.to_observation()
+    from app.agents.tools.sandbox.base import KillReason
+
+    observation = result.to_observation()
+    if result.killed_by == KillReason.TIMEOUT:
+        return ToolOutput(observation, status="timeout", error_code="sandbox_timeout")
+    if result.killed_by != KillReason.NONE:
+        return ToolOutput(observation, status="denied", error_code="sandbox_denied")
+    if result.exit_code != 0:
+        return ToolOutput(observation, status="error", error_code="sandbox_error")
+    return observation
 
 
 async def web_fetch(arguments: dict) -> str:
@@ -121,16 +134,19 @@ async def web_fetch(arguments: dict) -> str:
 
     url = str(arguments.get("url", "")).strip()
     if not url:
-        return "未提供 url 参数。"
+        return ToolOutput("未提供 url 参数。", status="error", error_code="missing_url")
     max_chars = int(arguments.get("max_chars", 2000))
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url, follow_redirects=True)
             text = resp.text
     except Exception as exc:  # noqa: BLE001 — 网络不可达等异常统一为观测文本
-        return f"请求失败：{exc}"
+        return ToolOutput(f"请求失败：{exc}", status="error", error_code="network_error")
     snippet = text[: max_chars]
-    return f"HTTP {resp.status_code}，正文前 {len(snippet)} 字符：\n{snippet}"
+    observation = f"HTTP {resp.status_code}，正文前 {len(snippet)} 字符：\n{snippet}"
+    if resp.status_code >= 400:
+        return ToolOutput(observation, status="error", error_code="http_error")
+    return observation
 
 
 def default_tools() -> list[Tool]:

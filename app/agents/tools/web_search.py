@@ -16,6 +16,7 @@ import httpx
 
 from app.agents.tools.base import Tool
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
+from app.agents.tools.outcome import ToolOutput
 from app.core.config import get_settings
 
 _ENDPOINTS = {
@@ -84,10 +85,13 @@ def search_availability() -> dict[str, str]:
 
 
 def _result(status: str, code: str, provider: str = "", model: str = "", **extra: Any) -> str:
-    return json.dumps(
+    text = json.dumps(
         {"status": status, "code": code, "provider": provider, "model": model, "untrusted": True, **extra},
         ensure_ascii=False,
     )
+    if status == "ok":
+        return text
+    return ToolOutput(text, status="timeout" if code == "timeout" else "error", error_code=code)
 
 
 def _request(provider: str, model: str, key: str, query: str, count: int) -> tuple[dict, dict]:

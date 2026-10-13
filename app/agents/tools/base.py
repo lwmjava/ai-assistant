@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from app.agents.tools.contract import ToolContract
+from app.agents.tools.outcome import ToolOutput
 from app.core import log_context
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ class Tool:
         result = self.func(arguments)
         if inspect.isawaitable(result):
             result = await result
-        return str(result)
+        return result if isinstance(result, ToolOutput) else str(result)
 
 
 def format_tool_observation(name: str, arguments: dict, observation: str) -> str:

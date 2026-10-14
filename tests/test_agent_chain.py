@@ -25,7 +25,7 @@ from app.core.security import Role
 from app.debug.trace import AgentTrace
 from app.llm.base import ChatMessage, ChatRole, LLMProvider
 from app.models.conversation import Conversation, Message
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.services.chat_service import HISTORY_REDACTED, ChatService, sanitize_history_text
 
 PHONE = "13800138000"
@@ -777,6 +777,10 @@ def test_chat_service_persists_code_results_for_both_routes(monkeypatch: pytest.
         )
         service = ChatService(PersistLLM(preflight))
         with Session(engine) as session:
+            if session.get(Tenant, user.tenant_id) is None:
+                session.add(Tenant(id=user.tenant_id, name="agent persistence test tenant"))
+            user = session.merge(user)
+            session.commit()
             conv = Conversation(tenant_id=user.tenant_id, user_id=user.id, title="选项")
             session.add(conv)
             session.commit()

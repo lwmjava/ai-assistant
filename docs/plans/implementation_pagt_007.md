@@ -94,3 +94,14 @@ F07独立修后验收：pagt007_entry_validation_v2，2passed/0skip/exit0（3.27
 新报告SHA3d8c2a4ba346a1cf2934050fd996f8dcc66e96813808bd9d9bf2aec177ae6ada，artifact11820118773；细节docs/reviews/pagt007_ci_revision_execution_20261013.json。主Agent与独立入口Agent在原发布提交源码下用独立干净模型/端点期待重验真实gate：exit1仅tool_selection_recall，证明新版绑定合法；F07身份问题已闭合。该本地E2/E1产物复验不冒充CI gate实际执行。CI gate/probe因official失败而skipped，三类CI探针验收未完成。前置在发布工作树重验71passed/exit0（3.05秒）；初次误写dataset测试路径不存在、未执行任何断言，已更正，不当业务失败证据。
 
 自动验收未通过，不执行条件授权的最终独立人工审核，保持in_review。后端ruff/mypy通过，完整pytest观察时仍在运行；前端成功。没有第三次模型调用/CI、PR、合并或部署。此次运行后的文档与报告保留本地，未追加推送触发第三次CI。下一步需先解决或裁决真实模型工具选择质量缺口，再以新鲜真实CI验证固定标准；不降低门禁。
+
+
+## 2026-10-14 最终收尾对账
+
+当前业务源码绑定 ddaa1cca93d17640ed7373b9cd2284505dfe4e8e。真实 CI run38507665586 attempt1 三个 job 全部成功；Agent official 实际执行12请求，deepseek-flash 四指标均1.0；报告gate通过；route/followup/tool/arguments四类CI探针各目标gate退出1，probe整体通过。数据0.1.1、评分0.3.0、report/gate2.0.0，37源码指纹与Gitblob一致，ZIP摘要与CI上传记录一致。证据 docs/reviews/pagt007_ci_verification_20261014.json。
+
+用户已配置 main-protection ruleset25052747，主Agent经GitHub API再次读取：active，目标~DEFAULT_BRANCH（当前main）；要求PR与三个GitHub Actions检查，strict=true，bypass_actors=[]，current_user_can_bypass=never，阻止删除及force push。证据 docs/reviews/pagt007_required_checks_20261014.json。此前未受保护的核验是历史事实，当前缺口已闭合。无需先合并或部署；未执行失败PR实际合并尝试，强制保护证据为有效规则配置及CI退化拦截组合。
+
+原契约交付逐项闭合：基线持续CI接入、Agent改动push/PR触发、真实CI基线通过、四类退化拦截、模型/Prompt/数据集/源码追踪、前置AGT-003 done、无Mock冒充质量、未扩充语料/改阈值/重排实验。最终独立验收报告另存docs/reviews/2026-10-14-PAGT-007-最终收尾验收.md；结论通过后更新tasks.yaml为done。旧失败与未保护记录保留，不用新结果覆盖历史。回滚撤销Agent job并相应调整required-check配置，避免残留检查阻塞；不涉及业务数据。
+
+最终独立验收 /root/pagt007_closure_final 已通过：37项Gitblob指纹、ZIP与原始报告内容一致；在内存按已验证Gitblob读取源码身份复算原gate，official无失败、四探针均命中目标指标，exit0。原Windows直接CLI因CRLF身份差异exit1仍保留，不冒充CI失败或未经修改的本地CLI通过。用户已委托本次收尾，PAGT-007于2026-10-14更新done；独立报告见docs/reviews/2026-10-14-PAGT-007-最终收尾验收.md。未新增真实模型请求、Git发布、PR、合并或部署。

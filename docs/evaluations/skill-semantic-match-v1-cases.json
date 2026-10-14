@@ -1,0 +1,17 @@
+{
+  "version": "skill-semantic-match-smoke-1.0.0",
+  "classification": "AI-generated Smoke, not Gold",
+  "skills": [
+    {"name": "parcel", "description": "帮助用户整理物流配送进度", "keyword": "包裹码"},
+    {"name": "code-review", "description": "审查程序代码的可靠性、可维护性与错误风险", "keyword": "审查代码"}
+  ],
+  "cases": [
+    {"id": "semantic-001", "request": "我寄出去的东西现在走到哪里了？", "expected": "parcel"},
+    {"id": "semantic-002", "request": "运输中的这批货为什么还没有送到？", "expected": "parcel"},
+    {"id": "semantic-003", "request": "看看这个函数有没有潜在缺陷、日后好不好维护。", "expected": "code-review"},
+    {"id": "semantic-004", "request": "Please inspect this function for bugs and maintainability problems.", "expected": "code-review"},
+    {"id": "semantic-005", "request": "请告诉我法国的首都是哪里。", "expected": null},
+    {"id": "semantic-006", "request": "帮我写一首描写月亮的诗。", "expected": null}
+  ],
+  "authorization": "Real model execution requires explicit approval; synthetic metadata only, no private data."
+}

@@ -8744,7 +8744,10 @@ tasks:
 
   - id: "SKILL-003"
     title: "技能 LLM 语义匹配"
-    status: "backlog"
+    status: "done"
+    completed_at: "2026-10-14"
+    # 最终独立业务验收 /root/skill003_final_business_accept 通过：31关键入口passed、指纹匹配。
+    # 报告：docs/reviews/2026-10-14-SKILL-003-最终人工审核第1轮.md。旧阶段备注保留为历史。
     priority: "P1"
     target_date: ""
     depends_on: []
@@ -8759,6 +8762,8 @@ tasks:
       allowed_paths:
         - "app/agents/skills/"
         - "app/agents/prompts.py"
+        - "app/services/chat_service.py"
+        - "docs/"
         - "tests/"
         - "tasks.yaml"
       forbidden_paths:
@@ -8781,6 +8786,7 @@ tasks:
         - "pytest -k \"skill\""
     execution:
       owner: "个人开发者"
+      notes: "2026-10-14：用户批准docs/与chat_service.py范围扩展及确定性优先方案。异步语义选择已接入两对话入口；单次5秒/128输出tokens、有限候选/正文预算、严格JSON/身份模型版本绑定，保留原activate/围栏/执行与同步helper。独立主体撤销P1修复后18反例passed；默认完整ChatService/AgentPipeline与新Session技能名回读13passed；最终Skill/主链合并206passed/exit0（原205+1失败为旧测试未持久化主体，补真实fixture且原断言保持后通过）。ruff0、mypy app205源0、Prompt v5登记/check0。用户另批准6次现有真实模型及独立业务最终验收，deepseek-flash 6实际调用/action6of6，4正例匹配2无关未激活；第6条name=null非法对象被安全拒绝，不能声称protocol100%。报告docs/reviews/skill003_real_smoke_20261014.json；实现与关闭对账docs/plans/implementation_skill_003_20261014.md、closure_skill_003_20261014.md。最终独立业务验收/root/skill003_final_business_accept通过（31关键入口passed/exit0、真实报告与源码数据集绑定匹配、registry独立0），最终报告docs/reviews/2026-10-14-SKILL-003-最终人工审核第1轮.md；原契约闭合done。未验证通用语义质量/Gold/全GitHubCI/生产性能，不将Smoke当生产指标。未提交推送合并部署；PAGT007已有收尾改动归属保持。"
       nightly:
         eligible: false
         production_access: false
@@ -8963,7 +8969,11 @@ tasks:
 
   - id: "PAGT-007"
     title: "Agent 编排持续测评门禁：基线挂 CI"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-14"
+    # 2026-10-14 核验：ddaa1cc / run38507665586 official四指标1.0、四类CI探针成功。
+    # 后续main-protection规则25052747已active、3必需检查strict、bypass为空；独立最终验收通过。
+    # 证据：docs/reviews/2026-10-14-PAGT-007-GitHub-CI核验.md。
     priority: "P2"
     target_date: ""
     depends_on:

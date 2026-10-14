@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="19" skipped="0" tests="19" time="3.197" timestamp="2026-10-14T13:14:13.296550+08:00" hostname="DESKTOP-NSMV8MF"><testcase classname="tests.test_skill_semantic" name="test_semantic_matches_without_keyword_and_preserves_identity" time="1.535"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">@pytest.mark.asyncio
+    async def test_semantic_matches_without_keyword_and_preserves_identity():
+        mgr = manager()
+        text = "Please look for maintainability problems in this function"
+        assert mgr.match(text) == []
+        provider = SemanticProvider('{"name":"review","confidence":0.9}')
+&gt;       matches = await mgr.match_semantic(text, provider)
+                        ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:37: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_keyword_match_does_not_call_semantic_provider" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">@pytest.mark.asyncio
+    async def test_keyword_match_does_not_call_semantic_provider():
+        provider = SemanticProvider(RuntimeError("must not call"))
+&gt;       matches = await manager().match_semantic("review", provider)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:47: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;foreign&quot;,&quot;confidence&quot;:0.9}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"foreign","confidence":0.9}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:NaN}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","confidence":NaN}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:Infinity}]" time="0.005"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","confidence":Infinity}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:true}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","confidence":true}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:-0.1}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","confidence":-0.1}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:1.1}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","confidence":1.1}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:0.1}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","confidence":0.1}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:0.9,&quot;extra&quot;:&quot;x&quot;}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","confidence":0.9,"extra":"x"}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[{&quot;name&quot;:&quot;review&quot;,&quot;name&quot;:&quot;review&quot;,&quot;confidence&quot;:0.9}]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '{"name":"review","name":"review","confidence":0.9}'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[null]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = 'null'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[[]]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = '[]'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[not json]" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = 'not json'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_invalid_semantic_proposal_never_activates[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]" time="0.005"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">reply = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+
+    @pytest.mark.parametrize("reply", [
+        '{"name":"foreign","confidence":0.9}',
+        '{"name":"review","confidence":NaN}',
+        '{"name":"review","confidence":Infinity}',
+        '{"name":"review","confidence":true}',
+        '{"name":"review","confidence":-0.1}',
+        '{"name":"review","confidence":1.1}',
+        '{"name":"review","confidence":0.1}',
+        '{"name":"review","confidence":0.9,"extra":"x"}',
+        '{"name":"review","name":"review","confidence":0.9}',
+        'null', '[]', 'not json', 'x' * 1025,
+    ])
+    @pytest.mark.asyncio
+    async def test_invalid_semantic_proposal_never_activates(reply):
+        mgr = manager()
+&gt;       assert await mgr.match_semantic("check quality", SemanticProvider(reply)) == []
+                     ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:67: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_remote_failure_and_timeout_preserve_registry" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">@pytest.mark.asyncio
+    async def test_remote_failure_and_timeout_preserve_registry():
+        mgr = manager()
+        before = mgr.history()
+        for failure in (RuntimeError("sensitive-detail"), TimeoutError()):
+&gt;           assert await mgr.match_semantic("check quality", SemanticProvider(failure)) == []
+                         ^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:76: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_semantic_payload_contains_metadata_only" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">@pytest.mark.asyncio
+    async def test_semantic_payload_contains_metadata_only():
+        mgr = manager()
+        skill = mgr.get("review")
+        skill.system_prompt = "synthetic-private-body"
+        mgr.register(skill)
+        provider = SemanticProvider('{"name":"review","confidence":0.9}')
+&gt;       await mgr.match_semantic("check quality", provider)
+              ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:87: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_disabled_model_mismatch_and_large_input_do_not_call_model" time="0.004"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">@pytest.mark.asyncio
+    async def test_disabled_model_mismatch_and_large_input_do_not_call_model():
+        for enabled, models, text in [(False, [], "check quality"),
+                                      (True, ["another-model"], "check quality"),
+                                      (True, [], "x" * 4097)]:
+            mgr = manager()
+            skill = mgr.get("review")
+            skill.enabled = enabled
+            skill.models = models
+            mgr.register(skill)
+            provider = SemanticProvider('{"name":"review","confidence":0.9}')
+&gt;           assert await mgr.match_semantic(text, provider) == []
+                         ^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:104: AttributeError</failure></testcase><testcase classname="tests.test_skill_semantic" name="test_cancel_propagates" time="0.005"><failure message="AttributeError: 'SkillManager' object has no attribute 'match_semantic'">@pytest.mark.asyncio
+    async def test_cancel_propagates():
+        class Cancelled(SemanticProvider):
+            async def chat(self, messages, options=None):
+                raise asyncio.CancelledError
+    
+        with pytest.raises(asyncio.CancelledError):
+&gt;           await manager().match_semantic("check quality", Cancelled(""))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'SkillManager' object has no attribute 'match_semantic'
+
+tests\test_skill_semantic.py:115: AttributeError</failure></testcase></testsuite></testsuites>

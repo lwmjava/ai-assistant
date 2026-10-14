@@ -50,3 +50,8 @@
 `source_commit`仍是当前基点ee54252d3be42a9827a15849c0c8b8f5552151d7，v4的未提交源码以sources及source_version绑定，候选登记时刻不是部署启用时间。默认模型字段由源码AST登记，不复制.env或密钥；实际正式评测的请求模型及endpoint身份在独立报告中。第1轮新鲜真实official四指标1.0、独立gate0，报告为evals/reports/agent-chain-v0.1-official-confirmed-code-r1-20261014.json；小型Silver语料结果不能作为生产质量保证。
 
 回滚本轮Prompt可恢复原pipeline.py版本并重新选取匹配当前完整源码的登记；如要整份旧登记回滚，按上方完整源/非敏感配置恢复流程执行，不能只切current指针声称回滚成功。保留失败评测报告，不自动提交/推送/部署或迁移重要数据。
+
+
+## 2026-10-14 技能语义选择登记
+
+SKILL-003用户批准docs/及真实ChatService范围后，本卡新增选择提示词与受控异步入口，按Prompt变更版本追踪要求追加prompt-model-v5并设current；v1-v4记录保持不变，前节v4为当时事实。source_commit为ddaa1cca93d17640ed7373b9cd2284505dfe4e8e，source_version=27b57366538168baa781d3f3b56e01cadc441882ede835ec64914b5daf10b84d；源码默认模型字段登记，不复制.env。registry check退出0；语义选择协议skill-semantic-select-v1，版本并不代表真实模型质量通过或部署启用。回滚必须恢复匹配全量源树与非敏感配置，不能只切current。

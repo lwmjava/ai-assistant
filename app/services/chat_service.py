@@ -373,7 +373,7 @@ class ChatService:
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
         # 4. 技能匹配与激活
-        skill_ctx = self._match_skills(session, user, message)
+        skill_ctx = await self._match_skills_async(session, user, safe_message)
         # 5. 调试追踪
         trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
@@ -448,7 +448,7 @@ class ChatService:
             state.context = memory.memory_context
 
         # 技能匹配与激活
-        skill_ctx = self._match_skills(session, user, message)
+        skill_ctx = await self._match_skills_async(session, user, safe_message)
 
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
@@ -640,6 +640,55 @@ class ChatService:
             return ctx
         except Exception:  # noqa: BLE001 — 技能匹配失败不应影响对话
             logger.exception("技能匹配失败")
+            return None
+
+    async def _match_skills_async(self, session: Session, user: User, message: str) -> SkillContext | None:
+        """Match authorized candidates, preserving existing activation and fences."""
+        if not settings.SKILL_ENABLED:
+            return None
+        try:
+            from app.agents.skills.manager import SkillManager
+            from app.core.security import Role
+            from app.models.user import Tenant
+            from app.services.skill_service import fence_untrusted_skill, manifests_for_chat
+
+            principal = (user.id, user.tenant_id, user.role, user.token_version)
+            mgr = SkillManager()
+            for manifest in manifests_for_chat(session, user):
+                mgr.register(manifest)
+            matches = mgr.match(message, max_results=1)
+            if not matches:
+                matches = await mgr.match_semantic(message, self._intent_llm(), max_results=1)
+                session.expire_all()
+                if not (not settings.AUTH_ENABLED and principal[0] == "__auth_disabled__"
+                        and principal[1] == "__auth_disabled__" and principal[2] == Role.SYSTEM_ADMIN.value):
+                    active_user = session.get(User, principal[0])
+                    if (active_user is None or not active_user.is_active
+                            or (active_user.id, active_user.tenant_id, active_user.role,
+                                active_user.token_version) != principal):
+                        raise ResumeRejectedError("当前身份已失效，请重新登录", 403)
+                    tenant = session.get(Tenant, principal[1])
+                    if active_user.role_enum is not Role.SYSTEM_ADMIN and (tenant is None or not tenant.is_active):
+                        raise ResumeRejectedError("租户已停用", 403)
+            if not matches:
+                return None
+            # Re-read authorization and versions after the awaited remote proposal.
+            session.expire_all()
+            current = {m.name: m for m in manifests_for_chat(session, user)}
+            chosen = matches[0].skill
+            actual = current.get(chosen.name)
+            if (actual is None or not actual.enabled or actual.origin != chosen.origin
+                    or actual.effective_version != chosen.effective_version):
+                return None
+            ctx = mgr.activate(matches)
+            ctx.origin = chosen.origin
+            if chosen.origin != "builtin" and ctx.prompt_injection:
+                ctx.prompt_injection = fence_untrusted_skill(ctx.prompt_injection, chosen.origin)
+            return ctx
+        except ResumeRejectedError:
+            raise
+        except Exception:  # noqa: BLE001 -- no prompt/provider error details in logs
+            logger.info("skill_match outcome=unavailable")
             return None
 
     # ── 进化系统（Reflect 反思）───────────────────

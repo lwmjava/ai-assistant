@@ -121,6 +121,7 @@ def test_gate_independently_rejects_validity_summary_forgery(monkeypatch):
     assert gate.check_report(report, provider.model, endpoint) == []
     bad = copy.deepcopy(report)
     bad["cases"][2]["tool_reply"] = call({})
+    bad["call_attempts"][10]["attempts"][0]["reply"] = call({})
     bad["cases"][2]["tool_record"] = runner.expected_tool_record(rows[2], call({}))
     monkeypatch.setattr(runner, "score_valid_calls", lambda *args: 1.0)
     with pytest.raises(ValueError, match="metric_integrity"):

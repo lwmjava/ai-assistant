@@ -6441,8 +6441,17 @@ tasks:
         baseline: "0d900950176e8ae110dbf0b553ce7715e087d8a0；Windows全量36 failed/2247 passed/exit1；其中35项与用户Ubuntu CI同源，另1项默认RAG后端fixture受本机配置影响。Linux原僵尸红例已复现。"
         progress: "显式持久化成功身份fixture，按用途验证语义选择与回答缓存请求，Linux僵尸与PID消失/权限不足判定及有限等待修复；专项265passed、Linux23检查通过、Ruff/mypy及registry v6通过；最终全量final2为2292passed/0failed/0skipped/exit0，496.90秒；独立反例审查的默认契约P2已闭合，无剩余有证据P1/P2；证据docs/reviews/ci_regression_20261014.json（422最终输入指纹）与ci_regression_final_20261014.xml。"
         pending: "最终同提交Ubuntu Backend CI和业务验收待完成；本卡保持in_review，不宣称远程CI通过。"
+      agent_empty_response_followup:
+        date: "2026-10-14"
+        plan: "docs/plans/plan_qa_005_agent_empty_response_20261014.md"
+        implementation: "docs/plans/implementation_qa_005_agent_empty_response_20261014.md"
+        evaluation: "docs/evaluations/qa005-agent-empty-response-v1.md"
+        evidence: "docs/reviews/agent_empty_validation_20261014.json"
+        baseline: "7b280df0f59523069fdeedfbd7c9428c42159ecb；Windows完整2292passed/exit0；GitHub38548192922 Backend和Frontend通过，Agent tool_reply空导致工具两指标0.5。"
+        progress: "提供商拒绝无效空成功结果；用户批准评测整轮只恢复一次符合条件空响应，report/gate3.0.0独立绑定12～13实际调用与所有尝试；独审3项P2闭合，Prompt/冻结数据/质量阈值不变。唯一真实完整轮12请求、0恢复、四指标1.0，gate与四故障探针通过，连同1诊断实际13/14授权调用。最终全量2329passed/0failed/0skipped/exit0（548.45秒），Evaluation专项338passed；Ruff/mypy205源/registry/pipcheck通过；Linux文件落盘4检查通过；423项最终输入指纹一致。"
+        pending: "最终新提交Ubuntu Backend/Frontend/Agent official与人工验收未执行；保持in_review，无自动Git发布。"
       progress: "2026-10-05用户直接批准提前整改记录保留，见implementation_qa_005_remediation_20261005.md。2026-10-10用户直接要求修复2既有失败/4跳过/6Ruff错误：开工全量1335 passed/2 failed/4 skipped（231.13s），日期漂移与Milvus Mock签名已修；Ruff6条等价修复；补齐现有已声明MCP1.12.4、LlamaIndex0.12.42与text-splitters1.1.3可选组件，原92包未升级降级，新增40包，Deprecated1.2.18/wrapt1.17.3保持mypy311兼容。真实MCP stdio与LlamaIndex用例恢复执行，cloud工厂用例临时合成配置且封HTTP，无付费请求。新SDK类型契约和官方tiktoken孤立代理项拒绝已按新增反例修复，预算0/+1阈值不降。最终全量1364 passed/0 failed/0 skipped（225.63s，exit0）；全仓Ruff0、mypy188源0、pipcheck0、diffcheck0。独立215例+028官方44例+official/fallback共12入口反例通过，无未修复P1/P2。计划、实现说明及独审见2026-10-10 QA005 followup记录，未实施CI，未提交或部署。"
-      blocked_by: "2026-10-14当前：本机全量和Linux沙箱检查已通过；同最终提交的Ubuntu Backend CI及人工业务验收待完成，保持in_review。旧阻断历史保留在progress/acceptance_record。"
+      blocked_by: "2026-10-14当前：原7b280df提交Backend/Frontend CI通过；空响应整改全量2329通过，唯一真实official/gate/probe及Linux落盘4检查通过，新提交CI/人工验收待完成，保持in_review。旧阻断历史保留在progress/acceptance_record。"
       owner: "个人开发者"
       acceptance_record: "2026-10-10本轮2失败/4跳过/6Ruff逐项技术闭合：最终完整pytest1364通过、0失败、0跳过，exit0；完整mypy/全仓Ruff/依赖一致性通过。E2真实本机MCP stdio及SQLite/LlamaIndex、隔离provider零请求护栏；确定性日期/日志/构造和静态检查证据在docs/plans/implementation_qa_005_followup_20261010.md和docs/reviews/2026-10-10-QA-005遗留整改独立审查.md（含最终指纹）。不降低门禁、不新增skip、原92包版本不变；没有发现新增回归。未验证：整卡人工业务验收；MCP2.x/远端OCR与生产质量不属于本轮范围；NFR-001未实施。回滚只退本轮QA最小diff，保留RAG-039已有修改及重要数据，无Git发布。"
       nightly:

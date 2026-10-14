@@ -88,7 +88,7 @@ def check_report(report: dict, expected_model: str, expected_endpoint_hash: str)
     _require(type(report.get("temperature")) in {int, float} and report["temperature"] == 0,
              "temperature")
     _require(report.get("seed_supported") is False, "seed_identity")
-    _require(type(report.get("model_requests")) is int and report["model_requests"] == 12,
+    _require(type(report.get("model_requests")) is int and 12 <= report["model_requests"] <= 13,
              "request_count")
     _require(isinstance(report.get("git_commit"), str)
              and re.fullmatch(r"[0-9a-f]{40}", report["git_commit"]) is not None
@@ -109,6 +109,7 @@ def check_report(report: dict, expected_model: str, expected_endpoint_hash: str)
         _require(report.get(key) == value, "binding_" + key)
     rows = report.get("cases")
     _require(isinstance(rows, list) and len(rows) == len(cases), "case_coverage")
+    empty_responses = _check_attempts(report, cases, rows)
     routes: list[str] = []
     chosen: list[list[str]] = []
     valid_hits: list[bool] = []
@@ -153,7 +154,52 @@ def check_report(report: dict, expected_model: str, expected_endpoint_hash: str)
     for name in thresholds:
         _require(_metric(report.get(name)), "metric_number")
         _require(report[name] == scores[name], "metric_integrity")
-    return [name for name, threshold in thresholds.items() if scores[name] < threshold]
+    failed = [name for name, threshold in thresholds.items() if scores[name] < threshold]
+    return failed + (["empty_model_response"] if empty_responses else [])
+
+
+def _check_attempts(report: dict, cases: list[dict], rows: list[dict]) -> bool:
+    expected = [(case["case_id"], "route", row.get("raw_reply"))
+                for case, row in zip(cases, rows, strict=True)]
+    expected += [(case["case_id"], "tool_choice", row.get("tool_reply"))
+                 for case, row in zip(cases, rows, strict=True) if case.get("expected_tools")]
+    groups = report.get("call_attempts")
+    _require(isinstance(groups, list) and len(groups) == 12, "attempt_coverage")
+    count = 0
+    empty = False
+    for group, (case_id, stage, final_reply) in zip(groups, expected, strict=True):
+        _require(isinstance(group, dict) and set(group) == {"case_id", "stage", "attempts"}
+                 and group["case_id"] == case_id and group["stage"] == stage, "attempt_identity")
+        attempts = group["attempts"]
+        _require(isinstance(attempts, list) and 1 <= len(attempts) <= 2, "attempt_count")
+        count += len(attempts)
+        for attempt in attempts:
+            _require(isinstance(attempt, dict)
+                     and set(attempt) == {"reply", "error_code", "finish_reason", "native_tool_calls"},
+                     "attempt_shape")
+            if attempt["error_code"] == "llm_empty_response":
+                reply = attempt["reply"]
+                _require(reply is None or (isinstance(reply, str) and not _reply(reply).strip()),
+                         "empty_attempt")
+                _require(attempt["finish_reason"] in {"stop", "missing", "length", "tool_calls",
+                                                      "content_filter", "other"}
+                         and type(attempt["native_tool_calls"]) is bool, "attempt_metadata")
+            else:
+                _require(attempt["error_code"] == "" and bool(_reply(attempt["reply"]).strip())
+                         and attempt["finish_reason"] == "unavailable"
+                         and attempt["native_tool_calls"] is None, "success_attempt")
+        if len(attempts) == 2:
+            first = attempts[0]
+            _require(first["error_code"] == "llm_empty_response"
+                     and first["finish_reason"] in {"stop", "missing"}
+                     and first["native_tool_calls"] is False, "recovery_eligibility")
+        _require((attempts[-1]["reply"] or "") == final_reply, "attempt_reply_binding")
+        empty |= attempts[-1]["error_code"] == "llm_empty_response"
+    _require(type(report.get("logical_requests")) is int and report["logical_requests"] == 12
+             and count == report["model_requests"] and count in {12, 13}, "physical_request_count")
+    _require(type(report.get("empty_response_retries")) is int
+             and report["empty_response_retries"] == count - 12, "recovery_count")
+    return empty
 
 
 def main() -> None:

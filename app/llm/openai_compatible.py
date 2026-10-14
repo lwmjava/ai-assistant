@@ -26,6 +26,44 @@ logger = logging.getLogger(__name__)
 _responses = BoundedCache()
 
 
+class LLMResponseError(RuntimeError):
+    """Fixed code and allowlisted metadata, without response or reasoning bodies."""
+
+    def __init__(self, error_code: str, *, finish_reason: object = None,
+                 native_tool_calls: bool = False, reply: str | None = None) -> None:
+        self.error_code = error_code
+        self.finish_reason = (
+            finish_reason if isinstance(finish_reason, str)
+            and finish_reason in {"stop", "length", "tool_calls", "content_filter"}
+            else "missing" if finish_reason is None else "other"
+        )
+        self.native_tool_calls = native_tool_calls
+        self.reply = reply if isinstance(reply, str) and not reply.strip() else None
+        super().__init__(error_code)
+
+
+def _response_content(data: object) -> str:
+    if not isinstance(data, dict):
+        raise LLMResponseError("llm_invalid_response")
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+        raise LLMResponseError("llm_invalid_response")
+    choice = choices[0]
+    message = choice.get("message")
+    if not isinstance(message, dict) or "content" not in message:
+        raise LLMResponseError("llm_invalid_response")
+    content = message["content"]
+    if content is None or (isinstance(content, str) and not content.strip()):
+        raise LLMResponseError(
+            "llm_empty_response", finish_reason=choice.get("finish_reason"),
+            native_tool_calls=bool(message.get("tool_calls") or message.get("function_call")),
+            reply=content,
+        )
+    if not isinstance(content, str):
+        raise LLMResponseError("llm_invalid_response")
+    return content
+
+
 class OpenAICompatibleProvider(LLMProvider):
     """基于 OpenAI Chat Completions 接口的提供商（兼容 Ollama）。
 
@@ -140,7 +178,7 @@ class OpenAICompatibleProvider(LLMProvider):
         request = self._cache_request(payload, opts, headers, url, timeout)
         if request is not None:
             cached = _responses.get(request[0])
-            if isinstance(cached, str) and self._revalidate(request):
+            if isinstance(cached, str) and cached.strip() and self._revalidate(request):
                 return cached
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
@@ -149,9 +187,12 @@ class OpenAICompatibleProvider(LLMProvider):
                 json=payload,
             )
             resp.raise_for_status()
-            data = resp.json()
+            try:
+                data = resp.json()
+            except ValueError:
+                raise LLMResponseError("llm_invalid_response") from None
+        content = _response_content(data)
         choice = data["choices"][0]
-        content = choice["message"]["content"]
         if request is not None and self._revalidate(request):
             if (data.get("model") == payload["model"] and choice.get("finish_reason") == "stop"
                     and isinstance(content, str) and content and not choice["message"].get("tool_calls")

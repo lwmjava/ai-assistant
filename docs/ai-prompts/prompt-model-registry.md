@@ -1,6 +1,6 @@
 # Prompt / 模型版本登记
 
-版本格式 v1；维护入口 `app/agents/version_registry.py`。当前登记为 `prompt-model-v6`（Linux 沙箱进程状态修复，见文末）；历史 `prompt-model-v3` 登记共享文本工具的平台判断修复（Linux mypy 可排除 Windows API）；`prompt-model-v1`、`prompt-model-v2` 历史记录保持不变，模型默认指纹不变。v2 登记国内搜索、共享文本工具与其配置/健康/注册入口。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
+版本格式 v1；维护入口 `app/agents/version_registry.py`。当前登记为 `prompt-model-v7`（非流式空响应识别，见文末）；历史 `prompt-model-v3` 登记共享文本工具的平台判断修复（Linux mypy 可排除 Windows API）；历史记录保持不变，模型默认指纹不变。v2 登记国内搜索、共享文本工具与其配置/健康/注册入口。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
 
 ## 登记范围
 
@@ -59,3 +59,7 @@ SKILL-003用户批准docs/及真实ChatService范围后，本卡新增选择提�
 ## 2026-10-14 Linux 沙箱进程状态修复登记
 
 追加 `prompt-model-v6` 并设为 current；v1-v5 内容保持不变。此次仅修改沙箱 Linux 进程状态判断和有限等待，语义选择协议、Prompt 正文及默认模型配置保持。source_commit 为 0d900950176e8ae110dbf0b553ce7715e087d8a0（变更基点），source_version 为 `2df15823454fd0d69978f451a06033df3e0bd1265c06726ad261fddf0ff8dc1c`。实际源码为当前工作树，不能宣称该修改已经包含在基点提交；登记不代表部署或远程 CI 通过。回滚恢复相匹配的旧源树和登记，无数据库迁移。
+
+## 2026-10-14 非流式空响应识别登记
+
+追加 prompt-model-v7 并设 current，v1-v6 原记录保持。非流式提供商拒绝空文本/null/无效成功结构，固定错误和安全元数据；无提供商重试或新增failover。评测层的全轮一次空恢复由独立协议 agent-chain-eval-0.4.0 / report与gate3.0.0追踪，Prompt与模型默认字段不变。source_commit基点7b280df0f59523069fdeedfbd7c9428c42159ecb，source_version=3d161b6d724ff936050c6315c41e5c2e9d0276b5809b6efdf8d64275f332f067，实际源码绑定当前工作树。登记不等于部署、质量认证或最终提交CI；回滚恢复匹配源树及登记，无数据库迁移。

@@ -1,0 +1,26 @@
+{
+  "case_id": "agent-003",
+  "stage": "tool_choice",
+  "physical_requests": 1,
+  "model": "deepseek-flash",
+  "endpoint_hash": "12b8deaccc34b32757dbb1497e029da0c2e7b26ffa86b9c926c08cb4692f4508",
+  "request_has_max_tokens": false,
+  "guard_reserved_output": 2048,
+  "http_status": 200,
+  "finish_reason": "stop",
+  "content_type": "str",
+  "content_length": 540,
+  "reasoning_content_length": 410,
+  "native_tool_calls_present": false,
+  "response_model_matches": true,
+  "usage": {
+    "prompt_tokens": 720,
+    "completion_tokens": 294,
+    "total_tokens": 1014
+  },
+  "completion_details": {
+    "reasoning_tokens": 97
+  },
+  "content": "<tool_call>{\"name\": \"code_sandbox\", \"arguments\": {\"code\": \"def bubble_sort(arr):\\n    n = len(arr)\\n    a = arr[:]\\n    for i in range(n - 1):\\n        swapped = False\\n        for j in range(n - 1 - i):\\n            if a[j] > a[j + 1]:\\n                a[j], a[j + 1] = a[j + 1], a[j]\\n                swapped = True\\n        if not swapped:\\n            break\\n    return a\\n\\nif __name__ == '__main__':\\n    data = [5, 2, 9, 1, 5, 6, -3, 0]\\n    print('原始数组:', data)\\n    print('排序结果:', bubble_sort(data))\\n\", \"timeout\": 30}}</tool_call>",
+  "content_sha256": "9e50995988bb1a9c4f2501817f803daef67233c407244d84599284212848889e"
+}

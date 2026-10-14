@@ -34,6 +34,10 @@ def recompute(report: dict) -> None:
     report.update({key: value for key, value in evaluator.score(cases, routes).items() if key != "rows"})
     report["tool_selection_recall"] = evaluator.score_tools(cases, chosen)["tool_selection_recall"]
     report["tool_call_validity_recall"] = evaluator.score_valid_calls(cases, records)
+    rows = {row["case_id"]: row for row in report["cases"]}
+    for group in report["call_attempts"]:
+        key = "raw_reply" if group["stage"] == "route" else "tool_reply"
+        group["attempts"][-1] = evaluator.reply_attempt(rows[group["case_id"]][key])
 
 
 def run_probes(report: dict, expected_model: str, expected_endpoint_hash: str, out_dir: Path) -> dict:

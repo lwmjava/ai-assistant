@@ -36,13 +36,13 @@ from app.agents.tools.base import Tool, inspect_tool_call  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.llm.base import LLMOptions  # noqa: E402
 from app.llm.factory import get_llm_provider  # noqa: E402
-from app.llm.openai_compatible import OpenAICompatibleProvider  # noqa: E402
+from app.llm.openai_compatible import LLMResponseError, OpenAICompatibleProvider  # noqa: E402
 
-EVALUATOR_VERSION = "agent-chain-eval-0.3.0"
+EVALUATOR_VERSION = "agent-chain-eval-0.4.0"
 # Compatibility declaration: no Tool/DB/RAG execution; these are NOT runtime counters.
 SIDE_EFFECTS = {"sandbox": 0, "mcp": 0, "network": 0, "rag": 0, "database": 0}
-REPORT_SCHEMA_VERSION = "agent-chain-report-2.0.0"
-GATE_VERSION = "agent-chain-gate-2.0.0"
+REPORT_SCHEMA_VERSION = "agent-chain-report-3.0.0"
+GATE_VERSION = "agent-chain-gate-3.0.0"
 CALL_VALIDITY_THRESHOLD = 1.0
 SIDE_EFFECTS_EVIDENCE = "recording-only-no-real-tool-execution-design-not-runtime-counters"
 FROZEN_CASES_HASH = "77ff27c8c67c68afb55eed51384e20dd07171b1d047de6cde346c976f38f5ad6"
@@ -362,7 +362,7 @@ def score_valid_calls(cases: list[dict], records: list[dict]) -> float:
     return sum(hits) / len(hits) if hits else 1.0
 
 
-async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], list[str], list[dict]]:
+async def predict_tools(provider, cases: list[dict], calls=None) -> tuple[list[list[str]], list[str], list[dict]]:
     """Propose once, validate, then invoke an in-memory recording Tool only."""
     options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
     chosen: list[list[str]] = []
@@ -378,7 +378,8 @@ async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], l
         blob = "\n".join(message.content for message in messages)
         if any(token in blob for token in ("expected_route", "expected_tools", "critical_followup")):
             raise RuntimeError("工具选择提示包含标准答案字段")
-        raw = await model_reply(provider, messages, options)
+        raw = await model_reply(provider, messages, options, calls=calls,
+                                case_id=case["case_id"], stage="tool_choice")
         intent = inspect_tool_call(raw)
         name = intent.call.name if intent.status == "ok" and intent.call is not None else ""
         chosen.append([name] if name else [])
@@ -387,7 +388,7 @@ async def predict_tools(provider, cases: list[dict]) -> tuple[list[list[str]], l
     return chosen, raws, records
 
 
-async def predict(provider, cases: list[dict]) -> tuple[list[str], list[str]]:
+async def predict(provider, cases: list[dict], calls=None) -> tuple[list[str], list[str]]:
     options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
     routes: list[str] = []
     raws: list[str] = []
@@ -396,22 +397,62 @@ async def predict(provider, cases: list[dict]) -> tuple[list[str], list[str]]:
         blob = "\n".join(message.content for message in messages)
         if any(token in blob for token in ("expected_route", "expected_tools", "critical_followup")):
             raise RuntimeError("评测提示包含标准答案字段")
-        raw = await model_reply(provider, messages, options)
+        raw = await model_reply(provider, messages, options, calls=calls,
+                                case_id=case["case_id"], stage="route")
         route = "short" if not preflight_needs_full_pipeline(raw) else "full"
         routes.append(route)
         raws.append(raw)
     return routes, raws
 
 
-async def model_reply(provider, messages, options) -> str:
+def reply_attempt(raw: str) -> dict:
+    if not raw.strip():
+        return {"reply": raw, "error_code": "llm_empty_response",
+                "finish_reason": "missing", "native_tool_calls": False}
+    return {"reply": raw, "error_code": "", "finish_reason": "unavailable",
+            "native_tool_calls": None}
+
+
+class EvaluationCalls:
+    """One run owns one recovery budget; providers never retry implicitly."""
+
+    def __init__(self) -> None:
+        self.groups: list[dict] = []
+        self.retries = 0
+
+
+async def model_reply(provider, messages, options, *, calls=None, case_id="", stage="") -> str:
+    attempts: list[dict] = []
+    if calls is not None:
+        calls.groups.append({"case_id": case_id, "stage": stage, "attempts": attempts})
     async with asyncio.timeout(CALL_TIMEOUT):
-        raw = await provider.chat(messages, options)
-    if not isinstance(raw, str) or len(raw.encode("utf-8")) > MAX_REPLY_BYTES:
-        raise ValueError("invalid_reply")
-    key = getattr(provider, "api_key", "")
-    if key and key in raw:
-        raise ValueError("unsafe_reply")
-    return raw
+        while True:
+            attempts.append({"reply": None, "error_code": "model_call_failed",
+                             "finish_reason": "unavailable", "native_tool_calls": None})
+            try:
+                raw = await provider.chat(messages, options)
+                if not isinstance(raw, str) or len(raw.encode("utf-8")) > MAX_REPLY_BYTES:
+                    raise ValueError("invalid_reply")
+                key = getattr(provider, "api_key", "")
+                if key and key in raw:
+                    raise ValueError("unsafe_reply")
+                if not raw.strip():
+                    raise LLMResponseError("llm_empty_response", reply=raw)
+                attempts[-1] = reply_attempt(raw)
+                return raw
+            except LLMResponseError as exc:
+                if exc.error_code != "llm_empty_response":
+                    raise
+                if exc.reply is not None and len(exc.reply.encode("utf-8")) > MAX_REPLY_BYTES:
+                    raise ValueError("invalid_reply") from None
+                attempts[-1] = {"reply": exc.reply, "error_code": exc.error_code,
+                                "finish_reason": exc.finish_reason,
+                                "native_tool_calls": exc.native_tool_calls}
+                if (calls is not None and calls.retries == 0 and len(attempts) == 1
+                        and not exc.native_tool_calls and exc.finish_reason in {"stop", "missing"}):
+                    calls.retries += 1
+                    continue
+                return exc.reply or ""
 
 
 def allowed_report_path(path: Path) -> bool:
@@ -440,16 +481,24 @@ def write_report(path: Path, payload: dict) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, records) -> dict:
+def build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, records, call_attempts=None) -> dict:
     metrics = score(cases, routes)
     tool_metrics = score_tools(cases, tool_names)
     real = type(provider) is OpenAICompatibleProvider
+    if call_attempts is None:
+        call_attempts = [{"case_id": case["case_id"], "stage": "route", "attempts": [reply_attempt(raw)]}
+                         for case, raw in zip(cases, raws, strict=True)]
+        call_attempts += [{"case_id": case["case_id"], "stage": "tool_choice", "attempts": [reply_attempt(raw)]}
+                          for case, raw in zip(cases, tool_raws, strict=True) if case.get("expected_tools")]
+    logical_requests = len(cases) + sum(bool(case.get("expected_tools")) for case in cases)
+    physical_requests = sum(len(group["attempts"]) for group in call_attempts)
     return {
         **report_identity(cases), "report_schema_version": REPORT_SCHEMA_VERSION, "gate_version": GATE_VERSION,
         "provider": "openai-compatible" if real else "smoke",
         "model": provider.model, "endpoint_hash": endpoint_hash(provider.base_url) if real else "",
         "temperature": 0, "seed_supported": False, "git_commit": git_commit(), "mode": mode,
-        "model_requests": len(cases) + sum(bool(case.get("expected_tools")) for case in cases),
+        "logical_requests": logical_requests, "model_requests": physical_requests,
+        "empty_response_retries": physical_requests - logical_requests, "call_attempts": call_attempts,
         "route_accuracy": metrics["route_accuracy"], "followup_recall": metrics["followup_recall"],
         "tool_selection_recall": tool_metrics["tool_selection_recall"],
         "tool_call_validity_recall": score_valid_calls(cases, records),
@@ -470,7 +519,7 @@ async def run(mode: str, report_dir: Path, out: Path | None = None) -> int:
     if not allowed_report_path(report_path):
         print("AGENT_EVAL_ERROR:report_path_out_of_scope")
         return 2
-    if report_path.exists():
+    if report_path.exists() or report_path.with_suffix(".attempts.json").exists():
         print("AGENT_EVAL_ERROR:report_exists")
         return 2
     cases = load_cases()
@@ -496,10 +545,22 @@ async def run(mode: str, report_dir: Path, out: Path | None = None) -> int:
     else:
         print("mode 只能是 smoke 或 official")
         return 2
-    async with asyncio.timeout(TOTAL_TIMEOUT):
-        routes, raws = await predict(provider, cases)
-        tool_names, tool_raws, records = await predict_tools(provider, cases)
-    report = build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, records)
+    calls = EvaluationCalls()
+    try:
+        async with asyncio.timeout(TOTAL_TIMEOUT):
+            routes, raws = await predict(provider, cases, calls)
+            tool_names, tool_raws, records = await predict_tools(provider, cases, calls)
+    except (Exception, asyncio.CancelledError):
+        write_report(report_path.with_suffix(".attempts.json"), {
+            **report_identity(cases), "report_schema_version": "agent-chain-failed-attempts-1.0.0",
+            "mode": "failed-attempts", "requested_mode": mode, "git_commit": git_commit(),
+            "model": provider.model,
+            "endpoint_hash": endpoint_hash(provider.base_url) if mode == "official" else "",
+            "model_requests": sum(len(group["attempts"]) for group in calls.groups),
+            "empty_response_retries": calls.retries, "call_attempts": calls.groups,
+        })
+        raise
+    report = build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, records, calls.groups)
     write_report(report_path, report)
     print(report_path)
     if mode == "official":
@@ -507,7 +568,18 @@ async def run(mode: str, report_dir: Path, out: Path | None = None) -> int:
         recall_ok = report["followup_recall"] >= index["thresholds"]["followup_recall"]
         tool_ok = report["tool_selection_recall"] >= index["thresholds"]["tool_selection_recall"]
         valid_ok = report["tool_call_validity_recall"] >= CALL_VALIDITY_THRESHOLD
-        return 0 if accuracy_ok and recall_ok and tool_ok and valid_ok else 1
+        empty_ok = all(not group["attempts"][-1]["error_code"] for group in calls.groups)
+        for name, ok in (("route_accuracy", accuracy_ok), ("followup_recall", recall_ok),
+                         ("tool_selection_recall", tool_ok), ("tool_call_validity_recall", valid_ok),
+                         ("empty_model_response", empty_ok)):
+            if not ok:
+                print("AGENT_EVAL_METRIC:" + name)
+        for group in calls.groups:
+            for number, attempt in enumerate(group["attempts"], 1):
+                if attempt["error_code"]:
+                    print(f"AGENT_EVAL_RESPONSE:{group['case_id']}:{group['stage']}:{number}:"
+                          f"{attempt['error_code']}:{attempt['finish_reason']}")
+        return 0 if accuracy_ok and recall_ok and tool_ok and valid_ok and empty_ok else 1
     return 0
 
 

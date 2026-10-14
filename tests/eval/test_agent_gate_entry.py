@@ -52,6 +52,15 @@ MODEL = "deepseek-flash"
 ENDPOINT = runner.endpoint_hash("https://api.deepseek.com/v1")
 
 
+def independent_attempts(rows):
+    def group(row, stage, key):
+        return {"case_id": row["case_id"], "stage": stage,
+                "attempts": [{"reply": row[key], "error_code": "",
+                              "finish_reason": "unavailable", "native_tool_calls": None}]}
+    return ([group(row, "route", "raw_reply") for row in rows]
+            + [group(row, "tool_choice", "tool_reply") for row in rows if row["predicted_tools"]])
+
+
 @pytest.fixture
 def independent_report():
     """Construct contract data independently, without runner scorer/build_report."""
@@ -87,7 +96,8 @@ def independent_report():
         "gate_version": runner.GATE_VERSION, "provider": "openai-compatible",
         "model": MODEL, "endpoint_hash": ENDPOINT, "temperature": 0,
         "seed_supported": False, "git_commit": runner.git_commit(), "mode": "official",
-        "model_requests": 12, "route_accuracy": 1.0, "followup_recall": 1.0,
+        "model_requests": 12, "logical_requests": 12, "empty_response_retries": 0,
+        "call_attempts": independent_attempts(rows), "route_accuracy": 1.0, "followup_recall": 1.0,
         "tool_selection_recall": 1.0,
         "tool_call_validity_recall": 1.0,
         "side_effects": {"sandbox": 0, "mcp": 0, "network": 0, "rag": 0, "database": 0},
@@ -163,6 +173,7 @@ def corrupt_route(report, count, followup=False):
         row["passed"] = False
     report["route_accuracy"] = (10 - count) / 10
     report["followup_recall"] = (2 - count) / 2 if followup else 1.0
+    report["call_attempts"] = independent_attempts(report["cases"])
 
 
 @pytest.mark.parametrize("kind,target", [("route", "route_accuracy"),
@@ -173,6 +184,9 @@ def test_independent_cli_metric_failure_requires_exit_one(independent_report, tm
         row = next(row for row in independent_report["cases"] if row["predicted_tools"])
         row["predicted_tools"] = []
         row["tool_reply"] = "不调用工具"
+        group = next(group for group in independent_report["call_attempts"]
+                     if group["case_id"] == row["case_id"] and group["stage"] == "tool_choice")
+        group["attempts"][0]["reply"] = row["tool_reply"]
         independent_report["tool_selection_recall"] = 0.5
         row["tool_record"].update(intent="none", tool_name="", arguments_valid=False, error_code="no_tool_call",
                                  arguments_hash="", recording_attempts=0, recorded_calls=0,

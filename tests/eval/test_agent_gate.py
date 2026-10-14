@@ -19,6 +19,34 @@ MODEL = "deepseek-chat"
 ENDPOINT = evaluator.endpoint_hash("https://api.deepseek.com/v1")
 
 
+@pytest.mark.parametrize("mutation", ["wrong_answer_retry", "two_retries", "hidden_count", "unbound_reply",
+                                      "native_retry", "length_retry", "missing_attempts", "bool_count"])
+def test_recovery_provenance_cannot_weaken_gate(report, mutation):
+    group = report["call_attempts"][0]
+    success = copy.deepcopy(group["attempts"][0])
+    empty = {"reply": "", "error_code": "llm_empty_response", "finish_reason": "stop", "native_tool_calls": False}
+    group["attempts"] = [empty, success]
+    report.update(model_requests=13, empty_response_retries=1)
+    if mutation == "wrong_answer_retry":
+        group["attempts"][0] = evaluator.reply_attempt("YES")
+    elif mutation == "two_retries":
+        report["call_attempts"][1]["attempts"].insert(0, copy.deepcopy(empty))
+    elif mutation == "hidden_count":
+        report["model_requests"] = 12
+    elif mutation == "unbound_reply":
+        success["reply"] = "YES"
+    elif mutation == "native_retry":
+        empty["native_tool_calls"] = True
+    elif mutation == "length_retry":
+        empty["finish_reason"] = "length"
+    elif mutation == "missing_attempts":
+        report["call_attempts"].pop()
+    else:
+        report["empty_response_retries"] = True
+    with pytest.raises(ValueError):
+        gate.check_report(report, MODEL, ENDPOINT)
+
+
 @pytest.fixture
 def report():
     cases = evaluator.load_cases()
@@ -186,8 +214,10 @@ def test_read_report_accepts_exact_size_limit(tmp_path):
 
 def test_gate_reply_limit_in_bytes(report):
     report["cases"][0]["raw_reply"] = "NO" + " " * (evaluator.MAX_REPLY_BYTES - 2)
+    report["call_attempts"][0]["attempts"][0]["reply"] = report["cases"][0]["raw_reply"]
     assert gate.check_report(report, MODEL, ENDPOINT) == []
     report["cases"][0]["raw_reply"] += "中"
+    report["call_attempts"][0]["attempts"][0]["reply"] = report["cases"][0]["raw_reply"]
     with pytest.raises(ValueError, match="reply_size"):
         gate.check_report(report, MODEL, ENDPOINT)
 

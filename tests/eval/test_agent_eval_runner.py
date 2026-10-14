@@ -11,6 +11,81 @@ from app.agents import pipeline
 from scripts import run_agent_chain_eval as runner
 
 
+@pytest.mark.parametrize("empty", ["", " \n", None])
+def test_empty_response_recovers_once_with_identical_input(isolated_real_transport, monkeypatch, tmp_path, empty):
+    from scripts import agent_gate_check as gate
+
+    provider, _ = isolated_real_transport
+    physical = []
+
+    async def reply(self, messages, options):
+        physical.append((messages, options.model_dump()))
+        if len(physical) == 11:
+            raise runner.LLMResponseError("llm_empty_response", finish_reason="stop", reply=empty)
+        return await runner.SmokeIntentModel().chat(messages, options)
+
+    monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
+    target = tmp_path / "recovered.json"
+    assert asyncio.run(runner.run("official", tmp_path, target)) == 0
+    report = json.loads(target.read_text(encoding="utf-8"))
+    assert len(physical) == report["model_requests"] == 13
+    assert physical[10] == physical[11]
+    assert report["logical_requests"] == 12 and report["empty_response_retries"] == 1
+    attempts = report["call_attempts"][10]["attempts"]
+    assert attempts[0]["reply"] == empty
+    assert attempts[0]["error_code"] == "llm_empty_response"
+    assert attempts[1]["reply"] == report["cases"][2]["tool_reply"]
+    assert gate.check_report(report, provider.model, report["endpoint_hash"]) == []
+
+
+@pytest.mark.parametrize("reason,native", [("length", False), ("content_filter", False),
+                                          ("other", False), ("tool_calls", True), ("stop", True)])
+def test_ineligible_empty_is_not_retried(isolated_real_transport, monkeypatch, tmp_path, reason, native):
+    from scripts import agent_gate_check as gate
+
+    provider, _ = isolated_real_transport
+    physical = []
+
+    async def reply(self, messages, options):
+        physical.append(messages)
+        if len(physical) == 11:
+            raise runner.LLMResponseError("llm_empty_response", finish_reason=reason, native_tool_calls=native)
+        return await runner.SmokeIntentModel().chat(messages, options)
+
+    monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
+    target = tmp_path / "failed.json"
+    assert asyncio.run(runner.run("official", tmp_path, target)) == 1
+    report = json.loads(target.read_text(encoding="utf-8"))
+    assert len(physical) == report["model_requests"] == 12
+    assert report["empty_response_retries"] == 0
+    assert "empty_model_response" in gate.check_report(report, provider.model, report["endpoint_hash"])
+
+
+def test_run_recovery_budget_is_global_and_wrong_answers_never_retry(isolated_real_transport, monkeypatch, tmp_path):
+    from scripts import agent_gate_check as gate
+
+    provider, _ = isolated_real_transport
+    physical = []
+
+    async def reply(self, messages, options):
+        physical.append(messages)
+        if len(physical) in {3, 12}:
+            raise runner.LLMResponseError("llm_empty_response", finish_reason="stop")
+        if len(physical) == 4:
+            return "NO"  # Recovery remains a wrong nonempty answer; no best-of sampling.
+        return await runner.SmokeIntentModel().chat(messages, options)
+
+    monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
+    target = tmp_path / "failed.json"
+    assert asyncio.run(runner.run("official", tmp_path, target)) == 1
+    report = json.loads(target.read_text(encoding="utf-8"))
+    assert len(physical) == report["model_requests"] == 13
+    assert report["cases"][2]["raw_reply"] == "NO"
+    assert len(report["call_attempts"][10]["attempts"]) == 1
+    failed = gate.check_report(report, provider.model, report["endpoint_hash"])
+    assert "followup_recall" in failed and "empty_model_response" in failed
+
+
 def test_official_rejects_mock_intent_even_when_chat_is_real(monkeypatch, tmp_path):
     monkeypatch.setattr(runner, "llm_availability", lambda: "real", raising=False)
     monkeypatch.setattr(runner, "get_llm_provider", lambda task: runner.SmokeIntentModel())
@@ -70,6 +145,16 @@ def test_existing_report_rejected_before_model_call(isolated_real_transport, tmp
     assert calls == []
 
 
+def test_existing_failed_ledger_rejected_before_model_call(isolated_real_transport, tmp_path):
+    _, calls = isolated_real_transport
+    target = tmp_path / "previous.json"
+    ledger = target.with_suffix(".attempts.json")
+    ledger.write_bytes(b"previous failed evidence")
+    assert asyncio.run(runner.run("official", tmp_path, target)) == 2
+    assert ledger.read_bytes() == b"previous failed evidence"
+    assert calls == [] and not target.exists()
+
+
 def test_partial_remote_failure_leaves_no_report(isolated_real_transport, monkeypatch, tmp_path):
     calls = []
 
@@ -83,7 +168,9 @@ def test_partial_remote_failure_leaves_no_report(isolated_real_transport, monkey
     with pytest.raises(ConnectionError):
         asyncio.run(runner.run("official", tmp_path, tmp_path / "failed.json"))
     assert len(calls) == 3
-    assert list(tmp_path.iterdir()) == []
+    assert not (tmp_path / "failed.json").exists()
+    ledger = json.loads((tmp_path / "failed.attempts.json").read_text(encoding="utf-8"))
+    assert ledger["mode"] == "failed-attempts" and ledger["model_requests"] == 3
 
 
 def test_model_call_timeout_leaves_no_report(isolated_real_transport, monkeypatch, tmp_path):
@@ -95,7 +182,7 @@ def test_model_call_timeout_leaves_no_report(isolated_real_transport, monkeypatc
     monkeypatch.setattr(runner, "CALL_TIMEOUT", 0.001)
     with pytest.raises(TimeoutError):
         asyncio.run(runner.run("official", tmp_path))
-    assert list(tmp_path.iterdir()) == []
+    assert len(list(tmp_path.glob("*.attempts.json"))) == 1
 
 
 def test_overall_timeout_leaves_no_report(isolated_real_transport, monkeypatch, tmp_path):
@@ -107,7 +194,7 @@ def test_overall_timeout_leaves_no_report(isolated_real_transport, monkeypatch, 
     monkeypatch.setattr(runner, "TOTAL_TIMEOUT", 0.001)
     with pytest.raises(TimeoutError):
         asyncio.run(runner.run("official", tmp_path))
-    assert list(tmp_path.iterdir()) == []
+    assert len(list(tmp_path.glob("*.attempts.json"))) == 1
 
 
 @pytest.mark.parametrize("value", [None, 5, "x" * (16 * 1024 + 1), "界" * 6000],
@@ -119,7 +206,33 @@ def test_bad_or_oversized_remote_reply(isolated_real_transport, monkeypatch, tmp
     monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
     with pytest.raises(ValueError, match="invalid_reply"):
         asyncio.run(runner.run("official", tmp_path))
-    assert list(tmp_path.iterdir()) == []
+    ledger_path = next(tmp_path.glob("*.attempts.json"))
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    assert ledger["model_requests"] == 1
+    assert ledger["call_attempts"][0]["attempts"][0]["reply"] is None
+
+
+def test_recovery_timeout_preserves_both_attempts(isolated_real_transport, monkeypatch, tmp_path):
+    physical = []
+
+    async def reply(self, messages, options):
+        physical.append(messages)
+        if len(physical) == 1:
+            raise runner.LLMResponseError("llm_empty_response", finish_reason="stop")
+        await asyncio.sleep(0.1)
+        return "NO"
+
+    monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
+    monkeypatch.setattr(runner, "CALL_TIMEOUT", 0.01)
+    target = tmp_path / "failed.json"
+    with pytest.raises(TimeoutError):
+        asyncio.run(runner.run("official", tmp_path, target))
+    assert len(physical) == 2 and not target.exists()
+    ledger = json.loads(target.with_suffix(".attempts.json").read_text(encoding="utf-8"))
+    assert ledger["model_requests"] == 2 and ledger["empty_response_retries"] == 1
+    assert len(ledger["call_attempts"][0]["attempts"]) == 2
+    assert ledger["call_attempts"][0]["attempts"][0]["error_code"] == "llm_empty_response"
+    assert ledger["call_attempts"][0]["attempts"][1]["error_code"] == "model_call_failed"
 
 
 def test_cached_provider_cannot_be_official(isolated_real_transport, monkeypatch, tmp_path):

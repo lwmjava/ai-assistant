@@ -4781,6 +4781,8 @@ tasks:
     title: "Skill 版本化与回归"
     status: "done"
     completed_at: "2026-10-14"
+    # CI 回归修复：账本超过 64 层统一安全拒绝；107 项 Skill 回归通过。
+    # 证据：docs/plans/implementation_skill_ledger_depth_ci_20261014.md；新 GitHub CI 尚待核验。
     priority: "P2"
     target_date: ""
     depends_on:

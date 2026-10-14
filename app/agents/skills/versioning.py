@@ -15,6 +15,7 @@ from app.agents.skills.base import SkillManifest, SkillMode, SkillTrigger, Trigg
 
 MAX_MANIFEST_BYTES = 131_072
 MAX_LEDGER_BYTES = 1_048_576
+MAX_LEDGER_DEPTH = 64
 
 
 def _text(value: Any, limit: int, *, empty: bool = True) -> str:
@@ -162,6 +163,16 @@ def validate_release_ledger(
         if ledger_path.stat().st_size > MAX_LEDGER_BYTES:
             raise ValueError("skill_ledger_too_large")
         ledger = json.loads(ledger_path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object)
+        # Decoder recursion limits vary by Python/platform. Enforce our own
+        # bound iteratively so decoded deep input has the same safe error.
+        pending: list[tuple[Any, int]] = [(ledger, 1)]
+        while pending:
+            value, depth = pending.pop()
+            if isinstance(value, dict | list):
+                if depth > MAX_LEDGER_DEPTH:
+                    raise ValueError("skill_ledger_read_failed")
+                children = value.values() if isinstance(value, dict) else value
+                pending.extend((child, depth + 1) for child in children)
         skills = _ledger_skills(ledger)
         if previous_ledger is not None:
             previous = _ledger_skills(previous_ledger)

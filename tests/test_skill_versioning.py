@@ -49,6 +49,30 @@ def test_extremely_nested_ledger_uses_fixed_safe_error(tmp_path):
         validate_release_ledger(tmp_path, ledger)
 
 
+def test_decoded_extremely_nested_ledger_uses_fixed_safe_error(tmp_path, monkeypatch):
+    """Decoders able to parse deep input must enforce the same safety bound."""
+    ledger = tmp_path / "nested.json"
+    ledger.write_text("[" * 2000 + "0" + "]" * 2000, encoding="utf-8")
+    decoded = 0
+    for _ in range(2000):
+        decoded = [decoded]
+    monkeypatch.setattr("app.agents.skills.versioning.json.loads", lambda *a, **kw: decoded)
+    with pytest.raises(ValueError, match="^skill_ledger_read_failed$"):
+        validate_release_ledger(tmp_path, ledger)
+
+
+def test_ledger_decoder_recursion_error_is_safely_mapped(tmp_path, monkeypatch):
+    ledger = tmp_path / "ledger.json"
+    ledger.write_text("{}", encoding="utf-8")
+
+    def fail_decode(*args, **kwargs):
+        raise RecursionError("synthetic-sensitive-parser-detail")
+
+    monkeypatch.setattr("app.agents.skills.versioning.json.loads", fail_decode)
+    with pytest.raises(ValueError, match="^skill_ledger_read_failed$"):
+        validate_release_ledger(tmp_path, ledger)
+
+
 @pytest.mark.parametrize("field,value", [
     ("version", None), ("version", 1.0), ("version", "01.0"),
     ("version", "1"), ("version", "1.0.0.0"), ("version", "1." + "9" * 40),

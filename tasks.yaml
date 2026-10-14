@@ -31,6 +31,7 @@ project:
     frontend_typecheck: "cd frontend; npm run typecheck"
     frontend_build: "cd frontend; npm run build"
   evidence_policy: "事实引用代码、配置、测试、Trace、数据或已批准文档；假设必须标记并给出验证动作。"
+  regression_gate_policy: "任务关闭与提交前执行 AGENTS.md 第10节强制回归：公共路径全量pytest、适用Linux检查、最终输入指纹/提交SHA绑定；必要检查失败、缺失或过期不得关闭业务任务。纯文档治理按文档契约验证，不代表业务CI通过。"
   source_comment_policy: "每次改代码都必须遵守：源代码、测试、前端和迁移脚本里的注释与文档字符串只描述当前行为。不得写入任务编号、ADR 编号、需求或设计文档名称、修订日期，以及依据哪份文档实现的说明。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   commit_message_policy: "每次 git 提交都必须遵守：提交说明只写实现了什么功能，或修复了什么问题。不得写入需求编号、任务编号、ADR 编号，也不得写依据哪份需求、设计或计划文档。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   capacity_policy: "个人开发按理论产能的60%-70%排期，其余用于取证、联调、返工、审核和发布。"
@@ -52,6 +53,51 @@ risk_policy:
   L3: "退款、删除、合同、财务、权限提升或不可逆敏感操作；必须人工审批"
 
 tasks:
+  - id: "GOV-002"
+    title: "补齐任务关闭与提交前回归规则"
+    status: "done"
+    completed_at: "2026-10-14"
+    priority: "P0"
+    depends_on: ["GOV-001"]
+    context:
+      problem: "公共入口改动专项验证通过但遗漏旧身份fixture、模型调用计数和平台回归，需明确任务关闭门禁。"
+      facts:
+        - claim: "现有CI在Ubuntu执行后端Ruff、mypy、全量pytest，前端执行类型检查、Vitest、ESLint和构建。"
+          evidence: ".github/workflows/ci.yml；frontend/package.json"
+    scope:
+      allowed_paths:
+        - "AGENTS.md"
+        - ".cursor/rules/00-global.mdc"
+        - ".cursor/rules/07-testing-evaluation.mdc"
+        - "docs/workflows/end-to-end-development.md"
+        - "docs/checklists/review-and-release-checklist.md"
+        - "tasks.yaml"
+        - "docs/plans/plan_regression_gate_20261014.md"
+        - "docs/plans/implementation_regression_gate_20261014.md"
+      forbidden_paths: ["app/", "tests/", "frontend/", ".github/", ".env"]
+      deliverables: ["强制回归规则、同步流程与清单", "计划与实现说明"]
+      non_goals: ["不修复当前业务CI失败", "不安装hook或检查脚本", "不配置远程分支保护或提交推送"]
+    acceptance:
+      - "公共路径全量回归、Linux验证、最终版本绑定和未通过禁止关闭均明确。"
+      - "身份fixture与模型请求用途审查要求明确；文档例外不豁免业务门禁。"
+      - "YAML解析、ID唯一、范围、引用和diff空白检查通过；实现说明记录真实边界。"
+    risk:
+      level: "L0"
+      side_effect: "documentation-only"
+      rollback: "仅恢复本卡治理文档和任务登记，无业务或数据副作用。"
+    evaluation:
+      cases: ["YAML解析/ID唯一/引用检查", "规则触发条件与未验证边界一致性检查", "diff范围与空白检查"]
+      commands: ["git diff --check"]
+    execution:
+      owner: "个人开发者"
+      plan: "docs/plans/plan_regression_gate_20261014.md"
+      acceptance_record: "纯文档契约完成：强制回归规则和流程/清单同步；指定解释器YAML、ID唯一、引用/范围/条款及diff检查通过。实现说明 docs/plans/implementation_regression_gate_20261014.md；未修复业务CI、未配置hook或远程保护、未提交推送。"
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+
   - id: "GOV-001"
     title: "项目化 Agent Harness 治理文件"
     status: "done"
@@ -6388,8 +6434,15 @@ tasks:
         - "pytest tests/test_chat.py tests/test_chat_controls.py -q"
         - "pytest tests/test_p0_regression.py tests/test_rag.py tests/test_workflow.py -q"
     execution:
+      ci_regression_followup:
+        date: "2026-10-14"
+        plan: "docs/plans/plan_qa_005_ci_regression_20261014.md"
+        implementation: "docs/plans/implementation_qa_005_ci_regression_20261014.md"
+        baseline: "0d900950176e8ae110dbf0b553ce7715e087d8a0；Windows全量36 failed/2247 passed/exit1；其中35项与用户Ubuntu CI同源，另1项默认RAG后端fixture受本机配置影响。Linux原僵尸红例已复现。"
+        progress: "显式持久化成功身份fixture，按用途验证语义选择与回答缓存请求，Linux僵尸与PID消失/权限不足判定及有限等待修复；专项265passed、Linux23检查通过、Ruff/mypy及registry v6通过；最终全量final2为2292passed/0failed/0skipped/exit0，496.90秒；独立反例审查的默认契约P2已闭合，无剩余有证据P1/P2；证据docs/reviews/ci_regression_20261014.json（422最终输入指纹）与ci_regression_final_20261014.xml。"
+        pending: "最终同提交Ubuntu Backend CI和业务验收待完成；本卡保持in_review，不宣称远程CI通过。"
       progress: "2026-10-05用户直接批准提前整改记录保留，见implementation_qa_005_remediation_20261005.md。2026-10-10用户直接要求修复2既有失败/4跳过/6Ruff错误：开工全量1335 passed/2 failed/4 skipped（231.13s），日期漂移与Milvus Mock签名已修；Ruff6条等价修复；补齐现有已声明MCP1.12.4、LlamaIndex0.12.42与text-splitters1.1.3可选组件，原92包未升级降级，新增40包，Deprecated1.2.18/wrapt1.17.3保持mypy311兼容。真实MCP stdio与LlamaIndex用例恢复执行，cloud工厂用例临时合成配置且封HTTP，无付费请求。新SDK类型契约和官方tiktoken孤立代理项拒绝已按新增反例修复，预算0/+1阈值不降。最终全量1364 passed/0 failed/0 skipped（225.63s，exit0）；全仓Ruff0、mypy188源0、pipcheck0、diffcheck0。独立215例+028官方44例+official/fallback共12入口反例通过，无未修复P1/P2。计划、实现说明及独审见2026-10-10 QA005 followup记录，未实施CI，未提交或部署。"
-      blocked_by: "NFR-001依赖尚未完成；用户直接批准的2026-10-10既有问题整改技术通过、独立审查已记录，人工业务验收未替代，保持in_review，不把CI建设写成完成。"
+      blocked_by: "2026-10-14当前：本机全量和Linux沙箱检查已通过；同最终提交的Ubuntu Backend CI及人工业务验收待完成，保持in_review。旧阻断历史保留在progress/acceptance_record。"
       owner: "个人开发者"
       acceptance_record: "2026-10-10本轮2失败/4跳过/6Ruff逐项技术闭合：最终完整pytest1364通过、0失败、0跳过，exit0；完整mypy/全仓Ruff/依赖一致性通过。E2真实本机MCP stdio及SQLite/LlamaIndex、隔离provider零请求护栏；确定性日期/日志/构造和静态检查证据在docs/plans/implementation_qa_005_followup_20261010.md和docs/reviews/2026-10-10-QA-005遗留整改独立审查.md（含最终指纹）。不降低门禁、不新增skip、原92包版本不变；没有发现新增回归。未验证：整卡人工业务验收；MCP2.x/远端OCR与生产质量不属于本轮范围；NFR-001未实施。回滚只退本轮QA最小diff，保留RAG-039已有修改及重要数据，无Git发布。"
       nightly:

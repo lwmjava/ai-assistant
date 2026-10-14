@@ -51,13 +51,16 @@ def _assistant_rows(conversation_id: str) -> list[Message]:
 
 
 @pytest.mark.asyncio
-async def test_stream_finishes_after_request_session_closes(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_stream_finishes_after_request_session_closes(
+    monkeypatch: pytest.MonkeyPatch, persist_identity,
+) -> None:
     """交出会话编号后关闭请求 Session，剩余事件仍能结束并留下完整回复。"""
     monkeypatch.setattr(AgentPipeline, "run_stream", _finish_immediately)
     monkeypatch.setattr(settings, "SECURITY_RATE_LIMIT", False)
     monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", "self")
     set_llm_provider_override(MockLLMProvider())
     service = ChatService()
+    persist_identity(_user())
     with Session(engine) as session:
         generator = service.chat_stream(session, _user(), "请写完")
         first = await generator.__anext__()
@@ -75,7 +78,7 @@ async def test_stream_finishes_after_request_session_closes(monkeypatch: pytest.
 
 @pytest.mark.asyncio
 async def test_stream_finishes_while_request_session_stays_open(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, persist_identity,
 ) -> None:
     """请求 Session 仍持有该会话时，回复同样完整写完。"""
     monkeypatch.setattr(AgentPipeline, "run_stream", _finish_immediately)
@@ -83,6 +86,7 @@ async def test_stream_finishes_while_request_session_stays_open(
     monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", "self")
     set_llm_provider_override(MockLLMProvider())
     service = ChatService()
+    persist_identity(_user())
     with Session(engine) as session:
         generator = service.chat_stream(session, _user(), "会话还在")
         events = [event async for event in generator]
@@ -94,7 +98,8 @@ async def test_stream_finishes_while_request_session_stays_open(
 
 
 @pytest.fixture()
-def client():
+def client(persist_identity):
+    persist_identity(_user())
     app.dependency_overrides[get_current_user] = _user
     set_llm_provider_override(MockLLMProvider())
     with TestClient(app) as http:

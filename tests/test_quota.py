@@ -95,10 +95,11 @@ def _patch_storage(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 
 @pytest.fixture()
-def client():
+def client(persist_identity):
     holder: dict[str, User | TestClient] = {}
 
     def _open(user: User) -> TestClient:
+        persist_identity(user)
         previous = holder.get("client")
         if isinstance(previous, TestClient):
             previous.__exit__(None, None, None)

@@ -143,7 +143,7 @@ async def test_cache_acceptance_permissions_mutate_in_new_session(cache_env, mon
 def local_llm():
     requests = []
     control = {"model": "acceptance-model", "finish": "stop", "done": True, "status": 200,
-               "echo_content": False}
+               "echo_content": False, "skill_selection": False}
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):  # noqa: N802 -- standard library handler method
@@ -157,6 +157,8 @@ def local_llm():
                 return
             content = "独立验收回答，无需修正。"
             response_model = control["model"]
+            if control["skill_selection"] and payload["messages"][0]["content"].startswith("Select at most one skill"):
+                content = "null"
             if control["echo_content"]:
                 content = f"{payload['messages'][-1]['content']}|{payload['temperature']}|{payload['model']}"
                 response_model = payload["model"]
@@ -448,7 +450,8 @@ async def test_cache_acceptance_llm_reauthorizes_before_warm_hit(cache_env, loca
 async def test_cache_acceptance_chatservice_stream_cancel_then_reenter(cache_env, local_llm, monkeypatch):
     import app.core.database as database
 
-    url, requests, _ = local_llm
+    url, requests, control = local_llm
+    control["skill_selection"] = True
     # The existing cancellation persistence explicitly opens the module database.
     monkeypatch.setattr(database, "engine", cache_env)
     monkeypatch.setattr(settings, "RAG_ENABLED", False)
@@ -464,10 +467,17 @@ async def test_cache_acceptance_chatservice_stream_cancel_then_reenter(cache_env
         await stream.aclose()
         async for _ in service.chat_stream(session, user, "你好"):
             pass
-        assert len(requests) == 2, "cancelled ChatService request cannot cache unconsumed stream"
+        replies = [request for request in requests if request["stream"]]
+        selections = [request for request in requests if not request["stream"]]
+        assert len(replies) == 2, "cancelled ChatService request cannot cache unconsumed stream"
+        assert len(selections) == 1, "unchanged semantic selection is a separate warm-cache request"
+        assert selections[0]["messages"][0]["content"].startswith("Select at most one skill")
+        assert selections[0]["max_tokens"] == 128
+        assert selections[0]["temperature"] == 0
         async for _ in service.chat_stream(session, user, "你好"):
             pass
-        assert len(requests) == 2
+        assert [request for request in requests if request["stream"]] == replies
+        assert [request for request in requests if not request["stream"]] == selections
 
 
 @pytest.mark.asyncio

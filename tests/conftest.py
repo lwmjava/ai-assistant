@@ -119,3 +119,51 @@ def legacy_plan_mode(monkeypatch):
         original(self, *args, **kwargs)
 
     monkeypatch.setattr(AgentPipeline, "__init__", initialize)
+
+
+@pytest.fixture
+def persist_identity():
+    """Explicitly persist successful test principals, then remove only newly created rows."""
+    from sqlmodel import Session
+
+    from app.core.database import engine
+    from app.models.user import Tenant, User
+
+    created_users: set[str] = set()
+    created_tenants: set[str] = set()
+
+    def persist(user: User) -> User:
+        with Session(engine) as session:
+            tenant = session.get(Tenant, user.tenant_id)
+            if tenant is None:
+                session.add(Tenant(id=user.tenant_id, name=user.tenant_id))
+                created_tenants.add(user.tenant_id)
+            else:
+                assert tenant.is_active, "Success fixture cannot reactivate a tenant"
+            current = session.get(User, user.id)
+            if current is None:
+                session.add(user)
+                created_users.add(user.id)
+                session.commit()
+                session.refresh(user)
+                session.expunge(user)
+            else:
+                assert (current.tenant_id, current.username, current.role,
+                        current.token_version, current.is_active) == (
+                            user.tenant_id, user.username, user.role,
+                            user.token_version, user.is_active)
+                session.commit()
+        return user
+
+    yield persist
+    with Session(engine) as session:
+        for user_id in created_users:
+            row = session.get(User, user_id)
+            if row is not None:
+                session.delete(row)
+        session.commit()
+        for tenant_id in created_tenants:
+            tenant = session.get(Tenant, tenant_id)
+            if tenant is not None:
+                session.delete(tenant)
+        session.commit()

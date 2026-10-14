@@ -125,7 +125,7 @@ def test_tool_health_missing_keys_and_disabled_files(monkeypatch):
 
 @pytest.mark.parametrize("provider", tuple(_RESPONSES))
 @pytest.mark.usefixtures("legacy_plan_mode")
-def test_tool_search_chat_api_persists_source_reply(monkeypatch, provider):
+def test_tool_search_chat_api_persists_source_reply(monkeypatch, provider, persist_identity):
     from fastapi.testclient import TestClient
 
     from app.api.deps import get_current_user
@@ -149,6 +149,7 @@ def test_tool_search_chat_api_persists_source_reply(monkeypatch, provider):
     _configure_http(monkeypatch, handler)
     user = User(id="pagt-e2-user", tenant_id="pagt-e2-tenant", username="pagt-e2",
                 hashed_password="", role=Role.MEMBER.value, is_active=True)
+    persist_identity(user)
     app.dependency_overrides[get_current_user] = lambda: user
     set_llm_provider_override(_driver("web_search", {"query": "查找公开资料"}))
     try:

@@ -23,7 +23,7 @@ from app.services.chat_service import ChatService
 
 
 @pytest.fixture()
-def client():
+def client(persist_identity):
     fake_user = User(
         id="test-user",
         tenant_id="test-tenant",
@@ -33,6 +33,7 @@ def client():
         token_version=0,
         is_active=True,
     )
+    persist_identity(fake_user)
     app.dependency_overrides[get_current_user] = lambda: fake_user
     set_llm_provider_override(MockLLMProvider())
     with TestClient(app) as c:
@@ -301,7 +302,7 @@ def test_code_result_persists_on_stream(client: TestClient) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("legacy_plan_mode")
-async def test_code_result_persists_when_stopped(client: TestClient) -> None:
+async def test_code_result_persists_when_stopped(client: TestClient, persist_identity) -> None:
     """生成在最终回复前停下时，已经跑完的代码结果仍写在停止消息上。"""
 
     class _Blocking(_CodeResultLLM):
@@ -319,6 +320,7 @@ async def test_code_result_persists_when_stopped(client: TestClient) -> None:
         token_version=0,
         is_active=True,
     )
+    persist_identity(user)
     service = ChatService()
     conversation_id = ""
     with Session(engine) as session:

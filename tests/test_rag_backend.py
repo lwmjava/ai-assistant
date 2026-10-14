@@ -27,7 +27,10 @@ def test_normalize_unknown_backend_falls_back_to_native() -> None:
     assert normalize_rag_backend("unknown-backend") == "native"
 
 
-def test_factory_defaults_native() -> None:
+def test_factory_defaults_native(monkeypatch: pytest.MonkeyPatch) -> None:
+    declared_default = type(settings).model_fields["RAG_BACKEND"].default
+    assert declared_default == "native"
+    monkeypatch.setattr(settings, "RAG_BACKEND", declared_default)
     emb = MockEmbeddingProvider(dim=8)
     backend = get_rag_backend(emb, vector_store=None)  # type: ignore[arg-type]
     assert isinstance(backend, NativeRagBackend)

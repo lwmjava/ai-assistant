@@ -1,6 +1,6 @@
 # Prompt / 模型版本登记
 
-版本格式 v1；维护入口 `app/agents/version_registry.py`。当前登记为 `prompt-model-v4`（原代码保持修复，见文末）；历史 `prompt-model-v3` 登记共享文本工具的平台判断修复（Linux mypy 可排除 Windows API）；`prompt-model-v1`、`prompt-model-v2` 历史记录保持不变，模型默认指纹不变。v2 登记国内搜索、共享文本工具与其配置/健康/注册入口。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
+版本格式 v1；维护入口 `app/agents/version_registry.py`。当前登记为 `prompt-model-v6`（Linux 沙箱进程状态修复，见文末）；历史 `prompt-model-v3` 登记共享文本工具的平台判断修复（Linux mypy 可排除 Windows API）；`prompt-model-v1`、`prompt-model-v2` 历史记录保持不变，模型默认指纹不变。v2 登记国内搜索、共享文本工具与其配置/健康/注册入口。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
 
 ## 登记范围
 
@@ -55,3 +55,7 @@
 ## 2026-10-14 技能语义选择登记
 
 SKILL-003用户批准docs/及真实ChatService范围后，本卡新增选择提示词与受控异步入口，按Prompt变更版本追踪要求追加prompt-model-v5并设current；v1-v4记录保持不变，前节v4为当时事实。source_commit为ddaa1cca93d17640ed7373b9cd2284505dfe4e8e，source_version=27b57366538168baa781d3f3b56e01cadc441882ede835ec64914b5daf10b84d；源码默认模型字段登记，不复制.env。registry check退出0；语义选择协议skill-semantic-select-v1，版本并不代表真实模型质量通过或部署启用。回滚必须恢复匹配全量源树与非敏感配置，不能只切current。
+
+## 2026-10-14 Linux 沙箱进程状态修复登记
+
+追加 `prompt-model-v6` 并设为 current；v1-v5 内容保持不变。此次仅修改沙箱 Linux 进程状态判断和有限等待，语义选择协议、Prompt 正文及默认模型配置保持。source_commit 为 0d900950176e8ae110dbf0b553ce7715e087d8a0（变更基点），source_version 为 `2df15823454fd0d69978f451a06033df3e0bd1265c06726ad261fddf0ff8dc1c`。实际源码为当前工作树，不能宣称该修改已经包含在基点提交；登记不代表部署或远程 CI 通过。回滚恢复相匹配的旧源树和登记，无数据库迁移。

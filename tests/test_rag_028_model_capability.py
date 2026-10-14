@@ -526,7 +526,7 @@ def test_pipeline_returns_fixed_message_without_exception_text() -> None:
     assert "lab-model" not in state.answer
 
 
-def test_chat_service_returns_fixed_message_without_exception_text() -> None:
+def test_chat_service_returns_fixed_message_without_exception_text(persist_identity) -> None:
     with Session(engine) as session:
         user = User(
             id="rag028-user",
@@ -537,6 +537,7 @@ def test_chat_service_returns_fixed_message_without_exception_text() -> None:
             token_version=0,
             is_active=True,
         )
+        persist_identity(user)
         session.add(user)
         session.commit()
         service = ChatService(_BudgetBlocked())

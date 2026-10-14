@@ -659,7 +659,7 @@ async def test_notice_off_keeps_short_path_status_text(monkeypatch: pytest.Monke
 
 
 @pytest.mark.usefixtures("legacy_plan_mode")
-async def test_chat_service_stream_persists_disclosure() -> None:
+async def test_chat_service_stream_persists_disclosure(persist_identity) -> None:
     """审查 F-02：`ChatService.chat_stream` 的落库正文也必须带披露，不只是 prompt。"""
     from sqlmodel import Session, SQLModel, select
 
@@ -682,6 +682,7 @@ async def test_chat_service_stream_persists_disclosure() -> None:
             token_version=0,
             is_active=True,
         )
+        persist_identity(user)
         session.add(user)
         session.commit()
         service = ChatService(_IgnoreNoticeLLM())
@@ -700,7 +701,7 @@ async def test_chat_service_stream_persists_disclosure() -> None:
 
 
 @pytest.mark.usefixtures("legacy_plan_mode")
-async def test_chat_service_sync_final_text_carries_disclosure() -> None:
+async def test_chat_service_sync_final_text_carries_disclosure(persist_identity) -> None:
     """复审 N-14：同步对话入口此前完全没被覆盖，只有流式有断言。"""
     from sqlmodel import Session, SQLModel
 
@@ -722,6 +723,7 @@ async def test_chat_service_sync_final_text_carries_disclosure() -> None:
             token_version=0,
             is_active=True,
         )
+        persist_identity(user)
         session.add(user)
         session.commit()
         service = ChatService(_IgnoreNoticeLLM())

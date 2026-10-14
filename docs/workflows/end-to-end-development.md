@@ -17,6 +17,7 @@
 3. 记录工作目录、分支、未提交改动，保护用户已有修改。
 4. 建立证据清单：需求来源、代码路径、运行日志、API/Schema、测试、监控、历史事故。
 5. 输出影响范围和 Implementation Plan，获得项目要求的确认后实施。
+6. 按 `AGENTS.md` 第 10 节记录开发前检查基线和既有失败；无法隔离的失败停止实施。
 
 阶段产物：`<填写计划路径/评审记录>`；退出条件：范围、Non-goals、风险和验收标准明确。
 
@@ -92,6 +93,7 @@
 3. 审查安全、数据权限、租户隔离、日志脱敏、依赖与供应链。
 4. 审查存量契约、迁移和回滚是否仍成立。
 5. 使用 review/release 与 anti-drift 清单，记录每个不通过项的证据和负责人。
+6. 关闭任务和提交完成交付前执行 `AGENTS.md` 第 10 节强制回归：公共路径全量 pytest、适用 Linux 检查、最终版本绑定及旧调用方审查。必要检查待完成时保持 in_review/blocked；用户明确要求保存 WIP 时如实说明失败与未验证项。
 
 ## 8. 发布准备
 
@@ -138,7 +140,9 @@ pytest tests/test_rag.py tests/test_rag_import_jobs.py tests/test_rag_backend.py
 cd frontend
 npm ci
 npm run typecheck
+npm test
+npm run lint
 npm run build
 ```
 
-实际任务只运行与影响范围匹配的命令，但必须记录未运行项、原因和风险。
+实际任务按影响选择命令，但不得免除 `AGENTS.md` 第 10 节已触发的强制检查。未运行项记录原因和风险，必要检查未完成不能关闭业务任务。纯文档治理按该节文档例外验证，不代表既有业务 CI 已通过。

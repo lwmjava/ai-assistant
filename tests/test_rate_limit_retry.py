@@ -34,7 +34,7 @@ def _user_message_count(user_id: str) -> int:
 
 
 @pytest.fixture()
-def client(monkeypatch: pytest.MonkeyPatch):
+def client(monkeypatch: pytest.MonkeyPatch, persist_identity):
     user = User(
         id=f"rl-{uuid.uuid4().hex[:8]}",
         tenant_id=f"rl-tenant-{uuid.uuid4().hex[:8]}",
@@ -44,6 +44,7 @@ def client(monkeypatch: pytest.MonkeyPatch):
         token_version=0,
         is_active=True,
     )
+    persist_identity(user)
     monkeypatch.setattr("app.security.rate_limiter.time.monotonic", lambda: 1_000_000.0)
     monkeypatch.setattr(settings, "SECURITY_ENABLED", True)
     monkeypatch.setattr(settings, "SECURITY_RATE_LIMIT", True)

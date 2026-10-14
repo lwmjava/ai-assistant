@@ -54,7 +54,7 @@ def _clean_db():
 
 
 @pytest.fixture()
-def client():
+def client(persist_identity):
     """注入 member 身份 + Mock LLM，且不进入 lifespan（避免后台调度器干扰）。"""
     settings.WORKFLOW_ENABLED = True
     fake_user = User(
@@ -65,6 +65,7 @@ def client():
         role=Role.MEMBER.value,
         is_active=True,
     )
+    persist_identity(fake_user)
     app.dependency_overrides[get_current_user] = lambda: fake_user
     set_llm_provider_override(MockLLMProvider())
     c = TestClient(app)  # 不进入 lifespan，避免启动调度器后台任务
@@ -100,7 +101,7 @@ def test_next_run_time_raises_without_croniter(monkeypatch):
 
 # ── bridge ──────────────────────────────────
 @pytest.mark.asyncio
-async def test_bridge_executes_with_owner():
+async def test_bridge_executes_with_owner(persist_identity):
     set_llm_provider_override(MockLLMProvider())
     owner = User(
         id="b-owner",
@@ -111,6 +112,7 @@ async def test_bridge_executes_with_owner():
         is_active=True,
     )
     with Session(engine) as s:
+        persist_identity(owner)
         out = await WorkflowBridge().execute(s, owner, "hello")
         assert isinstance(out, str) and out
     set_llm_provider_override(None)
@@ -151,7 +153,7 @@ async def test_owner_inactive_suspends_workflow():
 
 # ── webhook 回调 ──────────────────────────────────
 @pytest.mark.asyncio
-async def test_webhook_called_on_success():
+async def test_webhook_called_on_success(persist_identity):
     set_llm_provider_override(MockLLMProvider())
     owner = User(
         id="wh-owner",
@@ -161,6 +163,7 @@ async def test_webhook_called_on_success():
         role=Role.MEMBER.value,
         is_active=True,
     )
+    persist_identity(owner)
     with Session(engine) as s:
         wf = Workflow(
             tenant_id="wh-tenant",

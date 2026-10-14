@@ -38,10 +38,20 @@ def _user(user_id: str, tenant_id: str, role: Role, username: str) -> User:
 
 
 @pytest.fixture()
-def client():
+def client(persist_identity):
     holder = {
         "user": _user("chat-member", "tenant-a", Role.MEMBER, "chat-member"),
     }
+
+    for user_id, tenant_id, role in [
+        ("chat-member", "tenant-a", Role.MEMBER),
+        ("chat-viewer", "tenant-a", Role.VIEWER),
+        ("chat-peer", "tenant-a", Role.MEMBER),
+        ("chat-other", "tenant-a", Role.MEMBER),
+        ("chat-admin-a", "tenant-a", Role.SYSTEM_ADMIN),
+        ("chat-admin-b", "tenant-b", Role.SYSTEM_ADMIN),
+    ]:
+        persist_identity(_user(user_id, tenant_id, role, user_id))
 
     def current_user() -> User:
         return holder["user"]
@@ -151,7 +161,7 @@ def test_same_tenant_members_cannot_see_each_other(client) -> None:
 
 
 @pytest.mark.asyncio
-async def test_stop_persists_partial_and_does_not_append() -> None:
+async def test_stop_persists_partial_and_does_not_append(persist_identity) -> None:
     """停止后只留下已经产出的文字，状态为已停止，后文不会再写入。"""
 
     async def fake_run_stream(self, state):  # noqa: ARG001
@@ -162,7 +172,7 @@ async def test_stop_persists_partial_and_does_not_append() -> None:
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(AgentPipeline, "run_stream", fake_run_stream)
     set_llm_provider_override(MockLLMProvider())
-    user = _user("stop-user", "tenant-stop", Role.MEMBER, "stop-user")
+    user = persist_identity(_user("stop-user", "tenant-stop", Role.MEMBER, "stop-user"))
     try:
         service_module = __import__("app.services.chat_service", fromlist=["ChatService"])
         service = service_module.ChatService()

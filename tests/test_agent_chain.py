@@ -554,6 +554,115 @@ def test_act_and_respond_keep_long_code_in_recent_dialogue() -> None:
     assert state.context == "记忆摘要"
 
 
+@pytest.mark.parametrize("short_path", [False, True])
+def test_action_prompt_preserves_confirmed_code_in_both_paths(short_path: bool) -> None:
+    from app.agents.pipeline import _SHORT_PATH_POLICY, build_tool_choice_messages
+
+    registry, _counter = _mixed_registry()
+    runtime = AgentPipeline(_RouteLLM("NO" if short_path else "YES"), tools=registry)
+    if short_path:
+        runtime._execution_policy = _SHORT_PATH_POLICY
+    code = "print(sorted([3, 1, 2]))"
+    history = [
+        _message("assistant", f"```python\n{code}\n```"),
+        _message("user", "运行刚才给出的代码"),
+        _message("assistant", "回复好的即可执行"),
+    ]
+    state = AgentState(user_input="好的", history=history)
+    before = [message.content for message in history]
+    runtime_prompt = runtime._build_act(state)
+    eval_prompt = build_tool_choice_messages(history, "好的")[-1].content
+    for prompt in (runtime_prompt, eval_prompt):
+        assert "原样复制" in prompt and "arguments.code" in prompt
+        assert "额外打印" in prompt and "输出前缀" in prompt
+        assert "明确要求修改" in prompt and "澄清" in prompt
+        assert "检索资料" in prompt and "不构成调用授权" in prompt
+        assert code in prompt
+    assert [message.content for message in history] == before
+    assert state.context == ""
+
+
+@pytest.mark.parametrize("available,include_tools", [(False, True), (True, False)])
+def test_confirmed_code_guidance_requires_an_available_sandbox(
+    available: bool, include_tools: bool,
+) -> None:
+    from app.agents.pipeline import action_user_content
+
+    registry, _counter = _mixed_registry()
+    if not available:
+        registry = ToolRegistry([registry.get("calculator")])
+    prompt = action_user_content(AgentState(user_input="好的"), registry, include_tools)
+    assert "## 已确认代码的执行" not in prompt
+    if not include_tools:
+        assert "工具次数已用完" in prompt
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_default_plan_passes_confirmed_code_to_the_tool(stream: bool) -> None:
+    from app.agents.prompts import SYSTEM_PLAN, SYSTEM_PREFLOW
+
+    code = "print(sorted([3, 1, 2]))"
+    captured: list[str] = []
+    registry, _counter = _mixed_registry()
+    sandbox = registry.get("code_sandbox")
+    assert sandbox is not None
+
+    def record(arguments: dict) -> str:
+        captured.append(arguments["code"])
+        return "recorded"
+
+    sandbox.func = record
+
+    class RecordingPlanner(_RouteLLM):
+        async def chat(self, messages, options=None) -> str:
+            system = messages[0].content
+            content = messages[-1].content
+            if system == SYSTEM_PREFLOW:
+                return "YES"
+            if system == SYSTEM_PLAN:
+                assert "原样复制" in content and "明确要求修改" in content
+                assert code in content
+                prior = content.split("```python\n", 1)[1].split("```", 1)[0]
+                return json.dumps({"schema_version": 1, "steps": [{
+                    "id": "execute", "description": "execute confirmed code", "kind": "tool",
+                    "tool": "code_sandbox", "arguments": {"code": prior},
+                    "depends_on": [], "expected_output": "original output",
+                }]})
+            return "complete"
+
+    runtime = AgentPipeline(RecordingPlanner("YES"), tools=registry)
+    state = AgentState(user_input="好的", history=[
+        _message("assistant", f"```python\n{code}\n```"),
+        _message("user", "运行刚才给出的代码"),
+        _message("assistant", "回复好的即可执行"),
+    ])
+    if stream:
+        async def consume() -> None:
+            async for _event in runtime.run_stream(state):
+                pass
+        asyncio.run(consume())
+    else:
+        asyncio.run(runtime.run(state))
+    assert captured == [code + "\n"]
+    assert state.structured_plan is not None
+    assert state.structured_plan["steps"][0]["arguments"]["code"] == code + "\n"
+    assert state.plan_progress[0]["status"] == "succeeded"
+
+
+@pytest.mark.parametrize("budget", ["zero", "used", "exhausted"])
+def test_plan_omits_confirmed_code_guidance_without_remaining_budget(budget: str) -> None:
+    registry, _counter = _mixed_registry()
+    runtime = AgentPipeline(_RouteLLM("YES"), tools=registry)
+    state = AgentState(user_input="好的")
+    if budget == "zero":
+        runtime.max_tool_rounds = 0
+    elif budget == "used":
+        state.tool_rounds_used = runtime.max_tool_rounds
+    else:
+        state.tool_budget_exhausted = True
+    assert "## 已确认代码的执行" not in runtime._build_plan(state)
+
+
 def test_short_path_without_tool_keeps_call_count() -> None:
     pipeline, llm, counter = _pipeline(None)
     llm = _RouteLLM("NO", act="直接草稿")

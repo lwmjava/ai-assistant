@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="11" time="2.585" timestamp="2026-10-14T10:37:11.037280+08:00" hostname="DESKTOP-NSMV8MF"><testcase classname="tests.test_agent_chain" name="test_action_prompt_preserves_confirmed_code_in_both_paths[False]" time="0.900"><failure message="AssertionError: assert ('原样复制' in '## 回答计划\n\n\n## 步骤状态\n[]\n\n## 外部上下文\n（未接入外部检索，仅基于模型知识作答）\n\n## 可用外部工具\n- calculator：计算\n  参数(JSON Schema)：{}\n- code...最近对话\n助手：```python\nprint(sorted([3, 1, 2]))\n```\n用户：运行刚才给出的代码\n助手：回复好的即可执行\n\n## 用户消息\n好的\n\n请按系统要求撰写回答草稿，或输出工具调用指令。')">short_path = False
+
+    @pytest.mark.parametrize("short_path", [False, True])
+    def test_action_prompt_preserves_confirmed_code_in_both_paths(short_path: bool) -&gt; None:
+        from app.agents.pipeline import _SHORT_PATH_POLICY, build_tool_choice_messages
+    
+        registry, _counter = _mixed_registry()
+        runtime = AgentPipeline(_RouteLLM("NO" if short_path else "YES"), tools=registry)
+        if short_path:
+            runtime._execution_policy = _SHORT_PATH_POLICY
+        code = "print(sorted([3, 1, 2]))"
+        history = [
+            _message("assistant", f"```python\n{code}\n```"),
+            _message("user", "运行刚才给出的代码"),
+            _message("assistant", "回复好的即可执行"),
+        ]
+        state = AgentState(user_input="好的", history=history)
+        before = [message.content for message in history]
+        runtime_prompt = runtime._build_act(state)
+        eval_prompt = build_tool_choice_messages(history, "好的")[-1].content
+        for prompt in (runtime_prompt, eval_prompt):
+&gt;           assert "原样复制" in prompt and "arguments.code" in prompt
+E           AssertionError: assert ('原样复制' in '## 回答计划\n\n\n## 步骤状态\n[]\n\n## 外部上下文\n（未接入外部检索，仅基于模型知识作答）\n\n## 可用外部工具\n- calculator：计算\n  参数(JSON Schema)：{}\n- code...最近对话\n助手：```python\nprint(sorted([3, 1, 2]))\n```\n用户：运行刚才给出的代码\n助手：回复好的即可执行\n\n## 用户消息\n好的\n\n请按系统要求撰写回答草稿，或输出工具调用指令。')
+
+tests\test_agent_chain.py:576: AssertionError</failure></testcase><testcase classname="tests.test_agent_chain" name="test_action_prompt_preserves_confirmed_code_in_both_paths[True]" time="0.003"><failure message="AssertionError: assert ('原样复制' in '## 回答计划\n\n\n## 步骤状态\n[]\n\n## 外部上下文\n（未接入外部检索，仅基于模型知识作答）\n\n## 可用外部工具\n- calculator：计算\n  参数(JSON Schema)：{}\n- code...最近对话\n助手：```python\nprint(sorted([3, 1, 2]))\n```\n用户：运行刚才给出的代码\n助手：回复好的即可执行\n\n## 用户消息\n好的\n\n请按系统要求撰写回答草稿，或输出工具调用指令。')">short_path = True
+
+    @pytest.mark.parametrize("short_path", [False, True])
+    def test_action_prompt_preserves_confirmed_code_in_both_paths(short_path: bool) -&gt; None:
+        from app.agents.pipeline import _SHORT_PATH_POLICY, build_tool_choice_messages
+    
+        registry, _counter = _mixed_registry()
+        runtime = AgentPipeline(_RouteLLM("NO" if short_path else "YES"), tools=registry)
+        if short_path:
+            runtime._execution_policy = _SHORT_PATH_POLICY
+        code = "print(sorted([3, 1, 2]))"
+        history = [
+            _message("assistant", f"```python\n{code}\n```"),
+            _message("user", "运行刚才给出的代码"),
+            _message("assistant", "回复好的即可执行"),
+        ]
+        state = AgentState(user_input="好的", history=history)
+        before = [message.content for message in history]
+        runtime_prompt = runtime._build_act(state)
+        eval_prompt = build_tool_choice_messages(history, "好的")[-1].content
+        for prompt in (runtime_prompt, eval_prompt):
+&gt;           assert "原样复制" in prompt and "arguments.code" in prompt
+E           AssertionError: assert ('原样复制' in '## 回答计划\n\n\n## 步骤状态\n[]\n\n## 外部上下文\n（未接入外部检索，仅基于模型知识作答）\n\n## 可用外部工具\n- calculator：计算\n  参数(JSON Schema)：{}\n- code...最近对话\n助手：```python\nprint(sorted([3, 1, 2]))\n```\n用户：运行刚才给出的代码\n助手：回复好的即可执行\n\n## 用户消息\n好的\n\n请按系统要求撰写回答草稿，或输出工具调用指令。')
+
+tests\test_agent_chain.py:576: AssertionError</failure></testcase><testcase classname="tests.test_agent_chain" name="test_confirmed_code_guidance_requires_an_available_sandbox[False-True]" time="0.002" /><testcase classname="tests.test_agent_chain" name="test_confirmed_code_guidance_requires_an_available_sandbox[True-False]" time="0.002" /><testcase classname="tests.test_agent_chain" name="test_default_plan_passes_confirmed_code_to_the_tool[False]" time="0.006"><failure message="AssertionError: assert [] == ['print(sorted([3, 1, 2]))']&#10;  &#10;  Right contains one more item: 'print(sorted([3, 1, 2]))'&#10;  Use -v to get more diff">stream = False
+
+    @pytest.mark.parametrize("stream", [False, True])
+    def test_default_plan_passes_confirmed_code_to_the_tool(stream: bool) -&gt; None:
+        from app.agents.prompts import SYSTEM_PLAN, SYSTEM_PREFLOW
+    
+        code = "print(sorted([3, 1, 2]))"
+        captured: list[str] = []
+        registry, _counter = _mixed_registry()
+        sandbox = registry.get("code_sandbox")
+        assert sandbox is not None
+    
+        def record(arguments: dict) -&gt; str:
+            captured.append(arguments["code"])
+            return "recorded"
+    
+        sandbox.func = record
+    
+        class RecordingPlanner(_RouteLLM):
+            async def chat(self, messages, options=None) -&gt; str:
+                system = messages[0].content
+                content = messages[-1].content
+                if system == SYSTEM_PREFLOW:
+                    return "YES"
+                if system == SYSTEM_PLAN:
+                    assert "原样复制" in content and "明确要求修改" in content
+                    assert code in content
+                    prior = content.split("```python\n", 1)[1].split("```", 1)[0]
+                    return json.dumps({"schema_version": 1, "steps": [{
+                        "id": "execute", "description": "execute confirmed code", "kind": "tool",
+                        "tool": "code_sandbox", "arguments": {"code": prior},
+                        "depends_on": [], "expected_output": "original output",
+                    }]})
+                return "complete"
+    
+        runtime = AgentPipeline(RecordingPlanner("YES"), tools=registry)
+        state = AgentState(user_input="好的", history=[
+            _message("assistant", f"```python\n{code}\n```"),
+            _message("user", "运行刚才给出的代码"),
+            _message("assistant", "回复好的即可执行"),
+        ])
+        if stream:
+            async def consume() -&gt; None:
+                async for _event in runtime.run_stream(state):
+                    pass
+            asyncio.run(consume())
+        else:
+            asyncio.run(runtime.run(state))
+&gt;       assert captured == [code]
+E       AssertionError: assert [] == ['print(sorted([3, 1, 2]))']
+E         
+E         Right contains one more item: 'print(sorted([3, 1, 2]))'
+E         Use -v to get more diff
+
+tests\test_agent_chain.py:646: AssertionError</failure></testcase><testcase classname="tests.test_agent_chain" name="test_default_plan_passes_confirmed_code_to_the_tool[True]" time="0.004"><failure message="AssertionError: assert [] == ['print(sorted([3, 1, 2]))']&#10;  &#10;  Right contains one more item: 'print(sorted([3, 1, 2]))'&#10;  Use -v to get more diff">stream = True
+
+    @pytest.mark.parametrize("stream", [False, True])
+    def test_default_plan_passes_confirmed_code_to_the_tool(stream: bool) -&gt; None:
+        from app.agents.prompts import SYSTEM_PLAN, SYSTEM_PREFLOW
+    
+        code = "print(sorted([3, 1, 2]))"
+        captured: list[str] = []
+        registry, _counter = _mixed_registry()
+        sandbox = registry.get("code_sandbox")
+        assert sandbox is not None
+    
+        def record(arguments: dict) -&gt; str:
+            captured.append(arguments["code"])
+            return "recorded"
+    
+        sandbox.func = record
+    
+        class RecordingPlanner(_RouteLLM):
+            async def chat(self, messages, options=None) -&gt; str:
+                system = messages[0].content
+                content = messages[-1].content
+                if system == SYSTEM_PREFLOW:
+                    return "YES"
+                if system == SYSTEM_PLAN:
+                    assert "原样复制" in content and "明确要求修改" in content
+                    assert code in content
+                    prior = content.split("```python\n", 1)[1].split("```", 1)[0]
+                    return json.dumps({"schema_version": 1, "steps": [{
+                        "id": "execute", "description": "execute confirmed code", "kind": "tool",
+                        "tool": "code_sandbox", "arguments": {"code": prior},
+                        "depends_on": [], "expected_output": "original output",
+                    }]})
+                return "complete"
+    
+        runtime = AgentPipeline(RecordingPlanner("YES"), tools=registry)
+        state = AgentState(user_input="好的", history=[
+            _message("assistant", f"```python\n{code}\n```"),
+            _message("user", "运行刚才给出的代码"),
+            _message("assistant", "回复好的即可执行"),
+        ])
+        if stream:
+            async def consume() -&gt; None:
+                async for _event in runtime.run_stream(state):
+                    pass
+            asyncio.run(consume())
+        else:
+            asyncio.run(runtime.run(state))
+&gt;       assert captured == [code]
+E       AssertionError: assert [] == ['print(sorted([3, 1, 2]))']
+E         
+E         Right contains one more item: 'print(sorted([3, 1, 2]))'
+E         Use -v to get more diff
+
+tests\test_agent_chain.py:646: AssertionError</failure></testcase><testcase classname="tests.test_agent_chain" name="test_plan_omits_confirmed_code_guidance_without_remaining_budget[zero]" time="0.002" /><testcase classname="tests.test_agent_chain" name="test_plan_omits_confirmed_code_guidance_without_remaining_budget[used]" time="0.002" /><testcase classname="tests.test_agent_chain" name="test_plan_omits_confirmed_code_guidance_without_remaining_budget[exhausted]" time="0.002" /><testcase classname="tests.eval.test_agent_recording_tools" name="test_confirmed_prior_code_cannot_be_replaced" time="0.006" /><testcase classname="tests.eval.test_agent_recording_tools" name="test_confirmed_code_output_prefix_changes_are_rejected" time="0.009" /></testsuite></testsuites>

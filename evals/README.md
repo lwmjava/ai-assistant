@@ -83,3 +83,12 @@ python scripts/run_agent_chain_eval.py --mode official
 逐例 `tool_record` 包含意图、工具名、参数有效性、固定错误码、参数 SHA-256、recording_attempts、recorded_calls 和 recording_result。参数无效时两个计数均为 0；合法调用才实际进入一次内存 Tool callback，结果为 `recorded`。不执行代码，不产生假 stdout/code_result；`recorded` 不代表真实沙箱成功。原 `tool_selection_recall` 仍只测名字，因此同名空参数可得 1.0，但有效调用率为 0.0，official/gate 失败。gate 从 raw 回复重新验证并按严格字段类型比对记录，独立计数评分，拒绝记录和汇总篡改；这种回放不是报告真实性的密码学证明。
 
 `agent_gate_probe.py` 现在验证 route、followup、tool、arguments 四类受控退化；arguments 探针保留正确工具名并使用空参数，只触发有效调用率失败。无工具提议同时降低工具名召回和有效调用率，保留两个失败原因。测试与实际命令见实现说明；确定性专项通过不替代真实 official 或人工业务验收。
+
+
+## 已确认代码保持回归 v1
+
+2026-10-14 的真实official Observed Regression：agent-004正确选择code_sandbox，但给先前代码的print增加“排序结果:”前缀；函数AST相同，模块AST变化，tool_call_validity_recall为0.5。冻结agent-chain-v0.1.1仍为Silver，未扩容或改变阈值/评分。修复版本confirmed-code-preservation-v1通过生产/隔离评测共用行动规则及默认规划的最近原历史约束执行参数，只有用户明确要求修改时才允许修改，工具权限与预算不变。
+
+确定性回归覆盖完整/短路共享提示、默认结构化完整run/stream实际记录工具实参、无sandbox/预算耗尽、历史未改与输出前缀拒绝。代码保持提示传播不等于模型质量通过，模型质量仅由新鲜official评测。原四阈值0.9/1.0/1.0/1.0不变，旧失败报告保留。修后第1轮报告agent-chain-v0.1-official-confirmed-code-r1-20261014.json四指标1.0，独立gate0；四类新鲜派生故障探针仅证明拦截机制，无额外模型请求。用户最多三轮授权，第1轮已通过，不执行第2/3轮。
+
+实际命令及红绿/Windows编码问题、输入/Prompt指纹、范围外生产限制见docs/plans/implementation_agt_003.md与docs/reviews/confirmed_code_rounds_20261014.json。模型登记prompt-model-v4仅登记源码/默认配置，非生产启用。

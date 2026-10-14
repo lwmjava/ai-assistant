@@ -1,0 +1,49 @@
+{
+  "version": "confirmed-code-preservation-v1",
+  "official_report": "evals/reports/agent-chain-v0.1-official-confirmed-code-r1-20261014.json",
+  "official_report_sha256": "b6fb26b129d8630c42ddbc0fd49baac31ec13fd728c720365b0219f3c20e751b",
+  "pipeline_sha256": "0a637f7e8f208c3f51d752c799e4df6f29f75ca7241b89f276ce6557e012a2f0",
+  "dataset_hash": "77ff27c8c67c68afb55eed51384e20dd07171b1d047de6cde346c976f38f5ad6",
+  "prompt_hash": "6b6cde3a13a32c3674e908157eb7190376e4e9ad9217d4b16609c3dd0e935ce5",
+  "requested_model": "deepseek-flash",
+  "report_schema_version": "agent-chain-report-2.0.0",
+  "dataset_version": "0.1.1",
+  "evaluator_version": "agent-chain-eval-0.3.0",
+  "metrics": {
+    "route_accuracy": 1.0,
+    "followup_recall": 1.0,
+    "tool_selection_recall": 1.0,
+    "tool_call_validity_recall": 1.0
+  },
+  "source_changes_from_authorized_baseline": [
+    "app/agents/pipeline.py"
+  ],
+  "data_and_gate_unchanged": true,
+  "rounds_used": 1,
+  "max_rounds": 3,
+  "model_calls": 12,
+  "tests_note": "Final UTF8 full suite: 2228 passed, 0 failed, 0 skipped; 142 target and 17 independent assertions overlap; fresh persistence 1 test plus new-process/new-session YES/NO readback passed",
+  "registration": "prompt-model-v4",
+  "registration_authorization": "用户明确批准两登记文件allowed_paths范围扩展并追加v4",
+  "full_suite": {
+    "junit": "docs/reviews/code_preserve_full_utf8_20261014.xml",
+    "exit_code": 0,
+    "passed": 2228,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 468.47,
+    "warnings": 3,
+    "encoding": "PYTHONUTF8=1 and PYTHONIOENCODING=utf-8 in declared conda interpreter"
+  },
+  "first_full_suite_preserved": {
+    "junit": "docs/reviews/code_preserve_full_20261014.xml",
+    "exit_code": 1,
+    "passed": 2149,
+    "failed": 79,
+    "failure_cause": "CLI child UTF8 output decoded by parent GBK; actual UTF8 targeted 81 and full 2228 recheck pass without changing assertions"
+  },
+  "fresh_persistence": "docs/reviews/code_preserve_persistence_recheck_final_20261014.json",
+  "final_independent_acceptance": "docs/reviews/2026-10-14-AGT-003-原代码保持最终人工验收.md",
+  "agt003_status": "done",
+  "pagt007_status": "in_review"
+}

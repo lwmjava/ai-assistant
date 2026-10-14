@@ -1,0 +1,6 @@
+{
+  "old_registry_versions_unchanged": true,
+  "current": "prompt-model-v4",
+  "gate_exit": 0,
+  "gate_stdout": "warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.\nAGENT_GATE_PASS\n"
+}

@@ -1,6 +1,6 @@
 # Prompt / 模型版本登记
 
-版本格式 v1；维护入口 `app/agents/version_registry.py`。当前 `prompt-model-v3` 登记共享文本工具的平台判断修复（Linux mypy 可排除 Windows API）；`prompt-model-v1`、`prompt-model-v2` 历史记录保持不变，模型默认指纹不变。v2 登记国内搜索、共享文本工具与其配置/健康/注册入口。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
+版本格式 v1；维护入口 `app/agents/version_registry.py`。当前登记为 `prompt-model-v4`（原代码保持修复，见文末）；历史 `prompt-model-v3` 登记共享文本工具的平台判断修复（Linux mypy 可排除 Windows API）；`prompt-model-v1`、`prompt-model-v2` 历史记录保持不变，模型默认指纹不变。v2 登记国内搜索、共享文本工具与其配置/健康/注册入口。登记生效时间为源码默认值基线登记时间，**不是部署启用或模型质量认证**。`source_commit` 是变更基点 Git 引用，`source_version` 是实际工作树 LF 规范化文件摘要的版本；未提交文件不能宣称已存在于基点提交。在 Git 工作树内工具核对基点确为存在的 commit；隔离无 Git 副本仅保留该引用，来源需在原库独立核对。
 
 ## 登记范围
 
@@ -41,3 +41,12 @@
 ```
 
 `prompt-model-registry-evaluation.json` 为 AI 编写的 Smoke/Adversarial v1，不是 Gold 或真实模型生成质量评测。验收包含源/模型改动→校验失败→恢复→新进程通过，秘密不输出，坏输入/JSON、UTC、有限数值、类型、未知键、Git基点与新源防漏登记。既有生成行为保持由 Agent/LLM/Supervisor 回归验证。
+
+
+## 2026-10-14 原代码保持登记
+
+当前正式登记为 `prompt-model-v4`，追加已获用户批准的代码确认执行Prompt修复。代码保持规则由行动与结构化规划共用，规划携带最近原历史；不得擅自增加输出前缀/额外打印，明确要求修改时仍允许修改。旧v1/v2/v3记录保持不变。登记同时绑定当前HEAD已有源码状态；此前34项既有漂移的登记同步不代表重新验收或发布这些功能。
+
+`source_commit`仍是当前基点ee54252d3be42a9827a15849c0c8b8f5552151d7，v4的未提交源码以sources及source_version绑定，候选登记时刻不是部署启用时间。默认模型字段由源码AST登记，不复制.env或密钥；实际正式评测的请求模型及endpoint身份在独立报告中。第1轮新鲜真实official四指标1.0、独立gate0，报告为evals/reports/agent-chain-v0.1-official-confirmed-code-r1-20261014.json；小型Silver语料结果不能作为生产质量保证。
+
+回滚本轮Prompt可恢复原pipeline.py版本并重新选取匹配当前完整源码的登记；如要整份旧登记回滚，按上方完整源/非敏感配置恢复流程执行，不能只切current指针声称回滚成功。保留失败评测报告，不自动提交/推送/部署或迁移重要数据。

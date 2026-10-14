@@ -1,0 +1,5 @@
+{
+  "returncode": 0,
+  "stdout": "warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.\nAGENT_GATE_PASS\n",
+  "stderr": ""
+}

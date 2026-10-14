@@ -4347,7 +4347,8 @@ tasks:
 
   - id: "AGT-003"
     title: "短路路径带上历史，并执行安全工具"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-14"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -4365,6 +4366,8 @@ tasks:
           evidence: "docs/plans/plan_agent_chain_fix.md"
     scope:
       allowed_paths:
+        - "docs/ai-prompts/prompt-model-registry.json"
+        - "docs/ai-prompts/prompt-model-registry.md"
         - "docs/plans/plan_agent_chain_fix.md"
         - "docs/plans/implementation_agt_003.md"
         - "app/agents/pipeline.py"
@@ -4425,6 +4428,7 @@ tasks:
         - "python scripts/run_agent_chain_eval.py --mode smoke"
         - "python scripts/run_agent_chain_eval.py --mode official"
     execution:
+      notes: "2026-10-14：用户委托人工业务验收，独立/root/accept_agt007完成验收预检，239项当前主链/前置/runner/gate回归exit0、13项runtime入口断言通过；完整/短路工具结果已新进程新Session按本轮开始时间回查提交。运行时隔离行为通过，无新未决业务缺陷。未验证项原样保留：当前dataset0.1.1/evaluator0.3.0/report和gate2.0.0的真实official尚未执行，缺tool_call_validity_recall新鲜真实证据；旧协议报告被当前gate拒绝，不构成当前关闭证据。自动验收与关闭对账前置尚未通过，整卡保持in_review。报告docs/reviews/2026-10-14-AGT-003-人工验收第1轮.md；无新增模型调用/CI/Git发布，人工委托不能替代真实质量必交付。 2026-10-14本轮真实official：用户明确授权直接使用.env现有配置，单一intent/chat请求模型deepseek-flash；唯一一次12请求串行、每次60秒、无新增重试。新报告evals/reports/agent-chain-v0.1-official-20261014T022048326800Z.json，dataset0.1.1/evaluator0.3.0/report2.0.0；route_accuracy/followup_recall/tool_selection_recall均1.0，tool_call_validity_recall=0.5低于原1.0门槛，official与独立gate均exit1。agent-004选中code_sandbox但先前代码绑定prior_code_mismatch，recorded_calls=0；真实报告原样保留，源/输入指纹未变。此前新official未执行的缺口现转为已执行但不通过，仍in_review；未验证：真实official质量门禁通过、失败闭环后新鲜验收，服务端返回模型身份未核验。原声明零副作用为recording设计而非动态计数，真实模型HTTP不算network零。证据docs/reviews/agt003_official_execution_20261014.json；无新增CI、Git发布、业务源码改动或重复筛绿调用。 2026-10-14修复最终闭环：用户授权修复并最多三轮真实official，生产action与默认结构化plan共用原代码保持规则，规划带最近原历史；只有sandbox可用/预算可用才提示，明确修改仍允许，权限/Guard/评分/冻结数据不改。有效红4failed/7passed→142专项通过，17独立入口通过，范围Ruff0/mypy205源0。修后第1轮12请求deepseek-flash四指标1.0、official/独立gate0，新鲜四故障probe正确目标exit1、整体0，不执行第2/3轮。初全量2149/79归因为父GBK解码子UTF8输出，同一conda PYTHONUTF8=1定向81及最终2228passed/0failed/0skipped通过（468.47s），未改断言或门禁。用户明确批准两Prompt登记路径范围扩展，v4追加旧历史不变/check0。完整/短路新进程新Session提交回查本轮1例+YES/NO true，记录code_preserve_persistence_recheck_final_20261014.json。独立confirmed_code_review初P2闭合，独立confirmed_code_final_accept最终原卡验收通过，报告docs/reviews/2026-10-14-AGT-003-原代码保持最终人工验收.md；实际说明和逐项关闭对账已同步。最终质量缺口闭合，本卡done；真实结构化规划质量/生产性能/PostgreSQL/多实例/断电exactly-once及服务器返回模型身份未验证，非本卡批准必交付，不宣称整体上线。正式副作用计数字段是recording设计，不是动态零计量；保留历史失败报告。本轮无Git提交/推送/CI触发/部署。"
       owner: "个人开发者"
       blocked_by: ""
       nightly:
@@ -4725,7 +4729,8 @@ tasks:
 
   - id: "PAGT-004"
     title: "Plan 从文本计划升级为可编排步骤"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-14"
     priority: "P2"
     target_date: ""
     depends_on:
@@ -4764,7 +4769,7 @@ tasks:
       commands:
         - "pytest -k 'plan'"
     execution:
-      notes: "2026-10-13：用户指定task-card-delivery v1.3.0，批准docs/与app/llm/mock.py、ADR-0011固定顺序Plan v1、具体参数/依赖/预期产出/逐步失败定位、旧checkpoint兼容与显式回滚，不做动态参数引用。已实现严格有界计划、逐步工具/reason、总预算/指纹恢复、模型超时、ToolOutput业务状态及敏感失败/恢复文本规范化。实际全量1978passed/0failed/0skipped(428.10s)退出0；ruff全仓0、mypy204source0、diff检查0。独立入口13E2，原反例CE01-07正式先红并修复，repair_recheck72专项+2同步/流式恢复通过，无未决P1/P2；前置PAGT-002开工171专项及最终全量当前证据通过。实现/关闭对账见docs/plans/implementation_pagt_004.md、closure_pagt_004_20261013.md；Evaluation agent-structured-plan-v1与SHA/JUnit证据见docs/reviews/pagt004_delivery_evidence_20261013.json。最终独立人工审核第1轮通过(356passed/1622deselected/21.03s/退出0)，37文件及JUnit指纹匹配，见docs/reviews/2026-10-13-PAGT-004-manual-review-1.md；用户业务验收未委托/未验证，保持in_review不done。真实LLM生成质量/外部网络可用性/PostgreSQL/多实例/生产性能/写失败或断电exactly-once未验证；不声称生产可用。回滚构造参数关闭新v1生成，已有v1恢复保留，完整旧代码回退须核查活动快照与副作用。已有PAGT-006修改保留且不计本卡；未提交/推送/合并/部署。"
+      notes: "2026-10-13：用户指定task-card-delivery v1.3.0，批准docs/与app/llm/mock.py、ADR-0011固定顺序Plan v1、具体参数/依赖/预期产出/逐步失败定位、旧checkpoint兼容与显式回滚，不做动态参数引用。已实现严格有界计划、逐步工具/reason、总预算/指纹恢复、模型超时、ToolOutput业务状态及敏感失败/恢复文本规范化。实际全量1978passed/0failed/0skipped(428.10s)退出0；ruff全仓0、mypy204source0、diff检查0。独立入口13E2，原反例CE01-07正式先红并修复，repair_recheck72专项+2同步/流式恢复通过，无未决P1/P2；前置PAGT-002开工171专项及最终全量当前证据通过。实现/关闭对账见docs/plans/implementation_pagt_004.md、closure_pagt_004_20261013.md；Evaluation agent-structured-plan-v1与SHA/JUnit证据见docs/reviews/pagt004_delivery_evidence_20261013.json。最终独立人工审核第1轮通过(356passed/1622deselected/21.03s/退出0)，37文件及JUnit指纹匹配，见docs/reviews/2026-10-13-PAGT-004-manual-review-1.md；用户业务验收未委托/未验证，保持in_review不done。真实LLM生成质量/外部网络可用性/PostgreSQL/多实例/生产性能/写失败或断电exactly-once未验证；不声称生产可用。回滚构造参数关闭新v1生成，已有v1恢复保留，完整旧代码回退须核查活动快照与副作用。已有PAGT-006修改保留且不计本卡；未提交/推送/合并/部署。 2026-10-14：用户明确委托独立人工验收Agent代行可复现业务操作。/root/accept_plan_skill原契约验收通过，398专项（含前置工具/审计）exit0，独立6个同步/流式整计划预检入口与2个Skill入口合计8项通过；最终docs探针由/root/accept_agt007串行重放8passed/exit0。当前pipeline后续修改已新鲜绑定，非法后继零前缀执行、失败step定位、取消续跑/预算/权限/旧链回滚通过，无未决P1/P2。报告docs/reviews/2026-10-14-PAGT-004-人工验收第1轮.md，机器证据pagt045_manual_evidence_20261014.json。原用户未委托缺口已解除，本轮关闭done；真实LLM规划质量、外网、PostgreSQL、多实例、生产性能、断电exactly-once仍未验证，不属于本卡批准必交付，不声明生产上线。无业务源码修改、模型调用或Git发布。"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -4774,7 +4779,8 @@ tasks:
 
   - id: "PAGT-005"
     title: "Skill 版本化与回归"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-14"
     priority: "P2"
     target_date: ""
     depends_on:
@@ -4813,7 +4819,7 @@ tasks:
       commands:
         - "pytest -k 'skill'"
     execution:
-      notes: "2026-10-13：用户批准docs/范围及推荐方案；内置发布版手动升号/持久账本、runtime effective_version自动随内容变化，DB/API声明version保持兼容。工程验证pytest -k skill 103passed、调用方142passed，ruff/mypy退出0；独立入口反例P2已修复并复验82+10passed，无未决P1/P2。实现说明docs/plans/implementation_pagt_005.md；关闭对账docs/plans/closure_pagt_005_20261013.md；最终独立审核记录docs/reviews/2026-10-13-PAGT-005-manual-review-1.md。用户业务验收未验证，保持in_review；真实模型质量/持久用户版本链/生产性能未验证，不冒充已完成。未提交/推送/部署，PAGT004/006改动保留。"
+      notes: "2026-10-13：用户批准docs/范围及推荐方案；内置发布版手动升号/持久账本、runtime effective_version自动随内容变化，DB/API声明version保持兼容。工程验证pytest -k skill 103passed、调用方142passed，ruff/mypy退出0；独立入口反例P2已修复并复验82+10passed，无未决P1/P2。实现说明docs/plans/implementation_pagt_005.md；关闭对账docs/plans/closure_pagt_005_20261013.md；最终独立审核记录docs/reviews/2026-10-13-PAGT-005-manual-review-1.md。用户业务验收未验证，保持in_review；真实模型质量/持久用户版本链/生产性能未验证，不冒充已完成。未提交/推送/部署，PAGT004/006改动保留。 2026-10-14：用户明确委托独立人工验收Agent代行可复现业务操作。/root/accept_plan_skill原契约验收通过，技能105专项/前置PAGT-001119项exit0；独立HTTP改正文及触发词→新Session回读→下一Chat实际生效版本变化、真实内置复制合法升号与历史篡改拒绝通过。独立探针8项含6Plan/2Skill，最终由/root/accept_agt007串行重放8passed/exit0，无未决P1/P2。报告docs/reviews/2026-10-14-PAGT-005-人工验收第1轮.md，机器证据pagt045_manual_evidence_20261014.json。原用户未委托缺口已解除，本轮关闭done；真实模型质量、生产性能、多实例、持久用户全文版本链仍未验证且不在批准必交付。无业务源码修改、模型调用或Git发布。"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -8894,7 +8900,8 @@ tasks:
 
   - id: "PAGT-006"
     title: "独立 Tool Executor + State Manager 层（随工具扩展落地）"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-14"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8945,7 +8952,7 @@ tasks:
         - 'pytest -k "agent or tool or chat"'
     execution:
       owner: "个人开发者"
-      notes: "2026-10-11：用户拍板落地边界——全量迁移既有 4 个内置工具与中间状态；实施前须按 AGENTS.md §4 先落 ADR（变更 Harness/状态边界），State 持久化方案（含新表）在 ADR 中确定。 2026-10-12：PAGT-006 实现完成并经独立验证+入口级反例审查两轮闭环。落地独立 Tool Executor（参数校验/超时/幂等瞬时重试/RBAC+审计组合委托/共享观测拼装）、StateManager（零 DB import）+ agent_run_states checkpoint 持久化表，构造函数可选注入、未注入走原路径。修复轮关闭 P1-1 跨消息 checkpoint 污染：load_active 仅恢复 running/suspended 行、终态 discard；绑定真实用户消息行 id（quota.accept_user_message 返回）使 UNIQUE 真实生效、跨消息隔离。证据：tests/test_agent_state.py+test_agent_state_resume.py 21 passed；pytest -k \"agent or tool or chat or quota or rag_log\" 279 passed/0 失败；ruff 0；mypy 0（199 源）。实现说明 docs/plans/implementation_pagt_006.md；关闭对账 docs/plans/closure_pagt_006_20261012.md；修复计划 docs/plans/plan_pagt_006_review_fixes_20261012.md；ADR docs/adr/0010-agent-runtime-state-boundary.md。未验证项（原样登记）：①根目录 README.md/.env.example 未同步三个 AGENT_STATE_* 配置（已记录偏差，不越界）；②D-002 NULL 兜底路径未做多进程并发压测（生产 message_id 已非 NULL）；③web_fetch golden 未沉淀为 pytest（独立冒烟实测）；④PostgreSQL E1 生产验证未做（证据为 SQLite E2）。无未修复 P1/P2；状态 in_review，待独立人工审核 Agent 结论与用户业务验收，不自动 done；未 git 提交。 2026-10-12：独立人工审核 Agent 验收通过（docs/reviews/2026-10-12-PAGT-006-manual-review-1.md：9 关键文件指纹、21+279 passed 实跑、关闭对账核对、三条不变量均独立确认，无未修复 P1/P2），建议卡保持 in_review，交用户业务验收决策。 2026-10-13：用户授权修复独立代码评审的F01-F07，并批准resume_message_id入口及API/main/README/.env.example/OpenAPI范围扩展。评审报告docs/reviews/2026-10-13-PAGT-006-code-review.md，落盘计划docs/plans/plan_pagt_006_review_fixes_20261013.md；先红用例12failed/1passed、HTTP入口10failed/1passed，新增恢复/权限/配额/取消/互斥/清理生命周期29passed。状态继续in_review，最终验证与实现说明以本轮记录为准，旧无P1/P2结论为历史记录。 2026-10-13最终专项：40条新增回归加默认后端隔离反例共41passed；完整ruff退出0、mypy退出0（201源）、前端typecheck/build退出0。独立复审docs/reviews/2026-10-13-PAGT-006-fix-independent-review.md新增R1当前RAG重建/R2数据库元信息校验，均复现后修复；已补连续中断预算/完整终态/清理故障回滚与租户过滤。根配置文档偏差已关闭。实际行为、最终全量结果与残余限制见docs/plans/implementation_pagt_006_review_fixes_20261013.md；等待用户业务验收，不自动done。 最终串行全量：显式RAG_BACKEND=native隔离本机langchain配置，1824passed/0failed，退出0，372.28秒；首轮1812passed/1配置失败保留在实现说明，不改业务默认或.env。"
+      notes: "2026-10-11：用户拍板落地边界——全量迁移既有 4 个内置工具与中间状态；实施前须按 AGENTS.md §4 先落 ADR（变更 Harness/状态边界），State 持久化方案（含新表）在 ADR 中确定。 2026-10-12：PAGT-006 实现完成并经独立验证+入口级反例审查两轮闭环。落地独立 Tool Executor（参数校验/超时/幂等瞬时重试/RBAC+审计组合委托/共享观测拼装）、StateManager（零 DB import）+ agent_run_states checkpoint 持久化表，构造函数可选注入、未注入走原路径。修复轮关闭 P1-1 跨消息 checkpoint 污染：load_active 仅恢复 running/suspended 行、终态 discard；绑定真实用户消息行 id（quota.accept_user_message 返回）使 UNIQUE 真实生效、跨消息隔离。证据：tests/test_agent_state.py+test_agent_state_resume.py 21 passed；pytest -k \"agent or tool or chat or quota or rag_log\" 279 passed/0 失败；ruff 0；mypy 0（199 源）。实现说明 docs/plans/implementation_pagt_006.md；关闭对账 docs/plans/closure_pagt_006_20261012.md；修复计划 docs/plans/plan_pagt_006_review_fixes_20261012.md；ADR docs/adr/0010-agent-runtime-state-boundary.md。未验证项（原样登记）：①根目录 README.md/.env.example 未同步三个 AGENT_STATE_* 配置（已记录偏差，不越界）；②D-002 NULL 兜底路径未做多进程并发压测（生产 message_id 已非 NULL）；③web_fetch golden 未沉淀为 pytest（独立冒烟实测）；④PostgreSQL E1 生产验证未做（证据为 SQLite E2）。无未修复 P1/P2；状态 in_review，待独立人工审核 Agent 结论与用户业务验收，不自动 done；未 git 提交。 2026-10-12：独立人工审核 Agent 验收通过（docs/reviews/2026-10-12-PAGT-006-manual-review-1.md：9 关键文件指纹、21+279 passed 实跑、关闭对账核对、三条不变量均独立确认，无未修复 P1/P2），建议卡保持 in_review，交用户业务验收决策。 2026-10-13：用户授权修复独立代码评审的F01-F07，并批准resume_message_id入口及API/main/README/.env.example/OpenAPI范围扩展。评审报告docs/reviews/2026-10-13-PAGT-006-code-review.md，落盘计划docs/plans/plan_pagt_006_review_fixes_20261013.md；先红用例12failed/1passed、HTTP入口10failed/1passed，新增恢复/权限/配额/取消/互斥/清理生命周期29passed。状态继续in_review，最终验证与实现说明以本轮记录为准，旧无P1/P2结论为历史记录。 2026-10-13最终专项：40条新增回归加默认后端隔离反例共41passed；完整ruff退出0、mypy退出0（201源）、前端typecheck/build退出0。独立复审docs/reviews/2026-10-13-PAGT-006-fix-independent-review.md新增R1当前RAG重建/R2数据库元信息校验，均复现后修复；已补连续中断预算/完整终态/清理故障回滚与租户过滤。根配置文档偏差已关闭。实际行为、最终全量结果与残余限制见docs/plans/implementation_pagt_006_review_fixes_20261013.md；等待用户业务验收，不自动done。 最终串行全量：显式RAG_BACKEND=native隔离本机langchain配置，1824passed/0failed，退出0，372.28秒；首轮1812passed/1配置失败保留在实现说明，不改业务默认或.env。 2026-10-14：用户明确委托独立人工验收Agent代行可复现业务操作。/root/accept_executor验收原契约通过，90项专项（含前置PAGT-002契约与审计）exit0；实际ChatService取消→新Session读取checkpoint/审计→HTTP续跑200/done、工具只调用一次、用户消息与配额不重复、重复恢复409/跨租户404零新增副作用通过；本机HTTP web_fetch兼容通过。最终docs探针另由/root/accept_agt007串行重放exit0，指纹/日志已绑定，无未决P1/P2。报告docs/reviews/2026-10-14-PAGT-006-人工验收第1轮.md与pagt006_manual_probe_20261014.json。原用户未委托缺口已解除，本轮按批准单实例同消息API恢复边界关闭done；PostgreSQL生产、多实例、真实模型质量、外网可靠性、断电exactly-once未验证，不作生产声明。无业务源码修改、模型调用或Git发布。"
       nightly:
         eligible: false
         production_access: false
@@ -9001,7 +9008,7 @@ tasks:
         - "python scripts/run_agent_chain_eval.py --mode smoke；CI 触发 official"
     execution:
       owner: "个人开发者"
-      notes: "2026-10-11：用户确认 CI 前提——将在 GitHub 配置项目 .env 模型凭证；门禁按 agent-chain-v0.1 官方基线接入。 2026-10-13：用户批准 allowed_paths 扩展到 docs/；实施计划 docs/plans/plan_pagt_007_20261013.md 已落盘，待独立计划审查与具体设计确认。AGT-003 当前关键回归71passed/0skipped/exit0，依赖复核见 docs/reviews/2026-10-13-PAGT-007-dependency-recheck.md。用户随后批准推荐方案与本轮 official 调用（12次串行请求，每次≤60秒，无新增重试；不含Git提交推送）。独立计划审查 docs/reviews/2026-10-13-PAGT-007-plan-review.md 的设计P1/P2已修订闭合。本地实现完成并独立复验：runner/gate67passed、独立CLI25passed/0skipped、独立反例37项通过，ruff0、mypy0（205源），最终diffcheck0；F01-F06修复闭合，源码指纹及中间失败见docs/plans/implementation_pagt_007.md与docs/reviews/pagt007_delivery_evidence_20261013.json。用户将模型切为deepseek-flash后本轮唯一真实official12请求三指标1.0/1.0/1.0、gate0、新鲜派生三探针各目标exit1，未新增模型请求。状态in_review不done。未验证项（原样登记）：最新GitHubCI run38410432101绑定4d627e63已执行12次请求，route1.0/followup1.0/tool0.5，低于工具召回阈值1.0；agent-004工具回复为空，official exit1真实拦截，gate/probe在CI skipped。F07修订独立复核绑定有效：同提交新报告gate exit1仅tool_selection_recall，非身份错误；完整CI通过及三类CI探针仍未达到。F07独立修后2passed/exit0、实际捕获及GitBash语法0；独立报告docs/reviews/2026-10-13-PAGT-007-ci-fix-review.md。同run后端1852passed/1failed/4skipped（既有RAG039并发测试database is locked），RAGgate skipped；前端通过。不声称全CI通过。 required-check分支保护配置未核验，不能仅凭workflow称强制发布保护已启用。 最终独立人工审核尚未执行（原卡CI自动验收未通过，不满足技能前置）；用户业务验收未委托，仍需用户决策。 用户后续明确批准仅本卡提交、推送独立分支codex/agent-baseline-gate及一次CI（最多12次新增模型请求，无重试），通过后执行独立最终验收；不合并部署。隔离副本92passed/exit0、ruff0、diffcheck0。发布记录docs/plans/publication_pagt_007_20261013.md；关闭对账docs/plans/closure_pagt_007_20261013.md。"
+      notes: "2026-10-11：用户确认 CI 前提——将在 GitHub 配置项目 .env 模型凭证；门禁按 agent-chain-v0.1 官方基线接入。 2026-10-13：用户批准 allowed_paths 扩展到 docs/；实施计划 docs/plans/plan_pagt_007_20261013.md 已落盘，待独立计划审查与具体设计确认。AGT-003 当前关键回归71passed/0skipped/exit0，依赖复核见 docs/reviews/2026-10-13-PAGT-007-dependency-recheck.md。用户随后批准推荐方案与本轮 official 调用（12次串行请求，每次≤60秒，无新增重试；不含Git提交推送）。独立计划审查 docs/reviews/2026-10-13-PAGT-007-plan-review.md 的设计P1/P2已修订闭合。本地实现完成并独立复验：runner/gate67passed、独立CLI25passed/0skipped、独立反例37项通过，ruff0、mypy0（205源），最终diffcheck0；F01-F06修复闭合，源码指纹及中间失败见docs/plans/implementation_pagt_007.md与docs/reviews/pagt007_delivery_evidence_20261013.json。用户将模型切为deepseek-flash后本轮唯一真实official12请求三指标1.0/1.0/1.0、gate0、新鲜派生三探针各目标exit1，未新增模型请求。状态in_review不done。未验证项（原样登记）：最新GitHubCI run38410432101绑定4d627e63已执行12次请求，route1.0/followup1.0/tool0.5，低于工具召回阈值1.0；agent-004工具回复为空，official exit1真实拦截，gate/probe在CI skipped。F07修订独立复核绑定有效：同提交新报告gate exit1仅tool_selection_recall，非身份错误；完整CI通过及三类CI探针仍未达到。F07独立修后2passed/exit0、实际捕获及GitBash语法0；独立报告docs/reviews/2026-10-13-PAGT-007-ci-fix-review.md。同run后端1852passed/1failed/4skipped（既有RAG039并发测试database is locked），RAGgate skipped；前端通过。不声称全CI通过。 required-check分支保护配置未核验，不能仅凭workflow称强制发布保护已启用。 最终独立人工审核尚未执行（原卡CI自动验收未通过，不满足技能前置）；用户业务验收未委托，仍需用户决策。 用户后续明确批准仅本卡提交、推送独立分支codex/agent-baseline-gate及一次CI（最多12次新增模型请求，无重试），通过后执行独立最终验收；不合并部署。隔离副本92passed/exit0、ruff0、diffcheck0。发布记录docs/plans/publication_pagt_007_20261013.md；关闭对账docs/plans/closure_pagt_007_20261013.md。 2026-10-14：用户委托人工业务验收，独立/root/accept_agt007预检完成，239项当前主链/runner/gate组合exit0，本地gate四类route/followup/tool/arguments退化拦截通过。未验证项原样保留：AGT-003新版真实official和当前关闭对账不满足；当前HEAD新协议真实GitHubCI基线通过与四类CI退化探针完整执行仍缺；required-check/分支保护未核验。最近旧CI工具召回0.5失败保留但不据此断言新版质量0.5；旧报告report_version不兼容不能验收新协议。旧全CI后端SQLite并发失败保留，本轮未重跑全工作流。不满足自动验收/最终审核前置，整卡保持in_review。报告docs/reviews/2026-10-14-PAGT-007-人工验收第1轮.md。本卡原契约明确为1.0发布门禁，旧阶段表未列不能视为排除。无新增模型调用/触发CI/Git发布。 2026-10-14本轮用户授权.env真实official已执行12请求，新协议正式报告route/followup/tool1.0、validity0.5，official/gate exit1（agent-004 prior_code_mismatch），当前前置AGT-003仍未关闭。缺口现为真实official质量未通过及当前版本真实GitHubCI/CI探针未执行，保持in_review。本轮仅授权本地模型评测，未提交/推送/触发远程CI/部署，未以本地报告替代CI必交付。新报告evals/reports/agent-chain-v0.1-official-20261014T022048326800Z.json与docs/reviews/agt003_official_execution_20261014.json保留，无降阈值/改冻结语料/改Prompt。 2026-10-14修复后前置更新：AGT-003当前原卡已闭合并done。新鲜真实r1报告evals/reports/agent-chain-v0.1-official-confirmed-code-r1-20261014.json为dataset0.1.1/evaluator0.3.0/report与gate2.0.0，route/followup/tool/validity均1.0、official及独立gate0；四类本地派生CI机制probe目标exit1、overall0；当前源码指纹和Prompt登记v4有效，全量2228passed。该证据仅本地，不代替真实GitHubCI。本卡仍in_review：当前最终版本真实CI基线通过、四类CI退化probe实际执行与required-check配置未核验，最终整卡审核前置不满足。用户本轮仅授权修复/最多三轮本地模型及两Prompt登记文件，未授权Git发布/新CI；未提交推送部署。前置质量缺口不再列为未完成，保留原旧CI失败历史。"
       nightly:
         eligible: false
         production_access: false

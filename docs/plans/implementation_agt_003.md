@@ -115,3 +115,57 @@ python -m mypy app/ --cache-dir data/mypy-agt003-f2
 独立只读 Agent 两个无数据库 probe exit 0，无阻断项：12 个无效参数不进 callback、合法提议实际一次 Tool.execute、替代前序代码拒绝、危险代码文本未执行、runtime 与 eval Prompt 逐字一致；同名空参数低有效率 gate 拦截、四类字段伪造 record_binding、汇总伪造 metric_integrity、第四类探针、冻结身份与协议检查均通过。生产函数设为失败哨兵而未触发；未 pytest、模型、网络、沙箱或文件修改。
 
 本轮未调用真实模型、未执行 full pytest/页面/生产验证，未 Git 提交/推送、CI 或部署。F1/F2/F3 实现缺口已修复；AGT-003 保持 in_review，仍需新版真实 official 和人工业务证据，PAGT-007 不能用这些模拟结果关闭。回滚撤回本轮 evaluator/gate/probe 协议和构建函数提取，保留 F1/F3 数据修复与历史证据；回滚旧协议不能作为新版验收通过。
+
+
+## 2026-10-14 新协议真实 official 执行补记
+
+用户明确授权使用.env现有模型/密钥/API，当前实际单一intent provider请求deepseek-flash、护栏批准、缓存关闭。指定conda解释器执行一次12请求、温度0/60秒单次上限/无新增重试；排他新报告[原始结果](../../evals/reports/agent-chain-v0.1-official-20261014T022048326800Z.json)使用dataset0.1.1/evaluator0.3.0/report2.0.0。分流/续答/工具选择均1.0，工具调用合法率0.5低于原1.0门槛，official与独立身份gate均exit1，agent-004为prior_code_mismatch且recorded_calls=0。报告与失败保留，未重复请求筛选通过。
+
+本轮无业务源码/Prompt/冻结语料/阈值变更；AGT-003真实official已执行但不通过，PAGT-007前置和远程CI必交付仍不满足，两卡保持in_review。无CI触发或Git发布，真实模型质量失败不能由人工认可消除；当前服务端返回模型身份不可核验，只记录请求模型。报告side_effects是recording设计声明，真实模型HTTP流量存在，不把network=0解释成未拨网络。执行机器记录见[执行记录](../reviews/agt003_official_execution_20261014.json)。
+
+
+## 2026-10-14 已确认代码保持修复实际交付
+
+已登录用户要求运行先前代码或确认执行时，行动提示与结构化规划提示共用原代码保持规则：原样传入arguments.code，不添加输出前缀/额外打印/包装/优化；明确修改要求仍允许修改，来源不清或代码不完整提示澄清。默认完整链规划新增最近原历史，避免只依据理解摘要重新生成代码；只有sandbox可用且预算未耗尽时提示保持规则。规则只是Prompt语义，不提供调用授权、不自动替换模型参数；原Guard/Executor/白名单/权限/预算与评分不变。完整/短路以及默认结构化完整run/stream均已验证提示/参数传播。
+
+实际修改：app/agents/pipeline.py共享_confirmed_code_guidance和_build_plan输入、tests/test_agent_chain.py入口/预算反例、tests/eval/test_agent_recording_tools.py打印前缀Observed Regression，evals/README.md回归登记。独立计划审查发现“仅行动提示绕过默认结构化完整链”P2，实施前修订计划并一并闭合；独立17入口断言通过，无新未决P1/P2。用户明确批准扩展docs/ai-prompts/两登记文件，追加prompt-model-v4并保留旧v1/v2/v3，version_registry check退出0；34项HEAD既有登记漂移同步不代表重新发布或验收这些历史功能。
+
+修复前最终有效红证据4failed/7passed（两个action、两个默认完整run/stream缺规则/原历史）；测试脚本一度重复定义、流式方法名误写及忽略代码围栏末端换行均如实保留在过程证据，非业务根因。最小实现后相关142passed/exit0，Ruff范围exit0，mypy app/205源exit0。
+
+真实模型用现有.env、请求模型deepseek-flash，修后第1轮12请求，official/gate退出0、四指标均1.0；agent-004先前代码AST保持，recording只调用内存替身。四类route/followup/tool/arguments派生probe正确目标退出1，probe总体exit0，没有新增模型调用。用户最多3轮，本轮只用了1轮（此前未修复基线不计），不追加第2/3轮。新报告与输入身份见evals/reports/agent-chain-v0.1-official-confirmed-code-r1-20261014.json及docs/reviews/confirmed_code_rounds_20261014.json。报告SIDE_EFFECTS为设计声明而非动态计数，真实模型HTTP存在，服务端实际返回模型身份未核验。
+
+首轮全量2149passed/79failed，511.96秒exit1：79集中在CLI断言，子进程stdout为UTF-8而父进程默认GBK解码，91warnings中有UnicodeDecodeError线程警告，导致stdout为None或乱码。没有改业务断言/源码，通过同一指定conda解释器开启PYTHONUTF8=1，集中复验81passed/exit0（覆盖79失败及两同文件既有用例）。该81不是整仓通过，本轮全量UTF8重验结果另补。初次Prompt版本check失败已在正式追加v4后通过，未删除既有漂移证据或放宽检查。
+
+未修改.env、评分/冻结语料/阈值/执行器、权限或State持久化，未调用真实沙箱/MCP/RAG/业务数据库（正式评测只recording）；测试使用隔离SQLite，禁用模型凭据后执行。无Git提交/推送/CI触发/合并/部署；PAGT-007仍须真实GitHubCI，不能拿本地结果关闭。Prompt约束不是安全强制验证，不保证所有模型永久遵循；样本为Silver小集，不宣称生产质量/性能/PostgreSQL/多实例或断电exactly-once。回滚仅撤本轮Prompt及配套测试，登记须与完整源码匹配，保留所有真实失败报告。最终关闭须全量结果/独立最终验收与任务备注同期。
+
+
+### 本轮关闭契约对账（等待最终全量/独立裁定）
+
+| 原始要求 | 当前证据 | 结果/边界 |
+|---|---|---|
+| 行动与最终回复带最近对话、1500字代码完整 | 142专项及17独立入口，_build_respond未改，行动/规划原历史保留 | E2/E3通过；真实生成指标另记 |
+| 短路复用共享工具循环、完整/短路code_result落库 | 原主链专项已在142中执行，最终全量同时覆盖，另补新进程新Session提交回查 | E2相关路径通过，回查结果随后补记 |
+| 三工具白名单、未知/MCP/web_fetch拒绝 | 原白名单/拒绝正式回归与17独立入口，无执行边界变更 | E2通过，不承诺未分级MCP可用 |
+| 无工具短路模型调用数不变 | 原test_short_path_without_tool_keeps_call_count本轮执行 | E2通过 |
+| 不可信资料点名工具仍拦截 | 原正式拒绝回归，静态提示明确不提供调用授权 | E2通过；Prompt不是新的安全Guard |
+| 真实official与参数绑定、内存recording | 本轮r1四指标1.0/official及独立gate0、agent004原代码AST保持、四类fault gate目标exit1 | E1模型生成+E2机制通过；网络存在，side_effects设计声明不是动态计数 |
+| 报告新文件拒绝覆盖 | r1排他新路径、原失败基线未改；正式runner排他写入回归与新鲜probe | E2通过，不覆盖历史 |
+| 非目标与版本追踪 | 仅pipeline Prompt/历史、测试/文档，评分/数据/Guard不改；v4追加旧历史不变/check0，官方source/Prompt hash绑定 | 通过；无Supervisor/前端/权限/新Harness/生产变更 |
+| 独立审查与最终人工业务验收 | confirmed_code_review计划P2已闭合/17入口0；独立confirmed_code_final_accept原契约/真实报告/registry复算通过 | 等待最终全量后出整卡裁定，当前不提前done |
+| 全量与失败归因 | 首全量2149/79/91warning，UTF8定向81通过，不改断言；第二全量运行中 | 结果随后补记，不能以子集代整仓 |
+
+用户当前修复/最多三轮及先前明确人工验收委托均已登记；Prompt版本两路径额外范围已明确批准。核心代码变化只有pipeline.py 25行，原有五卡验收工作区文件归属保留。不把其它卡done当作前置唯一证据，也不把本地official当PAGT-007真实CI。相关用例批次存在覆盖重叠，不累加用例数量。
+
+
+### 最终全量与环境失败闭环
+
+同一指定conda解释器、同一隔离测试库与源码，显式PYTHONUTF8=1保持父/子UTF-8解码一致后，最终全量2228passed/0failed/0skipped、3条既有ast/极端向量警告，468.47秒，退出0。实际命令：python -m pytest -q -rs --basetemp=data/pytest-tmp-code-preserve-full-utf8-20261014 --junitxml=docs/reviews/code_preserve_full_utf8_20261014.xml。初次2149/79与GBK错误保留；编码修正没有修改测试、评测阈值或业务代码，定向81和整仓结果共同支持环境归因。原142与2228有覆盖重叠，不相加。Ruff/mypy和模型执行亦未切换解释器。
+
+第1轮真实模型质量已经通过，不因本地测试编码问题追加模型请求。当前正式registry v4检查0，旧历史不变，原34既有源漂移已登记但不声明历史功能重新验收。用户批准两登记文件范围扩展已写入tasks.yaml。
+
+
+### 最终关闭裁定与新鲜提交回查
+
+最后以UTC开始时间2026-10-14T03:03:54.516727过滤新测试提交，再由独立新进程/新Session回查完整YES与短路NO的code_result，两个true，测试1passed/exit0、probe exit0。新鲜原文/命令/开始时间/probe与pipeline指纹保存在docs/reviews/code_preserve_persistence_recheck_final_20261014.json，旧239批次回查JSON保留不复用。独立confirmed_code_final_accept亲自复算真实gate、37源指纹、正式v4旧历史与check0、2228全量XML、新鲜持久化证据及原契约对账，最终验收通过。原待定全量/登记/对账缺口现闭合，AGT-003同步done；PAGT-007只更新前置有效证据，因真实GitHubCI与CI退化probe仍未执行保持in_review。用户明确业务验收委托继续有效，没有用主Agent自审替代独立身份。
+
+本轮实际产物清单、所有命令/退出码、红绿/编码失败原证据与残余边界见docs/reviews/confirmed_code_repair_evidence_20261014.json及最终人工验收报告。真实模型只使用修后第1轮12请求，3轮预算未用满且不继续调用；本地登记不构成Git发布或生产部署。

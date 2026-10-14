@@ -1,0 +1,7 @@
+{
+  "report": "evals\\reports\\agent-chain-v0.1-official-20261014T022048326800Z.json",
+  "expected_identity_source": "Project Settings -> current intent provider; independent of report",
+  "gate_exit_code": 1,
+  "stdout": "warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.\nAGENT_GATE_METRIC:tool_call_validity_recall\n",
+  "stderr_present": false
+}

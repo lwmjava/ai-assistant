@@ -61,6 +61,19 @@ def test_confirmed_prior_code_cannot_be_replaced():
     assert valid["recorded_calls"] == 1
 
 
+def test_confirmed_code_output_prefix_changes_are_rejected():
+    row = case("agent-004")
+    code = row["history"][1]["content"].split("```python\n", 1)[1].split("```", 1)[0]
+    altered = code.replace("print(bubble_sort(", "print('排序结果:', bubble_sort(")
+    assert altered != code
+    wrong = asyncio.run(runner.record_tool_call(row, call({"code": altered})))
+    assert wrong["error_code"] == "prior_code_mismatch"
+    assert wrong["recording_attempts"] == wrong["recorded_calls"] == 0
+    original = asyncio.run(runner.record_tool_call(row, call({"code": code})))
+    assert original["arguments_valid"] is True
+    assert original["recorded_calls"] == 1
+
+
 def test_prompt_contains_production_schemas_and_uses_runtime_builder(monkeypatch):
     row = case()
     prompt = pipeline.build_tool_choice_messages(row["history"], row["user_input"])[-1].content

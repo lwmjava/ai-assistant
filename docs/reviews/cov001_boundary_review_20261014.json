@@ -1,0 +1,184 @@
+{
+  "agent": "/root/cov_verify_review",
+  "evidence_level": "E2 synthetic CLI boundaries only",
+  "script_sha256": "65eeccd2c8b88f63e2cfa55beb65eb65235395a545b47d173b40a2874ddce2a3",
+  "python": "3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]",
+  "versions": {
+    "pytest": "8.4.2",
+    "pytest-cov": "7.1.0",
+    "coverage": "7.10.6"
+  },
+  "synthetic_exact_percent": 50.0,
+  "commands": [
+    {
+      "name": "r1",
+      "args": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "pytest",
+        "-c",
+        "pytest.ini",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "-p",
+        "pytest_cov",
+        "test_synthetic.py",
+        "--cov=app",
+        "--cov-report=term-missing",
+        "--cov-report=json:E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\r1\\coverage.json",
+        "--cov-fail-under=0",
+        "-q"
+      ],
+      "cwd": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa",
+      "exit_code": 0,
+      "coverage_file": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\r1\\.coverage",
+      "database_url": "sqlite:///E:/culture/SmartCustomerServiceSystem/ai-assistant/data/cov001-independent-wu5c7hqa/test_ai_assistant.db"
+    },
+    {
+      "name": "r2",
+      "args": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "pytest",
+        "-c",
+        "pytest.ini",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "-p",
+        "pytest_cov",
+        "test_synthetic.py",
+        "--cov=app",
+        "--cov-report=term-missing",
+        "--cov-report=json:E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\r2\\coverage.json",
+        "--cov-fail-under=0",
+        "-q"
+      ],
+      "cwd": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa",
+      "exit_code": 0,
+      "coverage_file": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\r2\\.coverage",
+      "database_url": "sqlite:///E:/culture/SmartCustomerServiceSystem/ai-assistant/data/cov001-independent-wu5c7hqa/test_ai_assistant.db"
+    },
+    {
+      "name": "assertion_failure",
+      "args": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "pytest",
+        "-c",
+        "pytest.ini",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "-p",
+        "pytest_cov",
+        "test_synthetic.py",
+        "--cov=app",
+        "--cov-report=term-missing",
+        "--cov-report=json:E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\assertion_failure\\coverage.json",
+        "--cov-fail-under=0",
+        "-q"
+      ],
+      "cwd": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa",
+      "exit_code": 1,
+      "coverage_file": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\assertion_failure\\.coverage",
+      "database_url": "sqlite:///E:/culture/SmartCustomerServiceSystem/ai-assistant/data/cov001-independent-wu5c7hqa/test_ai_assistant.db"
+    },
+    {
+      "name": "plugin_missing",
+      "args": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "pytest",
+        "-c",
+        "pytest.ini",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "test_synthetic.py",
+        "--cov=app",
+        "--cov-report=term-missing",
+        "--cov-report=json:E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\plugin_missing\\coverage.json",
+        "--cov-fail-under=0",
+        "-q"
+      ],
+      "cwd": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa",
+      "exit_code": 4,
+      "coverage_file": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\plugin_missing\\.coverage",
+      "database_url": "sqlite:///E:/culture/SmartCustomerServiceSystem/ai-assistant/data/cov001-independent-wu5c7hqa/test_ai_assistant.db"
+    },
+    {
+      "name": "collection_failure",
+      "args": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "pytest",
+        "-c",
+        "pytest.ini",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "-p",
+        "pytest_cov",
+        "test_synthetic.py",
+        "--cov=app",
+        "--cov-report=term-missing",
+        "--cov-report=json:E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\collection_failure\\coverage.json",
+        "--cov-fail-under=0",
+        "-q"
+      ],
+      "cwd": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa",
+      "exit_code": 2,
+      "coverage_file": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa\\collection_failure\\.coverage",
+      "database_url": "sqlite:///E:/culture/SmartCustomerServiceSystem/ai-assistant/data/cov001-independent-wu5c7hqa/test_ai_assistant.db"
+    },
+    {
+      "name": "no_data_run",
+      "args": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "coverage",
+        "run",
+        "--source=absent_module",
+        "-m",
+        "pytest",
+        "-c",
+        "pytest.ini",
+        "--rootdir=.",
+        "--confcutdir=.",
+        "test_synthetic.py",
+        "-q"
+      ],
+      "cwd": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa",
+      "exit_code": 0
+    },
+    {
+      "name": "no_data_json",
+      "args": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "coverage",
+        "json",
+        "-o",
+        "no_data.json"
+      ],
+      "cwd": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\cov001-independent-wu5c7hqa",
+      "exit_code": 1
+    }
+  ],
+  "cases": [
+    "finite_numeric_rejection",
+    "zero_denominator_rejection",
+    "missing_file_rejection",
+    "unimported_file_counted",
+    "keys_and_test_database_isolation",
+    "two_run_no_append",
+    "old_evidence_preserved",
+    "stale_source_binding",
+    "pytest_exit_1_preserved",
+    "missing_plugin_exit_4",
+    "collection_failure_exit_2",
+    "no_data_report_exit_1"
+  ],
+  "fixture_sha256": {
+    "app\\measured.py": "0af86aed0ab6de6af0ef1279b8899f03077938ef5b5c6450d78c82d8753d2191",
+    "app\\unimported.py": "f87b7a7a9b89037d8b8ff8d066af000db0cf06bb918556a7b4fc723950873fa6",
+    "app\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

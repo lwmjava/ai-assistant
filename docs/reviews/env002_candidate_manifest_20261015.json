@@ -1,0 +1,22 @@
+{
+  "base_sha": "80629c4cd5ce00d59b26116c7419edce00e6a113",
+  "candidate": "HEAD + listed files SHA256; uncommitted",
+  "platform": "Windows",
+  "sha256": {
+    ".env.example": "bb70330e1a849e71ade0151196580cf4324e025e2432ab528458a42b9c13d498",
+    "README.md": "c4ac81384142d9913af244645e11be80cf61d949704f19acd4b9671cbe5385ba",
+    "tasks.yaml": "108538e405ddcb06d862b3dcf0a6f1c759f33d250bdfc3890e6ac15264427466",
+    "docs/evaluations/env002_bootstrap_contract.py": "947dca258fbb313a7e32e153e42e04facf9d8a24eb942a7cd7713727471cdd6b",
+    "docs/evaluations/env002_independent_probe.py": "6bc3e999fb22328c037e29b4b64c10616c1e10f5fc822f2a9a7fb25d3bd69961",
+    "docs/evaluations/env001_example_contract.py": "704ceae5aedc18d00da5f00dd4185efa5c1344c71ab6a60d3471f2eeeedd4771",
+    "app/core/config.py": "74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432",
+    "app/services/auth_service.py": "bc22e85cf69e289c8ace0959fec11034b1239d248aec5afbdb312cd7772dc9e5",
+    "app/core/security.py": "bd7daf3c479124a38f9f96927bcfe87a7101f81d3905e5e4aa8e4bea9b1bd7f0",
+    "app/models/base.py": "faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2",
+    "app/models/user.py": "4b12e26d505014e7113dcef6211847c2756b8b557b25e37b3ed408674f3f4a77",
+    "app/models/membership.py": "d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4",
+    "app/services/membership.py": "8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f"
+  },
+  "env001_previous_example_sha256": "a6a969453df8c98b402baa8e889bb8af6840ed8383bdd5821b43dc7881329221",
+  "note": "ENV-001 previous example binding historical after intentional ENV-002 password change; current181contract revalidated; COV-001 dependency and coverage inputs unmodified by this card"
+}

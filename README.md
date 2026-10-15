@@ -285,7 +285,7 @@ cp .env.example .env
 
 Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[langgraph]"`（`langgraph>=1.0.0,<1.1`），再把 `AGENT_ORCHESTRATION` 设为 `langgraph`。这时只有明确要求多轮调研的问题才进入 Supervisor；不需要工具和知识库的问题只生成一次。没装这个包时，多轮请求回退五阶段管线。默认配置仍是 `self`。
 
-至少改 `JWT_SECRET_KEY`。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。两项都空着时，不自动建管理员，改由下一步的 `/setup` 创建。
+至少改 `JWT_SECRET_KEY`。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：在空用户库中同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。任一项为空时均跳过管理员引导，改由下一步的 `/setup` 创建。示例密码留空，请在本地或秘密管理中设置自主口令，勿提交仓库。
 
 也可以用命令迁移数据库并创建系统管理员。在仓库根目录执行 `pip install -e .` 之后：
 
@@ -295,15 +295,14 @@ ai-assistant migrate --yes
 
 没有待执行的迁移时，这条命令成功退出，并说明数据库已是最新。`--yes` 跳过确认。未安装控制台脚本时，用 `python -m app.cli migrate --yes`，效果相同。`python -m app.core.migration migrate` 仍然可用。
 
-创建时密码放在环境变量 `INITIAL_ADMIN_PASSWORD`，不要写进命令参数。密码至少 8 位。库里已经有系统管理员时，命令会拒绝：
+创建前，通过部署环境的秘密管理向当前进程注入 `INITIAL_ADMIN_PASSWORD`，使用自己生成且至少 8 位的密码。不要把密码写进命令参数、共享脚本或仓库。以下命令假定该环境变量已安全设置；库里已经有系统管理员时，命令会拒绝：
 
 ```bash
 # Windows PowerShell
-$env:INITIAL_ADMIN_PASSWORD = "至少 8 位的密码"
 ai-assistant admin create-superuser --username admin
 
 # bash
-INITIAL_ADMIN_PASSWORD="至少 8 位的密码" ai-assistant admin create-superuser --username admin
+ai-assistant admin create-superuser --username admin
 ```
 
 命令的输出和日志只包含用户名。环境变量引导和页面 `/setup` 仍然可用。
@@ -333,7 +332,7 @@ npm run dev
 三选一。
 
 - 第 1 步已经填了 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`：不要打开 `/setup`。用这两个值到 `/login` 登录。启动日志里会有已创建初始 `system_admin` 的提示。
-- 两项都没填，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后进入 `/chat`，这个向导随即关闭。
+- 任一项为空，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后进入 `/chat`，这个向导随即关闭。
 - 或者先执行 `ai-assistant migrate --yes`，再按第 1 步里的 `ai-assistant admin create-superuser` 创建系统管理员，然后到 `/login` 登录。
 
 失败时看：`/setup` 一打开就回到 `/login`，说明已经有系统管理员，用已有账号登录。向导提交后提示「初始化向导已关闭」，同样改为登录。页面一直停在「正在检查是否需要初始化」，说明后端没起来，先看第 2 步的健康检查。
@@ -364,6 +363,16 @@ docker compose up -d --build
 启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/health` 仍是健康检查。第一次建管理员、注册和发消息，按上面「快速开始」的第 3 到第 5 步，页面分别是 `/setup`、`/login`、`/register` 和 `/chat`。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
 
 ### 关键配置项
+
+`.env.example` 当前覆盖 `Settings` 的全部 **181 个字段**，每项标注“选填”或“条件必填”。选填表示源码提供默认值；条件必填表示生产部署或选择对应能力时需要填写，并不表示启动会自动校验所有条件。示例中的部分值是使用示例，源码默认值以 `app/core/config.py` 为准。解析成功不代表生产安全配置或外部模型、OCR、检索服务可用；首次管理员密码留空，需由部署者自主配置，仓库不提供可直接登录的示例口令。
+
+从仓库根目录用项目解释器执行以下核对。它只读配置源码和示例，在隔离命名空间加载真实 `Settings`，**不导入应用、不读取本地 `.env`**；缺项、额外项、重复键或缺标注会失败。
+
+```powershell
+& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' docs/evaluations/env001_example_contract.py --self-test
+```
+
+`MILVUS_PORT`、`MILVUS_HEALTH_PORT` 是 Compose 宿主机端口变量，不属于 `Settings`，示例仅保留注释说明。省略时 `docker-compose.yml` 继续采用 19530、9091；需要覆盖时可在启动 Compose 的进程环境中设置它们。
 
 | 环境变量 | 说明 | 默认值 |
 |----------|------|--------|

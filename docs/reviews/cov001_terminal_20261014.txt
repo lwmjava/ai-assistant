@@ -1,0 +1,263 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 18%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 34%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 58%]
+........................................................................ [ 61%]
+........................................................................ [ 64%]
+........................................................................ [ 68%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+.........................                                                [100%]
+============================== warnings summary ===============================
+app\agents\tools\sandbox\sandbox.py:93
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\tools\sandbox\sandbox.py:93: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    ast.NameConstant,  # Python 3.7 兼容
+
+tests/test_rag_019_acceptance.py::test_cache_acceptance_numeric_vector_change_never_hidden[vector1]
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\rag\vectorstore\local.py:268: RuntimeWarning: invalid value encountered in divide
+    matrix = matrix / norms
+
+tests/test_rag_019_acceptance.py::test_cache_acceptance_numeric_vector_change_never_hidden[vector2]
+  D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\numpy\linalg\_linalg.py:2832: RuntimeWarning: overflow encountered in multiply
+    s = (x.conj() * x).real
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: E:\culture\SmartCustomerServiceSystem\ai-assistant\data\cov001-r1\pytest.xml -
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.12.0-final-0 _______________
+
+Name                                            Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------
+app\__init__.py                                     1      0   100%
+app\agents\__init__.py                              2      0   100%
+app\agents\fast_path.py                           109      3    97%   41, 72, 83
+app\agents\pipeline.py                            703     38    95%   111, 118-122, 169, 172-174, 179, 193, 325, 353-354, 375, 556, 569, 602, 720, 734, 788, 792-793, 798-799, 825, 854, 885, 915-916, 957, 984, 986-988, 1025, 1121
+app\agents\plan.py                                128      2    98%   119, 138
+app\agents\plan_runtime.py                        110     15    86%   34, 45, 54, 61, 64, 69, 75, 78, 112, 118, 121, 130, 141, 143, 145
+app\agents\prompts.py                              10      0   100%
+app\agents\route.py                                32      0   100%
+app\agents\skills\__init__.py                       3      0   100%
+app\agents\skills\base.py                          73      8    89%   74-82
+app\agents\skills\loader.py                        84     10    88%   41, 71, 121-122, 127, 133, 150, 154, 175, 178
+app\agents\skills\manager.py                      213     16    92%   149, 185, 244, 272, 287-289, 371, 393, 400, 415, 420, 432, 435-437
+app\agents\skills\versioning.py                   143      8    94%   48, 57, 126, 128, 139, 164, 184, 188
+app\agents\state.py                                88      7    92%   100, 103, 109, 111, 122, 128, 170
+app\agents\supervisor.py                          170      4    98%   129-130, 187, 265
+app\agents\tools\__init__.py                        3      0   100%
+app\agents\tools\base.py                          176     16    91%   126, 170, 175-177, 197, 225-226, 230, 236, 239, 286, 292, 298-301
+app\agents\tools\builtin.py                        96      5    95%   73-74, 113-114, 149
+app\agents\tools\contract.py                       28      0   100%
+app\agents\tools\executor.py                      107      2    98%   83, 171
+app\agents\tools\file_ops.py                      215     26    88%   63, 66, 72, 78, 81, 90, 92, 127, 130, 136, 156, 160, 228-229, 264-265, 267, 283, 289, 307, 320, 325, 333-334, 342-343
+app\agents\tools\outcome.py                        10      1    90%   12
+app\agents\tools\sandbox\__init__.py                3      0   100%
+app\agents\tools\sandbox\base.py                   79      2    97%   124, 132
+app\agents\tools\sandbox\proc.py                  339     60    82%   59, 66-67, 99, 110, 126-145, 155-161, 165-186, 236-237, 239-241, 246-247, 269, 290, 304-306, 308-309, 333, 351, 458, 467-468, 497, 516, 597
+app\agents\tools\sandbox\runtime.py                36      0   100%
+app\agents\tools\sandbox\sandbox.py               104     21    80%   259-260, 268, 275, 289-291, 301-314, 350-351, 353-354, 382-384
+app\agents\tools\web_search.py                    155      8    95%   66, 145, 151, 157, 167-168, 204, 222
+app\agents\version_registry.py                    200    200     0%   3-317
+app\api\__init__.py                                 0      0   100%
+app\api\deps.py                                    52      6    88%   48-49, 68, 140, 155-156
+app\api\router.py                                  16      0   100%
+app\api\routes\__init__.py                          0      0   100%
+app\api\routes\admin_system.py                     22      3    86%   31-33
+app\api\routes\admin_tenants.py                    93     11    88%   141, 167-170, 193, 224-227, 249
+app\api\routes\admin_users.py                      55      4    93%   89-90, 124, 158
+app\api\routes\audit.py                            90     58    36%   45, 73-78, 108-151, 165-187
+app\api\routes\auth.py                            103     10    90%   177, 180-181, 210-215, 256
+app\api\routes\chat.py                            252     38    85%   126-127, 129, 133, 143-144, 146, 150, 164, 175-176, 178, 185, 193, 263, 265, 297, 310, 314, 324-325, 333-339, 355, 455-466
+app\api\routes\export.py                           27      2    93%   33-34
+app\api\routes\health.py                           86      8    91%   60-72, 80, 148
+app\api\routes\invitations.py                      52      7    87%   37, 39, 48, 60, 88, 91-96
+app\api\routes\mcp.py                              22     10    55%   30-32, 40-54
+app\api\routes\rag.py                             463     94    80%   82-84, 352, 391, 405-407, 452, 468, 478-480, 522, 534-535, 564-570, 597-598, 608-613, 623-626, 636-644, 660-661, 672-681, 822-823, 829, 856, 859-860, 882-883, 888, 917, 920-921, 925-926, 944-951, 961-965, 992-1001, 1016-1028
+app\api\routes\skills.py                          100      0   100%
+app\api\routes\workflow.py                        143      7    95%   119, 122, 190, 218, 240, 259, 289
+app\audit\__init__.py                               3      0   100%
+app\audit\logger.py                                60     14    77%   35-42, 123-140, 156, 158-160
+app\audit\models.py                                56      0   100%
+app\channels\__init__.py                            0      0   100%
+app\channels\base.py                               31      1    97%   60
+app\channels\http_channel.py                        7      1    86%   24
+app\channels\registry.py                           19      2    89%   29, 37
+app\cli.py                                         63     63     0%   3-94
+app\core\__init__.py                                0      0   100%
+app\core\config.py                                242      1    99%   136
+app\core\database.py                               24      0   100%
+app\core\json_logging.py                           28      0   100%
+app\core\log_context.py                            19      0   100%
+app\core\migration.py                             258    109    58%   39, 70, 86-89, 94, 143, 147, 163, 166-167, 169-170, 176-177, 179-180, 192-193, 195-196, 200-201, 230, 234-235, 280-281, 303-307, 316-317, 356, 373, 375-381, 404-412, 421-440, 451-462, 467-484, 489-495, 500-514
+app\core\response_cache.py                        107      2    98%   66, 116
+app\core\security.py                               55      6    89%   77, 122, 138-144
+app\core\trace_middleware.py                       16      0   100%
+app\debug\__init__.py                               2      0   100%
+app\debug\trace.py                                105      3    97%   30, 39-40
+app\evolution\__init__.py                           5      0   100%
+app\evolution\distiller.py                        122     99    19%   94, 98-100, 119-216, 223-244, 254-277, 284-304
+app\evolution\models.py                           105      0   100%
+app\evolution\reflector.py                         64     16    75%   155-158, 171-177, 187-189, 202, 214-215, 219-222
+app\evolution\scheduler.py                         69     43    38%   29, 34-50, 57-111, 127, 135, 139-140, 148-153
+app\llm\__init__.py                                 3      0   100%
+app\llm\base.py                                    21      0   100%
+app\llm\budget.py                                  46      0   100%
+app\llm\capabilities.py                           135     15    89%   55, 58-59, 62, 87, 93, 95, 216, 221, 238-239, 272-279, 297-304
+app\llm\counters.py                                50      5    90%   59, 103-104, 107-108
+app\llm\factory.py                                 75      2    97%   67, 110
+app\llm\mock.py                                    23      1    96%   49
+app\llm\openai_compatible.py                      172     13    92%   47, 150, 152, 155, 163, 166, 218, 244-246, 255, 262-263
+app\llm\routing.py                                 58      3    95%   68, 79, 84
+app\main.py                                        72     13    82%   49, 129, 141, 155-178
+app\mcp\__init__.py                                 5      0   100%
+app\mcp\adapter.py                                  8      0   100%
+app\mcp\client.py                                  96     12    88%   50, 75-77, 86, 104, 116, 123, 128, 144, 165, 170
+app\mcp\config.py                                  38     10    74%   48, 64, 67-69, 71-72, 77, 80-81
+app\mcp\manager.py                                 64     33    48%   29, 33-42, 48-49, 58-60, 66, 75-89, 95
+app\memory\__init__.py                              4      0   100%
+app\memory\base.py                                 36      0   100%
+app\memory\compressor.py                           51     12    76%   62, 84, 91, 94-95, 106, 115, 133, 137, 150-152
+app\memory\manager.py                              59     15    75%   139, 143, 153-155, 163, 172, 175-176, 192-204, 210
+app\models\__init__.py                              7      0   100%
+app\models\agent_state.py                          22      0   100%
+app\models\base.py                                  7      0   100%
+app\models\conversation.py                         24      0   100%
+app\models\membership.py                           24      0   100%
+app\models\rag.py                                 210      0   100%
+app\models\skill.py                                22      0   100%
+app\models\user.py                                 29      0   100%
+app\models\workflow.py                             43      0   100%
+app\rag\__init__.py                                 7      0   100%
+app\rag\access.py                                  64      1    98%   108
+app\rag\backend\__init__.py                        12      7    42%   18-26
+app\rag\backend\base.py                            10      0   100%
+app\rag\backend\factory.py                         40      0   100%
+app\rag\backend\langchain_backend.py               89      7    92%   59, 62, 65, 68, 71, 123, 174
+app\rag\backend\llamaindex_backend.py             115     12    90%   53, 56, 59, 62, 65, 68, 74, 120, 129, 160-162, 164
+app\rag\backend\native.py                          49      0   100%
+app\rag\cache.py                                   79      4    95%   81, 116, 122, 143
+app\rag\chunking\__init__.py                        2      0   100%
+app\rag\chunking\base.py                           85      3    96%   107, 121-124
+app\rag\chunking\factory.py                        42      0   100%
+app\rag\chunking\llm_boundaries.py                 94      4    96%   120, 163-165
+app\rag\chunking\plan.py                           56      1    98%   41
+app\rag\chunking\registry.py                       18      0   100%
+app\rag\chunking\routing.py                        60      3    95%   54, 107-108
+app\rag\chunking\strategies\__init__.py             9      0   100%
+app\rag\chunking\strategies\fixed_chars.py         21      1    95%   16
+app\rag\chunking\strategies\format_aware.py        23      5    78%   19, 26, 36-38
+app\rag\chunking\strategies\layout_aware.py        83      7    92%   38, 52, 95, 105, 122-124
+app\rag\chunking\strategies\paragraph.py           17      1    94%   21
+app\rag\chunking\strategies\parent_child.py        86      3    97%   59, 146-147
+app\rag\chunking\strategies\recursive.py           53      2    96%   47, 56
+app\rag\chunking\strategies\semantic.py            50     32    36%   13-18, 28, 40-65
+app\rag\chunking\strategies\sliding_window.py      21      1    95%   16
+app\rag\chunking\strategies\structured.py           8      0   100%
+app\rag\chunking\strategies\token_aware.py         34      3    91%   25-26, 37
+app\rag\chunking\structure.py                     189     11    94%   55-56, 117, 147-153, 169
+app\rag\cleaning.py                                52      0   100%
+app\rag\confirmations.py                           29      2    93%   24, 26
+app\rag\context_builder.py                        190      9    95%   98, 110, 132, 147-149, 171, 196, 223
+app\rag\context_merge.py                           13      0   100%
+app\rag\document_parsers\__init__.py                3      0   100%
+app\rag\document_parsers\base.py                   33      2    94%   86, 93
+app\rag\document_parsers\legacy_office.py          52      3    94%   35, 98-99
+app\rag\document_parsers\libreoffice.py            47     28    40%   48-52, 59-108
+app\rag\document_parsers\office.py                357    101    72%   82-88, 93-133, 149-150, 166, 170, 222-223, 230-232, 251, 294, 413, 445, 463-479, 484-492, 497-506, 526, 528-532, 617-618, 685-686, 742
+app\rag\document_parsers\pdf.py                    69      7    90%   40, 51, 54, 57, 94, 97, 100
+app\rag\document_parsers\registry.py               13      1    92%   29
+app\rag\document_parsers\service.py                25      0   100%
+app\rag\document_parsers\text.py                   24      1    96%   41
+app\rag\document_storage.py                        52      4    92%   69-70, 84-85
+app\rag\effective_date.py                          62      4    94%   31-32, 106-107
+app\rag\embeddings\__init__.py                      5      0   100%
+app\rag\embeddings\base.py                         39      4    90%   30, 32, 34, 43
+app\rag\embeddings\factory.py                      21      2    90%   39-41
+app\rag\embeddings\input_limits.py                 10      0   100%
+app\rag\embeddings\mock.py                         25      0   100%
+app\rag\embeddings\openai_compatible.py            60      1    98%   69
+app\rag\evidence.py                                96      8    92%   66, 69-70, 89, 148, 156, 187, 195
+app\rag\import_jobs.py                            563     41    93%   89, 95, 131, 162, 273-281, 308, 337-338, 355, 369, 392, 615, 617, 619, 621, 629-630, 721-725, 732, 734, 740, 762, 782, 797, 821-822, 950, 967-968
+app\rag\import_scheduler.py                        43      3    93%   47, 62-63
+app\rag\import_trace.py                            21      0   100%
+app\rag\index_identity.py                          70      4    94%   62, 65, 89, 188
+app\rag\index_registry.py                         201      9    96%   330, 334, 347, 350-351, 491, 494-496
+app\rag\ingestion.py                               67      4    94%   31, 38, 95, 98
+app\rag\ocr\__init__.py                             5      0   100%
+app\rag\ocr\base.py                                25      1    96%   63
+app\rag\ocr\factory.py                             12      1    92%   20
+app\rag\ocr\openai_vision.py                      105     26    75%   23, 66, 71-78, 92-99, 113-120, 213-215, 227-230, 240-250
+app\rag\ocr\tesseract.py                          111     24    78%   30-54, 63, 86, 88, 91, 119-120, 167-176, 224
+app\rag\resilience.py                             145      2    99%   217, 404
+app\rag\retention.py                               87      7    92%   69, 71-75, 128
+app\rag\retrieval_guard.py                         25      0   100%
+app\rag\retrieval_status.py                        59      1    98%   88
+app\rag\retriever.py                               86      2    98%   166-167
+app\rag\section_summaries.py                      176     23    87%   63, 66-67, 75-76, 115, 158, 165, 184, 238-243, 254-259, 343, 350
+app\rag\service.py                                656     57    91%   162, 183, 188-190, 210-211, 228, 309, 311, 327-330, 429, 636-638, 652, 690-696, 712, 721, 733, 787, 790-792, 817, 967, 980, 994, 1087, 1099, 1114-1125, 1131, 1185, 1218, 1282, 1288, 1318, 1341
+app\rag\upload_limits.py                           26      0   100%
+app\rag\vectorstore\__init__.py                     3      0   100%
+app\rag\vectorstore\base.py                        37      0   100%
+app\rag\vectorstore\factory.py                      9      2    78%   16-18
+app\rag\vectorstore\local.py                      163      7    96%   139-140, 245-246, 262, 330, 334
+app\rag\vectorstore\milvus.py                     171     12    93%   74, 162-163, 165, 171, 220, 222, 226, 263, 289-290, 367
+app\schemas\__init__.py                             0      0   100%
+app\schemas\admin.py                               39      1    97%   46
+app\schemas\auth.py                                50      2    96%   60, 67
+app\schemas\invitation.py                          27      0   100%
+app\schemas\quota.py                               25      2    92%   35, 37
+app\schemas\tenant.py                              34      3    91%   16, 34, 41
+app\security\__init__.py                           21      0   100%
+app\security\input_filter.py                       38      0   100%
+app\security\log_redaction.py                     117      6    95%   59, 62, 90, 163-165
+app\security\log_sanitizer.py                      19      0   100%
+app\security\output_filter.py                      32      0   100%
+app\security\prompt_injection.py                   26      0   100%
+app\security\rate_limiter.py                       56      3    95%   94, 104-105
+app\security\restricted_identifier_fence.py        33      2    94%   88-90
+app\security\types.py                              25      0   100%
+app\services\__init__.py                            0      0   100%
+app\services\admin_users.py                        75      7    91%   46, 48, 50, 74, 91, 106, 125
+app\services\agent_execution_guard.py              41      0   100%
+app\services\agent_state_cleanup.py                40      4    90%   21, 25-27
+app\services\agent_state_service.py               104     15    86%   39, 92, 119-121, 126-129, 150-151, 167, 171-173
+app\services\auth_service.py                      168     83    51%   104, 117, 171-176, 185-201, 206-208, 213-221, 230-279, 305-330
+app\services\cache_scope.py                       105      6    94%   68, 73, 75, 78, 123, 139
+app\services\chat_service.py                      488     72    85%   207-216, 287, 303, 330, 372, 393-396, 448, 502-506, 516-518, 624, 641-643, 722-764, 831, 840-842, 856-857, 876, 893-898, 907-912, 919-931
+app\services\export_service.py                    128      2    98%   176, 191
+app\services\invitations.py                        74      6    92%   50, 56, 58, 66, 70, 112
+app\services\membership.py                         46      7    85%   62-68
+app\services\quota.py                             127      6    95%   89-90, 141-142, 161, 200
+app\services\skill_service.py                     278     36    87%   115, 122, 124, 129, 190-197, 259-261, 305, 317, 325, 334, 360, 375-376, 390, 392, 396, 398-400, 427-428, 430, 477-495
+app\services\tenant_admin.py                       82      5    94%   79, 94, 117, 119, 135
+app\workflow\__init__.py                            0      0   100%
+app\workflow\bridge.py                             11      0   100%
+app\workflow\engine.py                             83     17    80%   35-36, 58, 62, 127-130, 153-166
+app\workflow\scheduler.py                          83     35    58%   31, 36-38, 47-48, 63-76, 81-91, 96-106, 113, 115
+-----------------------------------------------------------------------------
+TOTAL                                           15894   2035    87%
+Coverage XML written to file data/cov001-r1/coverage.xml
+Coverage JSON written to file data/cov001-r1/coverage.json
+2329 passed, 3 warnings in 716.04s (0:11:56)

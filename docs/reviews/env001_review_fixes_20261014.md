@@ -1,0 +1,7 @@
+# ENV-001 审查驱动修复
+
+独立/root/env_verify_review发现P2：示例后追加损坏dotenv行，python-dotenv仅warning并跳过，当前check_example只比较字典键，仍passed=true。违反计划“语法错误/部分解析不能称完整”；产品模板本身没有语法错误，不涉及.env/应用默认值/ENV-002。
+
+修复计划：先以独立反例data/env001-independent-invalid.example运行原CLI，保存exit0误接受红例；再使用已安装python-dotenv的parse_stream检测Binding.error，仅记录行号、不回显正文。增加syntax_error_lines失败条件和正式self_test语法反例，重跑完整示例/14边界与独立入口复核、Ruff及最终输入指纹。不得只屏蔽warning、删除失败行或改应用配置凑通过。
+
+修复前报告的13项检查属于旧脚本证据，不能关闭新最终脚本；原示例/配置默认的字节指纹保持。修后原CLI完整示例exit0/损坏语法exit1，14实现边界及独立16边界通过。独立/root/env_verify_review与其未实现的meta角色复核闭合，无未修复P1/P2；checker最终SHA256704ceae5aedc18d00da5f00dd4185efa5c1344c71ab6a60d3471f2eeeedd4771。未以隐藏warning或删失败行制造通过。

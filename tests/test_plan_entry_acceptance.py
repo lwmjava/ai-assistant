@@ -30,6 +30,14 @@ from app.models.user import Tenant, User
 from app.services.chat_service import ChatService
 
 
+def _terminal_status(body):
+    for frame in body.replace("\r\n", "\n").split("\n\n"):
+        if "event: run.finished\n" in frame:
+            data = next(line[5:].strip() for line in frame.splitlines() if line.startswith("data:"))
+            return json.loads(data)["status"]
+    raise AssertionError("缺少运行终态")
+
+
 def entry_plan(kind="tool"):
     steps = []
     for index in range(1, 4):
@@ -122,7 +130,7 @@ def entry(monkeypatch):
         session.refresh(user)
         session.expunge(user)
     api = FastAPI()
-    api.include_router(router, prefix="/api")
+    api.include_router(router, prefix="/api/v1")
 
     async def current():
         log_context.set_user(user.id, user.tenant_id)
@@ -149,7 +157,7 @@ def checkpoint(db):
 @pytest.mark.parametrize("stream", [False, True])
 def test_real_entry_success_contract(entry, stream):
     client, db, user, _, calls, _, _ = entry
-    response = client.post("/api/chat/stream" if stream else "/api/chat",
+    response = client.post("/api/v1/chat/stream" if stream else "/api/v1/chat",
                            json={"message": "please perform all three dependent steps"})
     assert response.status_code == 200, response.text
     status, snapshot, message_id, _ = checkpoint(db)
@@ -157,7 +165,8 @@ def test_real_entry_success_contract(entry, stream):
     assert status == "done" and snapshot["plan_cursor"] == 3
     assert [item["status"] for item in snapshot["plan_progress"]] == ["succeeded"] * 3
     if stream:
-        assert "event: done" in response.text and "event: error" not in response.text
+        assert "event: run.finished" in response.text and "event: error" not in response.text
+        assert _terminal_status(response.text) == "done"
         assert "event: message" in response.text and "entry answer" in response.text
     else:
         assert response.json()["message_id"] == message_id
@@ -172,7 +181,7 @@ def test_real_entry_success_contract(entry, stream):
 def test_real_entry_business_failure_locates_step(entry, stream):
     client, db, _, _, calls, control, _ = entry
     control["failure"] = True
-    response = client.post("/api/chat/stream" if stream else "/api/chat",
+    response = client.post("/api/v1/chat/stream" if stream else "/api/v1/chat",
                            json={"message": "please perform dependent steps and stop on failure"})
     assert response.status_code == 200
     status, snapshot, _, _ = checkpoint(db)
@@ -182,7 +191,8 @@ def test_real_entry_business_failure_locates_step(entry, stream):
     assert snapshot["plan_progress"][2]["status"] == "pending"
     assert "step2" in response.text and "TOOL_FAILED" in response.text
     if stream:
-        assert "event: error" in response.text and "event: done" in response.text
+        assert "event: error" in response.text and "event: run.finished" in response.text
+        assert _terminal_status(response.text) == "failed"
 
 
 @pytest.mark.parametrize("refusal", ["forged_tenant", "L2_role"])
@@ -197,7 +207,7 @@ def test_real_entry_permission_refusal_audited(entry, refusal):
             authenticated=True, tenant_scoped=True, allowed_roles=frozenset({"system_admin"})),
             risk=RiskLevel.L2, side_effect="synthetic write", timeout_seconds=1, idempotent=False)
         reason = "role_not_allowed"
-    response = client.post("/api/chat", json={"message": "execute the requested dependent plan"})
+    response = client.post("/api/v1/chat", json={"message": "execute the requested dependent plan"})
     assert response.status_code == 200
     status, snapshot, _, _ = checkpoint(db)
     assert status == "error" and snapshot["failed_step_id"] == "step1"
@@ -220,7 +230,7 @@ def test_real_entry_reason_failure_has_no_tool_execution(entry, fault, stream):
         provider.reason = '<tool_call>{"name":"entry_probe","arguments":{"value":8}}</tool_call>'
     else:
         provider.reason_timeout = True
-    response = client.post("/api/chat/stream" if stream else "/api/chat",
+    response = client.post("/api/v1/chat/stream" if stream else "/api/v1/chat",
                            json={"message": "please perform the reasoning steps"})
     assert response.status_code == 200
     status, snapshot, _, _ = checkpoint(db)
@@ -251,15 +261,17 @@ async def test_live_service_cancel_new_session_http_resume(entry, monkeypatch, r
     assert status == "running" and snapshot["plan_cursor"] == 1
     assert calls == [1] and snapshot["tool_rounds_used"] == 1
     monkeypatch.setattr(settings, "AGENT_MAX_TOOL_ROUNDS", resume_budget)
-    response = client.post("/api/chat/stream", json={"message": message,
+    response = client.post("/api/v1/chat/stream", json={"message": message,
                            "conversation_id": conversation_id, "resume_message_id": message_id})
-    assert response.status_code == 200 and "event: done" in response.text
+    assert response.status_code == 200 and "event: run.finished" in response.text
     status, snapshot, _, _ = checkpoint(db)
     if resume_budget == 3:
         assert "event: error" not in response.text and calls == [1, 2, 3]
+        assert _terminal_status(response.text) == "done"
         assert status == "done" and snapshot["tool_rounds_used"] == 3
     else:
         assert "event: error" in response.text and calls == [1]
+        assert _terminal_status(response.text) == "failed"
         assert status == "error" and snapshot["tool_rounds_used"] == 1
         assert snapshot["failed_step_id"] == "step2"
         assert snapshot["plan_progress"][1]["error_code"] == "TOOL_BUDGET_EXCEEDED"
@@ -279,7 +291,7 @@ def test_explicit_text_rollback_keeps_real_entry_tool_behavior(entry, monkeypatc
         original(self, *args, **kwargs)
 
     monkeypatch.setattr(AgentPipeline, "__init__", rollback)
-    response = client.post("/api/chat", json={"message": "please use the legacy text plan"})
+    response = client.post("/api/v1/chat", json={"message": "please use the legacy text plan"})
     assert response.status_code == 200 and response.json()["reply"] == "entry answer"
     status, snapshot, _, _ = checkpoint(db)
     assert status == "done" and snapshot["structured_plan"] is None

@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     INITIAL_ADMIN_USERNAME: str = ""
     INITIAL_ADMIN_PASSWORD: str = ""
     INITIAL_ADMIN_EMAIL: str = ""
+    INITIAL_SYSTEM_PASSWORD: str = ""
+    INITIAL_CULTURE_PASSWORD: str = ""
 
     # ── CORS ──
     CORS_ORIGINS: str = "*"  # 逗号分隔；生产环境应显式指定，禁止 *
@@ -150,6 +152,20 @@ class Settings(BaseSettings):
     # 失败后的尝试顺序。只认 chat、intent、fallback。
     LLM_CHAT_FALLBACK_CHAIN: str = "chat,fallback"
     LLM_INTENT_FALLBACK_CHAIN: str = "intent,chat,fallback"
+    # 重排仅登记独立配置，不自动启用检索路径或套用 chat 协议。
+    LLM_RERANK_PROVIDER: str = ""
+    LLM_RERANK_BASE_URL: str = ""
+    LLM_RERANK_API_KEY: str = ""
+    LLM_RERANK_MODEL: str = ""
+    LLM_CIRCUIT_FAILURE_THRESHOLD: int = Field(default=3, ge=1, le=100)
+    LLM_CIRCUIT_COOLDOWN_SECONDS: float = Field(default=30.0, gt=0, le=3600, allow_inf_nan=False)
+
+    @field_validator("LLM_CIRCUIT_FAILURE_THRESHOLD", "LLM_CIRCUIT_COOLDOWN_SECONDS", mode="before")
+    @classmethod
+    def _circuit_numeric_types(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("circuit budgets must be numeric, not boolean")
+        return value
 
     # ── 模型能力契约与调用预算（RAG-028）──
     # 护栏在**每次真实请求发出前**核对：实际 payload + 输出预留 + 余量 ≤ 已验证上下文窗口。

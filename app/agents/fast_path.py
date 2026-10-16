@@ -3,13 +3,23 @@
 这些路径不进入 Supervisor，也不跑理解、规划、反思。
 """
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 
-from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState, ExecutionPolicy
+from app.agents.pipeline import (
+    AgentEvent,
+    AgentPipeline,
+    AgentState,
+    ExecutionPolicy,
+    _failure_text,
+    error_metadata,
+    node_event,
+    protocol_event,
+)
 from app.agents.route import ChatRoute, RouteKind
 from app.agents.tools.base import ToolRegistry
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text, user_message_content
 from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
 from app.rag.retriever import assemble_retrieval
@@ -41,7 +51,7 @@ def _user_block(state: AgentState, extra: str = "") -> str:
         parts.append(f"## 已有上下文\n{state.context}")
     if state.history:
         recent = state.history[-6:]
-        dialogue = "\n".join(f"{_role_name(item.role)}：{item.content}" for item in recent)
+        dialogue = "\n".join(f"{_role_name(item.role)}：{content_text(item.content)}" for item in recent)
         parts.append(f"## 最近对话\n{dialogue}")
     if extra:
         parts.append(extra)
@@ -59,7 +69,7 @@ async def _stream_reply(
     yield AgentEvent("stage", "响应")
     messages = [
         ChatMessage(role=ChatRole.SYSTEM, content=system),
-        ChatMessage(role=ChatRole.USER, content=user),
+        ChatMessage(role=ChatRole.USER, content=user_message_content(user, state.user_images)),
     ]
     parts: list[str] = []
     # 披露语先吐给用户：即使模型完全忽略 system 里的指令，
@@ -85,6 +95,43 @@ def _chunk_tokens(text: str) -> list[str]:
 
 
 async def iter_fast_path(
+    llm: LLMProvider,
+    options: LLMOptions,
+    state: AgentState,
+    route: ChatRoute,
+    retriever,
+    tools: ToolRegistry | None,
+    skill_prompt: str = "",
+) -> AsyncIterator[AgentEvent]:
+    """短路路径只报告实际执行的节点，不伪造被省略的规划/反思。"""
+    yield protocol_event("intent.classified", intent=route.kind.value, shortcut=True)
+    current: str | None = None
+    names = {"行动": "action", "检索": "retrieval", "响应": "respond"}
+    try:
+        async for event in _iter_fast_path_events(llm, options, state, route, retriever, tools, skill_prompt):
+            if event.type == "stage":
+                if current is not None:
+                    yield node_event("node.finished", current, status="done")
+                current = names.get(event.data, event.data)
+                yield node_event("node.started", current)
+            elif event.type == "done" and current is not None:
+                yield node_event("node.finished", current, status="done")
+                current = None
+            yield event
+    except asyncio.CancelledError:
+        if current is not None:
+            yield node_event("node.finished", current, status="cancelled")
+        raise
+    except Exception as exc:
+        if current is not None:
+            yield node_event("node.finished", current, status="failed")
+        state.error = type(exc).__name__
+        state.answer = _failure_text(exc)
+        yield AgentEvent("error", state.answer, metadata=error_metadata(exc))
+        yield AgentEvent("done", state.answer)
+
+
+async def _iter_fast_path_events(
     llm: LLMProvider,
     options: LLMOptions,
     state: AgentState,
@@ -120,7 +167,8 @@ async def iter_fast_path(
         outcome: RetrievalOutcome | None = None
         if retriever is not None:
             try:
-                snippet = await retriever.retrieve(state.user_input, state.plan or "")
+                query = state.retrieval_query if state.retrieval_query is not None else state.user_input
+                snippet = await retriever.retrieve(query, state.plan or "")
             except Exception:  # noqa: BLE001 — 检索故障不应中断对话
                 logger.exception("短路径检索失败")
                 snippet = ""

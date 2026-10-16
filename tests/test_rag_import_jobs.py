@@ -135,7 +135,7 @@ def test_upload_batch_rejects_second_file_oversize_without_saving(
     batches_before = len(session.exec(select(ImportBatch)).all())
     jobs_before = len(session.exec(select(ImportJob)).all())
     resp = http.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[
             ("files", ("ok.txt", io.BytesIO(b"ok"), "text/plain")),
             ("files", ("big.txt", io.BytesIO(b"hello"), "text/plain")),
@@ -161,7 +161,7 @@ def test_upload_batch_returns_first_error_when_type_precedes_oversize(
     batches_before = len(session.exec(select(ImportBatch)).all())
     jobs_before = len(session.exec(select(ImportJob)).all())
     resp = http.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[
             ("files", ("bad.bin", io.BytesIO(b"no"), "application/octet-stream")),
             ("files", ("big.txt", io.BytesIO(b"hello"), "text/plain")),
@@ -185,7 +185,7 @@ def test_batch_upload_jobs_create_documents(
     _patch_storage_root(monkeypatch, tmp_path)
 
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[
             ("files", ("one.txt", io.BytesIO("第一份知识".encode()), "text/plain")),
             ("files", ("two.txt", io.BytesIO("第二份知识".encode()), "text/plain")),
@@ -253,7 +253,7 @@ def test_url_import_and_reparse_updates_in_place(
     monkeypatch.setattr("httpx.AsyncClient.get", fake_get)
 
     create = client.post(
-        "/api/rag/import-jobs/url",
+        "/api/v1/rag/import-jobs/url",
         json={"url": "https://example.com/rag"},
     )
     assert create.status_code == 202
@@ -271,7 +271,7 @@ def test_url_import_and_reparse_updates_in_place(
     assert first_doc.version_number == 1
     assert first_doc.is_current is True
 
-    reparse = client.post(f"/api/rag/documents/{first_doc.id}/reparse")
+    reparse = client.post(f"/api/v1/rag/documents/{first_doc.id}/reparse")
     assert reparse.status_code == 202
     asyncio.run(run_import_jobs_once(limit=10))
     session.expire_all()
@@ -290,7 +290,7 @@ def test_url_import_and_reparse_updates_in_place(
     assert any("beta" in chunk.content for chunk in chunks)
     assert all("alpha" not in chunk.content for chunk in chunks)
 
-    listing = client.get("/api/rag/documents")
+    listing = client.get("/api/v1/rag/documents")
     matched = [item for item in listing.json() if item["id"] == first_doc.id]
     assert len(matched) == 1
     assert matched[0]["is_current"] is True
@@ -310,7 +310,7 @@ def test_retry_failed_url_job(
 
     monkeypatch.setattr("httpx.AsyncClient.get", failed_get)
     create = client.post(
-        "/api/rag/import-jobs/url",
+        "/api/v1/rag/import-jobs/url",
         json={"url": "https://example.com/fail"},
     )
     assert create.status_code == 202
@@ -334,7 +334,7 @@ def test_retry_failed_url_job(
         return FakeResponse()
 
     monkeypatch.setattr("httpx.AsyncClient.get", success_get)
-    retried = client.post(f"/api/rag/import-jobs/{failed_job.id}/retry")
+    retried = client.post(f"/api/v1/rag/import-jobs/{failed_job.id}/retry")
     assert retried.status_code == 202
     asyncio.run(run_import_jobs_once(limit=10))
     session.expire_all()
@@ -370,7 +370,7 @@ def test_pdf_import_job_succeeds_with_ocr(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf"))],
     )
     assert resp.status_code == 202
@@ -415,7 +415,7 @@ def test_pdf_import_job_succeeds_with_cloud_ocr(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf"))],
     )
     assert resp.status_code == 202
@@ -447,7 +447,7 @@ def test_pdf_import_job_fails_when_ocr_environment_missing(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf"))],
     )
     assert resp.status_code == 202
@@ -478,7 +478,7 @@ def test_pdf_import_job_fails_when_cloud_ocr_http_error(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf"))],
     )
     assert resp.status_code == 202
@@ -534,7 +534,7 @@ def test_pdf_import_job_persists_trace_for_ocr_provider_failure(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf"))],
     )
     assert resp.status_code == 202
@@ -609,7 +609,7 @@ def test_pptx_import_job_persists_trace_for_ocr_fallback_failure(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[
             (
                 "files",
@@ -685,7 +685,7 @@ def test_pptx_import_job_persists_trace_for_pdf_conversion_failure(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[
             (
                 "files",
@@ -738,7 +738,7 @@ def test_url_import_job_persists_trace_for_fetch_failure(
 
     monkeypatch.setattr("httpx.AsyncClient.get", timeout_get)
     create = client.post(
-        "/api/rag/import-jobs/url",
+        "/api/v1/rag/import-jobs/url",
         json={"url": "https://example.com/timeout"},
     )
     assert create.status_code == 202
@@ -788,7 +788,7 @@ def test_legacy_doc_import_job_succeeds(
     )
 
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("legacy.doc", io.BytesIO(b"%doc"), "application/msword"))],
     )
     assert resp.status_code == 202
@@ -831,7 +831,7 @@ def test_legacy_doc_import_job_truncates_user_error_and_persists_trace(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("legacy.doc", io.BytesIO(b"%doc"), "application/msword"))],
     )
     assert resp.status_code == 202
@@ -889,7 +889,7 @@ def test_legacy_doc_import_job_persists_full_trace_for_subprocess_failure(
 
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[("files", ("legacy.ppt", io.BytesIO(b"%ppt"), "application/vnd.ms-powerpoint"))],
     )
     assert resp.status_code == 202

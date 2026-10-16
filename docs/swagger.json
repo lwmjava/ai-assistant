@@ -6,14 +6,14 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/api/health": {
+    "/api/v1/health": {
       "get": {
         "tags": [
           "system"
         ],
         "summary": "Health Check",
         "description": "报告数据库、向量库连通性及可选工具配置状态。工具未配置不阻塞启动。",
-        "operationId": "health_check_api_health_get",
+        "operationId": "health_check_api_v1_health_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -26,14 +26,61 @@
         }
       }
     },
-    "/api/auth/login": {
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change Password Route",
+        "description": "核对原口令后修改密码，清除首次改密限制并换发双令牌。",
+        "operationId": "change_password_route_api_v1_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
       "post": {
         "tags": [
           "auth"
         ],
         "summary": "Login",
         "description": "用户名密码登录，返回 access + refresh 双令牌。",
-        "operationId": "login_api_auth_login_post",
+        "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -55,6 +102,38 @@
               }
             }
           },
+          "403": {
+            "description": "user_disabled: 用户已被禁用，请联系管理员。tenant_suspended: 租户已停用，请联系系统管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "user_disabled": {
+                    "value": {
+                      "error": {
+                        "code": "user_disabled",
+                        "message": "用户已被禁用，请联系管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "tenant_suspended": {
+                    "value": {
+                      "error": {
+                        "code": "tenant_suspended",
+                        "message": "租户已停用，请联系系统管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -68,14 +147,14 @@
         }
       }
     },
-    "/api/auth/refresh": {
+    "/api/v1/auth/refresh": {
       "post": {
         "tags": [
           "auth"
         ],
         "summary": "Refresh",
         "description": "使用 refresh_token 换取新的双令牌（refresh 轮转）。",
-        "operationId": "refresh_api_auth_refresh_post",
+        "operationId": "refresh_api_v1_auth_refresh_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -97,6 +176,70 @@
               }
             }
           },
+          "401": {
+            "description": "session_expired: 登录已过期，请重新登录。token_revoked: 您的登录凭证已被管理员重置，请重新登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "session_expired": {
+                    "value": {
+                      "error": {
+                        "code": "session_expired",
+                        "message": "登录已过期，请重新登录",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "token_revoked": {
+                    "value": {
+                      "error": {
+                        "code": "token_revoked",
+                        "message": "您的登录凭证已被管理员重置，请重新登录",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "user_disabled: 用户已被禁用，请联系管理员。tenant_suspended: 租户已停用，请联系系统管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "user_disabled": {
+                    "value": {
+                      "error": {
+                        "code": "user_disabled",
+                        "message": "用户已被禁用，请联系管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "tenant_suspended": {
+                    "value": {
+                      "error": {
+                        "code": "tenant_suspended",
+                        "message": "租户已停用，请联系系统管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -110,14 +253,14 @@
         }
       }
     },
-    "/api/auth/register": {
+    "/api/v1/auth/register": {
       "post": {
         "tags": [
           "auth"
         ],
         "summary": "Register",
         "description": "公开注册为 default 租户的 member，并签发该租户的令牌。",
-        "operationId": "register_api_auth_register_post",
+        "operationId": "register_api_v1_auth_register_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -152,14 +295,14 @@
         }
       }
     },
-    "/api/auth/setup-status": {
+    "/api/v1/auth/setup-status": {
       "get": {
         "tags": [
           "auth"
         ],
         "summary": "Setup Status",
         "description": "没有系统管理员时，控制台应进入一次性向导。",
-        "operationId": "setup_status_api_auth_setup_status_get",
+        "operationId": "setup_status_api_v1_auth_setup_status_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -174,14 +317,14 @@
         }
       }
     },
-    "/api/auth/setup": {
+    "/api/v1/auth/setup": {
       "post": {
         "tags": [
           "auth"
         ],
         "summary": "Setup",
         "description": "创建首个系统管理员。已有系统管理员时向导关闭。",
-        "operationId": "setup_api_auth_setup_post",
+        "operationId": "setup_api_v1_auth_setup_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -216,14 +359,14 @@
         }
       }
     },
-    "/api/auth/users/{user_id}/revoke-tokens": {
+    "/api/v1/auth/users/{user_id}/revoke-tokens": {
       "post": {
         "tags": [
           "auth"
         ],
         "summary": "Revoke Tokens",
         "description": "递增指定用户的 token_version，使已发出的刷新令牌失效。",
-        "operationId": "revoke_tokens_api_auth_users__user_id__revoke_tokens_post",
+        "operationId": "revoke_tokens_api_v1_auth_users__user_id__revoke_tokens_post",
         "security": [
           {
             "HTTPBearer": []
@@ -264,14 +407,14 @@
         }
       }
     },
-    "/api/auth/memberships": {
+    "/api/v1/auth/memberships": {
       "get": {
         "tags": [
           "auth"
         ],
         "summary": "Memberships",
         "description": "返回当前用户已加入的租户。",
-        "operationId": "memberships_api_auth_memberships_get",
+        "operationId": "memberships_api_v1_auth_memberships_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -282,7 +425,7 @@
                     "$ref": "#/components/schemas/MembershipOut"
                   },
                   "type": "array",
-                  "title": "Response Memberships Api Auth Memberships Get"
+                  "title": "Response Memberships Api V1 Auth Memberships Get"
                 }
               }
             }
@@ -295,14 +438,14 @@
         ]
       }
     },
-    "/api/auth/switch-tenant": {
+    "/api/v1/auth/switch-tenant": {
       "post": {
         "tags": [
           "auth"
         ],
         "summary": "Switch Tenant Route",
         "description": "是成员才换发目标租户的令牌。不是成员时不改租户和令牌版本。",
-        "operationId": "switch_tenant_route_api_auth_switch_tenant_post",
+        "operationId": "switch_tenant_route_api_v1_auth_switch_tenant_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -342,14 +485,14 @@
         ]
       }
     },
-    "/api/auth/me": {
+    "/api/v1/auth/me": {
       "get": {
         "tags": [
           "auth"
         ],
         "summary": "Me",
         "description": "返回当前登录用户信息。",
-        "operationId": "me_api_auth_me_get",
+        "operationId": "me_api_v1_auth_me_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -369,14 +512,14 @@
         ]
       }
     },
-    "/api/chat": {
+    "/api/v1/chat": {
       "post": {
         "tags": [
           "chat"
         ],
         "summary": "Chat",
         "description": "发起一次非流式对话。",
-        "operationId": "chat_api_chat_post",
+        "operationId": "chat_api_v1_chat_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -398,6 +541,136 @@
               }
             }
           },
+          "401": {
+            "description": "session_expired: 登录已过期，请重新登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "session_expired": {
+                    "value": {
+                      "error": {
+                        "code": "session_expired",
+                        "message": "登录已过期，请重新登录",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "user_disabled: 用户已被禁用，请联系管理员。tenant_suspended: 租户已停用，请联系系统管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "user_disabled": {
+                    "value": {
+                      "error": {
+                        "code": "user_disabled",
+                        "message": "用户已被禁用，请联系管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "tenant_suspended": {
+                    "value": {
+                      "error": {
+                        "code": "tenant_suspended",
+                        "message": "租户已停用，请联系系统管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: 请求过于频繁，请稍后重试。quota_exceeded: 本租户配额已用尽，请联系租户管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": {
+                        "code": "rate_limited",
+                        "message": "请求过于频繁，请稍后重试",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "quota_exceeded": {
+                    "value": {
+                      "error": {
+                        "code": "quota_exceeded",
+                        "message": "本租户配额已用尽，请联系租户管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "model_unavailable: 模型服务暂不可用，请联系管理员检查模型配置。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "model_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "model_unavailable",
+                        "message": "模型服务暂不可用，请联系管理员检查模型配置",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "file_too_large: 上传文件超过上限。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "file_too_large": {
+                    "value": {
+                      "error": {
+                        "code": "file_too_large",
+                        "message": "上传文件超过上限",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "400": {
             "description": "消息为空或恢复内容不一致"
           },
@@ -425,14 +698,14 @@
         ]
       }
     },
-    "/api/chat/stream": {
+    "/api/v1/chat/stream": {
       "post": {
         "tags": [
           "chat"
         ],
         "summary": "Chat Stream",
         "description": "发起流式对话，以 SSE 增量返回管线阶段与最终回复。",
-        "operationId": "chat_stream_api_chat_stream_post",
+        "operationId": "chat_stream_api_v1_chat_stream_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -454,6 +727,114 @@
               }
             }
           },
+          "401": {
+            "description": "session_expired: 登录已过期，请重新登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "session_expired": {
+                    "value": {
+                      "error": {
+                        "code": "session_expired",
+                        "message": "登录已过期，请重新登录",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "user_disabled: 用户已被禁用，请联系管理员。tenant_suspended: 租户已停用，请联系系统管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "user_disabled": {
+                    "value": {
+                      "error": {
+                        "code": "user_disabled",
+                        "message": "用户已被禁用，请联系管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "tenant_suspended": {
+                    "value": {
+                      "error": {
+                        "code": "tenant_suspended",
+                        "message": "租户已停用，请联系系统管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: 请求过于频繁，请稍后重试。quota_exceeded: 本租户配额已用尽，请联系租户管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": {
+                        "code": "rate_limited",
+                        "message": "请求过于频繁，请稍后重试",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "quota_exceeded": {
+                    "value": {
+                      "error": {
+                        "code": "quota_exceeded",
+                        "message": "本租户配额已用尽，请联系租户管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "file_too_large: 上传文件超过上限。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "file_too_large": {
+                    "value": {
+                      "error": {
+                        "code": "file_too_large",
+                        "message": "上传文件超过上限",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "400": {
             "description": "消息为空或恢复内容不一致"
           },
@@ -461,7 +842,10 @@
             "description": "恢复会话或消息不存在或无权访问"
           },
           "409": {
-            "description": "执行仍在进行、快照不可恢复或当前编排不支持恢复"
+            "description": "同主体运行编号重复、回放冲突或快照不可恢复"
+          },
+          "503": {
+            "description": "活动运行容量已满，稍后重试；不会取消已有运行"
           },
           "422": {
             "description": "Validation Error",
@@ -481,14 +865,14 @@
         ]
       }
     },
-    "/api/chat/conversations": {
+    "/api/v1/chat/conversations": {
       "get": {
         "tags": [
           "chat"
         ],
         "summary": "List Conversations",
         "description": "列出当前用户可见的会话。",
-        "operationId": "list_conversations_api_chat_conversations_get",
+        "operationId": "list_conversations_api_v1_chat_conversations_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -499,7 +883,7 @@
                     "$ref": "#/components/schemas/ConversationOut"
                   },
                   "type": "array",
-                  "title": "Response List Conversations Api Chat Conversations Get"
+                  "title": "Response List Conversations Api V1 Chat Conversations Get"
                 }
               }
             }
@@ -512,14 +896,14 @@
         ]
       }
     },
-    "/api/chat/conversations/{conversation_id}": {
+    "/api/v1/chat/conversations/{conversation_id}": {
       "get": {
         "tags": [
           "chat"
         ],
         "summary": "Get Conversation",
         "description": "获取会话详情（含消息列表）。",
-        "operationId": "get_conversation_api_chat_conversations__conversation_id__get",
+        "operationId": "get_conversation_api_v1_chat_conversations__conversation_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -565,7 +949,7 @@
         ],
         "summary": "Rename Conversation",
         "description": "修改自己的会话标题。当前租户的系统管理员也可修改该租户内的会话。",
-        "operationId": "rename_conversation_api_chat_conversations__conversation_id__patch",
+        "operationId": "rename_conversation_api_v1_chat_conversations__conversation_id__patch",
         "security": [
           {
             "HTTPBearer": []
@@ -621,7 +1005,7 @@
         ],
         "summary": "Delete Conversation",
         "description": "删除会话及其消息。",
-        "operationId": "delete_conversation_api_chat_conversations__conversation_id__delete",
+        "operationId": "delete_conversation_api_v1_chat_conversations__conversation_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -645,7 +1029,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "title": "Response Delete Conversation Api Chat Conversations  Conversation Id  Delete"
+                  "title": "Response Delete Conversation Api V1 Chat Conversations  Conversation Id  Delete"
                 }
               }
             }
@@ -663,14 +1047,14 @@
         }
       }
     },
-    "/api/chat/tools": {
+    "/api/v1/chat/tools": {
       "get": {
         "tags": [
           "chat"
         ],
         "summary": "List Tools",
         "description": "列出当前可用的工具（内置 + MCP）：名称、描述与参数 Schema。\n\n工具清单会暴露服务端可用能力，因此要求认证与 ``agents:read`` 权限，\n不对外公开。",
-        "operationId": "list_tools_api_chat_tools_get",
+        "operationId": "list_tools_api_v1_chat_tools_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -681,7 +1065,7 @@
                     "type": "object"
                   },
                   "type": "array",
-                  "title": "Response List Tools Api Chat Tools Get"
+                  "title": "Response List Tools Api V1 Chat Tools Get"
                 }
               }
             }
@@ -694,14 +1078,170 @@
         ]
       }
     },
-    "/api/export/conversations": {
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Get Run",
+        "description": "读取当前主体拥有的运行状态与已安全持久化的最终回复。",
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "运行不存在、已过期或当前身份无权访问"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/events": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Run Events",
+        "description": "续订已有运行，不再次执行消息、模型或工具。",
+        "operationId": "run_events_api_v1_runs__run_id__events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "按事件位置续订运行",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "事件位置无效或回放窗口已过期，请查询最终结果"
+          },
+          "404": {
+            "description": "运行不存在、已过期或当前身份无权访问"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/cancel": {
+      "post": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Cancel Run",
+        "description": "显式停止当前主体的运行；断开订阅本身不会执行取消。",
+        "operationId": "cancel_run_api_v1_runs__run_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "运行不存在、已过期或当前身份无权访问"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/conversations": {
       "post": {
         "tags": [
           "export"
         ],
         "summary": "Export Conversations",
         "description": "当前租户的租户管理员下载本租户对话。审计写入成功后才开始返回文件。",
-        "operationId": "export_conversations_api_export_conversations_post",
+        "operationId": "export_conversations_api_v1_export_conversations_post",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -719,14 +1259,14 @@
         ]
       }
     },
-    "/api/rag/documents/ingest": {
+    "/api/v1/rag/documents/ingest": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Ingest Document",
         "description": "将一段纯文本摄取为当前租户的知识文档。\n\n调用方提交标题与正文后，本接口会按所选 RAG 后端自动分块、生成嵌入向量并落库。\n文档归属当前登录用户及其租户；需具备 ``knowledge_bases`` 的 write 权限。\n摄取成功后写入审计日志（动作：知识库上传）。\n\n请求参数:\n    req: 文本摄取请求体（``IngestRequest``）\n        text: 待摄取正文，去空白后不能为空\n        title: 文档标题，去空白后不能为空\n        source: 可选来源标识（如「内部知识库」）\n        backend: 可选 RAG 后端，取值 ``native`` / ``langchain`` / ``llamaindex``；\n            未传时沿用配置项 ``RAG_BACKEND``\n    request: FastAPI 请求对象，供审计记录客户端信息\n    current_user: 已认证且具备写入权限的当前用户（依赖注入）\n    session: 数据库会话（依赖注入）\n\n返回:\n    DocumentOut: 新文档概要；chunk_count 是已保存分块数量，不保证全部已向量化。\n    超出输入限制的结构保留原文；vectorization_status 和各状态计数说明向量化结果，\n    embedding_skip_reason_counts 给出允许公开的跳过原因计数。\n\n异常:\n    400: text/title 为空，或文本无法切分为任何分块等业务校验失败",
-        "operationId": "ingest_document_api_rag_documents_ingest_post",
+        "operationId": "ingest_document_api_v1_rag_documents_ingest_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -766,19 +1306,19 @@
         ]
       }
     },
-    "/api/rag/documents/upload": {
+    "/api/v1/rag/documents/upload": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Upload Document",
         "description": "上传文档并按文件类型自动提取文本后摄取为知识文档。\n\n成功响应中的 chunk_count 是保存数量，不保证所有分块均已向量化。\n超出输入限制的结构保留原文，以 vectorization_status、各状态数量和\nembedding_skip_reason_counts 呈现向量化结果及允许公开的跳过原因。",
-        "operationId": "upload_document_api_rag_documents_upload_post",
+        "operationId": "upload_document_api_v1_rag_documents_upload_post",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_document_api_rag_documents_upload_post"
+                "$ref": "#/components/schemas/Body_upload_document_api_v1_rag_documents_upload_post"
               }
             }
           },
@@ -795,6 +1335,104 @@
               }
             }
           },
+          "401": {
+            "description": "session_expired: 登录已过期，请重新登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "session_expired": {
+                    "value": {
+                      "error": {
+                        "code": "session_expired",
+                        "message": "登录已过期，请重新登录",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "user_disabled: 用户已被禁用，请联系管理员。tenant_suspended: 租户已停用，请联系系统管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "user_disabled": {
+                    "value": {
+                      "error": {
+                        "code": "user_disabled",
+                        "message": "用户已被禁用，请联系管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "tenant_suspended": {
+                    "value": {
+                      "error": {
+                        "code": "tenant_suspended",
+                        "message": "租户已停用，请联系系统管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "file_too_large: 上传文件超过上限。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "file_too_large": {
+                    "value": {
+                      "error": {
+                        "code": "file_too_large",
+                        "message": "上传文件超过上限",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "quota_exceeded: 本租户配额已用尽，请联系租户管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "quota_exceeded": {
+                    "value": {
+                      "error": {
+                        "code": "quota_exceeded",
+                        "message": "本租户配额已用尽，请联系租户管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -813,19 +1451,19 @@
         ]
       }
     },
-    "/api/rag/import-jobs/upload": {
+    "/api/v1/rag/import-jobs/upload": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Create Upload Jobs",
         "description": "批量上传文件并创建异步导入任务。",
-        "operationId": "create_upload_jobs_api_rag_import_jobs_upload_post",
+        "operationId": "create_upload_jobs_api_v1_rag_import_jobs_upload_post",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_upload_jobs_api_rag_import_jobs_upload_post"
+                "$ref": "#/components/schemas/Body_create_upload_jobs_api_v1_rag_import_jobs_upload_post"
               }
             }
           },
@@ -842,6 +1480,50 @@
               }
             }
           },
+          "413": {
+            "description": "file_too_large: 上传文件超过上限。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "file_too_large": {
+                    "value": {
+                      "error": {
+                        "code": "file_too_large",
+                        "message": "上传文件超过上限",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "quota_exceeded: 本租户配额已用尽，请联系租户管理员。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "quota_exceeded": {
+                    "value": {
+                      "error": {
+                        "code": "quota_exceeded",
+                        "message": "本租户配额已用尽，请联系租户管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -860,14 +1542,14 @@
         ]
       }
     },
-    "/api/rag/import-jobs/url": {
+    "/api/v1/rag/import-jobs/url": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Create Url Job",
         "description": "创建网页 URL 异步导入任务。",
-        "operationId": "create_url_job_api_rag_import_jobs_url_post",
+        "operationId": "create_url_job_api_v1_rag_import_jobs_url_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -907,14 +1589,14 @@
         ]
       }
     },
-    "/api/rag/import-jobs": {
+    "/api/v1/rag/import-jobs": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "List Import Jobs",
         "description": "列出当前用户可见的导入任务。",
-        "operationId": "list_import_jobs_api_rag_import_jobs_get",
+        "operationId": "list_import_jobs_api_v1_rag_import_jobs_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -925,7 +1607,7 @@
                     "$ref": "#/components/schemas/ImportJobOut"
                   },
                   "type": "array",
-                  "title": "Response List Import Jobs Api Rag Import Jobs Get"
+                  "title": "Response List Import Jobs Api V1 Rag Import Jobs Get"
                 }
               }
             }
@@ -938,14 +1620,14 @@
         ]
       }
     },
-    "/api/rag/import-jobs/{job_id}": {
+    "/api/v1/rag/import-jobs/{job_id}": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "Get Import Job",
         "description": "获取导入任务详情。",
-        "operationId": "get_import_job_api_rag_import_jobs__job_id__get",
+        "operationId": "get_import_job_api_v1_rag_import_jobs__job_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -986,14 +1668,14 @@
         }
       }
     },
-    "/api/rag/import-batches/{batch_id}": {
+    "/api/v1/rag/import-batches/{batch_id}": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "Get Import Batch",
         "description": "获取批量导入批次详情。",
-        "operationId": "get_import_batch_api_rag_import_batches__batch_id__get",
+        "operationId": "get_import_batch_api_v1_rag_import_batches__batch_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -1034,14 +1716,14 @@
         }
       }
     },
-    "/api/rag/import-jobs/{job_id}/retry": {
+    "/api/v1/rag/import-jobs/{job_id}/retry": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Retry Job",
         "description": "重试失败的导入任务。",
-        "operationId": "retry_job_api_rag_import_jobs__job_id__retry_post",
+        "operationId": "retry_job_api_v1_rag_import_jobs__job_id__retry_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1082,14 +1764,14 @@
         }
       }
     },
-    "/api/rag/import-jobs/{job_id}/download": {
+    "/api/v1/rag/import-jobs/{job_id}/download": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "Download Import Job Source",
         "description": "下载导入任务关联的源文件或 URL 快照。",
-        "operationId": "download_import_job_source_api_rag_import_jobs__job_id__download_get",
+        "operationId": "download_import_job_source_api_v1_rag_import_jobs__job_id__download_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1128,14 +1810,14 @@
         }
       }
     },
-    "/api/rag/documents": {
+    "/api/v1/rag/documents": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "List Documents",
         "description": "列出当前用户可见的文档。成员忽略已删除和状态筛选。",
-        "operationId": "list_documents_api_rag_documents_get",
+        "operationId": "list_documents_api_v1_rag_documents_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1179,7 +1861,7 @@
                   "items": {
                     "$ref": "#/components/schemas/DocumentOut"
                   },
-                  "title": "Response List Documents Api Rag Documents Get"
+                  "title": "Response List Documents Api V1 Rag Documents Get"
                 }
               }
             }
@@ -1197,14 +1879,14 @@
         }
       }
     },
-    "/api/rag/documents/{document_id}": {
+    "/api/v1/rag/documents/{document_id}": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "Get Document",
         "description": "获取文档详情。",
-        "operationId": "get_document_api_rag_documents__document_id__get",
+        "operationId": "get_document_api_v1_rag_documents__document_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -1250,7 +1932,7 @@
         ],
         "summary": "Delete Document",
         "description": "软删除文档。跨租户须带一次性确认。",
-        "operationId": "delete_document_api_rag_documents__document_id__delete",
+        "operationId": "delete_document_api_v1_rag_documents__document_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -1290,7 +1972,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "title": "Response Delete Document Api Rag Documents  Document Id  Delete"
+                  "title": "Response Delete Document Api V1 Rag Documents  Document Id  Delete"
                 }
               }
             }
@@ -1308,14 +1990,14 @@
         }
       }
     },
-    "/api/rag/documents/{document_id}/chunks": {
+    "/api/v1/rag/documents/{document_id}/chunks": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "List Document Chunks",
         "description": "列出文档的全部分块（按块序），供前端逐块展示。",
-        "operationId": "list_document_chunks_api_rag_documents__document_id__chunks_get",
+        "operationId": "list_document_chunks_api_v1_rag_documents__document_id__chunks_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1342,7 +2024,7 @@
                   "items": {
                     "$ref": "#/components/schemas/DocumentChunkOut"
                   },
-                  "title": "Response List Document Chunks Api Rag Documents  Document Id  Chunks Get"
+                  "title": "Response List Document Chunks Api V1 Rag Documents  Document Id  Chunks Get"
                 }
               }
             }
@@ -1360,14 +2042,14 @@
         }
       }
     },
-    "/api/rag/chunks/{chunk_id}/evidence": {
+    "/api/v1/rag/chunks/{chunk_id}/evidence": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "Get Chunk Evidence",
         "description": "核验命中块的引用原文与定位信息（ADR-0007 只读核验）。\n\n只返回**该命中块本身**的正文，以及标题、版本状态、块序、页码 / 段落、\n源范围这些必要定位信息；不返回整章、整文档正文或源文件。\n\n每次请求都重新鉴权：主体权限 → 同租户 → Document/Chunk 真实关联 →\n未软删 → 当前版本与时效规则 → uploader 模式下限定上传者。任一项不满足\n统一返回 404 与固定文案，不返回正文，也不泄漏存在性细节。\n\n请求参数:\n    chunk_id: 待核验块 ID；只是待核验线索，不是授权证明。\n    document_id: 调用方声称的所属文档；与实际关联不一致即拒绝。\n    include_parent_content: 是否返回父块正文；默认只给父块定位信息，\n        即便开启也要对父块独立复核同文档关系与同一检索授权。\n\n异常:\n    404: 块不存在、无权核验、已软删、非当前版本或关联不自洽（文案一致）。",
-        "operationId": "get_chunk_evidence_api_rag_chunks__chunk_id__evidence_get",
+        "operationId": "get_chunk_evidence_api_v1_rag_chunks__chunk_id__evidence_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1434,14 +2116,14 @@
         }
       }
     },
-    "/api/rag/documents/{document_id}/reparse": {
+    "/api/v1/rag/documents/{document_id}/reparse": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Reparse Document",
         "description": "为既有文档创建重解析任务。跨租户须带一次性确认。",
-        "operationId": "reparse_document_api_rag_documents__document_id__reparse_post",
+        "operationId": "reparse_document_api_v1_rag_documents__document_id__reparse_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1498,14 +2180,14 @@
         }
       }
     },
-    "/api/rag/documents/{document_id}/download": {
+    "/api/v1/rag/documents/{document_id}/download": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "Download Document",
         "description": "下载已保存的源文件。",
-        "operationId": "download_document_api_rag_documents__document_id__download_get",
+        "operationId": "download_document_api_v1_rag_documents__document_id__download_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1544,14 +2226,14 @@
         }
       }
     },
-    "/api/rag/documents/{document_id}/publish": {
+    "/api/v1/rag/documents/{document_id}/publish": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Publish Document",
         "description": "把历史版本发布为当前版。跨租户须带一次性确认。",
-        "operationId": "publish_document_api_rag_documents__document_id__publish_post",
+        "operationId": "publish_document_api_v1_rag_documents__document_id__publish_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1608,14 +2290,14 @@
         }
       }
     },
-    "/api/rag/documents/{document_id}/schedule": {
+    "/api/v1/rag/documents/{document_id}/schedule": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Schedule Document",
         "description": "标为待生效，不改变检索用的当前发布指针以外的已发布版本之外。",
-        "operationId": "schedule_document_api_rag_documents__document_id__schedule_post",
+        "operationId": "schedule_document_api_v1_rag_documents__document_id__schedule_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1666,14 +2348,14 @@
         }
       }
     },
-    "/api/rag/documents/{document_id}/archive": {
+    "/api/v1/rag/documents/{document_id}/archive": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Archive Document",
         "description": "归档文档并退出当前版。",
-        "operationId": "archive_document_api_rag_documents__document_id__archive_post",
+        "operationId": "archive_document_api_v1_rag_documents__document_id__archive_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1714,14 +2396,14 @@
         }
       }
     },
-    "/api/rag/operation-confirmations": {
+    "/api/v1/rag/operation-confirmations": {
       "get": {
         "tags": [
           "rag"
         ],
         "summary": "List Operation Confirmations",
         "description": "系统管理员查看自己的确认记录。",
-        "operationId": "list_operation_confirmations_api_rag_operation_confirmations_get",
+        "operationId": "list_operation_confirmations_api_v1_rag_operation_confirmations_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1732,7 +2414,7 @@
                     "$ref": "#/components/schemas/ConfirmationOut"
                   },
                   "type": "array",
-                  "title": "Response List Operation Confirmations Api Rag Operation Confirmations Get"
+                  "title": "Response List Operation Confirmations Api V1 Rag Operation Confirmations Get"
                 }
               }
             }
@@ -1750,7 +2432,7 @@
         ],
         "summary": "Create Operation Confirmation",
         "description": "为跨租户删除、重解析或发布创建一次性确认。",
-        "operationId": "create_operation_confirmation_api_rag_operation_confirmations_post",
+        "operationId": "create_operation_confirmation_api_v1_rag_operation_confirmations_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1790,14 +2472,14 @@
         ]
       }
     },
-    "/api/rag/search": {
+    "/api/v1/rag/search": {
       "post": {
         "tags": [
           "rag"
         ],
         "summary": "Search",
         "description": "按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。\n\n检索状态与「实际生效后端」通过响应头暴露：后端工厂会在缺依赖时把\nlangchain / llamaindex 静默降级为 native，调用方需要能观察到真实生效值。\n本端点不做相似度阈值过滤，因此状态只有 ok / no_hit 两种；检索失败仍以\n503 呈现——显式检索接口不应把故障伪装成空结果。",
-        "operationId": "search_api_rag_search_post",
+        "operationId": "search_api_v1_rag_search_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1818,7 +2500,7 @@
                     "$ref": "#/components/schemas/SearchResultOut"
                   },
                   "type": "array",
-                  "title": "Response Search Api Rag Search Post"
+                  "title": "Response Search Api V1 Rag Search Post"
                 }
               }
             }
@@ -1841,14 +2523,14 @@
         ]
       }
     },
-    "/api/mcp/servers": {
+    "/api/v1/mcp/servers": {
       "get": {
         "tags": [
           "mcp"
         ],
         "summary": "List Servers",
         "description": "列出已配置的 MCP 服务器（不含密钥类字段）。",
-        "operationId": "list_servers_api_mcp_servers_get",
+        "operationId": "list_servers_api_v1_mcp_servers_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1859,7 +2541,7 @@
                     "type": "object"
                   },
                   "type": "array",
-                  "title": "Response List Servers Api Mcp Servers Get"
+                  "title": "Response List Servers Api V1 Mcp Servers Get"
                 }
               }
             }
@@ -1872,14 +2554,14 @@
         ]
       }
     },
-    "/api/mcp/tools": {
+    "/api/v1/mcp/tools": {
       "get": {
         "tags": [
           "mcp"
         ],
         "summary": "List Mcp Tools",
         "description": "列出已连接 MCP 服务器暴露的工具。",
-        "operationId": "list_mcp_tools_api_mcp_tools_get",
+        "operationId": "list_mcp_tools_api_v1_mcp_tools_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1890,7 +2572,7 @@
                     "type": "object"
                   },
                   "type": "array",
-                  "title": "Response List Mcp Tools Api Mcp Tools Get"
+                  "title": "Response List Mcp Tools Api V1 Mcp Tools Get"
                 }
               }
             }
@@ -1903,14 +2585,14 @@
         ]
       }
     },
-    "/api/skills": {
+    "/api/v1/skills": {
       "get": {
         "tags": [
           "skills"
         ],
         "summary": "Read Skills",
         "description": "列出当前用户能看的技能。",
-        "operationId": "read_skills_api_skills_get",
+        "operationId": "read_skills_api_v1_skills_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2013,7 +2695,7 @@
                   "items": {
                     "$ref": "#/components/schemas/SkillListOut"
                   },
-                  "title": "Response Read Skills Api Skills Get"
+                  "title": "Response Read Skills Api V1 Skills Get"
                 }
               }
             }
@@ -2036,7 +2718,7 @@
         ],
         "summary": "Add Skill",
         "description": "创建私有技能，或由系统管理员创建系统全局技能。",
-        "operationId": "add_skill_api_skills_post",
+        "operationId": "add_skill_api_v1_skills_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2076,14 +2758,14 @@
         }
       }
     },
-    "/api/skills/{skill_id}": {
+    "/api/v1/skills/{skill_id}": {
       "get": {
         "tags": [
           "skills"
         ],
         "summary": "Read Skill",
         "description": "读取一条技能的正文。",
-        "operationId": "read_skill_api_skills__skill_id__get",
+        "operationId": "read_skill_api_v1_skills__skill_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -2129,7 +2811,7 @@
         ],
         "summary": "Edit Skill",
         "description": "修改技能正文。响应仍不回显正文。",
-        "operationId": "edit_skill_api_skills__skill_id__patch",
+        "operationId": "edit_skill_api_v1_skills__skill_id__patch",
         "security": [
           {
             "HTTPBearer": []
@@ -2185,7 +2867,7 @@
         ],
         "summary": "Remove Skill",
         "description": "删除一条技能。",
-        "operationId": "remove_skill_api_skills__skill_id__delete",
+        "operationId": "remove_skill_api_v1_skills__skill_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -2219,14 +2901,14 @@
         }
       }
     },
-    "/api/skills/{skill_id}/disable": {
+    "/api/v1/skills/{skill_id}/disable": {
       "post": {
         "tags": [
           "skills"
         ],
         "summary": "Disable Skill",
         "description": "停用一条技能。重复停用仍返回当前状态。",
-        "operationId": "disable_skill_api_skills__skill_id__disable_post",
+        "operationId": "disable_skill_api_v1_skills__skill_id__disable_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2267,14 +2949,14 @@
         }
       }
     },
-    "/api/skills/{skill_id}/enable": {
+    "/api/v1/skills/{skill_id}/enable": {
       "post": {
         "tags": [
           "skills"
         ],
         "summary": "Enable Skill",
         "description": "启用一条技能。重复启用仍返回当前状态。",
-        "operationId": "enable_skill_api_skills__skill_id__enable_post",
+        "operationId": "enable_skill_api_v1_skills__skill_id__enable_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2315,14 +2997,14 @@
         }
       }
     },
-    "/api/workflows": {
+    "/api/v1/workflows": {
       "get": {
         "tags": [
           "workflows"
         ],
         "summary": "List Workflows",
         "description": "列出当前可见的定时任务（系统管理员跨租户，其余本租户）。",
-        "operationId": "list_workflows_api_workflows_get",
+        "operationId": "list_workflows_api_v1_workflows_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2333,7 +3015,7 @@
                     "$ref": "#/components/schemas/WorkflowOut"
                   },
                   "type": "array",
-                  "title": "Response List Workflows Api Workflows Get"
+                  "title": "Response List Workflows Api V1 Workflows Get"
                 }
               }
             }
@@ -2351,7 +3033,7 @@
         ],
         "summary": "Create Workflow",
         "description": "创建定时任务（WFL-01）。以当前用户为 owner，归属其租户。",
-        "operationId": "create_workflow_api_workflows_post",
+        "operationId": "create_workflow_api_v1_workflows_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2391,13 +3073,13 @@
         ]
       }
     },
-    "/api/workflows/{workflow_id}": {
+    "/api/v1/workflows/{workflow_id}": {
       "get": {
         "tags": [
           "workflows"
         ],
         "summary": "Get Workflow",
-        "operationId": "get_workflow_api_workflows__workflow_id__get",
+        "operationId": "get_workflow_api_v1_workflows__workflow_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -2442,7 +3124,7 @@
           "workflows"
         ],
         "summary": "Update Workflow",
-        "operationId": "update_workflow_api_workflows__workflow_id__put",
+        "operationId": "update_workflow_api_v1_workflows__workflow_id__put",
         "security": [
           {
             "HTTPBearer": []
@@ -2497,7 +3179,7 @@
           "workflows"
         ],
         "summary": "Delete Workflow",
-        "operationId": "delete_workflow_api_workflows__workflow_id__delete",
+        "operationId": "delete_workflow_api_v1_workflows__workflow_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -2521,7 +3203,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "title": "Response Delete Workflow Api Workflows  Workflow Id  Delete"
+                  "title": "Response Delete Workflow Api V1 Workflows  Workflow Id  Delete"
                 }
               }
             }
@@ -2539,14 +3221,14 @@
         }
       }
     },
-    "/api/workflows/{workflow_id}/executions": {
+    "/api/v1/workflows/{workflow_id}/executions": {
       "get": {
         "tags": [
           "workflows"
         ],
         "summary": "List Executions",
         "description": "查看任务执行历史（WFL-02）：时间 / 状态 / 输出 / 耗时。",
-        "operationId": "list_executions_api_workflows__workflow_id__executions_get",
+        "operationId": "list_executions_api_v1_workflows__workflow_id__executions_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2573,7 +3255,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ExecutionOut"
                   },
-                  "title": "Response List Executions Api Workflows  Workflow Id  Executions Get"
+                  "title": "Response List Executions Api V1 Workflows  Workflow Id  Executions Get"
                 }
               }
             }
@@ -2591,14 +3273,14 @@
         }
       }
     },
-    "/api/workflows/{workflow_id}/run": {
+    "/api/v1/workflows/{workflow_id}/run": {
       "post": {
         "tags": [
           "workflows"
         ],
         "summary": "Run Workflow",
         "description": "手动触发一次执行（WFL-03）。执行身份为任务创建者（owner）。",
-        "operationId": "run_workflow_api_workflows__workflow_id__run_post",
+        "operationId": "run_workflow_api_v1_workflows__workflow_id__run_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2639,14 +3321,14 @@
         }
       }
     },
-    "/api/workflows/{workflow_id}/toggle": {
+    "/api/v1/workflows/{workflow_id}/toggle": {
       "post": {
         "tags": [
           "workflows"
         ],
         "summary": "Toggle Workflow",
         "description": "启用 / 禁用定时任务（不影响手动触发）。",
-        "operationId": "toggle_workflow_api_workflows__workflow_id__toggle_post",
+        "operationId": "toggle_workflow_api_v1_workflows__workflow_id__toggle_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2697,14 +3379,14 @@
         }
       }
     },
-    "/api/admin/audit-logs": {
+    "/api/v1/admin/audit-logs": {
       "get": {
         "tags": [
           "admin-audit"
         ],
         "summary": "List Audit Logs",
         "description": "查询审计日志（支持多条件过滤 + 分页）。\n\n默认按创建时间倒序排列。",
-        "operationId": "list_audit_logs_api_admin_audit_logs_get",
+        "operationId": "list_audit_logs_api_v1_admin_audit_logs_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2889,14 +3571,14 @@
         }
       }
     },
-    "/api/admin/tenants": {
+    "/api/v1/admin/tenants": {
       "get": {
         "tags": [
           "admin-tenants"
         ],
         "summary": "List Tenants Route",
         "description": "列出未停用租户。include_inactive 为真时连已停用一起返回。",
-        "operationId": "list_tenants_route_api_admin_tenants_get",
+        "operationId": "list_tenants_route_api_v1_admin_tenants_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2924,7 +3606,7 @@
                   "items": {
                     "$ref": "#/components/schemas/TenantOut"
                   },
-                  "title": "Response List Tenants Route Api Admin Tenants Get"
+                  "title": "Response List Tenants Route Api V1 Admin Tenants Get"
                 }
               }
             }
@@ -2947,7 +3629,7 @@
         ],
         "summary": "Create Tenant Route",
         "description": "创建租户。未停用租户中名称必须唯一。",
-        "operationId": "create_tenant_route_api_admin_tenants_post",
+        "operationId": "create_tenant_route_api_v1_admin_tenants_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2987,14 +3669,14 @@
         }
       }
     },
-    "/api/admin/tenants/{tenant_id}/users": {
+    "/api/v1/admin/tenants/{tenant_id}/users": {
       "post": {
         "tags": [
           "admin-tenants"
         ],
         "summary": "Create Member Route",
         "description": "在指定未停用租户下创建成员。角色固定为 member。",
-        "operationId": "create_member_route_api_admin_tenants__tenant_id__users_post",
+        "operationId": "create_member_route_api_v1_admin_tenants__tenant_id__users_post",
         "security": [
           {
             "HTTPBearer": []
@@ -3045,14 +3727,14 @@
         }
       }
     },
-    "/api/admin/tenants/{tenant_id}": {
+    "/api/v1/admin/tenants/{tenant_id}": {
       "patch": {
         "tags": [
           "admin-tenants"
         ],
         "summary": "Rename Tenant Route",
         "description": "修改未停用租户的名称。",
-        "operationId": "rename_tenant_route_api_admin_tenants__tenant_id__patch",
+        "operationId": "rename_tenant_route_api_v1_admin_tenants__tenant_id__patch",
         "security": [
           {
             "HTTPBearer": []
@@ -3103,14 +3785,14 @@
         }
       }
     },
-    "/api/admin/tenants/{tenant_id}/deactivate": {
+    "/api/v1/admin/tenants/{tenant_id}/deactivate": {
       "post": {
         "tags": [
           "admin-tenants"
         ],
         "summary": "Deactivate Tenant Route",
         "description": "停用租户。当前正在该租户中的用户之后不能继续访问。",
-        "operationId": "deactivate_tenant_route_api_admin_tenants__tenant_id__deactivate_post",
+        "operationId": "deactivate_tenant_route_api_v1_admin_tenants__tenant_id__deactivate_post",
         "security": [
           {
             "HTTPBearer": []
@@ -3151,14 +3833,14 @@
         }
       }
     },
-    "/api/admin/tenants/{tenant_id}/activate": {
+    "/api/v1/admin/tenants/{tenant_id}/activate": {
       "post": {
         "tags": [
           "admin-tenants"
         ],
         "summary": "Activate Tenant Route",
         "description": "重新启用租户。同名未停用租户已存在时不改状态。",
-        "operationId": "activate_tenant_route_api_admin_tenants__tenant_id__activate_post",
+        "operationId": "activate_tenant_route_api_v1_admin_tenants__tenant_id__activate_post",
         "security": [
           {
             "HTTPBearer": []
@@ -3199,14 +3881,14 @@
         }
       }
     },
-    "/api/admin/tenants/{tenant_id}/quota": {
+    "/api/v1/admin/tenants/{tenant_id}/quota": {
       "get": {
         "tags": [
           "admin-tenants"
         ],
         "summary": "Get Tenant Quota",
         "description": "读取一个租户的消息条数上限和源文件字节上限。",
-        "operationId": "get_tenant_quota_api_admin_tenants__tenant_id__quota_get",
+        "operationId": "get_tenant_quota_api_v1_admin_tenants__tenant_id__quota_get",
         "security": [
           {
             "HTTPBearer": []
@@ -3252,7 +3934,7 @@
         ],
         "summary": "Update Tenant Quota Route",
         "description": "修改上限。审计没有写上时，上限保持原值。",
-        "operationId": "update_tenant_quota_route_api_admin_tenants__tenant_id__quota_patch",
+        "operationId": "update_tenant_quota_route_api_v1_admin_tenants__tenant_id__quota_patch",
         "security": [
           {
             "HTTPBearer": []
@@ -3303,14 +3985,14 @@
         }
       }
     },
-    "/api/admin/users": {
+    "/api/v1/admin/users": {
       "get": {
         "tags": [
           "admin-users"
         ],
         "summary": "List Users Route",
         "description": "分页列出用户，含已停用。",
-        "operationId": "list_users_route_api_admin_users_get",
+        "operationId": "list_users_route_api_v1_admin_users_get",
         "security": [
           {
             "HTTPBearer": []
@@ -3429,14 +4111,14 @@
         }
       }
     },
-    "/api/admin/users/{user_id}": {
+    "/api/v1/admin/users/{user_id}": {
       "patch": {
         "tags": [
           "admin-users"
         ],
         "summary": "Change Role Route",
         "description": "修改用户角色。不能修改自己。",
-        "operationId": "change_role_route_api_admin_users__user_id__patch",
+        "operationId": "change_role_route_api_v1_admin_users__user_id__patch",
         "security": [
           {
             "HTTPBearer": []
@@ -3487,14 +4169,14 @@
         }
       }
     },
-    "/api/admin/users/{user_id}/disable": {
+    "/api/v1/admin/users/{user_id}/disable": {
       "post": {
         "tags": [
           "admin-users"
         ],
         "summary": "Disable User Route",
         "description": "停用用户。该用户之后不能再访问，旧刷新令牌失效。",
-        "operationId": "disable_user_route_api_admin_users__user_id__disable_post",
+        "operationId": "disable_user_route_api_v1_admin_users__user_id__disable_post",
         "security": [
           {
             "HTTPBearer": []
@@ -3535,14 +4217,14 @@
         }
       }
     },
-    "/api/admin/users/{user_id}/enable": {
+    "/api/v1/admin/users/{user_id}/enable": {
       "post": {
         "tags": [
           "admin-users"
         ],
         "summary": "Enable User Route",
         "description": "重新启用用户。旧令牌仍然无效，需要重新登录。",
-        "operationId": "enable_user_route_api_admin_users__user_id__enable_post",
+        "operationId": "enable_user_route_api_v1_admin_users__user_id__enable_post",
         "security": [
           {
             "HTTPBearer": []
@@ -3583,14 +4265,14 @@
         }
       }
     },
-    "/api/admin/system/status": {
+    "/api/v1/admin/system/status": {
       "get": {
         "tags": [
           "admin-system"
         ],
         "summary": "System Status",
         "description": "返回数据库、向量库、版本和本进程启动时间。",
-        "operationId": "system_status_api_admin_system_status_get",
+        "operationId": "system_status_api_v1_admin_system_status_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3610,14 +4292,14 @@
         ]
       }
     },
-    "/api/invitations": {
+    "/api/v1/invitations": {
       "post": {
         "tags": [
           "invitations"
         ],
         "summary": "Create Invitation Route",
         "description": "发放邀请码。系统管理员必须指定租户。",
-        "operationId": "create_invitation_route_api_invitations_post",
+        "operationId": "create_invitation_route_api_v1_invitations_post",
         "security": [
           {
             "HTTPBearer": []
@@ -3662,7 +4344,7 @@
         ],
         "summary": "List Invitation Route",
         "description": "列出发码人可见的邀请码。",
-        "operationId": "list_invitation_route_api_invitations_get",
+        "operationId": "list_invitation_route_api_v1_invitations_get",
         "security": [
           {
             "HTTPBearer": []
@@ -3696,7 +4378,7 @@
                   "items": {
                     "$ref": "#/components/schemas/InvitationOut"
                   },
-                  "title": "Response List Invitation Route Api Invitations Get"
+                  "title": "Response List Invitation Route Api V1 Invitations Get"
                 }
               }
             }
@@ -3714,14 +4396,14 @@
         }
       }
     },
-    "/api/invitations/accept": {
+    "/api/v1/invitations/accept": {
       "post": {
         "tags": [
           "invitations"
         ],
         "summary": "Accept Invitation Route",
         "description": "凭码加入租户。不切换当前会话租户。",
-        "operationId": "accept_invitation_route_api_invitations_accept_post",
+        "operationId": "accept_invitation_route_api_v1_invitations_accept_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3760,30 +4442,55 @@
           }
         ]
       }
-    },
-    "/": {
-      "get": {
-        "tags": [
-          "system"
-        ],
-        "summary": "Root",
-        "description": "根路径：托管前端时返回应用入口，否则返回服务基本信息。",
-        "operationId": "root__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
     "schemas": {
+      "AttachmentInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "content_base64": {
+            "type": "string",
+            "title": "Content Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "content_base64"
+        ],
+        "title": "AttachmentInput",
+        "description": "客户端仅提交显示名称与严格 base64 内容。"
+      },
+      "AttachmentOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "mime_type": {
+            "type": "string",
+            "title": "Mime Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "size",
+          "mime_type"
+        ],
+        "title": "AttachmentOut",
+        "description": "历史仅显示附件摘要，不返回图片或文档正文。"
+      },
       "AuditLogOut": {
         "properties": {
           "id": {
@@ -3924,7 +4631,7 @@
         "title": "AuditLogPage",
         "description": "分页审计日志响应。"
       },
-      "Body_create_upload_jobs_api_rag_import_jobs_upload_post": {
+      "Body_create_upload_jobs_api_v1_rag_import_jobs_upload_post": {
         "properties": {
           "files": {
             "items": {
@@ -3939,9 +4646,9 @@
         "required": [
           "files"
         ],
-        "title": "Body_create_upload_jobs_api_rag_import_jobs_upload_post"
+        "title": "Body_create_upload_jobs_api_v1_rag_import_jobs_upload_post"
       },
-      "Body_upload_document_api_rag_documents_upload_post": {
+      "Body_upload_document_api_v1_rag_documents_upload_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -3953,13 +4660,57 @@
         "required": [
           "file"
         ],
-        "title": "Body_upload_document_api_rag_documents_upload_post"
+        "title": "Body_upload_document_api_v1_rag_documents_upload_post"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest",
+        "description": "当前用户验证原口令后设置新口令。"
       },
       "ChatRequest": {
         "properties": {
           "message": {
             "type": "string",
             "title": "Message"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentInput"
+            },
+            "type": "array",
+            "title": "Attachments"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id",
+            "description": "客户端预生成的唯一运行 ID；重复提交拒绝"
           },
           "conversation_id": {
             "anyOf": [
@@ -4761,6 +5512,18 @@
         "title": "DocumentOut",
         "description": "文档概要。"
       },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/PublicError"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
       "ExecutionOut": {
         "properties": {
           "id": {
@@ -5328,6 +6091,13 @@
             "type": "string",
             "title": "Content"
           },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentOut"
+            },
+            "type": "array",
+            "title": "Attachments"
+          },
           "model": {
             "anyOf": [
               {
@@ -5397,6 +6167,51 @@
         ],
         "title": "ProbeStatus",
         "description": "单项连通结果。只表示探测是否成功。"
+      },
+      "PublicError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "session_expired",
+              "token_revoked",
+              "user_disabled",
+              "tenant_suspended",
+              "rate_limited",
+              "quota_exceeded",
+              "model_unavailable",
+              "file_too_large"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "retry_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "retry_after",
+          "request_id"
+        ],
+        "title": "PublicError"
       },
       "QuotaOut": {
         "properties": {
@@ -5560,6 +6375,69 @@
         ],
         "title": "Role",
         "description": "五级角色（按权限从高到低）。"
+      },
+      "RunOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "done",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          },
+          "assistant_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assistant Message Id"
+          },
+          "reply": {
+            "type": "string",
+            "title": "Reply",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status"
+        ],
+        "title": "RunOut",
+        "description": "当前主体运行的稳定查询与取消响应，不含内部错误或模型输入。"
       },
       "ScheduleRequest": {
         "properties": {
@@ -6302,6 +7180,16 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "is_test_user": {
+            "type": "boolean",
+            "title": "Is Test User",
+            "default": false
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "title": "Must Change Password",
+            "default": false
+          },
           "tenant_name": {
             "type": "string",
             "title": "Tenant Name"
@@ -6350,6 +7238,16 @@
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
+          },
+          "is_test_user": {
+            "type": "boolean",
+            "title": "Is Test User",
+            "default": false
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "title": "Must Change Password",
+            "default": false
           }
         },
         "type": "object",

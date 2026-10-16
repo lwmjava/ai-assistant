@@ -105,9 +105,12 @@ class OpenAICompatibleProvider(LLMProvider):
         工具返回、自纠错轮次、历史都在 messages 里，因此天然被计入。
         违反时抛错，请求不会发出。
         """
-        if not settings.LLM_CAPABILITY_GUARD_ENABLED:
+        from app.llm.vision import has_image_inputs, visual_capability
+
+        images = has_image_inputs(messages)
+        if not images and not settings.LLM_CAPABILITY_GUARD_ENABLED:
             return
-        capability = self._effective_capability()
+        capability = visual_capability(self.base_url, self.model) if images else self._effective_capability()
         margin = settings.LLM_BUDGET_SAFETY_MARGIN + (
             capability.safety_margin if capability else 0
         )
@@ -128,7 +131,7 @@ class OpenAICompatibleProvider(LLMProvider):
         payload: dict = {
             "model": self.model,
             "messages": [
-                {"role": m.role.value, "content": m.content} for m in messages
+                m.model_dump(mode="json") for m in messages
             ],
             "stream": stream,
         }

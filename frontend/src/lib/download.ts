@@ -1,7 +1,7 @@
 /**
  * 受控源文件下载的前端辅助：失败文案映射 + blob 落盘。
  *
- * 后端 `GET /api/rag/documents/{document_id}/download` 会给出 401/403/404/5xx，
+ * 后端 `GET /api/v1/rag/documents/{document_id}/download` 会给出 401/403/404/5xx，
  * 这里把它们翻成用户能看懂的中文提示；**映射只改文案，不改权限判定**，
  * 真正的权限校验始终在后端 `can_control_document`。
  */

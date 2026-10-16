@@ -38,7 +38,7 @@ def _login(client: TestClient, role: str, username: str) -> dict[str, str]:
         )
         session.commit()
     resp = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": username, "password": "Test@Pass123!"},
     )
     assert resp.status_code == 200
@@ -48,7 +48,7 @@ def _login(client: TestClient, role: str, username: str) -> dict[str, str]:
 def test_admin_sees_connectivity_without_invented_counts() -> None:
     client = _client()
     headers = _login(client, Role.SYSTEM_ADMIN.value, "admin")
-    resp = client.get("/api/admin/system/status", headers=headers)
+    resp = client.get("/api/v1/admin/system/status", headers=headers)
     assert resp.status_code == 200
     body = resp.json()
     assert body["checks"]["database"]["status"] in {"ok", "error"}
@@ -63,5 +63,5 @@ def test_member_cannot_open_system_status() -> None:
     client = _client()
     _login(client, Role.SYSTEM_ADMIN.value, "admin")
     headers = _login(client, Role.MEMBER.value, "ada")
-    resp = client.get("/api/admin/system/status", headers=headers)
+    resp = client.get("/api/v1/admin/system/status", headers=headers)
     assert resp.status_code == 403

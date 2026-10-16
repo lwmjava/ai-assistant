@@ -44,7 +44,7 @@ def _user(role: Role, username: str) -> User:
 
 def _headers(client: TestClient, username: str) -> dict[str, str]:
     resp = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": username, "password": "Test@Pass123!"},
     )
     assert resp.status_code == 200
@@ -59,9 +59,9 @@ def test_non_admin_cannot_create_or_list(client: TestClient) -> None:
     ):
         _user(role, username)
         headers = _headers(client, username)
-        assert client.get("/api/admin/tenants", headers=headers).status_code == 403
+        assert client.get("/api/v1/admin/tenants", headers=headers).status_code == 403
         created = client.post(
-            "/api/admin/tenants",
+            "/api/v1/admin/tenants",
             headers=headers,
             json={"name": f"acme-{username}"},
         )
@@ -72,14 +72,14 @@ def test_admin_creates_lists_and_audits(client: TestClient) -> None:
     _user(Role.SYSTEM_ADMIN, "admin")
     headers = _headers(client, "admin")
 
-    created = client.post("/api/admin/tenants", headers=headers, json={"name": "  Acme  "})
+    created = client.post("/api/v1/admin/tenants", headers=headers, json={"name": "  Acme  "})
     assert created.status_code == 201
     body = created.json()
     assert body["name"] == "Acme"
     assert body["is_active"] is True
     assert "users" not in body
 
-    listed = client.get("/api/admin/tenants", headers=headers)
+    listed = client.get("/api/v1/admin/tenants", headers=headers)
     assert listed.status_code == 200
     names = {item["name"] for item in listed.json()}
     assert "Acme" in names
@@ -94,8 +94,8 @@ def test_admin_creates_lists_and_audits(client: TestClient) -> None:
 def test_duplicate_active_name_rejected(client: TestClient) -> None:
     _user(Role.SYSTEM_ADMIN, "admin")
     headers = _headers(client, "admin")
-    assert client.post("/api/admin/tenants", headers=headers, json={"name": "Acme"}).status_code == 201
-    again = client.post("/api/admin/tenants", headers=headers, json={"name": "Acme"})
+    assert client.post("/api/v1/admin/tenants", headers=headers, json={"name": "Acme"}).status_code == 201
+    again = client.post("/api/v1/admin/tenants", headers=headers, json={"name": "Acme"})
     assert again.status_code == 409
 
 
@@ -106,10 +106,10 @@ def test_inactive_same_name_can_be_created_and_hidden_from_list(client: TestClie
         session.add(Tenant(name="Acme", is_active=False))
         session.commit()
 
-    created = client.post("/api/admin/tenants", headers=headers, json={"name": "Acme"})
+    created = client.post("/api/v1/admin/tenants", headers=headers, json={"name": "Acme"})
     assert created.status_code == 201
 
-    listed = client.get("/api/admin/tenants", headers=headers)
+    listed = client.get("/api/v1/admin/tenants", headers=headers)
     active = [item for item in listed.json() if item["name"] == "Acme"]
     assert len(active) == 1
     assert active[0]["is_active"] is True

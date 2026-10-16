@@ -20,6 +20,8 @@ function makeUser(over: Partial<UserInfo> = {}): UserInfo {
     email: null,
     role: 'member',
     is_active: true,
+    must_change_password: false,
+    is_test_user: false,
     ...over,
   }
 }

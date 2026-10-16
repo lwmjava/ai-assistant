@@ -48,7 +48,7 @@ def members(db):
 
 def http(db, user_id):
     app = FastAPI()
-    app.include_router(router, prefix="/api")
+    app.include_router(router, prefix="/api/v1")
     app.dependency_overrides[get_current_user] = lambda: actor(db, user_id)
 
     def request_session():
@@ -72,11 +72,11 @@ def file_job(db, user_id="u-a", *, source="shared.txt", body=b"owner original sy
 async def submit(client, kind, body):
     if kind == "file":
         response = await client.post(
-            "/api/rag/import-jobs/upload", files={"files": ("shared.txt", body, "text/plain")},
+            "/api/v1/rag/import-jobs/upload", files={"files": ("shared.txt", body, "text/plain")},
         )
         assert response.status_code == 202, response.text
         return response.json()["jobs"][0]["id"]
-    response = await client.post("/api/rag/import-jobs/url", json={"url": "https://example.invalid/shared.txt"})
+    response = await client.post("/api/v1/rag/import-jobs/url", json={"url": "https://example.invalid/shared.txt"})
     assert response.status_code == 202, response.text
     return response.json()["id"]
 
@@ -103,7 +103,7 @@ async def test_member_http_same_source_cannot_inherit_or_demote_owner(isolated, 
         if not same:
             payload = b"competing unauthorized replacement"
         async with http(db, "u-c") as competitor:
-            denied = await competitor.post(f"/api/rag/documents/{original_id}/reparse")
+            denied = await competitor.post(f"/api/v1/rag/documents/{original_id}/reparse")
             assert denied.status_code == 400
             new_job = await submit(competitor, kind, payload)
         await import_jobs.run_import_jobs_until_idle(limit=1)
@@ -113,8 +113,8 @@ async def test_member_http_same_source_cannot_inherit_or_demote_owner(isolated, 
         assert len(docs) == 1 and docs[0].id == original_id and docs[0].is_current
         assert docs[0].version_group_id == old[1][0].version_group_id
         assert {chunk.id for chunk in chunks} == {chunk.id for chunk in old[2]}
-        listed = await owner.get("/api/rag/documents")
-        found = await owner.post("/api/rag/search", json={"query": "owner original synthetic knowledge"})
+        listed = await owner.get("/api/v1/rag/documents")
+        found = await owner.post("/api/v1/rag/search", json={"query": "owner original synthetic knowledge"})
         assert listed.status_code == found.status_code == 200
         assert any(item["id"] == original_id for item in listed.json())
         assert any(item["document_id"] == original_id for item in found.json())
@@ -161,7 +161,7 @@ async def test_real_http_delete_then_same_content_upload_creates_searchable_curr
         await import_jobs.run_import_jobs_until_idle(limit=1)
         old_id = base.persisted(db)[1][0].id
         old_chunk_ids = {chunk.id for chunk in base.persisted(db)[2]}
-        deleted = await owner.delete(f"/api/rag/documents/{old_id}")
+        deleted = await owner.delete(f"/api/v1/rag/documents/{old_id}")
         assert deleted.status_code == 200, deleted.text
         replacement = await submit(owner, kind, payload)
         await import_jobs.run_import_jobs_until_idle(limit=1)
@@ -173,8 +173,8 @@ async def test_real_http_delete_then_same_content_upload_creates_searchable_curr
         assert next(doc for doc in docs if doc.id == old_id).deleted_at is not None
         assert next(doc for doc in docs if doc.id == new_id).is_current
         assert old_chunk_ids.issubset({chunk.id for chunk in chunks})
-        listed = await owner.get("/api/rag/documents")
-        found = await owner.post("/api/rag/search", json={"query": "owner original synthetic knowledge"})
+        listed = await owner.get("/api/v1/rag/documents")
+        found = await owner.post("/api/v1/rag/search", json={"query": "owner original synthetic knowledge"})
         assert listed.status_code == found.status_code == 200
         assert {item["id"] for item in listed.json()} == {new_id}
         assert any(item["document_id"] == new_id for item in found.json())

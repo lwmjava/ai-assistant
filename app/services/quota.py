@@ -117,6 +117,7 @@ def accept_user_message(
     role: str,
     conversation_id: str | None,
     message: str,
+    attachments: str | None = None,
 ) -> tuple[Conversation, str]:
     """在锁住的租户事务里写入一条用户消息。超限时回滚，不留下新会话。
 
@@ -148,7 +149,7 @@ def accept_user_message(
         )
         session.add(conversation)
         session.flush()
-    user_message = Message(conversation_id=conversation.id, role="user", content=message)
+    user_message = Message(conversation_id=conversation.id, role="user", content=message, attachments=attachments)
     session.add(user_message)
     session.commit()
     session.refresh(conversation)

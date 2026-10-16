@@ -1,21 +1,23 @@
-"""命令行入口：迁移数据库，以及创建系统管理员。"""
+"""命令行入口：初始化配置、迁移数据库和创建系统管理员。"""
 
 import argparse
 import logging
 import sys
 
-from app.core.config import settings
-from app.services.auth_service import (
-    MIN_CLI_PASSWORD_LENGTH,
-    DatabaseNotMigratedError,
-    DefaultTenantInactiveError,
-    PasswordTooShortError,
-    SetupClosedError,
-    UsernameTakenError,
-    create_cli_superuser,
-)
-
 logger = logging.getLogger(__name__)
+
+
+def _initialize(env_file: str) -> int:
+    """首次配置生成不导入 Settings，避免预先读取部署配置。"""
+    from app.core.bootstrap_config import initialize_config
+
+    try:
+        initialize_config(env_file)
+    except OSError:
+        print("无法创建初始化配置：目标必须不存在，且父目录可写；请使用 --env-file 指定新文件。", file=sys.stderr)
+        return 1
+    print("已创建初始化配置。请安全保存该文件。")
+    return 0
 
 
 def _migrate(yes: bool) -> int:
@@ -28,6 +30,17 @@ def _migrate(yes: bool) -> int:
 
 def _create_superuser(username: str) -> int:
     """从 INITIAL_ADMIN_PASSWORD 读取密码并创建系统管理员。不打印密码。"""
+    from app.core.config import settings
+    from app.services.auth_service import (
+        MIN_CLI_PASSWORD_LENGTH,
+        DatabaseNotMigratedError,
+        DefaultTenantInactiveError,
+        PasswordTooShortError,
+        SetupClosedError,
+        UsernameTakenError,
+        create_cli_superuser,
+    )
+
     if not username.strip():
         print("需要提供用户名。", file=sys.stderr)
         return 1
@@ -67,7 +80,7 @@ def _create_superuser(username: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """解析 migrate 与 admin create-superuser。返回进程退出码。"""
+    """解析初始化、迁移和账号命令，返回进程退出码。"""
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s %(name)s %(message)s",
@@ -75,6 +88,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser = argparse.ArgumentParser(prog="ai-assistant")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    initialize = sub.add_parser("init", help="生成首次启动配置，不覆盖已有文件")
+    initialize.add_argument("--env-file", default=".env", help="新配置文件路径，默认当前目录 .env")
 
     migrate = sub.add_parser("migrate", help="将数据库升级到当前版本")
     migrate.add_argument("--yes", "-y", action="store_true", help="跳过确认")
@@ -85,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
     create.add_argument("--username", required=True, help="用户名")
 
     args = parser.parse_args(argv)
+    if args.command == "init":
+        return _initialize(args.env_file)
     if args.command == "migrate":
         return _migrate(args.yes)
     return _create_superuser(args.username)

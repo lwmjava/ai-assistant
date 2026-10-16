@@ -134,14 +134,14 @@ def validate_jwt_secret() -> bool:
     Returns:
         True 表示密钥已正确配置；False 表示使用了默认值（仅开发环境允许）。
     """
-    if JWT_SECRET_KEY == DEFAULT_JWT_SECRET:
+    if not JWT_SECRET_KEY.strip() or JWT_SECRET_KEY.strip() == DEFAULT_JWT_SECRET:
         if not settings.is_development:
             logger.critical(
-                "[安全警告] JWT_SECRET_KEY 使用了默认值！生产环境禁止启动，"
-                "请通过环境变量设置一个足够随机的密钥。"
+                "JWT_SECRET_KEY 为空或使用默认值，非开发环境禁止启动。"
+                "请运行 ai-assistant init 生成新配置，或通过环境变量设置随机密钥。"
             )
             return False
-        logger.warning("JWT_SECRET_KEY 使用默认值（开发环境），生产环境请务必配置安全密钥。")
+        logger.warning("JWT_SECRET_KEY 为空或使用默认值（开发环境），部署前请配置随机密钥。")
     return True
 
 

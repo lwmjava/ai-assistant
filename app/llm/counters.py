@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
 from typing import Any
 
 # 保守估算的方法名。能力契约、日志与测试都按它解读数字口径。
@@ -60,7 +61,8 @@ def message_content(message: Any) -> str:
     if isinstance(content, str):
         return content
     try:
-        return json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        encoded = [part.model_dump(mode="json") if hasattr(part, "model_dump") else part for part in content]
+        return json.dumps(encoded, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     except (TypeError, ValueError) as exc:
         raise PayloadUncountableError("多模态内容无法序列化，无法计数") from exc
 
@@ -87,6 +89,48 @@ def estimate_messages_tokens(messages: Sequence[Any]) -> int:
     for message in messages:
         total += _MESSAGE_OVERHEAD + utf8_byte_count(message_content(message))
     return total
+
+
+@dataclass(frozen=True)
+class _LowDetailImageCounter:
+    counter: Callable[[Sequence[Any]], int] = field(repr=False)
+    image_tokens: int
+
+    def __call__(self, messages: Sequence[Any]) -> int:
+        return self.counter(messages)
+
+
+def low_detail_image_counter(text_counter: Callable[[Sequence[Any]], int], image_tokens: int):
+    """Known low-detail visual cost plus the complete text/message framing count."""
+    def count(messages: Sequence[Any]) -> int:
+        text_messages = []
+        images = 0
+        for message in messages:
+            content = message.get("content") if isinstance(message, dict) else getattr(message, "content", "")
+            role = message.get("role", "user") if isinstance(message, dict) else getattr(message, "role", "user")
+            if isinstance(content, str):
+                text_messages.append({"role": role, "content": content})
+                continue
+            if not isinstance(content, list):
+                raise PayloadUncountableError("多模态内容无法计数")
+            text = []
+            for part in content:
+                part = part.model_dump(mode="json") if hasattr(part, "model_dump") else part
+                if not isinstance(part, dict):
+                    raise PayloadUncountableError("多模态内容无法计数")
+                if part.get("type") == "text" and isinstance(part.get("text"), str):
+                    text.append(part["text"])
+                elif part.get("type") == "image_url":
+                    image = part.get("image_url")
+                    if not isinstance(image, dict) or image.get("detail") != "low":
+                        raise PayloadUncountableError("图片精度计数未核对")
+                    images += 1
+                else:
+                    raise PayloadUncountableError("多模态内容无法计数")
+            text_messages.append({"role": role, "content": "".join(text)})
+        return text_counter(text_messages) + images * image_tokens
+    # Stable, content-free repr keeps capability/cache identity independent of closure addresses.
+    return _LowDetailImageCounter(count, image_tokens)
 
 
 def official_counter_for(deployment: str, model: str) -> Callable[[Sequence[Any]], int] | None:

@@ -2,10 +2,10 @@
 
 覆盖 FastAPI 自动生成的 OpenAPI 文档中所有已实现端点：
 - GET  /                根路径
-- GET  /api/health       健康检查
-- POST /api/auth/login   登录
-- POST /api/auth/refresh 刷新令牌
-- GET  /api/auth/me      当前用户信息
+- GET  /api/v1/health       健康检查
+- POST /api/v1/auth/login   登录
+- POST /api/v1/auth/refresh 刷新令牌
+- GET  /api/v1/auth/me      当前用户信息
 - GET  /docs             Swagger UI
 - GET  /openapi.json     OpenAPI 规范
 
@@ -74,7 +74,7 @@ def admin_user() -> User:
 def auth_headers(client: TestClient, admin_user: User) -> dict[str, str]:
     """登录并返回携带 access_token 的 Authorization 头。"""
     resp = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": TEST_ADMIN_USERNAME, "password": TEST_ADMIN_PASSWORD},
     )
     assert resp.status_code == 200, f"登录失败: {resp.json()}"
@@ -86,7 +86,7 @@ def auth_headers(client: TestClient, admin_user: User) -> dict[str, str]:
 def tokens(client: TestClient, admin_user: User) -> dict[str, str]:
     """登录并返回 access_token + refresh_token。"""
     resp = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": TEST_ADMIN_USERNAME, "password": TEST_ADMIN_PASSWORD},
     )
     assert resp.status_code == 200
@@ -106,7 +106,7 @@ class TestRootEndpoint:
         assert body["app"] == settings.APP_NAME
         assert body["version"] == settings.APP_VERSION
         assert body["docs"] == "/docs"
-        assert body["health"] == "/api/health"
+        assert body["health"] == "/api/v1/health"
 
     def test_root_content_type_is_json(self, client: TestClient) -> None:
         resp = client.get("/")
@@ -117,10 +117,10 @@ class TestRootEndpoint:
 
 
 class TestHealthEndpoint:
-    """GET /api/health — 健康检查。"""
+    """GET /api/v1/health — 健康检查。"""
 
     def test_health_returns_ok(self, client: TestClient) -> None:
-        resp = client.get("/api/health")
+        resp = client.get("/api/v1/health")
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "ok"
@@ -130,7 +130,7 @@ class TestHealthEndpoint:
 
     def test_health_returns_405_on_head(self, client: TestClient) -> None:
         """GET 路由默认不支持 HEAD 方法，返回 405。"""
-        resp = client.head("/api/health")
+        resp = client.head("/api/v1/health")
         assert resp.status_code == 405
 
 
@@ -138,11 +138,11 @@ class TestHealthEndpoint:
 
 
 class TestLogin:
-    """POST /api/auth/login — 用户登录。"""
+    """POST /api/v1/auth/login — 用户登录。"""
 
     def test_login_success_returns_tokens(self, client: TestClient, admin_user: User) -> None:
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": TEST_ADMIN_USERNAME, "password": TEST_ADMIN_PASSWORD},
         )
         assert resp.status_code == 200
@@ -156,7 +156,7 @@ class TestLogin:
 
     def test_login_invalid_username(self, client: TestClient) -> None:
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": "nonexistent_user", "password": TEST_ADMIN_PASSWORD},
         )
         assert resp.status_code == 401
@@ -164,7 +164,7 @@ class TestLogin:
 
     def test_login_invalid_password(self, client: TestClient, admin_user: User) -> None:
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": TEST_ADMIN_USERNAME, "password": "WrongPassword!"},
         )
         assert resp.status_code == 401
@@ -172,26 +172,26 @@ class TestLogin:
 
     def test_login_empty_username(self, client: TestClient) -> None:
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": "", "password": TEST_ADMIN_PASSWORD},
         )
         assert resp.status_code == 422  # Pydantic 校验失败
 
     def test_login_empty_password(self, client: TestClient) -> None:
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": TEST_ADMIN_USERNAME, "password": ""},
         )
         assert resp.status_code == 422
 
     def test_login_missing_fields(self, client: TestClient) -> None:
-        resp = client.post("/api/auth/login", json={})
+        resp = client.post("/api/v1/auth/login", json={})
         assert resp.status_code == 422
 
     def test_login_wrong_content_type(self, client: TestClient) -> None:
         """表单提交而非 JSON 应返回 422。"""
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": TEST_ADMIN_USERNAME, "password": TEST_ADMIN_PASSWORD},
         )
         assert resp.status_code == 422
@@ -201,10 +201,10 @@ class TestLogin:
 
 
 class TestMeEndpoint:
-    """GET /api/auth/me — 当前用户信息。"""
+    """GET /api/v1/auth/me — 当前用户信息。"""
 
     def test_me_returns_user_info(self, client: TestClient, auth_headers: dict) -> None:
-        resp = client.get("/api/auth/me", headers=auth_headers)
+        resp = client.get("/api/v1/auth/me", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["username"] == TEST_ADMIN_USERNAME
@@ -218,13 +218,13 @@ class TestMeEndpoint:
         assert "token_version" not in body
 
     def test_me_without_token_returns_401(self, client: TestClient) -> None:
-        resp = client.get("/api/auth/me")
+        resp = client.get("/api/v1/auth/me")
         assert resp.status_code == 401
         assert "未提供认证令牌" in resp.json()["detail"]
 
     def test_me_with_invalid_token_returns_401(self, client: TestClient) -> None:
         resp = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": "Bearer invalid.token.here"},
         )
         assert resp.status_code == 401
@@ -232,7 +232,7 @@ class TestMeEndpoint:
     def test_me_with_malformed_auth_header(self, client: TestClient) -> None:
         """非 Bearer 格式的 Authorization 头。"""
         resp = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": "Basic dGVzdDp0ZXN0"},
         )
         assert resp.status_code == 401
@@ -246,7 +246,7 @@ class TestMeEndpoint:
             "fake_signature"
         )
         resp = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {expired_token}"},
         )
         assert resp.status_code == 401
@@ -256,11 +256,11 @@ class TestMeEndpoint:
 
 
 class TestRefreshToken:
-    """POST /api/auth/refresh — 刷新令牌。"""
+    """POST /api/v1/auth/refresh — 刷新令牌。"""
 
     def test_refresh_returns_new_tokens(self, client: TestClient, tokens: dict) -> None:
         resp = client.post(
-            "/api/auth/refresh",
+            "/api/v1/auth/refresh",
             json={"refresh_token": tokens["refresh_token"]},
         )
         assert resp.status_code == 200
@@ -274,20 +274,20 @@ class TestRefreshToken:
     def test_refresh_with_access_token_fails(self, client: TestClient, tokens: dict) -> None:
         """用 access_token 冒充 refresh_token 应被拒绝。"""
         resp = client.post(
-            "/api/auth/refresh",
+            "/api/v1/auth/refresh",
             json={"refresh_token": tokens["access_token"]},
         )
         assert resp.status_code == 401
 
     def test_refresh_with_invalid_token(self, client: TestClient) -> None:
         resp = client.post(
-            "/api/auth/refresh",
+            "/api/v1/auth/refresh",
             json={"refresh_token": "invalid_token_string"},
         )
         assert resp.status_code == 401
 
     def test_refresh_missing_body(self, client: TestClient) -> None:
-        resp = client.post("/api/auth/refresh", json={})
+        resp = client.post("/api/v1/auth/refresh", json={})
         assert resp.status_code == 422
 
     def test_refresh_token_rotation_chain(self, client: TestClient, tokens: dict) -> None:
@@ -298,7 +298,7 @@ class TestRefreshToken:
         """
         # 第一次刷新
         resp1 = client.post(
-            "/api/auth/refresh",
+            "/api/v1/auth/refresh",
             json={"refresh_token": tokens["refresh_token"]},
         )
         assert resp1.status_code == 200
@@ -309,14 +309,14 @@ class TestRefreshToken:
 
         # 用新 access_token 可访问受保护资源
         me_resp = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {new_tokens['access_token']}"},
         )
         assert me_resp.status_code == 200
 
         # 第二次刷新：用 refresh_token 再次刷新仍成功（token_version 未变）
         resp2 = client.post(
-            "/api/auth/refresh",
+            "/api/v1/auth/refresh",
             json={"refresh_token": new_tokens["refresh_token"]},
         )
         assert resp2.status_code == 200
@@ -346,13 +346,13 @@ class TestOpenAPIDocs:
         assert body["openapi"].startswith("3.")
         assert body["info"]["title"] == settings.APP_NAME
         assert body["info"]["version"] == settings.APP_VERSION
-        # 验证所有路由均已注册
+        # OpenAPI 只列版本化业务路由，根页面保留独立入口。
         paths = body["paths"]
-        assert "/" in paths
-        assert "/api/health" in paths
-        assert "/api/auth/login" in paths
-        assert "/api/auth/refresh" in paths
-        assert "/api/auth/me" in paths
+        assert "/" not in paths
+        assert "/api/v1/health" in paths
+        assert "/api/v1/auth/login" in paths
+        assert "/api/v1/auth/refresh" in paths
+        assert "/api/v1/auth/me" in paths
 
     def test_openapi_json_has_security_scheme(self, client: TestClient) -> None:
         """OpenAPI 规范应包含 Bearer 认证方案。"""
@@ -373,7 +373,7 @@ class TestIntegrationFlow:
     def test_full_auth_flow(self, client: TestClient, admin_user: User) -> None:
         # 1. 登录
         login_resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": TEST_ADMIN_USERNAME, "password": TEST_ADMIN_PASSWORD},
         )
         assert login_resp.status_code == 200
@@ -382,22 +382,22 @@ class TestIntegrationFlow:
         refresh = tokens["refresh_token"]
 
         # 2. 查看当前用户
-        me_resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {access}"})
+        me_resp = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {access}"})
         assert me_resp.status_code == 200
         assert me_resp.json()["username"] == TEST_ADMIN_USERNAME
 
         # 3. 刷新令牌
-        refresh_resp = client.post("/api/auth/refresh", json={"refresh_token": refresh})
+        refresh_resp = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
         assert refresh_resp.status_code == 200
         new_access = refresh_resp.json()["access_token"]
 
         # 4. 用新令牌查看用户
-        me_resp2 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {new_access}"})
+        me_resp2 = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {new_access}"})
         assert me_resp2.status_code == 200
         assert me_resp2.json()["username"] == TEST_ADMIN_USERNAME
 
         # 5. 旧 access_token 仍然有效（未过期）
-        me_resp3 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {access}"})
+        me_resp3 = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {access}"})
         assert me_resp3.status_code == 200
 
 
@@ -412,7 +412,7 @@ class TestEdgeCases:
         # 64 字符在 max_length 范围内，应正常校验
         long_username = "a" * 64
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": long_username, "password": TEST_ADMIN_PASSWORD},
         )
         # 用户不存在，返回 401（而非 422）
@@ -422,15 +422,15 @@ class TestEdgeCases:
         """72 字符密码登录（bcrypt 上限边界值）。"""
         long_password = "P" * 72
         resp = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": TEST_ADMIN_USERNAME, "password": long_password},
         )
         assert resp.status_code == 401
 
     def test_health_returns_consistent_response(self, client: TestClient) -> None:
         """多次请求健康检查返回一致。"""
-        resp1 = client.get("/api/health")
-        resp2 = client.get("/api/health")
+        resp1 = client.get("/api/v1/health")
+        resp2 = client.get("/api/v1/health")
         assert resp1.json() == resp2.json()
 
     def test_root_returns_consistent_response(self, client: TestClient) -> None:

@@ -25,6 +25,7 @@ from app.llm.counters import (
     OFFICIAL_METHOD,
     UTF8_METHOD,
     estimate_messages_tokens,
+    low_detail_image_counter,
     official_counter_for,
 )
 
@@ -37,6 +38,7 @@ OPERATOR_DECLARED_DEPLOYMENT = "*"
 OPERATOR_DECLARED_VERIFIED_ON = "operator-declared"
 
 OPENAI_GPT4O_MINI_SOURCE = "https://platform.openai.com/docs/models/gpt-4o-mini"
+OPENAI_VISION_SOURCE = "https://developers.openai.com/api/docs/guides/images-vision"
 DEEPSEEK_PRICING_SOURCE = "https://api-docs.deepseek.com/quick_start/pricing"
 
 # 运营者声明的合理上界。登记行为不能越过「不猜未知上限」，所以声明也不能是
@@ -183,9 +185,14 @@ _BUILTIN: dict[tuple[str, str], GenerationCapability] = _build_index()
 def _with_best_counter(capability: GenerationCapability) -> GenerationCapability:
     """官方计数器可用就换上它，否则保留保守估算。"""
     official = official_counter_for(capability.deployment, capability.model)
-    if official is None:
-        return capability
-    return replace(capability, counter=official, counting_method=OFFICIAL_METHOD)
+    counter = official or capability.counter
+    method = OFFICIAL_METHOD if official is not None else capability.counting_method
+    if capability.model == "gpt-4o-mini" and capability.deployment in {"api.openai.com", "api.openai.com/v1"}:
+        counter = low_detail_image_counter(counter, 2833)
+        return replace(capability, counter=counter, counting_method=method,
+                       version=capability.version + "+vision-low-2833-20261016",
+                       notes=capability.notes + " low 图片每图2833tokens；2026-10-16核对：" + OPENAI_VISION_SOURCE)
+    return replace(capability, counter=counter, counting_method=method)
 
 
 def resolve_generation_capability(base_url: str, model: str) -> GenerationCapability | None:

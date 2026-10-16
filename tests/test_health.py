@@ -18,7 +18,7 @@ def test_root_ok() -> None:
 
 def test_health_ok() -> None:
     """数据库与本地向量库都可用时，健康检查返回连通结果。"""
-    resp = client.get("/api/health")
+    resp = client.get("/api/v1/health")
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "ok"
@@ -32,7 +32,7 @@ def test_health_ok() -> None:
 def test_health_llm_mode_does_not_change_status(monkeypatch) -> None:
     """模型未就绪只是一个字段，不把健康检查打成失败。"""
     monkeypatch.setattr("app.api.routes.health.llm_availability", lambda: "mock")
-    resp = client.get("/api/health")
+    resp = client.get("/api/v1/health")
     assert resp.status_code == 200
     assert resp.json()["checks"]["llm"]["mode"] == "mock"
 
@@ -48,7 +48,7 @@ def test_health_fails_when_database_unreachable(monkeypatch) -> None:
             return False
 
     monkeypatch.setattr("app.api.routes.health.Session", lambda *_a, **_k: _Closed())
-    resp = client.get("/api/health")
+    resp = client.get("/api/v1/health")
     assert resp.status_code == 503
     body = resp.json()
     assert body["status"] != "ok"
@@ -67,7 +67,7 @@ def test_health_fails_when_vector_store_unreachable(monkeypatch) -> None:
         raise ConnectionError("milvus down")
 
     monkeypatch.setattr("app.api.routes.health._probe_milvus", _down)
-    resp = client.get("/api/health")
+    resp = client.get("/api/v1/health")
     assert resp.status_code == 503
     body = resp.json()
     assert body["status"] != "ok"
@@ -79,14 +79,14 @@ def test_health_fails_when_vector_store_unreachable(monkeypatch) -> None:
 
 def test_auth_me_requires_token() -> None:
     """未携带令牌访问受保护接口应返回 401。"""
-    resp = client.get("/api/auth/me")
+    resp = client.get("/api/v1/auth/me")
     assert resp.status_code == 401
 
 
 def test_login_invalid_credentials() -> None:
     """使用错误凭据登录应返回 401。"""
     resp = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": "not_exist", "password": "wrong"},
     )
     assert resp.status_code == 401

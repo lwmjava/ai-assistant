@@ -130,12 +130,16 @@ def test_remote_failure_is_read_only_and_subsequent_request_recovers(isolated_se
 
 
 @pytest.mark.parametrize("streaming", [False, True])
-def test_both_chat_routes_pass_sanitized_input_to_selector(monkeypatch, streaming):
+def test_both_chat_routes_pass_sanitized_input_to_selector(isolated_session, monkeypatch, streaming):
     service = ChatService(SelectionProvider())
     original = "SYNTHETIC_RAW_SENSITIVE_INPUT"
     sanitized = "SYNTHETIC_SANITIZED_INPUT"
     monkeypatch.setattr(service, "_apply_input_security", lambda message, user: (None, sanitized))
-    monkeypatch.setattr(service, "_prepare_user_message", lambda *args: (SimpleNamespace(), "message"))
+    def prepare(*args, attachments=None):
+        assert attachments is None
+        return SimpleNamespace(), "message"
+
+    monkeypatch.setattr(service, "_prepare_user_message", prepare)
 
     async def memory(conv):
         return SimpleNamespace(recent_messages=[], memory_context="")
@@ -159,10 +163,10 @@ def test_both_chat_routes_pass_sanitized_input_to_selector(monkeypatch, streamin
 
     async def invoke():
         if streaming:
-            async for _ in service.chat_stream(None, member(), original):
+            async for _ in service.chat_stream(isolated_session, member(), original):
                 pass
         else:
-            await service.chat(None, member(), original)
+            await service.chat(isolated_session, member(), original)
 
     with pytest.raises(StopAfterSelectionError):
         asyncio.run(invoke())
@@ -186,7 +190,8 @@ def test_semantic_cancellation_releases_chat_execution_claim(isolated_session, m
     monkeypatch.setattr(service, "_apply_input_security", lambda message, user: (None, message))
     key = (id(isolated_session.get_bind()), "alpha", "cancel-conversation", "cancel-message")
 
-    def prepare(session, user, conversation_id, message, resume_message_id, claims):
+    def prepare(session, user, conversation_id, message, resume_message_id, claims, *, attachments=None):
+        assert attachments is None
         claim_execution(session, user.tenant_id, "cancel-conversation", "cancel-message", claims)
         return SimpleNamespace(id="cancel-conversation"), "cancel-message"
 

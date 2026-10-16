@@ -9,6 +9,7 @@ import { StageTracker } from './StageTracker'
 import { SubtaskSummary } from './SubtaskSummary'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/cn'
+import { attachmentSize } from '@/lib/chat-attachments'
 import type { CodeResult, MessageOut, SourceRef, SubtaskSummary as SubtaskItem } from '@/types/api'
 
 export interface MessageListProps {
@@ -20,6 +21,13 @@ export interface MessageListProps {
   stageStages: string[]
   currentStage: string | null
   tools: string[]
+  intent?: string | null
+  planSteps?: string[]
+  reconnecting?: boolean
+  cancelling?: boolean
+  shortcut?: boolean
+  retryable?: boolean
+  onRetry?: () => void
   subtasks?: SubtaskItem[]
   streaming: boolean
   streamError: string | null
@@ -200,6 +208,13 @@ export function MessageList({
   stageStages,
   currentStage,
   tools,
+  intent,
+  planSteps,
+  reconnecting,
+  cancelling,
+  shortcut,
+  retryable,
+  onRetry,
   subtasks = [],
   streaming,
   streamError,
@@ -238,22 +253,35 @@ export function MessageList({
               <CodeResults results={m.code_results} />
             </>
           ) : (
-            <div className="markdown">{m.content}</div>
+            <div>
+              {m.content && <div className="markdown">{m.content}</div>}
+              {Boolean(m.attachments?.length) && <ul aria-label="消息附件" className="mt-2 space-y-1 text-xs">
+                {m.attachments?.map((attachment, index) => <li key={`${attachment.name}-${index}`} className="break-all rounded border border-border px-2 py-1">
+                  {attachment.name} · {attachmentSize(attachment.size)}
+                  {attachment.mime_type && <span className="ml-1 text-text-muted">{attachment.mime_type}</span>}
+                </li>)}
+              </ul>}
+            </div>
           )}
         </Bubble>
       ))}
 
-      {(awaiting || streaming || streamingText || streamError || stopped || interrupted) && (
+      {(awaiting || streaming || cancelling || streamingText || streamError || stopped || interrupted) && (
         <Bubble role="assistant">
           {awaiting ? (
             <TypingDots />
           ) : (
             <div className="space-y-3">
+              {cancelling && <p role="status" className="text-sm text-text-muted">正在停止…</p>}
               <StageTracker
                 stages={stageStages}
                 currentStage={currentStage}
                 tools={tools}
                 streaming={streaming}
+                intent={intent}
+                planSteps={planSteps}
+                reconnecting={reconnecting}
+                shortcut={shortcut}
               />
               <SubtaskSummary items={subtasks} />
               {streamingText ? (
@@ -292,7 +320,11 @@ export function MessageList({
                 </div>
               )}
               {streamError && !interrupted && (
-                <p className="text-sm text-danger">{streamError}</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-danger">{streamError}</p>
+                  {retryable && onRetry && <button type="button" onClick={onRetry}
+                    className="min-h-touch rounded-lg border border-border px-3 py-1.5 text-sm text-text hover:bg-surface-2">重试</button>}
+                </div>
               )}
             </div>
           )}

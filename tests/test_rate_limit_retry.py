@@ -1,5 +1,6 @@
 """限流等待秒数：超限给出秒数且不写新消息；速率为 0 时拒绝且不除零。"""
 
+import json
 import uuid
 from pathlib import Path
 
@@ -85,12 +86,12 @@ def test_zero_rate_does_not_divide(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_second_chat_returns_wait_and_writes_no_message(client) -> None:
     http, user = client
     before = _user_message_count(user.id)
-    first = http.post("/api/chat", json={"message": "第一条"})
+    first = http.post("/api/v1/chat", json={"message": "第一条"})
     assert first.status_code == 200, first.text
     after_first = _user_message_count(user.id)
     assert after_first == before + 1
 
-    second = http.post("/api/chat", json={"message": "第二条"})
+    second = http.post("/api/v1/chat", json={"message": "第二条"})
     assert second.status_code == 429
     body = second.json()
     assert body["code"] == "rate_limited"
@@ -104,11 +105,16 @@ def test_zero_rate_response_has_no_retry_after(client, monkeypatch: pytest.Monke
     monkeypatch.setattr(settings, "SECURITY_RATE_LIMIT_RATE", 0.0)
     reset_security_singletons()
     before = _user_message_count(user.id)
-    first = http.post("/api/chat", json={"message": "第一条"})
+    first = http.post("/api/v1/chat", json={"message": "第一条"})
     assert first.status_code == 200, first.text
-    second = http.post("/api/chat", json={"message": "第二条"})
+    second = http.post("/api/v1/chat", json={"message": "第二条"})
     assert second.status_code == 429
-    assert second.json() == {"code": "rate_limited", "retry_after_seconds": None}
+    body = second.json()
+    assert body["code"] == "rate_limited"
+    assert body["retry_after_seconds"] is None
+    assert body["error"]["code"] == "rate_limited"
+    assert body["error"]["message"] == "请求过于频繁，请稍后重试"
+    assert body["error"]["retry_after"] is None
     assert "retry-after" not in second.headers
     assert _user_message_count(user.id) == before + 1
 
@@ -118,27 +124,37 @@ def test_under_limit_stream_has_no_rate_limit_event(client, monkeypatch: pytest.
     monkeypatch.setattr(settings, "SECURITY_RATE_LIMIT_CAPACITY", 10.0)
     reset_security_singletons()
     AppStatus.should_exit_event = None
-    with http.stream("POST", "/api/chat/stream", json={"message": "未超限"}) as resp:
+    with http.stream("POST", "/api/v1/chat/stream", json={"message": "未超限"}) as resp:
         assert resp.status_code == 200
         body = "".join(resp.iter_text())
-    assert "event: rate_limit" not in body
+    assert '"code": "rate_limited"' not in body
 
 
 def test_stream_emits_rate_limit_before_error_and_writes_no_message(client) -> None:
     http, user = client
     AppStatus.should_exit_event = None
-    with http.stream("POST", "/api/chat/stream", json={"message": "第一条"}) as resp:
+    with http.stream("POST", "/api/v1/chat/stream", json={"message": "第一条"}) as resp:
         assert resp.status_code == 200
         "".join(resp.iter_text())
     before = _user_message_count(user.id)
     AppStatus.should_exit_event = None
-    with http.stream("POST", "/api/chat/stream", json={"message": "第二条"}) as resp:
+    with http.stream("POST", "/api/v1/chat/stream", json={"message": "第二条"}) as resp:
         assert resp.status_code == 200
         body = "".join(resp.iter_text())
-    assert "event: rate_limit" in body
+    frames = []
+    for frame in body.replace("\r\n", "\n").split("\n\n"):
+        fields = dict(line.split(":", 1) for line in frame.splitlines() if ":" in line)
+        if "event" in fields and "data" in fields:
+            frames.append((fields["event"].strip(), json.loads(fields["data"].strip())))
+    errors = [payload for name, payload in frames if name == "error"]
+    assert len(errors) == 1
+    assert errors[0]["code"] == "rate_limited"
+    assert errors[0]["retryable"] is False
     assert '"retry_after_seconds": 1' in body or '"retry_after_seconds":1' in body
-    assert "请求过于频繁" in body
-    assert body.index("rate_limit") < body.index("请求过于频繁")
+    assert "请求过于频繁，请稍后重试" in body
+    assert "请稍后再试" not in body
+    assert body.index("event: error") < body.index("event: run.finished")
+    assert any(name == "run.finished" and payload["status"] == "failed" for name, payload in frames)
     assert _user_message_count(user.id) == before
 
 

@@ -1,17 +1,19 @@
 """LLM 提供商工厂。
 
-按用途取出一条链。本批只登记 chat 与 intent。密钥只从环境变量读取。
+按生成用途取出一条链，四用途配置描述保持接口隔离。密钥只从环境变量读取。
 测试可通过 ``set_llm_provider_override`` 同时盖住两种用途。
 """
 
 import logging
+from collections.abc import AsyncIterator
 
 from app.core.config import settings
-from app.llm.base import LLMProvider
+from app.llm.base import ChatMessage, LLMOptions, LLMProvider
 from app.llm.capabilities import resolve_effective_capability
 from app.llm.mock import MockLLMProvider
 from app.llm.openai_compatible import OpenAICompatibleProvider
-from app.llm.routing import FallbackChain
+from app.llm.routing import FallbackChain, reset_circuits
+from app.llm.task_profiles import get_task_profile as get_task_profile
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +26,40 @@ _TASK_SETTINGS = {
 _KNOWN_PROFILES = {"chat", "intent", "fallback"}
 
 
+class _CircuitCompatibleProvider(OpenAICompatibleProvider):
+    """保留兼容客户端身份和能力接口，单跳仍通过共享熔断边界。"""
+
+    def __init__(self, task: str, profile: str, delegate: OpenAICompatibleProvider) -> None:
+        super().__init__(delegate.base_url, delegate.api_key, delegate.model,
+                         timeout=delegate.timeout, capability=delegate.capability)
+        self._task = task
+        self._profile = profile
+        self._delegate = delegate
+
+    async def chat(self, messages: list[ChatMessage], options: LLMOptions | None = None) -> str:
+        chain = FallbackChain(self._task, [(self._profile, self._delegate)])
+        result = await chain.chat(messages, options)
+        self.model = chain.model
+        return result
+
+    async def stream_chat(self, messages: list[ChatMessage], options: LLMOptions | None = None) -> AsyncIterator[str]:
+        chain = FallbackChain(self._task, [(self._profile, self._delegate)])
+        stream = chain.stream_chat(messages, options)
+        try:
+            async for delta in stream:
+                yield delta
+            self.model = chain.model
+        finally:
+            close = getattr(stream, "aclose", None)
+            if close is not None:
+                await close()
+
+
 def set_llm_provider_override(provider: LLMProvider | None) -> None:
     """覆盖全局提供商（测试或运行时注入）。传入 None 取消覆盖。"""
     global _override
     _override = provider
+    reset_circuits()
 
 
 def get_llm_provider(task: str = "chat") -> LLMProvider:
@@ -44,7 +76,9 @@ def get_llm_provider(task: str = "chat") -> LLMProvider:
             return MockLLMProvider()
         return FallbackChain(task, [])
     if len(hops) == 1:
-        return hops[0][1]
+        name, client = hops[0]
+        if isinstance(client, OpenAICompatibleProvider):
+            return _CircuitCompatibleProvider(task, name, client)
     return FallbackChain(task, hops)
 
 
@@ -63,7 +97,11 @@ def _chain_names(task: str) -> list[str]:
     names: list[str] = []
     for part in str(raw).split(","):
         name = part.strip().lower()
-        if name not in _KNOWN_PROFILES or name in seen:
+        if not name:
+            continue
+        if name not in _KNOWN_PROFILES:
+            raise ValueError("模型兜底链包含未知配置档")
+        if name in seen:
             continue
         seen.add(name)
         names.append(name)
@@ -138,6 +176,8 @@ def _fields(name: str) -> tuple[str, str, str, str]:
             settings.LLM_INTENT_API_KEY,
             settings.LLM_INTENT_MODEL or settings.LLM_DEFAULT_MODEL,
         )
+    if name != "fallback":
+        raise ValueError("未知的模型配置档")
     return (
         (settings.LLM_FALLBACK_PROVIDER or "openai").strip().lower(),
         settings.LLM_FALLBACK_BASE_URL or settings.LLM_BASE_URL,

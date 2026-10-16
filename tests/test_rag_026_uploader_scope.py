@@ -220,7 +220,7 @@ def _doc_id(session: Session, tenant: str, source: str) -> str:
 async def test_uploader_mode_http_search_hides_peer_document(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """uploader 模式下，同租户他人不能通过 POST /api/rag/search 命中私有文档。"""
+    """uploader 模式下，同租户他人不能通过 POST /api/v1/rag/search 命中私有文档。"""
     from fastapi.testclient import TestClient
 
     from app.api.deps import get_current_user
@@ -260,13 +260,13 @@ async def test_uploader_mode_http_search_hides_peer_document(
 
     try:
         with _as(owner) as client:
-            resp = client.post("/api/rag/search", json={"query": marker, "top_k": 5})
+            resp = client.post("/api/v1/rag/search", json={"query": marker, "top_k": 5})
             assert resp.status_code == 200
             owner_ids = {item["document_id"] for item in resp.json()}
         assert doc_id in owner_ids, "上传者本人应能检索到自己的文档"
 
         with _as(peer) as client:
-            resp = client.post("/api/rag/search", json={"query": marker, "top_k": 5})
+            resp = client.post("/api/v1/rag/search", json={"query": marker, "top_k": 5})
             assert resp.status_code == 200
             peer_ids = {item["document_id"] for item in resp.json()}
         assert doc_id not in peer_ids, "uploader 模式下 HTTP 检索面不得返回他人文档"
@@ -314,7 +314,7 @@ async def test_tenant_mode_http_search_still_shares(monkeypatch: pytest.MonkeyPa
 
     try:
         with _as(peer) as client:
-            resp = client.post("/api/rag/search", json={"query": marker, "top_k": 5})
+            resp = client.post("/api/v1/rag/search", json={"query": marker, "top_k": 5})
             assert resp.status_code == 200
             assert doc_id in {item["document_id"] for item in resp.json()}
     finally:

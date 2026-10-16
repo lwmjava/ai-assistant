@@ -11,6 +11,7 @@ import { AuthScreen } from '@/components/auth/AuthScreen'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Field'
 import { ApiError, hideStackTrace } from '@/lib/http'
+import { clearSessionNotice, useSessionNotice } from '@/lib/session-notice'
 import { useAuthStore } from '@/store/auth'
 
 const schema = z.object({
@@ -25,7 +26,10 @@ export default function LoginPage() {
   const location = useLocation()
   const login = useAuthStore((s) => s.login)
   const isAuthed = useAuthStore((s) => Boolean(s.access_token))
+  const user = useAuthStore((s) => s.user)
+  const bootstrapped = useAuthStore((s) => s.bootstrapped)
 
+  const sessionNotice = useSessionNotice((s) => s.message)
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -38,18 +42,19 @@ export default function LoginPage() {
   })
 
   useEffect(() => {
-    if (isAuthed) {
+    if (isAuthed && bootstrapped && user) {
       const from = (location.state as { from?: string } | null)?.from ?? '/chat'
-      void navigate(from, { replace: true })
+      void navigate(user.must_change_password ? '/change-password' : from, { replace: true })
     }
-  }, [isAuthed, location.state, navigate])
+  }, [isAuthed, bootstrapped, user, location.state, navigate])
 
   async function onSubmit(values: FormValues) {
     setFormError(null)
     try {
       await login(values)
+      clearSessionNotice()
       const from = (location.state as { from?: string } | null)?.from ?? '/chat'
-      void navigate(from, { replace: true })
+      void navigate(useAuthStore.getState().user?.must_change_password ? '/change-password' : from, { replace: true })
     } catch (err) {
       const detail =
         err instanceof ApiError ? err.detail : '登录失败，请检查网络或后端服务是否启动'
@@ -88,13 +93,13 @@ export default function LoginPage() {
           {...register('password')}
         />
 
-        {formError && (
+        {(formError || sessionNotice) && (
           <div
             role="alert"
             className="flex items-start gap-2 rounded-lg border border-danger/35 bg-danger/10 px-3 py-2.5 text-sm text-danger"
           >
             <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span className="break-words">{formError}</span>
+            <span className="break-words">{formError || sessionNotice}</span>
           </div>
         )}
 

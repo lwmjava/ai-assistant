@@ -5,6 +5,8 @@ import type { ReactElement, ReactNode } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppLayout } from '@/components/layout/AppLayout'
+import { SessionNotice } from '@/components/auth/SessionNotice'
+import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary'
 import { api } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
@@ -14,6 +16,7 @@ import type { Role, SetupStatus } from '@/types/api'
 import LoginPage from '@/pages/Login'
 import RegisterPage from '@/pages/Register'
 import SetupPage from '@/pages/Setup'
+import ChangePasswordPage from '@/pages/ChangePassword'
 const ChatPage = lazy(() => import('@/pages/Chat'))
 const KnowledgePage = lazy(() => import('@/pages/Knowledge'))
 const ToolsPage = lazy(() => import('@/pages/Tools'))
@@ -51,12 +54,18 @@ function Lazy({ children }: { children: ReactNode }) {
 }
 
 /** 未登录时跳转登录页，并记录来源路径以便登录后回跳。 */
-function RequireAuth({ children }: { children: ReactElement }) {
+function RequireAuth({ children, passwordPage = false }: { children: ReactElement; passwordPage?: boolean }) {
   const location = useLocation()
   const token = useAuthStore((s) => s.access_token)
+  const user = useAuthStore((s) => s.user)
+  const bootstrapped = useAuthStore((s) => s.bootstrapped)
   if (!token) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
+  if (!bootstrapped) return <div role="status" className="grid min-h-screen place-items-center text-sm text-text-muted">正在验证登录状态…</div>
+  if (!user) return <div role="alert" className="grid min-h-screen place-items-center text-sm text-text-muted"><div>无法验证登录状态，请刷新页面重试或 <button className="text-primary" onClick={() => useAuthStore.getState().logout()}>退出登录</button></div></div>
+  if (user.must_change_password && !passwordPage) return <Navigate to="/change-password" replace />
+  if (!user.must_change_password && passwordPage) return <Navigate to="/chat" replace />
   return children
 }
 
@@ -142,11 +151,14 @@ function NotFound() {
 
 export default function App() {
   return (
+    <RouteErrorBoundary>
+    <SessionNotice />
     <Routes>
       <Route element={<FirstRunGate />}>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/setup" element={<SetupPage />} />
+      <Route path="/change-password" element={<RequireAuth passwordPage><ChangePasswordPage /></RequireAuth>} />
       <Route
         element={
           <RequireAuth>
@@ -265,5 +277,6 @@ export default function App() {
       </Route>
       </Route>
     </Routes>
+    </RouteErrorBoundary>
   )
 }

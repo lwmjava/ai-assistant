@@ -139,7 +139,7 @@ def actors(monkeypatch):
                 ids[username] = user.id
     headers = {}
     for username in ids:
-        login = client.post("/api/auth/login", json={"username": username, "password": "Test@Pass123!"})
+        login = client.post("/api/v1/auth/login", json={"username": username, "password": "Test@Pass123!"})
         assert login.status_code == 200
         headers[username] = {"Authorization": f"Bearer {login.json()['access_token']}"}
     provider = CapturingProvider()
@@ -160,10 +160,10 @@ def _systems(provider: CapturingProvider) -> str:
 def test_skill_http_update_commits_new_content_next_chat_logs_new_execution_version(actors, caplog):
     client, ids, headers, provider = actors
     auth = headers["version-ada"]
-    created = client.post("/api/skills", headers=auth, json=_body("HTTP_FIRST_BODY"))
+    created = client.post("/api/v1/skills", headers=auth, json=_body("HTTP_FIRST_BODY"))
     assert created.status_code == 201, created.text
     skill_id = created.json()["id"]
-    created_detail = client.get(f"/api/skills/{skill_id}", headers=auth)
+    created_detail = client.get(f"/api/v1/skills/{skill_id}", headers=auth)
     assert created_detail.status_code == 200
     with Session(engine) as session:
         user = session.get(User, ids["version-ada"])
@@ -172,14 +172,14 @@ def test_skill_http_update_commits_new_content_next_chat_logs_new_execution_vers
         assert old is not None
         old_version = old.versions[0]["effective_version"]
     with caplog.at_level(logging.INFO, logger="app.agents.skills.manager"):
-        first = client.post("/api/chat", headers=auth, json={"message": "回归口令"})
+        first = client.post("/api/v1/chat", headers=auth, json={"message": "回归口令"})
     assert first.status_code == 200, first.text
     assert first.json()["skill_names"] == ["same-skill"]
     assert "HTTP_FIRST_BODY" in _systems(provider)
     assert old_version in caplog.text
-    patched = client.patch(f"/api/skills/{skill_id}", headers=auth, json=_body("HTTP_SECOND_BODY"))
+    patched = client.patch(f"/api/v1/skills/{skill_id}", headers=auth, json=_body("HTTP_SECOND_BODY"))
     assert patched.status_code == 200, patched.text
-    patched_detail = client.get(f"/api/skills/{skill_id}", headers=auth)
+    patched_detail = client.get(f"/api/v1/skills/{skill_id}", headers=auth)
     assert patched_detail.status_code == 200
     assert patched_detail.json()["version"] == created_detail.json()["version"] == "1.0"
     with Session(engine) as session:
@@ -199,7 +199,7 @@ def test_skill_http_update_commits_new_content_next_chat_logs_new_execution_vers
     provider.calls.clear()
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="app.agents.skills.manager"):
-        second = client.post("/api/chat", headers=auth, json={"message": "回归口令"})
+        second = client.post("/api/v1/chat", headers=auth, json={"message": "回归口令"})
     assert second.status_code == 200, second.text
     assert "HTTP_SECOND_BODY" in _systems(provider)
     assert "HTTP_FIRST_BODY" not in _systems(provider)
@@ -213,7 +213,7 @@ def test_skill_same_name_tenant_and_owner_execution_versions_never_mix(actors):
                 "version-ben": "TENANT_BEN_BODY"}
     versions = set()
     for username, prompt in expected.items():
-        created = client.post("/api/skills", headers=headers[username], json=_body(prompt))
+        created = client.post("/api/v1/skills", headers=headers[username], json=_body(prompt))
         assert created.status_code == 201, created.text
     for username, prompt in expected.items():
         with Session(engine) as session:
@@ -223,7 +223,7 @@ def test_skill_same_name_tenant_and_owner_execution_versions_never_mix(actors):
             assert ctx is not None
             versions.add(ctx.versions[0]["effective_version"])
         provider.calls.clear()
-        response = client.post("/api/chat", headers=headers[username], json={"message": "回归口令"})
+        response = client.post("/api/v1/chat", headers=headers[username], json={"message": "回归口令"})
         assert response.status_code == 200, response.text
         assert response.json()["skill_names"] == ["same-skill"]
         systems = _systems(provider)
@@ -234,17 +234,17 @@ def test_skill_same_name_tenant_and_owner_execution_versions_never_mix(actors):
 
 def test_skill_global_private_same_name_selects_only_authorized_final_version(actors):
     client, ids, headers, provider = actors
-    global_skill = client.post("/api/skills", headers=headers["version-root"],
+    global_skill = client.post("/api/v1/skills", headers=headers["version-root"],
                                json=_body("GLOBAL_ONLY_BODY") | {"scope": "global"})
     assert global_skill.status_code == 201, global_skill.text
-    private_skill = client.post("/api/skills", headers=headers["version-ada"],
+    private_skill = client.post("/api/v1/skills", headers=headers["version-ada"],
                                 json=_body("PRIVATE_ONLY_BODY"))
     assert private_skill.status_code == 201, private_skill.text
     # Unauthorized PATCH must preserve committed content and following execution.
-    denied = client.patch(f"/api/skills/{private_skill.json()['id']}",
+    denied = client.patch(f"/api/v1/skills/{private_skill.json()['id']}",
                           headers=headers["version-ben"], json=_body("DENIED_TAMPER_BODY"))
     assert denied.status_code == 404, denied.text
-    denied_global = client.patch(f"/api/skills/{global_skill.json()['id']}",
+    denied_global = client.patch(f"/api/v1/skills/{global_skill.json()['id']}",
                                  headers=headers["version-bob"], json=_body("DENIED_GLOBAL_BODY"))
     assert denied_global.status_code == 403, denied_global.text
     expected = [("version-ada", "private", "PRIVATE_ONLY_BODY", "GLOBAL_ONLY_BODY"),
@@ -260,7 +260,7 @@ def test_skill_global_private_same_name_selects_only_authorized_final_version(ac
             assert len(ctx.versions) == 1 and ctx.versions[0]["origin"] == origin
             selected[username] = ctx.versions[0]["effective_version"]
         provider.calls.clear()
-        response = client.post("/api/chat", headers=headers[username], json={"message": "回归口令"})
+        response = client.post("/api/v1/chat", headers=headers[username], json={"message": "回归口令"})
         assert response.status_code == 200, response.text
         systems = _systems(provider)
         assert present in systems and absent not in systems
@@ -284,7 +284,7 @@ def test_skill_builtin_real_chat_transfers_existing_constraints(actors, caplog, 
     manifest = manager.get(name)
     assert manifest is not None
     with caplog.at_level(logging.INFO, logger="app.agents.skills.manager"):
-        response = client.post("/api/chat", headers=headers["version-ada"], json={"message": message})
+        response = client.post("/api/v1/chat", headers=headers["version-ada"], json={"message": message})
     assert response.status_code == 200, response.text
     assert response.json()["skill_names"] == [name]
     systems = _systems(provider)
@@ -295,7 +295,7 @@ def test_skill_builtin_real_chat_transfers_existing_constraints(actors, caplog, 
 
 def test_skill_builtin_unmatched_chat_does_not_inject_constraints(actors):
     client, _, headers, provider = actors
-    response = client.post("/api/chat", headers=headers["version-ada"], json={"message": "今天晴天"})
+    response = client.post("/api/v1/chat", headers=headers["version-ada"], json={"message": "今天晴天"})
     assert response.status_code == 200, response.text
     assert response.json()["skill_names"] == []
     systems = _systems(provider)

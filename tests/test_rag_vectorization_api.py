@@ -46,7 +46,7 @@ def api(monkeypatch, tmp_path):
 
     monkeypatch.setattr(routes, "audit_event", no_audit)
     app = FastAPI()
-    app.include_router(routes.router, prefix="/api")
+    app.include_router(routes.router, prefix="/api/v1")
     app.dependency_overrides[get_current_user] = lambda: user
 
     def db():
@@ -62,7 +62,7 @@ def api(monkeypatch, tmp_path):
 def test_http_ingest_detail_chunks_list_show_partial(api):
     client, engine, user, provider, app = api
     text = "before\n```\n" + "x" * 80 + "\n```\nafter"
-    response = client.post("/api/rag/documents/ingest", json={"text": text, "title": "synthetic"})
+    response = client.post("/api/v1/rag/documents/ingest", json={"text": text, "title": "synthetic"})
     assert response.status_code == 200
     body = response.json()
     assert body["vectorization_status"] == "partial"
@@ -71,14 +71,14 @@ def test_http_ingest_detail_chunks_list_show_partial(api):
     assert body["embedding_skip_reason_counts"] == {"input_limit_exceeded": 1}
     assert all(len(value) <= 40 for call in provider.calls for value in call)
     document_id = body["id"]
-    detail = client.get(f"/api/rag/documents/{document_id}").json()
+    detail = client.get(f"/api/v1/rag/documents/{document_id}").json()
     assert detail["vectorization_status"] == "partial"
-    chunks = client.get(f"/api/rag/documents/{document_id}/chunks").json()
+    chunks = client.get(f"/api/v1/rag/documents/{document_id}/chunks").json()
     skipped = [chunk for chunk in chunks if chunk["embedding_status"] == "not_vectorized"]
     assert skipped[0]["oversized"] is True
     assert skipped[0]["embedding_skip_reason"] == "input_limit_exceeded"
     assert "x" * 80 in skipped[0]["content"]
-    assert client.get("/api/rag/documents").json()[0]["vectorization_status"] == "partial"
+    assert client.get("/api/v1/rag/documents").json()[0]["vectorization_status"] == "partial"
 
 
 def test_legacy_invalid_metadata_and_safe_reason_allowlist(api):
@@ -114,12 +114,12 @@ def test_legacy_invalid_metadata_and_safe_reason_allowlist(api):
                 )
             )
         session.commit()
-    detail = client.get("/api/rag/documents/legacy").json()
+    detail = client.get("/api/v1/rag/documents/legacy").json()
     assert detail["vectorization_status"] == "unknown"
     assert detail["vectorized_chunk_count"] == 1
     assert detail["unknown_chunk_count"] == 1
     assert detail["not_vectorized_chunk_count"] == 2
-    response = client.get("/api/rag/documents/legacy/chunks")
+    response = client.get("/api/v1/rag/documents/legacy/chunks")
     assert response.status_code == 200
     assert response.json()[0]["embedding_status"] == "vectorized"
     assert response.json()[1]["embedding_status"] == "unknown"
@@ -135,11 +135,11 @@ def test_cross_tenant_status_keeps_existing_admin_authority(api):
             DocumentChunk(document_id="foreign", tenant_id="other", content="secret", chunk_index=0, embedding="[1]")
         )
         session.commit()
-    assert client.get("/api/rag/documents/foreign").status_code == 404
-    assert client.get("/api/rag/documents/foreign/chunks").status_code == 404
-    assert client.get("/api/rag/documents").json() == []
+    assert client.get("/api/v1/rag/documents/foreign").status_code == 404
+    assert client.get("/api/v1/rag/documents/foreign/chunks").status_code == 404
+    assert client.get("/api/v1/rag/documents").json() == []
     user.role = Role.SYSTEM_ADMIN.value
-    detail = client.get("/api/rag/documents/foreign").json()
+    detail = client.get("/api/v1/rag/documents/foreign").json()
     assert detail["vectorization_status"] == "vectorized"
 
 
@@ -163,7 +163,7 @@ def test_list_summary_uses_one_batch_query(api):
 
     event.listen(engine, "before_cursor_execute", record)
     try:
-        response = client.get("/api/rag/documents")
+        response = client.get("/api/v1/rag/documents")
     finally:
         event.remove(engine, "before_cursor_execute", record)
     assert response.status_code == 200
@@ -181,20 +181,20 @@ def test_openapi_exposes_compatible_vectorization_fields(api):
 def test_upload_and_publish_report_saved_but_not_vectorized(api):
     client, engine, user, provider, app = api
     text = "```\n" + "x" * 80 + "\n```\n"
-    response = client.post("/api/rag/documents/upload", files={"file": ("synthetic.md", text, "text/markdown")})
+    response = client.post("/api/v1/rag/documents/upload", files={"file": ("synthetic.md", text, "text/markdown")})
     assert response.status_code == 200
     body = response.json()
     assert body["vectorization_status"] == "not_vectorized"
     assert body["not_vectorized_chunk_count"] == 1
     assert provider.calls == []
-    published = client.post(f"/api/rag/documents/{body['id']}/publish")
+    published = client.post(f"/api/v1/rag/documents/{body['id']}/publish")
     assert published.status_code == 200
     assert published.json()["vectorization_status"] == "not_vectorized"
-    reparse = client.post(f"/api/rag/documents/{body['id']}/reparse")
+    reparse = client.post(f"/api/v1/rag/documents/{body['id']}/reparse")
     assert reparse.status_code == 202
     assert reparse.json()["status"] == "pending"
     assert "vectorization_status" not in reparse.json()
-    assert client.get(f"/api/rag/documents/{body['id']}").json()["vectorization_status"] == "not_vectorized"
+    assert client.get(f"/api/v1/rag/documents/{body['id']}").json()["vectorization_status"] == "not_vectorized"
 
 
 def test_no_chunks_unknown_and_corrupt_cross_tenant_chunk_is_excluded(api):
@@ -205,7 +205,7 @@ def test_no_chunks_unknown_and_corrupt_cross_tenant_chunk_is_excluded(api):
             DocumentChunk(document_id="empty", tenant_id="other", content="corrupt", chunk_index=0, embedding="[1]")
         )
         session.commit()
-    body = client.get("/api/rag/documents/empty").json()
+    body = client.get("/api/v1/rag/documents/empty").json()
     assert body["vectorization_status"] == "unknown"
     assert body["vectorized_chunk_count"] == 0
 
@@ -224,7 +224,7 @@ def test_legacy_explicit_skipped_without_reason_is_not_vectorized(api):
             )
         )
         session.commit()
-    body = client.get("/api/rag/documents/skipped").json()
+    body = client.get("/api/v1/rag/documents/skipped").json()
     assert body["vectorization_status"] == "not_vectorized"
     assert body["embedding_skip_reason_counts"] == {"unknown_reason": 1}
 
@@ -240,7 +240,7 @@ def test_inconsistent_chunk_count_cannot_claim_complete(api, declared_count, exp
         )
         session.add(DocumentChunk(document_id="mismatch", tenant_id=user.tenant_id, content="known", embedding="[1]"))
         session.commit()
-    body = client.get("/api/rag/documents/mismatch").json()
+    body = client.get("/api/v1/rag/documents/mismatch").json()
     assert body["vectorization_status"] == "unknown"
     assert body["vectorized_chunk_count"] == 1
     assert body["unknown_chunk_count"] == expected_unknown
@@ -260,7 +260,7 @@ def test_large_document_list_summary_uses_bounded_batches(api):
 
     event.listen(engine, "before_cursor_execute", record)
     try:
-        response = client.get("/api/rag/documents")
+        response = client.get("/api/v1/rag/documents")
     finally:
         event.remove(engine, "before_cursor_execute", record)
     assert response.status_code == 200
@@ -296,11 +296,11 @@ def test_chunks_do_not_expose_corrupt_foreign_tenant_association(api):
             )
         )
         session.commit()
-    response = client.get("/api/rag/documents/owned-corrupt/chunks")
+    response = client.get("/api/v1/rag/documents/owned-corrupt/chunks")
     assert response.status_code == 200
     assert [chunk["content"] for chunk in response.json()] == ["authorized-body"]
     assert "private-body-marker" not in response.text and "private-reason-marker" not in response.text
-    summary = client.get("/api/rag/documents/owned-corrupt").json()
+    summary = client.get("/api/v1/rag/documents/owned-corrupt").json()
     assert summary["vectorization_status"] == "unknown"
     assert summary["vectorized_chunk_count"] == 1
     assert summary["unknown_chunk_count"] == 1

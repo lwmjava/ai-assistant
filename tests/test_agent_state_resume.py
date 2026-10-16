@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 from sqlmodel import Session, delete, select
@@ -174,18 +175,40 @@ def test_checkpoint_persist_failure_does_not_break_main_chain(conv_pair, monkeyp
     assert calls["n"] == 1
 
 
-def test_agent_event_contract_unchanged_no_new_type() -> None:
-    known = {"stage", "token", "tool", "code_result", "done", "error"}
+def test_agent_event_contract_preserves_legacy_payloads_and_typed_boundaries() -> None:
+    legacy = {"stage", "token", "tool", "code_result", "done", "error"}
+    boundaries = {"node.started", "node.finished", "intent.classified"}
     llm = ScriptLLM(lambda s, u: "直接回答")
     pipeline = AgentPipeline(llm)
-    seen: list[str] = []
+    seen = []
 
     async def collect():
         async for ev in pipeline.run_stream(AgentState(user_input="你好")):
-            seen.append(ev.type)
+            seen.append(ev)
 
     asyncio.run(collect())
-    assert set(seen) <= known, f"出现新事件类型: {set(seen) - known}"
+    kinds = {event.type for event in seen}
+    assert kinds <= legacy | boundaries
+    assert {"stage", "done"} <= kinds
+    assert boundaries <= kinds
+    started, finished = [], []
+    for event in seen:
+        assert isinstance(event.data, str)
+        assert event.to_dict() == {"type": event.type, "data": event.data}
+        if event.type.startswith("node."):
+            payload = json.loads(event.data)
+            assert isinstance(payload["node"], str) and payload["node"]
+            assert isinstance(payload["ts"], int | float)
+            if event.type == "node.started":
+                started.append(payload["node"])
+            else:
+                assert payload["status"] in {"done", "failed", "cancelled"}
+                finished.append(payload["node"])
+        elif event.type == "intent.classified":
+            payload = json.loads(event.data)
+            assert payload["intent"] in {"full", "direct"}
+            assert isinstance(payload["shortcut"], bool)
+    assert started == finished
 
 
 def test_concurrent_conflict_does_not_corrupt_other_rows(conv_pair) -> None:

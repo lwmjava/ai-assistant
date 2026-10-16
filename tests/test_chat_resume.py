@@ -21,6 +21,14 @@ from app.services.chat_service import ChatService
 from tests.test_agent_runtime_recovery import ScriptPipeline, call, registry
 
 
+def _terminal_status(body):
+    for frame in body.replace("\r\n", "\n").split("\n\n"):
+        if "event: run.finished\n" in frame:
+            data = next(line[5:].strip() for line in frame.splitlines() if line.startswith("data:"))
+            return json.loads(data)["status"]
+    raise AssertionError("缺少运行终态")
+
+
 @pytest.fixture
 def resume_client(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENABLED", False)
@@ -74,10 +82,11 @@ def resume_client(monkeypatch):
 @pytest.mark.parametrize("stream", [False, True])
 def test_http_resume_reuses_message_without_quota_charge(resume_client, stream):
     client, payload, _, calls = resume_client
-    resp = client.post("/api/chat/stream" if stream else "/api/chat", json=payload)
+    resp = client.post("/api/v1/chat/stream" if stream else "/api/v1/chat", json=payload)
     assert resp.status_code == 200, resp.text
     if stream:
-        assert "event: done" in resp.text
+        assert "event: run.finished" in resp.text
+        assert _terminal_status(resp.text) == "done"
         assert "event: message" in resp.text
     else:
         assert resp.json()["message_id"] == payload["resume_message_id"]
@@ -122,7 +131,7 @@ def test_http_resume_rejects_invalid_binding(resume_client, monkeypatch, change)
                 row.state_json = json.dumps({"tool_results": None})
             s.add(row)
             s.commit()
-    resp = client.post("/api/chat", json=payload)
+    resp = client.post("/api/v1/chat", json=payload)
     assert resp.status_code in {400, 404, 409, 422}
     assert calls == []
     with Session(engine) as s:
@@ -139,10 +148,10 @@ async def test_active_stream_blocks_resume_and_close_releases_claim(resume_clien
             resume_message_id=payload["resume_message_id"])
         first = await anext(stream)
         assert first.type == "conversation"
-        denied = client.post("/api/chat/stream", json=payload)
+        denied = client.post("/api/v1/chat/stream", json=payload)
         assert denied.status_code == 409
         await stream.aclose()
-    assert client.post("/api/chat", json=payload).status_code == 200
+    assert client.post("/api/v1/chat", json=payload).status_code == 200
 
 
 @pytest.mark.asyncio
@@ -169,8 +178,9 @@ async def test_cancelled_live_stream_can_resume_without_repeating_tool(resume_cl
         assert row.round_no == 2
     monkeypatch.setattr(ChatService, "_build_pipeline", lambda self, *a, **kw: ScriptPipeline(
         [call(2), "draft"], tools=reg))
-    resumed = client.post("/api/chat/stream", json=payload)
-    assert resumed.status_code == 200 and "event: done" in resumed.text
+    resumed = client.post("/api/v1/chat/stream", json=payload)
+    assert resumed.status_code == 200 and "event: run.finished" in resumed.text
+    assert _terminal_status(resumed.text) == "done"
     assert calls == [2]
 
 

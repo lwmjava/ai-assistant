@@ -4,7 +4,7 @@
 信息，跨租户、旧版、软删、错误关联、伪造来源一律失败关闭；父块独立鉴权；
 核验者的删改 / 重解析 / 整文件下载权限与改动前一致。
 
-``GET /api/rag/chunks/{chunk_id}/evidence`` 是新的只读入口，本文件同时守住
+``GET /api/v1/rag/chunks/{chunk_id}/evidence`` 是新的只读入口，本文件同时守住
 「不返回整章 / 整文件」的边界：响应字段被逐个钉住。
 
 「ADR-0007 §4 不缓存 / 每次重新鉴权」与「§5 时效过滤」在本文件里都有
@@ -146,7 +146,7 @@ def _rich_metadata() -> dict:
 
 def _evidence(chunk_id: str, **params: str) -> str:
     query = "&".join(f"{key}={value}" for key, value in params.items())
-    return f"/api/rag/chunks/{chunk_id}/evidence" + (f"?{query}" if query else "")
+    return f"/api/v1/rag/chunks/{chunk_id}/evidence" + (f"?{query}" if query else "")
 
 
 def _denied(resp) -> None:
@@ -578,9 +578,9 @@ def test_verifier_cannot_delete_or_reparse_owners_document(monkeypatch: pytest.M
 
     with _as(peer) as client:
         # 删除：权限矩阵不变，成员仍删不掉他人文档。
-        assert client.delete(f"/api/rag/documents/{doc_id}").status_code == 404
+        assert client.delete(f"/api/v1/rag/documents/{doc_id}").status_code == 404
         # 重解析：同样被拒，且没有留下任务。
-        assert client.post(f"/api/rag/documents/{doc_id}/reparse").status_code == 400
+        assert client.post(f"/api/v1/rag/documents/{doc_id}/reparse").status_code == 400
 
     with Session(engine) as session:
         stored = session.get(Document, doc_id)
@@ -608,9 +608,9 @@ def test_verifier_cannot_download_source_file(monkeypatch: pytest.MonkeyPatch) -
         doc_id = doc.id
 
     with _as(peer) as client:
-        assert client.get(f"/api/rag/documents/{doc_id}/download").status_code == 404
+        assert client.get(f"/api/v1/rag/documents/{doc_id}/download").status_code == 404
         # 有核验入口也不代表能读到控制面详情。
-        assert client.get(f"/api/rag/documents/{doc_id}").status_code == 404
+        assert client.get(f"/api/v1/rag/documents/{doc_id}").status_code == 404
 
 
 def test_control_plane_matrix_unchanged_for_admin(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -632,7 +632,7 @@ def test_control_plane_matrix_unchanged_for_admin(monkeypatch: pytest.MonkeyPatc
         assert can_write_document(stored, admin) is True
         assert can_control_document(stored, owner) is True
     with _as(admin) as client:
-        assert client.get(f"/api/rag/documents/{doc_id}").status_code == 200
+        assert client.get(f"/api/v1/rag/documents/{doc_id}").status_code == 200
 
 
 # ── 返回范围：不返回整章 / 整文件 ─────────────────────

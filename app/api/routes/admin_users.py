@@ -65,6 +65,8 @@ def list_users_route(
             email=user.email,
             role=Role(user.role),
             is_active=user.is_active,
+            is_test_user=user.is_test_user,
+            must_change_password=user.must_change_password,
         )
         for user, tenant_name in rows
     ]
@@ -105,6 +107,8 @@ async def change_role_route(
         email=user.email,
         role=Role(user.role),
         is_active=user.is_active,
+        is_test_user=user.is_test_user,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -141,6 +145,8 @@ async def disable_user_route(
         email=user.email,
         role=Role(user.role),
         is_active=user.is_active,
+        is_test_user=user.is_test_user,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -175,4 +181,6 @@ async def enable_user_route(
         email=user.email,
         role=Role(user.role),
         is_active=user.is_active,
+        is_test_user=user.is_test_user,
+        must_change_password=user.must_change_password,
     )

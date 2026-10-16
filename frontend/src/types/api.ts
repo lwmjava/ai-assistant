@@ -29,6 +29,13 @@ export interface UserInfo {
   email: string | null
   role: Role
   is_active: boolean
+  must_change_password: boolean
+  is_test_user: boolean
+}
+
+export interface ChangePasswordRequest {
+  current_password: string
+  new_password: string
 }
 
 export interface UserAdminOut extends UserInfo {
@@ -107,6 +114,17 @@ export interface CodeResult {
   reason: string
 }
 
+export interface ChatAttachmentInput {
+  name: string
+  content_base64: string
+}
+
+export interface ChatAttachmentSummary {
+  name: string
+  size: number
+  mime_type: string
+}
+
 export interface MessageOut {
   id: string
   role: string
@@ -116,6 +134,7 @@ export interface MessageOut {
   sources?: SourceRef[]
   code_results?: CodeResult[]
   skill_names?: string[]
+  attachments?: ChatAttachmentSummary[]
   /** complete：正常写完。stopped：生成已停下，不是完整回复。 */
   status?: 'complete' | 'stopped' | string
 }
@@ -127,6 +146,7 @@ export interface ConversationDetail extends ConversationOut {
 export interface ChatRequest {
   message: string
   conversation_id: string | null
+  attachments?: ChatAttachmentInput[]
 }
 
 export interface ChatResponse {
@@ -145,18 +165,25 @@ export interface ChatResponse {
  */
 export type SendMode = 'stream' | 'once'
 
-/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、sources=检索来源、subtask=完成后的子任务摘要、done=完成、error=失败。 */
+/** 运行事件类型；所有 data 携带 run_id，传输帧有递增 id。 */
 export type StreamEventType =
-  | 'stage'
+  | 'run.started'
+  | 'node.started'
+  | 'node.finished'
+  | 'intent.classified'
+  | 'plan.generated'
   | 'token'
-  | 'tool'
-  | 'sources'
+  | 'tool.call'
+  | 'tool.result'
+  | 'citations'
   | 'code_result'
   | 'subtask'
-  | 'done'
+  | 'run.finished'
+  | 'heartbeat'
   | 'error'
   | 'rate_limit'
   | 'conversation'
+  | 'message'
 
 /** 图执行完成后的子任务摘要。只接受版本 1、名称为 research 或 draft、状态为 done。 */
 export interface SubtaskSummary {

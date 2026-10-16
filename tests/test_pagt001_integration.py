@@ -113,7 +113,7 @@ def test_tool_health_missing_keys_and_disabled_files(monkeypatch):
 
     monkeypatch.setattr(settings, "SEARCH_PROVIDER", "dashscope")
     with TestClient(app) as client:
-        response = client.get("/api/health")
+        response = client.get("/api/v1/health")
     assert response.status_code == 200
     checks = response.json()["checks"]["tools"]
     assert checks["web_search"]["status"] == "unavailable"
@@ -154,16 +154,16 @@ def test_tool_search_chat_api_persists_source_reply(monkeypatch, provider, persi
     set_llm_provider_override(_driver("web_search", {"query": "查找公开资料"}))
     try:
         with TestClient(app) as client:
-            response = client.post("/api/chat", json={"message": "查找公开资料并注明来源"})
+            response = client.post("/api/v1/chat", json={"message": "查找公开资料并注明来源"})
             assert response.status_code == 200
             body = response.json()
             assert "https://example.org/public" in body["reply"]
             assert len(requests) == 1
-            detail = client.get(f"/api/chat/conversations/{body['conversation_id']}")
+            detail = client.get(f"/api/v1/chat/conversations/{body['conversation_id']}")
             assert detail.status_code == 200
             assistant = [item for item in detail.json()["messages"] if item["role"] == "assistant"]
             assert "https://example.org/public" in assistant[-1]["content"]
-            assert client.delete(f"/api/chat/conversations/{body['conversation_id']}").status_code == 200
+            assert client.delete(f"/api/v1/chat/conversations/{body['conversation_id']}").status_code == 200
     finally:
         app.dependency_overrides.clear()
         set_llm_provider_override(None)

@@ -7,7 +7,7 @@ import json
 from collections.abc import AsyncIterator
 
 from app.agents.prompts import SYSTEM_PLAN
-from app.llm.base import ChatMessage, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, LLMOptions, LLMProvider, content_text
 
 
 class MockLLMProvider(LLMProvider):
@@ -21,7 +21,7 @@ class MockLLMProvider(LLMProvider):
     ) -> str:
         if any(
             message.role.value == "system"
-            and message.content.split("\n\n---\n# 激活的技能指令\n", 1)[0] == SYSTEM_PLAN
+            and content_text(message.content).split("\n\n---\n# 激活的技能指令\n", 1)[0] == SYSTEM_PLAN
             for message in messages
         ):
             return json.dumps({"schema_version": 1, "steps": [{
@@ -45,7 +45,7 @@ class MockLLMProvider(LLMProvider):
 def _last_user_message(messages: list[ChatMessage]) -> str:
     for message in reversed(messages):
         if message.role.value == "user":
-            return message.content
+            return content_text(message.content)
     return ""
 
 

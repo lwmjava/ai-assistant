@@ -160,7 +160,7 @@ def test_tenant_admin_downloads_only_the_token_tenant(client) -> None:
 
     export_route.iter_export_bytes = _after_audit
     try:
-        response = http.post("/api/export/conversations")
+        response = http.post("/api/v1/export/conversations")
     finally:
         import app.services.export_service as export_service
 
@@ -203,7 +203,7 @@ def test_other_roles_and_switched_member_are_refused(client) -> None:
     _conversation(second.id, switched.id, "乙", [("user", BETA)], moment)
 
     for user in (member, viewer, admin_user):
-        response = client(user).post("/api/export/conversations")
+        response = client(user).post("/api/v1/export/conversations")
         assert response.status_code == 403
         assert ALPHA not in response.text
         assert BETA not in response.text
@@ -216,7 +216,7 @@ def test_other_roles_and_switched_member_are_refused(client) -> None:
         session.expunge(stored)
     assert stored.role == Role.TENANT_ADMIN.value
     assert stored.tenant_id == second.id
-    refused = client(stored).post("/api/export/conversations")
+    refused = client(stored).post("/api/v1/export/conversations")
     assert refused.status_code == 403
     assert BETA not in refused.text
     assert ALPHA not in refused.text
@@ -224,7 +224,7 @@ def test_other_roles_and_switched_member_are_refused(client) -> None:
     assert _audits(second.id) == []
 
     mismatched = client(stored).post(
-        "/api/export/conversations",
+        "/api/v1/export/conversations",
         json={"tenant_id": first.id},
     )
     assert mismatched.status_code == 403
@@ -239,7 +239,7 @@ def test_audit_failure_returns_no_conversation_text(client, monkeypatch) -> None
     http = client(admin)
 
     monkeypatch.setattr(settings, "AUDIT_ENABLED", False)
-    closed = http.post("/api/export/conversations")
+    closed = http.post("/api/v1/export/conversations")
     assert closed.status_code == 503
     assert closed.json()["code"] == "export_audit_failed"
     assert ALPHA not in closed.text
@@ -252,7 +252,7 @@ def test_audit_failure_returns_no_conversation_text(client, monkeypatch) -> None
             raise RuntimeError("audit down")
 
     monkeypatch.setattr("app.services.export_service.AuditLog", BrokenAudit)
-    failed = http.post("/api/export/conversations")
+    failed = http.post("/api/v1/export/conversations")
     assert failed.status_code == 503
     assert ALPHA not in failed.text
     assert _audits(tenant.id) == []
@@ -274,7 +274,7 @@ def test_oversized_export_is_rejected_without_a_partial_file(client, monkeypatch
     )
     monkeypatch.setattr(export_service, "MAX_EXPORT_MESSAGES", 2)
     http = client(admin)
-    too_many = http.post("/api/export/conversations")
+    too_many = http.post("/api/v1/export/conversations")
     assert too_many.status_code == 413
     assert too_many.json() == {"code": "export_too_large"}
     assert "one" not in too_many.text
@@ -287,7 +287,7 @@ def test_oversized_export_is_rejected_without_a_partial_file(client, monkeypatch
     _membership(wide_admin.id, wide.id, Role.TENANT_ADMIN.value)
     _conversation(wide.id, wide_admin.id, "大", [("user", MARKER + ("x" * 80))], moment)
     caplog.set_level("INFO")
-    huge = client(wide_admin).post("/api/export/conversations")
+    huge = client(wide_admin).post("/api/v1/export/conversations")
     assert huge.status_code == 413
     assert huge.json() == {"code": "export_too_large"}
     assert MARKER not in huge.text
@@ -305,7 +305,7 @@ def test_oversized_export_is_rejected_without_a_partial_file(client, monkeypatch
         [("user", "a" * 80), ("assistant", "b" * 80)],
         moment,
     )
-    both = client(split_admin).post("/api/export/conversations")
+    both = client(split_admin).post("/api/v1/export/conversations")
     assert both.status_code == 413
     assert "aaaa" not in both.text
     assert _audits(split.id) == []
@@ -320,6 +320,6 @@ def test_paging_keeps_order(client, monkeypatch) -> None:
     _membership(admin.id, tenant.id, Role.TENANT_ADMIN.value)
     moment = datetime(2026, 10, 1, 13, 0, tzinfo=UTC)
     _conversation(tenant.id, admin.id, "仅一条", [("user", "paged-line")], moment)
-    response = client(admin).post("/api/export/conversations")
+    response = client(admin).post("/api/v1/export/conversations")
     assert response.status_code == 200
     assert response.json()["conversations"][0]["messages"][0]["content"] == "paged-line"

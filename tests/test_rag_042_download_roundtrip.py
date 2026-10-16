@@ -1,7 +1,7 @@
 """RAG-042：源文件下载的端到端往返证据。
 
 验收条款「下载原始文件成功」的自动化部分：上传一份真实源文件 → 走受控下载端点
-`GET /api/rag/documents/{id}/download` → 断言 200、`Content-Disposition` 里的
+`GET /api/v1/rag/documents/{id}/download` → 断言 200、`Content-Disposition` 里的
 文件名与上传的文件名一致、下载到的字节与上传字节**完全相同**。
 
 另补两条服务端证据，用来支撑前端那两条文案：
@@ -74,7 +74,7 @@ def _patch_storage_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
 
 def _upload(client: TestClient, raw: bytes) -> dict:
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": (_FILENAME, io.BytesIO(raw), "text/plain")},
     )
     assert resp.status_code == 200, resp.text
@@ -91,7 +91,7 @@ def test_download_returns_uploaded_bytes_and_filename(
     assert doc["source"] == _FILENAME, "后端应把上传文件名记为 source"
     assert doc["chunk_count"] >= 1, "上传应至少产出一个分块"
 
-    resp = client.get(f"/api/rag/documents/{doc['id']}/download")
+    resp = client.get(f"/api/v1/rag/documents/{doc['id']}/download")
 
     assert resp.status_code == 200, resp.text
     assert resp.content == raw, "下载到的字节与上传字节不一致"
@@ -108,7 +108,7 @@ def test_other_member_cannot_download_others_source_file(
 
     app.dependency_overrides[get_current_user] = lambda: _user("rag042-member", Role.MEMBER)
     try:
-        resp = client.get(f"/api/rag/documents/{doc['id']}/download")
+        resp = client.get(f"/api/v1/rag/documents/{doc['id']}/download")
     finally:
         app.dependency_overrides[get_current_user] = lambda: _user(
             "rag042-admin", Role.TENANT_ADMIN
@@ -130,7 +130,7 @@ def test_missing_source_file_returns_404(
     for path in stored:
         path.unlink()
 
-    resp = client.get(f"/api/rag/documents/{doc['id']}/download")
+    resp = client.get(f"/api/v1/rag/documents/{doc['id']}/download")
 
     assert resp.status_code == 404
     assert "源文件不存在" in resp.json()["detail"]

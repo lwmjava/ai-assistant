@@ -11,13 +11,15 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator, AsyncIterator
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from sqlalchemy.engine import Connection, Engine
 from sqlmodel import Session, col, select
 
 from app.agents.fast_path import iter_fast_path
-from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState
+from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState, protocol_event, safe_error_metadata
 from app.agents.route import ChatRoute, RouteKind, route_message
 from app.agents.skills.base import SkillContext
 from app.agents.tools.base import Tool, ToolRegistry
@@ -27,6 +29,7 @@ from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
 from app.llm.factory import get_llm_provider
+from app.llm.vision import validate_image_inputs
 from app.memory.base import ConversationMemory
 from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
@@ -39,6 +42,16 @@ from app.services.agent_execution_guard import (
     guarded_stream,
 )
 from app.services.cache_scope import cached_chat_scope, cached_stream_scope
+from app.services.chat_attachments import (
+    AttachmentInput,
+    AttachmentValidationError,
+    PreparedAttachment,
+    image_urls,
+    model_user_text,
+    prepare_attachments,
+    restore_attachments,
+    serialize_attachments,
+)
 from app.services.quota import accept_user_message
 
 if TYPE_CHECKING:
@@ -67,6 +80,13 @@ _HISTORY_LIMIT = 20
 HISTORY_REDACTED = "（历史内容已省略）"
 # 预算超限时给用户的固定提示。异常原文（计数数字、模型名、原因码）不外传。
 BUDGET_EXCEEDED_REPLY = BUDGET_EXCEEDED_MESSAGE
+
+
+class ModelUnavailableError(RuntimeError):
+    """Generation failed after the failed assistant response was durably saved."""
+
+    def __init__(self) -> None:
+        super().__init__(str(safe_error_metadata({"code": "model_unavailable"})["message"]))
 
 
 def sanitize_history_text(text: str) -> str:
@@ -318,12 +338,17 @@ class ChatService:
     def _prepare_user_message(
         self, session: Session, user: User, conversation_id: str | None, message: str,
         resume_message_id: str | None, claims: list[tuple[int, str, str, str]],
+        attachments: str | None = None,
     ) -> tuple[Conversation, str]:
         """Authorize recovery before reusing a message; new requests use the quota path."""
         session.info.pop("agent_resume_snapshot", None)
         conv: Conversation | None
         if resume_message_id is None:
-            conv, message_id = self._accept_user_message(session, user, conversation_id, message)
+            if attachments is None:
+                conv, message_id = self._accept_user_message(session, user, conversation_id, message)
+            else:
+                conv, message_id = self._accept_user_message(session, user, conversation_id, message,
+                                                             attachments=attachments)
             claim_execution(session, user.tenant_id, conv.id, message_id, claims)
         else:
             if not conversation_id:
@@ -349,24 +374,73 @@ class ChatService:
         session.info["agent_message_id"] = message_id
         return conv, message_id
 
+    def prepare_chat_attachments(
+        self, session: Session, user: User, message: str, conversation_id: str | None,
+        resume_message_id: str | None, attachments: list[AttachmentInput] | None,
+    ) -> list[PreparedAttachment]:
+        """在任何消息写入或模型调用前完成附件批校验及视觉能力预检。"""
+        if resume_message_id is not None:
+            if attachments:
+                raise AttachmentValidationError("续跑必须使用原消息附件，不能提交新附件替换")
+            conv = session.get(Conversation, conversation_id) if conversation_id else None
+            original = session.get(Message, resume_message_id)
+            if (conv is None or conv.tenant_id != user.tenant_id or conv.user_id != user.id
+                    or original is None or original.conversation_id != conv.id or original.role != "user"):
+                raise ResumeRejectedError("会话或消息不存在或无权访问", 404)
+            if original.content != message:
+                raise ResumeRejectedError("续跑消息内容与原消息不一致", 400)
+            prepared = restore_attachments(original.attachments)
+        else:
+            prepared = prepare_attachments(attachments)
+        safe_attachments = []
+        for item in prepared:
+            if item.text is not None:
+                ctx, text = self._apply_input_security(item.text, user, check_rate_limit=False, fail_closed=True)
+                if ctx is not None and ctx.blocked:
+                    raise self._rejection_error(ctx)
+                name_ctx, _ = self._apply_input_security(item.name, user, check_rate_limit=False, fail_closed=True)
+                if name_ctx is not None and name_ctx.blocked:
+                    raise self._rejection_error(name_ctx)
+                item = replace(item, text=text)
+            safe_attachments.append(item)
+        prepared = safe_attachments
+        if not message.strip() and not prepared:
+            raise AttachmentValidationError("message 不能为空，或请选择有效附件")
+        try:
+            urls = image_urls(prepared)
+            if urls:
+                validate_image_inputs(self.llm, urls, model_user_text(message, prepared))
+        except ContextBudgetError as exc:
+            if exc.reason == "vision_capability_unverified":
+                raise AttachmentValidationError("当前模型未核对图片能力，请选择已验证的视觉模型") from None
+            raise AttachmentValidationError("附件超出模型输入预算，请减少内容后重试") from None
+        return prepared
+
     @cached_chat_scope
     @guarded_chat
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None,
         *, resume_message_id: str | None = None,
+        attachments: list[AttachmentInput] | None = None,
+        attachments_prepared: list[PreparedAttachment] | None = None,
         _execution_claims: list[tuple[int, str, str, str]] | None = None,
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
+        prepared = (attachments_prepared if attachments_prepared is not None and resume_message_id is None
+                    else self.prepare_chat_attachments(session, user, message, conversation_id,
+                                                       resume_message_id, attachments))
+        attachment_payload = serialize_attachments(prepared)
         # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
         sec_ctx, safe_message = self._apply_input_security(message, user)
         if sec_ctx and sec_ctx.blocked:
             raise self._rejection_error(sec_ctx)
         conv, user_message_id = self._prepare_user_message(
             session, user, conversation_id, message, resume_message_id,
-            _execution_claims if _execution_claims is not None else [])
+            _execution_claims if _execution_claims is not None else [], attachments=attachment_payload)
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
-        state = AgentState(user_input=safe_message, history=memory.recent_messages)
+        state = AgentState(user_input=model_user_text(safe_message, prepared), user_images=image_urls(prepared),
+                           history=memory.recent_messages, retrieval_query=safe_message)
         # 2. 注入记忆上下文到管线
         if memory.memory_context:
             state.context = memory.memory_context
@@ -377,11 +451,12 @@ class ChatService:
         # 5. 调试追踪
         trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
-        fast = None if resume_message_id else self._fast_route(safe_message)
+        fast = None if resume_message_id or prepared else self._fast_route(safe_message)
         try:
             if fast is not None:
                 async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx):
-                    pass
+                    if _event.type == "error":
+                        state.error_code = str(safe_error_metadata(_event.metadata)["code"])
                 result = state
             else:
                 pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
@@ -406,12 +481,14 @@ class ChatService:
             result.answer,
             self._model_name(),
             sources,
-            status="complete",
+            status="failed" if result.error_code == "model_unavailable" else "complete",
             code_results=result.code_results,
             skill_names=_skill_name_list(skill_ctx),
         )
         session.refresh(conv)
         session.expire(conv, ["messages"])
+        if result.error_code == "model_unavailable":
+            raise ModelUnavailableError()
         # 9. 异步反思（不阻塞对话响应）
         self._maybe_reflect(conv, result)
         return conv, result.answer
@@ -421,9 +498,16 @@ class ChatService:
     async def chat_stream(
         self, session: Session, user: User, message: str, conversation_id: str | None = None,
         *, resume_message_id: str | None = None,
+        attachments: list[AttachmentInput] | None = None,
+        attachments_prepared: list[PreparedAttachment] | None = None,
         _execution_claims: list[tuple[int, str, str, str]] | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
+        execution_bind = session.get_bind()
+        prepared = (attachments_prepared if attachments_prepared is not None and resume_message_id is None
+                    else self.prepare_chat_attachments(session, user, message, conversation_id,
+                                                       resume_message_id, attachments))
+        attachment_payload = serialize_attachments(prepared)
         # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
         sec_ctx, safe_message = self._apply_input_security(message, user)
         if sec_ctx and sec_ctx.blocked:
@@ -435,14 +519,17 @@ class ChatService:
                         ensure_ascii=False,
                     ),
                 )
-            yield AgentEvent("error", str(self._rejection_error(sec_ctx)))
+            yield AgentEvent("error", str(self._rejection_error(sec_ctx)), metadata=safe_error_metadata({
+                "code": "rate_limited" if sec_ctx.rate_limited else "request_rejected",
+            }))
             return
         conv, user_message_id = self._prepare_user_message(
             session, user, conversation_id, message, resume_message_id,
-            _execution_claims if _execution_claims is not None else [])
+            _execution_claims if _execution_claims is not None else [], attachments=attachment_payload)
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_memory(conv)
-        state = AgentState(user_input=safe_message, history=memory.recent_messages)
+        state = AgentState(user_input=model_user_text(safe_message, prepared), user_images=image_urls(prepared),
+                           history=memory.recent_messages, retrieval_query=safe_message)
         # 注入记忆上下文
         if memory.memory_context:
             state.context = memory.memory_context
@@ -452,7 +539,7 @@ class ChatService:
 
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
-        fast = None if resume_message_id else self._fast_route(safe_message)
+        fast = None if resume_message_id or prepared else self._fast_route(safe_message)
         pipeline = None if fast is not None else self._build_pipeline(retriever, tools, skill_ctx)
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
@@ -473,6 +560,11 @@ class ChatService:
                 assert pipeline is not None
                 events = pipeline.run_stream(state)
             async for event in events:
+                if event.type == "error":
+                    state.error_code = str(safe_error_metadata(event.metadata)["code"])
+                if event.type == "node.finished" and json.loads(event.data).get("node") == "retrieval":
+                    sources = self._reply_sources(session, retriever)
+                    yield protocol_event("citations", sources=sources)
                 if event.type == "token":
                     collected.append(event.data)
                 if event.type == "done":
@@ -485,15 +577,16 @@ class ChatService:
                         answer,
                         self._model_name(),
                         sources,
-                        status="complete",
+                        status="failed" if state.error else "complete",
                         code_results=state.code_results,
                         skill_names=_skill_name_list(skill_ctx),
                     )
                     assistant_saved = True
                     current = ChatService._conversation_after_reply(session, conv, conversation_id)
-                    if current is not None:
+                    if current is not None and state.error_code != "model_unavailable":
                         self._maybe_reflect(current, state)
                     yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
+                    yield protocol_event("citations", sources=sources)
                     logger.info("rag_sources_returned source_count=%s", len(sources))
                 yield event
         except (GeneratorExit, asyncio.CancelledError):
@@ -502,7 +595,14 @@ class ChatService:
         except ContextBudgetError:
             # 预算超限时给固定提示，异常原文不外传；补一个 done 让流有终态。
             state.answer = BUDGET_EXCEEDED_REPLY
-            yield AgentEvent("error", BUDGET_EXCEEDED_REPLY)
+            state.error = "context_budget_exceeded"
+            self._apply_output_security(state.answer, sec_ctx)
+            self._persist_assistant(session, conv, state.answer, self._model_name(), sources,
+                                    status="failed", code_results=state.code_results,
+                                    skill_names=_skill_name_list(skill_ctx))
+            assistant_saved = True
+            yield AgentEvent("error", BUDGET_EXCEEDED_REPLY,
+                             metadata=safe_error_metadata({"code": "context_budget_exceeded"}))
             yield AgentEvent("done", BUDGET_EXCEEDED_REPLY)
         finally:
             if stopped and not assistant_saved:
@@ -516,7 +616,7 @@ class ChatService:
                     except Exception as exc:  # noqa: BLE001 — 停止时请求会话可能已关闭
                         logger.error("rag_sources_read_failed error_type=%s", type(exc).__name__)
                         sources = []
-                self._persist_assistant_standalone(
+                assistant_id = self._persist_assistant_standalone(
                     conversation_id,
                     answer,
                     self._model_name(),
@@ -524,11 +624,14 @@ class ChatService:
                     status="stopped",
                     code_results=state.code_results,
                     skill_names=_skill_name_list(skill_ctx),
+                    bind=execution_bind,
                 )
+                session.info["agent_assistant_message_id"] = assistant_id
 
     # ── 内部辅助 ──────────────────────────────────
     def _accept_user_message(
-        self, session: Session, user: User, conversation_id: str | None, message: str
+        self, session: Session, user: User, conversation_id: str | None, message: str,
+        *, attachments: str | None = None,
     ) -> tuple[Conversation, str]:
         return accept_user_message(
             session,
@@ -537,6 +640,7 @@ class ChatService:
             role=user.role,
             conversation_id=conversation_id,
             message=message,
+            **({"attachments": attachments} if attachments is not None else {}),
         )
 
     def _persist_assistant(
@@ -552,8 +656,7 @@ class ChatService:
     ) -> None:
         payload = json.dumps(sources, ensure_ascii=False) if sources else None
         code_payload = json.dumps(code_results, ensure_ascii=False) if code_results else None
-        session.add(
-            Message(
+        assistant = Message(
                 conversation_id=conv.id,
                 role="assistant",
                 content=content,
@@ -563,8 +666,9 @@ class ChatService:
                 code_results=code_payload,
                 skill_names=_skill_names_payload(skill_names),
             )
-        )
+        session.add(assistant)
         session.commit()
+        session.info["agent_assistant_message_id"] = assistant.id
 
     def _persist_assistant_standalone(
         self,
@@ -575,15 +679,15 @@ class ChatService:
         status: str,
         code_results: list[dict] | None = None,
         skill_names: list[str] | None = None,
-    ) -> None:
+        bind: Engine | Connection | None = None,
+    ) -> str:
         """在独立会话里写入助手消息。用于生成器被关闭、原请求会话已不可用时。"""
         from app.core.database import engine
 
         payload = json.dumps(sources, ensure_ascii=False) if sources else None
         code_payload = json.dumps(code_results, ensure_ascii=False) if code_results else None
-        with Session(engine) as extra:
-            extra.add(
-                Message(
+        with Session(bind if bind is not None else engine) as extra:
+            assistant = Message(
                     conversation_id=conversation_id,
                     role="assistant",
                     content=content,
@@ -593,8 +697,9 @@ class ChatService:
                     code_results=code_payload,
                     skill_names=_skill_names_payload(skill_names),
                 )
-            )
+            extra.add(assistant)
             extra.commit()
+            return assistant.id
 
     @staticmethod
     def _reply_sources(session: Session, retriever) -> list[dict]:
@@ -776,7 +881,8 @@ class ChatService:
     # ── 安全治理 ──────────────────────────────────
 
     @staticmethod
-    def _apply_input_security(message: str, user: User) -> "tuple[SecurityContext | None, str]":
+    def _apply_input_security(message: str, user: User, *, check_rate_limit: bool = True,
+                              fail_closed: bool = False) -> "tuple[SecurityContext | None, str]":
         """对用户输入执行安全过滤。
 
         包含：输入过滤（PII 检测 + 敏感词）+ Prompt 注入检测。
@@ -804,7 +910,7 @@ class ChatService:
 
             # 速率限制：以「用户 + 租户」为键，先于内容检测执行，
             # 被限流的请求无需再消耗过滤与模型算力。
-            if settings.SECURITY_RATE_LIMIT:
+            if settings.SECURITY_RATE_LIMIT and check_rate_limit:
                 limiter = get_rate_limiter()
                 allowed, remaining = limiter.allow(f"{user.tenant_id}:{user.id}", ctx=ctx)
                 if not allowed:
@@ -838,6 +944,10 @@ class ChatService:
             return ctx, sanitized
 
         except Exception:  # noqa: BLE001 — 安全过滤失败不应影响对话
+            if fail_closed:
+                from app.security.types import SecurityRejectedError
+
+                raise SecurityRejectedError("附件安全检查失败，请稍后重试", status_code=503) from None
             logger.exception("输入安全过滤失败")
             return None, message
 
@@ -867,7 +977,7 @@ class ChatService:
 
         if ctx.rate_limited:
             return SecurityRejectedError(
-                "请求过于频繁，请稍后再试",
+                "请求过于频繁，请稍后重试",
                 status_code=429,
                 retry_after_seconds=ctx.retry_after_seconds,
             )

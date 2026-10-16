@@ -1,8 +1,11 @@
 /** 把配额 429 正文转成给用户看的说明。 */
 
+import { errorCode, errorRow, ERROR_MESSAGES } from './api-errors'
+
 export function quotaExceededMessage(payload: unknown): string | null {
   if (!payload || typeof payload !== 'object') return null
   const row = payload as { code?: unknown; limit_type?: unknown; used?: unknown; limit?: unknown }
+  if (errorCode(payload) === 'quota_exceeded' && errorRow(payload) !== payload) return ERROR_MESSAGES.quota_exceeded
   if (row.code !== 'quota_exceeded') return null
   const used = typeof row.used === 'number' && Number.isFinite(row.used) ? row.used : null
   const limit = typeof row.limit === 'number' && Number.isFinite(row.limit) ? row.limit : null
@@ -18,6 +21,7 @@ export function quotaExceededMessage(payload: unknown): string | null {
 export function isQuotaNotice(message: string): boolean {
   return (
     message.startsWith('消息条数已达上限') ||
+    message.startsWith(ERROR_MESSAGES.quota_exceeded) ||
     message.startsWith('源文件容量已达上限') ||
     message.startsWith('已达到配额上限')
   )

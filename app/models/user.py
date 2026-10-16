@@ -43,6 +43,8 @@ class User(SQLModel, TimestampMixin, table=True):
     # refresh token 撤销计数：每次登出/改密自增，使旧 refresh token 失效。
     token_version: int = Field(default=0)
     is_active: bool = Field(default=True)
+    is_test_user: bool = Field(default=False)
+    must_change_password: bool = Field(default=False)
 
     tenant: Tenant | None = Relationship(back_populates="users")
 

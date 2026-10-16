@@ -1,0 +1,121 @@
+{
+  "platform": "Windows-11-10.0.22621-SP0",
+  "kind": "configuration-only; no daemon, build, startup, or model calls",
+  "commands": [
+    {
+      "argv": [
+        "docker",
+        "compose",
+        "--env-file",
+        "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\production-config-final-719a2i9t\\empty.env",
+        "-f",
+        "docker-compose.prod.yml",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "compose",
+        "--env-file",
+        "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\production-config-final-719a2i9t\\empty.env",
+        "-f",
+        "docker-compose.prod.yml",
+        "-f",
+        "deploy/compose.milvus.prod.yml",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "compose",
+        "--env-file",
+        "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\production-config-final-719a2i9t\\empty.env",
+        "-f",
+        "docker-compose.prod.yml",
+        "config",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "compose",
+        "--env-file",
+        "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\production-config-final-719a2i9t\\empty.env",
+        "-f",
+        "docker-compose.prod.yml",
+        "-f",
+        "deploy/compose.milvus.prod.yml",
+        "config",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "compose",
+        "--env-file",
+        "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\production-config-final-719a2i9t\\empty.env",
+        "-f",
+        "docker-compose.prod.yml",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 1,
+      "missing_required_variable": "JWT_SECRET_KEY"
+    },
+    {
+      "argv": [
+        "docker",
+        "compose",
+        "--env-file",
+        "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\production-config-final-719a2i9t\\empty.env",
+        "-f",
+        "docker-compose.prod.yml",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 1,
+      "missing_required_variable": "POSTGRES_PASSWORD"
+    },
+    {
+      "argv": [
+        "docker",
+        "compose",
+        "--env-file",
+        "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\production-config-final-719a2i9t\\empty.env",
+        "-f",
+        "docker-compose.prod.yml",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 1,
+      "missing_required_variable": "CORS_ORIGINS"
+    }
+  ],
+  "assertions": [
+    "local app/db only",
+    "overlay retains db dependency and enables Milvus extra",
+    "reserved-character database password URL preserved",
+    "missing JWT/database password/CORS rejected"
+  ],
+  "inputs": {
+    "docker-compose.prod.yml": "084d0dc3cd6ff0f9b2b8641d828377132688a7162b128deb270fbcd74b6791de",
+    "deploy/compose.milvus.prod.yml": "0cd413bfa2960042e6bc32954f9fdee59f8895d0c451afda54128f6ba425d234",
+    "Dockerfile": "464ff97bead4299b452c23faf0429b33530a8967e76739b518dc98168bdad9a1",
+    ".dockerignore": "7b87f04f1f9a160885fe9746f512f06689e77eab330962f3f065133f32494c59",
+    "scripts/check_production_compose.py": "56651386c7df4955635e130b7da9f2c078ec4ec6054617f4145bdfec0057373d"
+  },
+  "secrets": "synthetic random values omitted; expanded output not persisted",
+  "rebound": "API v1 image health probe; initial isolated invocation failed due incomplete Windows CLI environment, corrected with OS path variables; no daemon action"
+}

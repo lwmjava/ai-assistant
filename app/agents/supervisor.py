@@ -13,13 +13,15 @@ Supervisor**：由 supervisor 节点决定「先调研」还是「直接撰写�
   不进入行动循环；检索状态与披露要求与自研管线共用同一套契约。
 """
 
+import asyncio
 import json
 import logging
+from contextlib import suppress
 from typing import TypedDict
 
-from app.agents.pipeline import AgentEvent, AgentState, _failure_text
+from app.agents.pipeline import AgentEvent, AgentState, _failure_text, error_metadata, node_event, protocol_event
 from app.agents.tools.base import ToolRegistry
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, user_message_content
 from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
 from app.rag.retriever import assemble_retrieval
@@ -119,6 +121,9 @@ class SupervisorGraph:
         self.tools = tools
         self.max_revisions = max_revisions
         self._last_outcome: RetrievalOutcome | None = None
+        self._event_queue: asyncio.Queue[AgentEvent | None] | None = None
+        self._failure_metadata: dict[str, object] | None = None
+        self._user_images: list[str] = []
         self._graph = self._build()
 
     # ── 懒加载 LangGraph ──
@@ -137,9 +142,9 @@ class SupervisorGraph:
     def _build(self):
         end, state_graph = self._require_langgraph()
         builder = state_graph(SupervisorState)
-        builder.add_node("supervisor", self._node_supervisor)
-        builder.add_node("research", self._node_research)
-        builder.add_node("draft", self._node_draft)
+        builder.add_node("supervisor", self._observe_node("supervisor", self._node_supervisor))
+        builder.add_node("research", self._observe_node("research", self._node_research))
+        builder.add_node("draft", self._observe_node("draft", self._node_draft))
         builder.add_edge("research", "supervisor")
         builder.add_edge("draft", end)
         builder.add_conditional_edges(
@@ -149,6 +154,25 @@ class SupervisorGraph:
         )
         builder.set_entry_point("supervisor")
         return builder.compile()
+
+    def _observe_node(self, name, handler):
+        async def observed(state):
+            queue = self._event_queue
+            if queue is not None:
+                queue.put_nowait(node_event("node.started", name))
+            status = "done"
+            try:
+                return await handler(state)
+            except asyncio.CancelledError:
+                status = "cancelled"
+                raise
+            except Exception:
+                status = "failed"
+                raise
+            finally:
+                if queue is not None:
+                    queue.put_nowait(node_event("node.finished", name, status=status))
+        return observed
 
     # ── 节点实现 ──
     async def _node_supervisor(self, state: dict) -> dict:
@@ -164,7 +188,7 @@ class SupervisorGraph:
         decision = await self.llm.chat(
             [
                 ChatMessage(role=ChatRole.SYSTEM, content=_SUPERVISOR_SYSTEM),
-                ChatMessage(role=ChatRole.USER, content=prompt),
+                ChatMessage(role=ChatRole.USER, content=user_message_content(prompt, self._user_images)),
             ],
             self.options,
         )
@@ -188,7 +212,7 @@ class SupervisorGraph:
         draft = await self.llm.chat(
             [
                 ChatMessage(role=ChatRole.SYSTEM, content=system),
-                ChatMessage(role=ChatRole.USER, content=prompt),
+                ChatMessage(role=ChatRole.USER, content=user_message_content(prompt, self._user_images)),
             ],
             self.options,
         )
@@ -220,7 +244,7 @@ class SupervisorGraph:
         answer = await self.llm.chat(
             [
                 ChatMessage(role=ChatRole.SYSTEM, content=system),
-                ChatMessage(role=ChatRole.USER, content=prompt),
+                ChatMessage(role=ChatRole.USER, content=user_message_content(prompt, self._user_images)),
             ],
             self.options,
         )
@@ -254,7 +278,8 @@ class SupervisorGraph:
         snippet = ""
         outcome: RetrievalOutcome | None = None
         try:
-            snippet = await self.retriever.retrieve(state.user_input, state.plan)
+            query = state.retrieval_query if state.retrieval_query is not None else state.user_input
+            snippet = await self.retriever.retrieve(query, state.plan)
         except Exception:  # noqa: BLE001 — 检索故障不应变成编排级通用失败
             logger.exception("Supervisor 检索失败，收敛为 unavailable")
             outcome = RetrievalOutcome(status=RetrievalStatus.UNAVAILABLE)
@@ -288,7 +313,12 @@ class SupervisorGraph:
 
     async def run(self, state: AgentState) -> AgentState:
         """以 Supervisor 方式执行一次协作，填充并返回 AgentState。"""
-        await self._retrieve(state)
+        self._failure_metadata = None
+        self._user_images = list(state.user_images)
+        if self.retriever is not None:
+            await self._observe_node("retrieval", self._retrieve)(state)
+        else:
+            await self._retrieve(state)
         # 全低分是终态拒答：不进图，直接给出拒答语。
         if self._last_outcome is not None:
             terminal = self._last_outcome.terminal_reply()
@@ -313,6 +343,8 @@ class SupervisorGraph:
             final = await self._graph.ainvoke(graph_state)
         except Exception as exc:  # noqa: BLE001 — 编排级兜底
             logger.exception("Supervisor 编排执行失败")
+            self._failure_metadata = error_metadata(exc)
+            state.error_code = str(self._failure_metadata["code"])
             state.error = str(exc)
             if not state.answer:
                 # 复用管线的兜底文案：预算超限必须说「请缩短输入」，
@@ -340,8 +372,41 @@ class SupervisorGraph:
         若整段答案只发一个 token 事件，客户端无法增量渲染、也失去流式的意义。
         逐节点真正的流式可后续改为 ``graph.astream_events``。
         """
-        result = await self.run(state)
         yield AgentEvent("stage", "Supervisor 协作")
+        yield protocol_event("intent.classified", intent="supervisor", shortcut=False)
+        queue: asyncio.Queue[AgentEvent | None] = asyncio.Queue()
+        self._event_queue = queue
+
+        async def produce():
+            try:
+                return await self.run(state)
+            finally:
+                queue.put_nowait(None)
+
+        task = asyncio.create_task(produce())
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+                yield event
+            result = await task
+        except asyncio.CancelledError:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+            # 节点 finally 已记录取消完成；在生产流终止前转交真实终态。
+            while not queue.empty():
+                event = queue.get_nowait()
+                if event is not None:
+                    yield event
+            raise
+        finally:
+            self._event_queue = None
+            if not task.done():
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
         # 图已经跑完。这里发出的是完成后的摘要，不是节点开始时的进度。
         if not result.error:
             for item in result.delegations:
@@ -353,6 +418,10 @@ class SupervisorGraph:
                 }
                 yield AgentEvent("subtask", json.dumps(payload, ensure_ascii=False))
         answer = result.answer or ""
+        if result.error:
+            yield AgentEvent("error", answer, metadata=self._failure_metadata)
+        yield node_event("node.started", "respond")
         for start in range(0, len(answer), _STREAM_CHUNK):
             yield AgentEvent("token", answer[start : start + _STREAM_CHUNK])
+        yield node_event("node.finished", "respond", status="failed" if result.error else "done")
         yield AgentEvent("done", answer)

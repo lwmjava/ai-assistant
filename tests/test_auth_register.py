@@ -26,13 +26,13 @@ def _client() -> TestClient:
 def test_register_joins_default_tenant_and_hides_password() -> None:
     client = _client()
     created = client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={"username": " ada ", "password": PASSWORD, "email": "ada@example.com", "role": "system_admin"},
     )
     assert created.status_code == 422
 
     created = client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={"username": " ada ", "password": PASSWORD, "email": "ada@example.com"},
     )
     assert created.status_code == 201
@@ -54,28 +54,28 @@ def test_register_joins_default_tenant_and_hides_password() -> None:
         assert len(logs) == 1
         assert PASSWORD not in str(logs[0].details)
 
-    login = client.post("/api/auth/login", json={"username": "ada", "password": PASSWORD})
+    login = client.post("/api/v1/auth/login", json={"username": "ada", "password": PASSWORD})
     assert login.status_code == 200
     assert decode_token(login.json()["access_token"])["tenant_id"] == payload["tenant_id"]
 
 
 def test_register_rejects_duplicate_username() -> None:
     client = _client()
-    first = client.post("/api/auth/register", json={"username": "ada", "password": PASSWORD})
+    first = client.post("/api/v1/auth/register", json={"username": "ada", "password": PASSWORD})
     assert first.status_code == 201
-    again = client.post("/api/auth/register", json={"username": "ada", "password": PASSWORD})
+    again = client.post("/api/v1/auth/register", json={"username": "ada", "password": PASSWORD})
     assert again.status_code == 409
     assert again.json()["detail"] == "用户名已存在"
 
 
 def test_setup_is_once_and_register_still_joins_default() -> None:
     client = _client()
-    status = client.get("/api/auth/setup-status")
+    status = client.get("/api/v1/auth/setup-status")
     assert status.status_code == 200
     assert status.json() == {"needs_setup": True}
 
     created = client.post(
-        "/api/auth/setup",
+        "/api/v1/auth/setup",
         json={"username": "root", "password": PASSWORD, "email": "root@example.com"},
     )
     assert created.status_code == 201
@@ -83,11 +83,11 @@ def test_setup_is_once_and_register_still_joins_default() -> None:
     admin = decode_token(created.json()["access_token"])
     assert admin["role"] == Role.SYSTEM_ADMIN.value
 
-    closed = client.post("/api/auth/setup", json={"username": "other", "password": PASSWORD})
+    closed = client.post("/api/v1/auth/setup", json={"username": "other", "password": PASSWORD})
     assert closed.status_code == 404
-    assert client.get("/api/auth/setup-status").json() == {"needs_setup": False}
+    assert client.get("/api/v1/auth/setup-status").json() == {"needs_setup": False}
 
-    member = client.post("/api/auth/register", json={"username": "ada", "password": PASSWORD})
+    member = client.post("/api/v1/auth/register", json={"username": "ada", "password": PASSWORD})
     assert member.status_code == 201
     assert decode_token(member.json()["access_token"])["tenant_id"] == admin["tenant_id"]
     assert decode_token(member.json()["access_token"])["role"] == Role.MEMBER.value
@@ -110,6 +110,6 @@ def test_setup_closed_when_admin_already_exists() -> None:
         session.commit()
 
     client = _client()
-    assert client.get("/api/auth/setup-status").json() == {"needs_setup": False}
-    closed = client.post("/api/auth/setup", json={"username": "another", "password": PASSWORD})
+    assert client.get("/api/v1/auth/setup-status").json() == {"needs_setup": False}
+    closed = client.post("/api/v1/auth/setup", json={"username": "another", "password": PASSWORD})
     assert closed.status_code == 404

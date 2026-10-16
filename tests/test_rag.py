@@ -515,7 +515,7 @@ async def test_retriever_as_pipeline_hook(session: Session) -> None:
 # ── 文档生命周期（接口层）──────────────────────────
 def test_document_lifecycle(client: TestClient) -> None:
     ingest = client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={
             "text": "知识库检索允许用户用自然语言提问并获取相关段落。",
             "title": "知识库说明",
@@ -526,21 +526,21 @@ def test_document_lifecycle(client: TestClient) -> None:
     doc_id = ingest.json()["id"]
     assert ingest.json()["chunk_count"] > 0
 
-    listing = client.get("/api/rag/documents")
+    listing = client.get("/api/v1/rag/documents")
     assert listing.status_code == 200
     assert any(d["id"] == doc_id for d in listing.json())
 
-    detail = client.get(f"/api/rag/documents/{doc_id}")
+    detail = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert detail.status_code == 200
     assert detail.json()["id"] == doc_id
 
-    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
     assert deleted.json()["deleted"] is True
 
-    listing_after = client.get("/api/rag/documents")
+    listing_after = client.get("/api/v1/rag/documents")
     assert all(item["id"] != doc_id for item in listing_after.json())
-    detail_after = client.get(f"/api/rag/documents/{doc_id}")
+    detail_after = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert detail_after.status_code == 200
     assert detail_after.json()["deleted_at"] is not None
 
@@ -548,7 +548,7 @@ def test_document_lifecycle(client: TestClient) -> None:
 def test_reparse_deleted_document_is_rejected(client: TestClient) -> None:
     """已删除的文档不能重建，当前版标志保持不变。"""
     ingest = client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={
             "text": "QA004 删除后不能重建。",
             "title": "删除后重建",
@@ -557,23 +557,23 @@ def test_reparse_deleted_document_is_rejected(client: TestClient) -> None:
     )
     assert ingest.status_code == 200
     doc_id = ingest.json()["id"]
-    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
-    before = client.get(f"/api/rag/documents/{doc_id}")
+    before = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert before.status_code == 200
-    reparse = client.post(f"/api/rag/documents/{doc_id}/reparse")
+    reparse = client.post(f"/api/v1/rag/documents/{doc_id}/reparse")
     assert reparse.status_code == 400
-    after = client.get(f"/api/rag/documents/{doc_id}")
+    after = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert after.status_code == 200
     assert after.json()["deleted_at"] is not None
     assert after.json()["is_current"] == before.json()["is_current"]
-    listing = client.get("/api/rag/documents")
+    listing = client.get("/api/v1/rag/documents")
     assert all(item["id"] != doc_id for item in listing.json())
 
 
 def test_ingest_validation(client: TestClient) -> None:
     resp = client.post(
-        "/api/rag/documents/ingest", json={"text": "", "title": ""}
+        "/api/v1/rag/documents/ingest", json={"text": "", "title": ""}
     )
     assert resp.status_code == 400
 
@@ -581,17 +581,17 @@ def test_ingest_validation(client: TestClient) -> None:
 def test_member_can_delete_own_document(member_client: TestClient) -> None:
     """ADR-0001：成员可删除自己上传的文档。"""
     ingest = member_client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={"text": "成员可读写的知识条目。", "title": "成员文档", "source": "rbac"},
     )
     assert ingest.status_code == 200
     doc_id = ingest.json()["id"]
 
-    deleted = member_client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = member_client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
     assert deleted.json()["deleted"] is True
 
-    missing = member_client.get(f"/api/rag/documents/{doc_id}")
+    missing = member_client.get(f"/api/v1/rag/documents/{doc_id}")
     assert missing.status_code == 404
 
 
@@ -607,7 +607,7 @@ def test_upload_rejects_non_text(
 ) -> None:
     _patch_storage_root(monkeypatch, tmp_path)
     files = {"file": ("data.bin", io.BytesIO(b"\x00\x01\x02"), "application/octet-stream")}
-    resp = client.post("/api/rag/documents/upload", files=files)
+    resp = client.post("/api/v1/rag/documents/upload", files=files)
     assert resp.status_code == 400
     assert "当前允许" in resp.json()["detail"]
     assert _stored_upload_files(tmp_path) == []
@@ -619,7 +619,7 @@ def test_upload_rejects_oversize_before_save(
     _patch_storage_root(monkeypatch, tmp_path)
     monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", 4)
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("note.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert resp.status_code == 413
@@ -634,7 +634,7 @@ def test_upload_accepts_file_at_configured_size_limit(
     raw = "不超过上限。".encode()
     monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", len(raw))
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("note.txt", io.BytesIO(raw), "text/plain")},
     )
     assert resp.status_code == 200
@@ -661,7 +661,7 @@ def test_upload_accepts_supported_text_types(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("doc.json", io.BytesIO(b'{\"name\":\"alice\"}'), "application/json")},
     )
     assert resp.status_code == 200
@@ -680,7 +680,7 @@ def test_upload_returns_ocr_required_for_pdf(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf")},
     )
     assert resp.status_code == 400
@@ -729,7 +729,7 @@ def test_upload_returns_500_when_ingest_fails(
         fake_ingest_parsed_document,
     )
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("doc.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert resp.status_code == 500
@@ -758,7 +758,7 @@ def test_upload_stores_source_file_and_downloads_it(
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     raw = b"%PDF-1.4 demo bytes"
     upload = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("manual.pdf", io.BytesIO(raw), "application/pdf")},
     )
     assert upload.status_code == 200
@@ -769,7 +769,7 @@ def test_upload_stores_source_file_and_downloads_it(
     assert doc.storage_path
     assert resolve_source_file_path(doc.storage_path).exists()
 
-    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    download = client.get(f"/api/v1/rag/documents/{doc_id}/download")
     assert download.status_code == 200
     assert download.content == raw
     assert "manual.pdf" in download.headers["content-disposition"]
@@ -796,7 +796,7 @@ def test_delete_document_keeps_source_file_until_purge(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     upload = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("keep.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert upload.status_code == 200
@@ -808,13 +808,13 @@ def test_delete_document_keeps_source_file_until_purge(
     source_path = resolve_source_file_path(doc.storage_path)
     assert source_path.exists()
 
-    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
     session.expire_all()
     kept = session.get(Document, doc_id)
     assert kept is not None and kept.deleted_at is not None
     assert source_path.exists()
-    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    download = client.get(f"/api/v1/rag/documents/{doc_id}/download")
     assert download.status_code == 404
 
 
@@ -839,7 +839,7 @@ def test_download_missing_source_file_returns_404(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     upload = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("lost.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert upload.status_code == 200
@@ -850,26 +850,26 @@ def test_download_missing_source_file_returns_404(
     assert doc.storage_path
     assert delete_source_file(doc.storage_path) is True
 
-    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    download = client.get(f"/api/v1/rag/documents/{doc_id}/download")
     assert download.status_code == 404
 
 
 def test_search_endpoint(client: TestClient) -> None:
     client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={
             "text": "Agent 编排将任务拆解为理解、规划、行动、反思、响应五个阶段。",
             "title": "Agent 流程",
             "source": "search",
         },
     )
-    resp = client.post("/api/rag/search", json={"query": "Agent 有几个阶段", "top_k": 3})
+    resp = client.post("/api/v1/rag/search", json={"query": "Agent 有几个阶段", "top_k": 3})
     assert resp.status_code == 200
     assert any("阶段" in r["content"] for r in resp.json())
 
 
 def test_search_empty_query(client: TestClient) -> None:
-    resp = client.post("/api/rag/search", json={"query": "  "})
+    resp = client.post("/api/v1/rag/search", json={"query": "  "})
     assert resp.status_code == 400
 
 

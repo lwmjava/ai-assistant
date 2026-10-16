@@ -4,7 +4,7 @@
 提供审计日志查询、过滤、分页功能。
 
 端点：
-- ``GET /api/admin/audit-logs`` — 查询审计日志（支持多条件过滤 + 分页）
+- ``GET /api/v1/admin/audit-logs`` — 查询审计日志（支持多条件过滤 + 分页）
 """
 
 import logging

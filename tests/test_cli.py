@@ -13,7 +13,7 @@ START_SCRIPT = """
 from fastapi.testclient import TestClient
 from app.main import app
 with TestClient(app) as client:
-    client.get("/api/health")
+    client.get("/api/v1/health")
 print("STARTED yes")
 """
 
@@ -23,7 +23,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 with TestClient(app) as client:
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={
             "username": os.environ["CLI_LOGIN_USERNAME"],
             "password": os.environ["INITIAL_ADMIN_PASSWORD"],

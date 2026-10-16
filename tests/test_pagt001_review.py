@@ -169,7 +169,7 @@ def test_review_deep_json_configuration_does_not_break_health(monkeypatch):
     monkeypatch.setattr(settings, "FILE_OPS_ENABLED", True)
     monkeypatch.setattr(settings, "FILE_OPS_ALLOWED_ROOTS", "[" * 1500 + "0" + "]" * 1500)
     with TestClient(app) as client:
-        response = client.get("/api/health")
+        response = client.get("/api/v1/health")
     assert response.status_code == 200
     assert response.json()["checks"]["tools"]["file_ops"]["status"] == "unavailable"
 

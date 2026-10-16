@@ -1,6 +1,6 @@
 # ADR 目录
 
-> 状态：九份 Accepted ADR；架构批准不等于能力实现
+> 状态：Accepted ADR 目录；架构批准不等于能力实现
 > 更新日期：2026-10-12
 
 本目录只存放已批准或评审中的架构决策记录。
@@ -23,6 +23,8 @@ ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-c
 
 权限过滤与生效日期过滤实现在 `RAG-006`。本阶段不切换默认向量库。  
 `RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后才改变检索候选集。
+
+ADR-0012：[SSE ActiveRun 生命周期与断线回放](0012-sse-active-run-lifecycle.md)，Accepted，2026-10-15 用户批准单进程任务所有权、有界事件回放与鉴权查询/取消；实现与验收以 SSE-001 证据为准。
 
 ## 分阶段实施中
 

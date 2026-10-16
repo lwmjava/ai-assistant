@@ -191,7 +191,7 @@ async def test_webhook_called_on_success(persist_identity):
 # ── API 全链路 ──────────────────────────────────
 def test_create_and_manual_run_and_history(client: TestClient) -> None:
     resp = client.post(
-        "/api/workflows",
+        "/api/v1/workflows",
         json={"name": "t", "cron_expr": "0 0 1 1 *", "prompt_template": "do something"},
     )
     assert resp.status_code == 201
@@ -200,7 +200,7 @@ def test_create_and_manual_run_and_history(client: TestClient) -> None:
     assert wf["owner_id"] == "wf-user"
     assert wf["timezone"] == settings.WORKFLOW_DEFAULT_TIMEZONE
 
-    run = client.post(f"/api/workflows/{wid}/run")
+    run = client.post(f"/api/v1/workflows/{wid}/run")
     assert run.status_code == 201
     ex = run.json()
     assert ex["status"] == "success"
@@ -208,32 +208,32 @@ def test_create_and_manual_run_and_history(client: TestClient) -> None:
     assert ex["triggered_by"] == "manual"
     assert ex["duration_ms"] is not None
 
-    hist = client.get(f"/api/workflows/{wid}/executions")
+    hist = client.get(f"/api/v1/workflows/{wid}/executions")
     assert hist.status_code == 200
     assert len(hist.json()) >= 1
 
-    client.delete(f"/api/workflows/{wid}")
+    client.delete(f"/api/v1/workflows/{wid}")
 
 
 def test_crud_and_toggle(client: TestClient) -> None:
     created = client.post(
-        "/api/workflows",
+        "/api/v1/workflows",
         json={"name": "t2", "cron_expr": "0 0 1 1 *", "prompt_template": "p"},
     )
     wid = created.json()["id"]
 
-    listing = client.get("/api/workflows")
+    listing = client.get("/api/v1/workflows")
     assert listing.status_code == 200
     assert any(x["id"] == wid for x in listing.json())
 
-    detail = client.get(f"/api/workflows/{wid}")
+    detail = client.get(f"/api/v1/workflows/{wid}")
     assert detail.status_code == 200
 
-    updated = client.put(f"/api/workflows/{wid}", json={"name": "t2-updated"})
+    updated = client.put(f"/api/v1/workflows/{wid}", json={"name": "t2-updated"})
     assert updated.status_code == 200
     assert updated.json()["name"] == "t2-updated"
 
-    toggled = client.post(f"/api/workflows/{wid}/toggle", json={"enabled": False})
+    toggled = client.post(f"/api/v1/workflows/{wid}/toggle", json={"enabled": False})
     assert toggled.status_code == 200
     assert toggled.json()["enabled"] is False
 
@@ -247,17 +247,17 @@ def test_crud_and_toggle(client: TestClient) -> None:
         is_active=True,
     )
     app.dependency_overrides[get_current_user] = lambda: admin
-    deleted = client.delete(f"/api/workflows/{wid}")
+    deleted = client.delete(f"/api/v1/workflows/{wid}")
     assert deleted.status_code == 200 and deleted.json()["deleted"] is True
 
-    missing = client.get(f"/api/workflows/{wid}")
+    missing = client.get(f"/api/v1/workflows/{wid}")
     assert missing.status_code == 404
 
 
 def test_disabled_returns_503(client: TestClient) -> None:
     settings.WORKFLOW_ENABLED = False
     resp = client.post(
-        "/api/workflows",
+        "/api/v1/workflows",
         json={"name": "x", "cron_expr": "0 0 1 1 *", "prompt_template": "p"},
     )
     assert resp.status_code == 503

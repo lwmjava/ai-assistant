@@ -46,7 +46,7 @@ def _user(username: str, role: Role, tenant_name: str) -> str:
 
 
 def _login(client: TestClient, username: str) -> dict:
-    resp = client.post("/api/auth/login", json={"username": username, "password": PASSWORD})
+    resp = client.post("/api/v1/auth/login", json={"username": username, "password": PASSWORD})
     assert resp.status_code == 200
     return resp.json()
 
@@ -59,7 +59,7 @@ def test_admin_revoke_invalidates_old_refresh_and_allows_new_login() -> None:
     member = _login(client, "ada")
 
     revoked = client.post(
-        f"/api/auth/users/{member_id}/revoke-tokens",
+        f"/api/v1/auth/users/{member_id}/revoke-tokens",
         headers={"Authorization": f"Bearer {admin['access_token']}"},
     )
     assert revoked.status_code == 200
@@ -68,11 +68,11 @@ def test_admin_revoke_invalidates_old_refresh_and_allows_new_login() -> None:
     assert body["token_version"] == 1
     assert PASSWORD not in revoked.text
 
-    stale = client.post("/api/auth/refresh", json={"refresh_token": member["refresh_token"]})
+    stale = client.post("/api/v1/auth/refresh", json={"refresh_token": member["refresh_token"]})
     assert stale.status_code == 401
 
     again = _login(client, "ada")
-    refreshed = client.post("/api/auth/refresh", json={"refresh_token": again["refresh_token"]})
+    refreshed = client.post("/api/v1/auth/refresh", json={"refresh_token": again["refresh_token"]})
     assert refreshed.status_code == 200
 
     with Session(engine) as session:
@@ -96,7 +96,7 @@ def test_member_cannot_revoke_tokens() -> None:
     member_id = _user("ada", Role.MEMBER, "default")
     member = _login(client, "ada")
     resp = client.post(
-        f"/api/auth/users/{member_id}/revoke-tokens",
+        f"/api/v1/auth/users/{member_id}/revoke-tokens",
         headers={"Authorization": f"Bearer {member['access_token']}"},
     )
     assert resp.status_code == 403
@@ -107,7 +107,7 @@ def test_revoke_missing_user_is_404() -> None:
     _user("root", Role.SYSTEM_ADMIN, "default")
     admin = _login(client, "root")
     resp = client.post(
-        "/api/auth/users/missing-user/revoke-tokens",
+        "/api/v1/auth/users/missing-user/revoke-tokens",
         headers={"Authorization": f"Bearer {admin['access_token']}"},
     )
     assert resp.status_code == 404

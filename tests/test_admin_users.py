@@ -41,7 +41,7 @@ def _admin(client: TestClient) -> tuple[dict[str, str], str]:
         session.commit()
         admin_id = session.exec(select(User).where(User.username == "admin")).one().id
     resp = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": "admin", "password": "Test@Pass123!"},
     )
     assert resp.status_code == 200
@@ -49,17 +49,17 @@ def _admin(client: TestClient) -> tuple[dict[str, str], str]:
 
 
 def _member(client: TestClient, headers: dict[str, str]) -> tuple[str, dict[str, str], str]:
-    created_tenant = client.post("/api/admin/tenants", headers=headers, json={"name": "Acme"})
+    created_tenant = client.post("/api/v1/admin/tenants", headers=headers, json={"name": "Acme"})
     assert created_tenant.status_code == 201
     tenant_id = created_tenant.json()["id"]
     created = client.post(
-        f"/api/admin/tenants/{tenant_id}/users",
+        f"/api/v1/admin/tenants/{tenant_id}/users",
         headers=headers,
         json={"username": "ada", "password": PASSWORD, "email": "ada@example.com"},
     )
     assert created.status_code == 201
     user_id = created.json()["id"]
-    login = client.post("/api/auth/login", json={"username": "ada", "password": PASSWORD})
+    login = client.post("/api/v1/auth/login", json={"username": "ada", "password": PASSWORD})
     assert login.status_code == 200
     body = login.json()
     member_headers = {"Authorization": f"Bearer {body['access_token']}"}
@@ -70,7 +70,7 @@ def test_non_admin_cannot_list_users() -> None:
     client = _client()
     headers, _ = _admin(client)
     _, member_headers, _ = _member(client, headers)
-    resp = client.get("/api/admin/users", headers=member_headers)
+    resp = client.get("/api/v1/admin/users", headers=member_headers)
     assert resp.status_code == 403
 
 
@@ -79,7 +79,7 @@ def test_list_shows_ids_and_role_change_is_visible_on_same_token() -> None:
     headers, admin_id = _admin(client)
     user_id, member_headers, _ = _member(client, headers)
 
-    listed = client.get("/api/admin/users", headers=headers)
+    listed = client.get("/api/v1/admin/users", headers=headers)
     assert listed.status_code == 200
     body = listed.json()
     assert body["total"] >= 2
@@ -89,14 +89,14 @@ def test_list_shows_ids_and_role_change_is_visible_on_same_token() -> None:
     assert ada["tenant_id"]
 
     changed = client.patch(
-        f"/api/admin/users/{user_id}",
+        f"/api/v1/admin/users/{user_id}",
         headers=headers,
         json={"role": "tenant_admin"},
     )
     assert changed.status_code == 200
     assert changed.json()["role"] == "tenant_admin"
 
-    me = client.get("/api/auth/me", headers=member_headers)
+    me = client.get("/api/v1/auth/me", headers=member_headers)
     assert me.status_code == 200
     assert me.json()["role"] == "tenant_admin"
 
@@ -111,7 +111,7 @@ def test_list_shows_ids_and_role_change_is_visible_on_same_token() -> None:
         assert "password" not in (log.details or "")
 
     own = client.patch(
-        f"/api/admin/users/{admin_id}",
+        f"/api/v1/admin/users/{admin_id}",
         headers=headers,
         json={"role": "viewer"},
     )
@@ -124,18 +124,21 @@ def test_disable_rejects_self_and_blocks_old_tokens() -> None:
     headers, admin_id = _admin(client)
     user_id, member_headers, refresh = _member(client, headers)
 
-    self_disable = client.post(f"/api/admin/users/{admin_id}/disable", headers=headers)
+    self_disable = client.post(f"/api/v1/admin/users/{admin_id}/disable", headers=headers)
     assert self_disable.status_code == 409
 
-    disabled = client.post(f"/api/admin/users/{user_id}/disable", headers=headers)
+    disabled = client.post(f"/api/v1/admin/users/{user_id}/disable", headers=headers)
     assert disabled.status_code == 200
     assert disabled.json()["is_active"] is False
 
-    assert client.get("/api/auth/me", headers=member_headers).status_code == 401
-    refreshed = client.post("/api/auth/refresh", json={"refresh_token": refresh})
-    assert refreshed.status_code == 401
+    me = client.get("/api/v1/auth/me", headers=member_headers)
+    assert me.status_code == 403
+    assert me.json()["error"]["code"] == "user_disabled"
+    refreshed = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+    assert refreshed.status_code == 403
+    assert refreshed.json()["error"]["code"] == "user_disabled"
 
-    again = client.post(f"/api/admin/users/{user_id}/disable", headers=headers)
+    again = client.post(f"/api/v1/admin/users/{user_id}/disable", headers=headers)
     assert again.status_code == 409
 
 
@@ -143,28 +146,28 @@ def test_enable_requires_new_login_and_filters_by_tenant() -> None:
     client = _client()
     headers, _ = _admin(client)
     user_id, member_headers, refresh = _member(client, headers)
-    listed = client.get("/api/admin/users", headers=headers)
+    listed = client.get("/api/v1/admin/users", headers=headers)
     ada = next(item for item in listed.json()["items"] if item["id"] == user_id)
     tenant_id = ada["tenant_id"]
 
-    denied = client.post(f"/api/admin/users/{user_id}/enable", headers=member_headers)
+    denied = client.post(f"/api/v1/admin/users/{user_id}/enable", headers=member_headers)
     assert denied.status_code == 403
 
-    disabled = client.post(f"/api/admin/users/{user_id}/disable", headers=headers)
+    disabled = client.post(f"/api/v1/admin/users/{user_id}/disable", headers=headers)
     assert disabled.status_code == 200
-    enabled = client.post(f"/api/admin/users/{user_id}/enable", headers=headers)
+    enabled = client.post(f"/api/v1/admin/users/{user_id}/enable", headers=headers)
     assert enabled.status_code == 200
     assert enabled.json()["is_active"] is True
-    repeat = client.post(f"/api/admin/users/{user_id}/enable", headers=headers)
+    repeat = client.post(f"/api/v1/admin/users/{user_id}/enable", headers=headers)
     assert repeat.status_code == 409
 
-    assert client.post("/api/auth/refresh", json={"refresh_token": refresh}).status_code == 401
-    fresh = client.post("/api/auth/login", json={"username": "ada", "password": PASSWORD})
+    assert client.post("/api/v1/auth/refresh", json={"refresh_token": refresh}).status_code == 401
+    fresh = client.post("/api/v1/auth/login", json={"username": "ada", "password": PASSWORD})
     assert fresh.status_code == 200
 
-    other = client.post("/api/admin/tenants", headers=headers, json={"name": "Other"})
+    other = client.post("/api/v1/admin/tenants", headers=headers, json={"name": "Other"})
     assert other.status_code == 201
-    scoped = client.get(f"/api/admin/users?tenant_id={tenant_id}", headers=headers)
+    scoped = client.get(f"/api/v1/admin/users?tenant_id={tenant_id}", headers=headers)
     assert scoped.status_code == 200
     assert scoped.json()["total"] >= 1
     assert all(item["tenant_id"] == tenant_id for item in scoped.json()["items"])

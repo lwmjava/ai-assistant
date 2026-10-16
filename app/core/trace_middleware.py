@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -22,7 +23,8 @@ class TraceIdMiddleware(BaseHTTPMiddleware):
     """为一次 HTTP 请求建立日志上下文，并在响应头回写 trace_id。"""
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[no-untyped-def]
-        trace_id = request.headers.get(_X_REQUEST_ID) or uuid.uuid4().hex[:32]
+        supplied = request.headers.get(_X_REQUEST_ID, "")
+        trace_id = supplied if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", supplied) else uuid.uuid4().hex
         log_context.set_trace_id(trace_id)
         try:
             response = await call_next(request)

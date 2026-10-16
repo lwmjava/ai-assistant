@@ -49,7 +49,7 @@ def member_client():
 
 def _ingest(client: TestClient, text: str, title: str) -> dict:
     r = client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={"text": text, "title": title, "source": "chunk-test"},
     )
     assert r.status_code == 200
@@ -58,7 +58,7 @@ def _ingest(client: TestClient, text: str, title: str) -> dict:
 
 def test_document_chunks_returns_indexed_blocks(admin_client: TestClient) -> None:
     doc = _ingest(admin_client, "第一段内容。第二段内容。第三段内容。", "分块测试")
-    r = admin_client.get(f"/api/rag/documents/{doc['id']}/chunks")
+    r = admin_client.get(f"/api/v1/rag/documents/{doc['id']}/chunks")
     assert r.status_code == 200
     chunks = r.json()
     assert isinstance(chunks, list)
@@ -74,13 +74,13 @@ def test_document_chunks_returns_indexed_blocks(admin_client: TestClient) -> Non
 
 
 def test_document_chunks_unknown_document_404(admin_client: TestClient) -> None:
-    r = admin_client.get("/api/rag/documents/not-exist/chunks")
+    r = admin_client.get("/api/v1/rag/documents/not-exist/chunks")
     assert r.status_code == 404
 
 
 def test_document_chunks_member_can_read_own_document(member_client: TestClient) -> None:
     doc = _ingest(member_client, "成员自己的文档，用于校验分块读取权限。", "成员分块")
-    r = member_client.get(f"/api/rag/documents/{doc['id']}/chunks")
+    r = member_client.get(f"/api/v1/rag/documents/{doc['id']}/chunks")
     assert r.status_code == 200
     assert len(r.json()) == doc["chunk_count"]
 
@@ -88,7 +88,7 @@ def test_document_chunks_member_can_read_own_document(member_client: TestClient)
 def test_document_chunks_concatenated_content_covers_text(admin_client: TestClient) -> None:
     text = "知识库检索允许用户用自然语言提问并获取相关段落。这是第二句，用于校验分块内容完整性。"
     doc = _ingest(admin_client, text, "内容覆盖")
-    r = admin_client.get(f"/api/rag/documents/{doc['id']}/chunks")
+    r = admin_client.get(f"/api/v1/rag/documents/{doc['id']}/chunks")
     chunks = r.json()
     joined = "".join(c["content"] for c in chunks)
     # 分块拼接应覆盖原文主体（Mock 分块策略可能裁剪空白，故用包含性断言）

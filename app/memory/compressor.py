@@ -10,7 +10,7 @@
 import logging
 from datetime import UTC, datetime
 
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text
 from app.memory.base import CompressionStrategy, MemoryConfig, MemorySnapshot
 
 logger = logging.getLogger(__name__)
@@ -167,7 +167,8 @@ def _messages_to_text(messages: list[ChatMessage]) -> str:
     for m in messages:
         role = role_map.get(m.role.value, m.role.value)
         # 截断过长消息（避免压缩时 token 爆炸）
-        content = m.content[:2000] if len(m.content) > 2000 else m.content
+        text = content_text(m.content)
+        content = text[:2000] if len(text) > 2000 else text
         lines.append(f"[{role}] {content}")
     return "\n\n".join(lines)
 

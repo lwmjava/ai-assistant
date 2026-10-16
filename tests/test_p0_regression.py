@@ -25,7 +25,7 @@ from app.core.security import Role, hash_password
 from app.llm.base import ChatMessage, LLMOptions, LLMProvider
 from app.mcp.client import MCPClient
 from app.mcp.config import MCPServerConfig
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.rag.vectorstore.milvus import MilvusUnavailableError, MilvusVectorStore
 from app.security.types import SecurityContext
 from app.services.chat_service import ChatService
@@ -341,6 +341,7 @@ async def test_supervisor_sends_chatmessage_objects() -> None:
     graph.llm = llm
     graph.options = LLMOptions()
     graph.max_revisions = 2
+    graph._user_images = []
 
     await graph._node_supervisor({"user_input": "你好", "plan": "", "research": ""})
     assert llm.calls, "supervisor 节点应发起一次 LLM 调用"
@@ -356,6 +357,7 @@ async def test_supervisor_draft_sends_chatmessage_objects() -> None:
     graph.llm = llm
     graph.options = LLMOptions()
     graph.max_revisions = 2
+    graph._user_images = []
 
     await graph._node_draft({"user_input": "你好", "plan": "", "research": "调研"})
     assert all(isinstance(m, ChatMessage) for m in llm.calls[0])
@@ -389,6 +391,15 @@ def _create_login_user(session: Session, username: str) -> User:
         session.delete(existing)
         session.commit()
 
+    tenant = session.get(Tenant, "audit-tenant")
+    if tenant is None:
+        session.add(Tenant(id="audit-tenant", name="审计登录租户", is_active=True))
+        session.commit()
+    elif not tenant.is_active:
+        tenant.is_active = True
+        session.add(tenant)
+        session.commit()
+
     user = User(
         id=f"user-{username}",
         tenant_id="audit-tenant",
@@ -413,7 +424,7 @@ def test_login_failure_writes_audit_log(session: Session) -> None:
     _create_login_user(session, username)
     with TestClient(app) as client:
         resp = client.post(
-            "/api/auth/login", json={"username": username, "password": "wrong-password"}
+            "/api/v1/auth/login", json={"username": username, "password": "wrong-password"}
         )
     assert resp.status_code == 401
 
@@ -436,7 +447,7 @@ def test_login_success_writes_audit_log(session: Session) -> None:
     user = _create_login_user(session, username)
     with TestClient(app) as client:
         resp = client.post(
-            "/api/auth/login", json={"username": username, "password": "pass-12345"}
+            "/api/v1/auth/login", json={"username": username, "password": "pass-12345"}
         )
     assert resp.status_code == 200
 

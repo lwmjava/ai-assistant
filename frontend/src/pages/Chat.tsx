@@ -21,6 +21,7 @@ import {
 } from '@/api/chat'
 import { downloadTenantConversations } from '@/api/export'
 import { useChatStream } from '@/hooks/useChatStream'
+import { useChatAttachments } from '@/hooks/useChatAttachments'
 import { api, ApiError, hideStackTrace } from '@/lib/http'
 import { isQuotaNotice } from '@/lib/quota-message'
 import { isRateLimitNotice, retryAfterSeconds } from '@/lib/rate-limit'
@@ -29,7 +30,7 @@ import { useAuthStore } from '@/store/auth'
 import type { ConversationDetail, ConversationOut, HealthInfo, MessageOut, SendMode } from '@/types/api'
 
 /**
- * 后端流式响应在发出 done 之前才落库消息，刷新需留出这段窗口。
+ * 后端流式响应在 run.finished 前提交消息，刷新时等待界面查询完成。
  * 非流式（POST /chat）在返回前已 commit，无需等待，因此不走这个延迟。
  */
 const PERSIST_DELAY_MS = 600
@@ -90,6 +91,8 @@ export default function ChatPage() {
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [input, setInput] = useState('')
+  const { attachments, add: addAttachmentFiles, clear: clearAttachments, cancelReading: cancelAttachmentReads,
+    remove: removeAttachment, removeSent: removeSentAttachments } = useChatAttachments()
   const [pending, setPending] = useState<MessageOut[]>([])
   const [listOpen, setListOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<ConversationOut | null>(null)
@@ -109,6 +112,7 @@ export default function ChatPage() {
 
   // 最近一次发送的内容，失败时回填输入框
   const lastSentRef = useRef('')
+  const sendRevisionRef = useRef(0)
   const retryUntilRef = useRef<number | null>(null)
   const activeIdRef = useRef<string | null>(null)
   // 一次性模式的中断控制器；fetch 被 abort 会抛 AbortError，需与真实错误区分
@@ -167,10 +171,14 @@ export default function ChatPage() {
     return () => window.clearInterval(timer)
   }, [retryLeft])
 
-  const busy = snapshot.streaming || awaiting
+  const busy = snapshot.streaming || snapshot.cancelling || awaiting
   const sendLocked = retryLeft != null && retryLeft > 0
   const cannotSend = Boolean(role) && !can(role, 'conversations', 'write')
   const canExport = role === 'tenant_admin' || role === 'system_admin'
+  const addAttachments = useCallback((files: File[]) => {
+    if (busy || cannotSend) return
+    addAttachmentFiles(files)
+  }, [busy, cannotSend, addAttachmentFiles])
   const readOnlyText =
     role === 'viewer' ? '只读成员不可发送消息' : '当前角色不能发送消息'
 
@@ -181,8 +189,10 @@ export default function ChatPage() {
   // 合并：服务端已落库消息 + 本次尚未落库的用户消息
   const messages = useMemo(() => {
     if (!pending.length) return serverMessages
-    const seen = new Set(serverMessages.map((m) => m.content))
-    const notPersisted = pending.filter((p) => !seen.has(p.content))
+    const signature = (message: MessageOut) => JSON.stringify([message.content,
+      (message.attachments ?? []).map((item) => [item.name, item.size])])
+    const seen = new Set(serverMessages.map(signature))
+    const notPersisted = pending.filter((message) => !seen.has(signature(message)))
     return [...serverMessages, ...notPersisted]
   }, [serverMessages, pending])
 
@@ -199,8 +209,8 @@ export default function ChatPage() {
     if (isQuotaNotice(message)) toast.warning('已达配额上限', message)
     else if (isRateLimitNotice(message)) toast.warning('发送过于频繁', message)
     else toast.error('生成失败', message)
-    reset()
-  }, [snapshot.error, snapshot.interrupted, snapshot.stoppedByUser, toast, reset])
+    void qc.invalidateQueries({ queryKey: conversationKeys.all })
+  }, [snapshot.error, snapshot.interrupted, snapshot.stoppedByUser, toast, qc])
 
   const refreshAfterStream = useCallback(
     async (conversationId: string | null) => {
@@ -236,7 +246,11 @@ export default function ChatPage() {
 
   const handleSend = useCallback(async () => {
     const text = input.trim()
-    if (!text || busy || cannotSend || sendLocked) return
+    if ((!text && !attachments.length) || attachments.some((item) => item.status !== 'ready') || busy || cannotSend || sendLocked) return
+    const revision = ++sendRevisionRef.current
+    const selected = attachments.map((item) => ({ name: item.name, content_base64: item.content_base64 ?? '' }))
+    const sentIds = new Set(attachments.map((item) => item.id))
+    const clearSentAttachments = () => removeSentAttachments(sentIds)
 
     setOnceInterrupted(false)
     setLoadReplyNote(null)
@@ -252,6 +266,7 @@ export default function ChatPage() {
       model: null,
       created_at: new Date().toISOString(),
       sources: [],
+      attachments: attachments.map(({ name, size, mime_type }) => ({ name, size, mime_type })),
     }
     setPending([optimistic])
 
@@ -259,13 +274,17 @@ export default function ChatPage() {
       await send({
         message: text,
         conversationId: activeId,
+        attachments: selected,
         onConversation: (id) => {
           activeIdRef.current = id
           setActiveId(id)
         },
-        onFinished: async () => {
+        onFinished: async (_text, status) => {
+          if (sendRevisionRef.current !== revision) return
+          if (status === 'done') clearSentAttachments()
           lastSentRef.current = ''
           await refreshAfterStream(activeIdRef.current)
+          if (sendRevisionRef.current !== revision) return
           setPending([])
           reset()
         },
@@ -280,13 +299,16 @@ export default function ChatPage() {
     setAwaiting(true)
     try {
       const res = await sendMessage(
-        { message: text, conversation_id: activeId },
+        { message: text, conversation_id: activeId, ...(selected.length ? { attachments: selected } : {}) },
         controller.signal,
       )
+      if (sendRevisionRef.current !== revision) return
+      clearSentAttachments()
       lastSentRef.current = ''
       setPending([])
       await applyOnceResult(res.conversation_id)
     } catch (err) {
+      if (sendRevisionRef.current !== revision) return
       // 一次性模式没有半截文字。停止只是不再等待，随后可以加载服务端已经写完的回复。
       if (err instanceof DOMException && err.name === 'AbortError') {
         setOnceInterrupted(true)
@@ -308,11 +330,15 @@ export default function ChatPage() {
       else if (isRateLimitNotice(message)) toast.warning('发送过于频繁', message)
       else toast.error('生成失败', message)
     } finally {
-      onceAbortRef.current = null
-      setAwaiting(false)
+      if (onceAbortRef.current === controller) {
+        onceAbortRef.current = null
+        setAwaiting(false)
+      }
     }
   }, [
     input,
+    attachments,
+    removeSentAttachments,
     busy,
     reset,
     mode,
@@ -326,17 +352,21 @@ export default function ChatPage() {
     applyRetry,
   ])
 
-  /** 中断：流式走 SSE 的 abort，一次性走 fetch 的 abort。 */
+  /** 流式等待显式取消确认，再刷新对应回复；一次性仅停止等待。 */
   const handleStop = useCallback(() => {
+    cancelAttachmentReads()
     if (snapshot.streaming) {
-      stop()
-      const id = activeIdRef.current
+      const revision = sendRevisionRef.current
       void (async () => {
+        const result = await stop()
+        if (!result || sendRevisionRef.current !== revision) return
+        const id = result.conversation_id ?? activeIdRef.current
         if (!id) return
         await refreshAfterStream(id)
+        if (sendRevisionRef.current !== revision) return
         const detail = qc.getQueryData<ConversationDetail>(conversationKeys.detail(id))
         const last = detail?.messages[detail.messages.length - 1]
-        if (last?.role === 'assistant') {
+        if (last?.role === 'assistant' && result.assistant_message_id === last.id) {
           setPending([])
           reset()
         }
@@ -344,10 +374,31 @@ export default function ChatPage() {
       return
     }
     if (awaiting) onceAbortRef.current?.abort()
-  }, [snapshot.streaming, awaiting, stop, refreshAfterStream, qc, reset])
+  }, [snapshot.streaming, awaiting, stop, refreshAfterStream, qc, reset, cancelAttachmentReads])
 
   const loadFullReply = useCallback(async () => {
-    const id = activeIdRef.current
+    let id = activeIdRef.current
+    let assistantMessageId: string | null = null
+    if (snapshot.runId) {
+      try {
+        const run = await api.get<{ status: string; conversation_id: string | null; assistant_message_id?: string | null }>(
+          `/runs/${encodeURIComponent(snapshot.runId)}`,
+        )
+        if (run.status === 'running') {
+          setLoadReplyNote('回复仍在生成，请稍后加载')
+          return
+        }
+        if (run.status === 'failed') {
+          setLoadReplyNote('本轮执行失败，不能当作完整回复')
+          return
+        }
+        id = run.conversation_id ?? id
+        assistantMessageId = run.assistant_message_id ?? null
+      } catch (err) {
+        setLoadReplyNote(err instanceof ApiError ? err.detail : '运行状态读取失败')
+        return
+      }
+    }
     if (!id) {
       setLoadReplyNote('还没有可加载的回复')
       return
@@ -356,7 +407,7 @@ export default function ChatPage() {
       const detail = await api.get<ConversationDetail>(`/chat/conversations/${id}`)
       qc.setQueryData(conversationKeys.detail(id), detail)
       const last = detail.messages[detail.messages.length - 1]
-      if (!last || last.role !== 'assistant') {
+      if (!last || last.role !== 'assistant' || (assistantMessageId && last.id !== assistantMessageId)) {
         setLoadReplyNote('回复尚未完成，不能当作完整回复')
         return
       }
@@ -366,12 +417,13 @@ export default function ChatPage() {
         setLoadReplyNote(null)
       }
       setOnceInterrupted(false)
+      setActiveId(id)
       setPending([])
       reset()
     } catch (err) {
       setLoadReplyNote(err instanceof ApiError ? err.detail : '加载失败')
     }
-  }, [qc, reset])
+  }, [qc, reset, snapshot.runId])
 
   const saveTitle = useCallback(async () => {
     if (!activeId) return
@@ -397,25 +449,29 @@ export default function ChatPage() {
 
   const handleNew = useCallback(() => {
     handleStop()
+    sendRevisionRef.current++
     reset()
     setPending([])
     setActiveId(null)
     setInput('')
+    clearAttachments()
     setListOpen(false)
     setEditingTitle(false)
     setOnceInterrupted(false)
     setLoadReplyNote(null)
-  }, [handleStop, reset])
+  }, [handleStop, reset, clearAttachments])
 
   const handleSelect = useCallback(
     (id: string) => {
       if (busy) return
+      sendRevisionRef.current++
       reset()
       setPending([])
+      clearAttachments()
       setActiveId(id)
       setListOpen(false)
     },
-    [busy, reset],
+    [busy, reset, clearAttachments],
   )
 
   const confirmDelete = useCallback(async () => {
@@ -423,6 +479,8 @@ export default function ChatPage() {
     try {
       await deleteMutation.mutateAsync(pendingDelete.id)
       if (activeId === pendingDelete.id) {
+        clearAttachments()
+        sendRevisionRef.current++
         setActiveId(null)
         setPending([])
         reset()
@@ -433,7 +491,7 @@ export default function ChatPage() {
     } finally {
       setPendingDelete(null)
     }
-  }, [pendingDelete, deleteMutation, activeId, toast, reset])
+  }, [pendingDelete, deleteMutation, activeId, toast, reset, clearAttachments])
 
   const handleExport = useCallback(async () => {
     if (exporting) return
@@ -601,6 +659,13 @@ export default function ChatPage() {
               stageStages={snapshot.stages}
               currentStage={snapshot.currentStage}
               tools={snapshot.tools}
+              intent={snapshot.intent}
+              planSteps={snapshot.planSteps}
+              reconnecting={snapshot.reconnecting}
+              cancelling={snapshot.cancelling}
+              shortcut={snapshot.shortcut}
+              retryable={snapshot.retryable}
+              onRetry={() => void handleSend()}
               subtasks={snapshot.subtasks}
               streaming={snapshot.streaming && !liveAlreadyStored}
               awaiting={awaiting}
@@ -622,7 +687,7 @@ export default function ChatPage() {
           <div className="mx-auto max-w-4xl">
             {sendLocked ? (
               <p role="status" className="mb-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                发送过于频繁，请在 {retryLeft} 秒后再试。倒计时结束前不能发送。
+                请求过于频繁，请稍后重试。{retryLeft} 秒后可重试。
               </p>
             ) : (
               sendNotice && (
@@ -636,12 +701,16 @@ export default function ChatPage() {
               onChange={setInput}
               onSubmit={() => void handleSend()}
               onStop={handleStop}
+              attachments={attachments}
+              onFiles={addAttachments}
+              onRemoveAttachment={removeAttachment}
               streaming={snapshot.streaming}
-              busy={awaiting}
+              busy={awaiting || snapshot.cancelling}
               mode={mode}
               onModeChange={handleModeChange}
               disabled={cannotSend}
               sendLocked={sendLocked}
+              retryLeft={retryLeft}
               placeholder={cannotSend ? readOnlyText : undefined}
             />
             {cannotSend && (

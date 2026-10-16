@@ -217,54 +217,74 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 
 ## API 端点
 
+业务接口统一使用 `/api/v1`，旧 `/api` 路径不提供别名或重定向。`/` 保留控制台或服务信息入口，`/docs` 与 `/redoc` 提供接口文档；这些入口不列入业务 OpenAPI 路径。
+
 | 模块 | 方法 | 路径 | 说明 |
 |------|------|------|------|
-| 系统 | `GET` | `/` | 服务基本信息 |
-| 系统 | `GET` | `/api/health` | 健康检查 |
-| 认证 | `POST` | `/api/auth/login` | 用户名密码登录，返回双令牌 |
-| 认证 | `POST` | `/api/auth/refresh` | 刷新令牌（refresh 轮转） |
-| 认证 | `GET` | `/api/auth/me` | 当前用户信息 |
-| 认证 | `POST` | `/api/auth/register` | 公开注册为 `default` 租户的 member，并返回双令牌 |
-| 认证 | `GET` | `/api/auth/setup-status` | 是否还没有系统管理员 |
-| 认证 | `POST` | `/api/auth/setup` | 没有系统管理员时创建首个管理员；已有时 404 |
-| 认证 | `POST` | `/api/auth/users/{user_id}/revoke-tokens` | 系统管理员撤销该用户的刷新令牌 |
-| 认证 | `GET` | `/api/auth/memberships` | 当前用户已加入的租户 |
-| 认证 | `POST` | `/api/auth/switch-tenant` | 换成已加入的租户并换发令牌；非成员 403 |
-| 邀请 | `POST` | `/api/invitations` | 系统管理员或租户管理员生成邀请码 |
-| 邀请 | `GET` | `/api/invitations` | 列出该租户的邀请码 |
-| 邀请 | `POST` | `/api/invitations/accept` | 已登录用户凭码加入租户，不切换当前会话 |
-| 用户 | `GET` | `/api/admin/users` | 系统管理员分页列出用户，含编号和租户名称 |
-| 用户 | `PATCH` | `/api/admin/users/{user_id}` | 修改角色；不能修改自己 |
-| 用户 | `POST` | `/api/admin/users/{user_id}/disable` | 停用用户，令牌随后失效；不能停用自己 |
-| 租户 | `PATCH` | `/api/admin/tenants/{tenant_id}` | 修改未停用租户的名称 |
-| 租户 | `POST` | `/api/admin/tenants/{tenant_id}/deactivate` | 停用租户；当前在该租户中的成员不能继续访问 |
-| 系统 | `GET` | `/api/admin/system/status` | 系统管理员查看数据库、向量库、版本和启动时间 |
-| 对话 | `POST` | `/api/chat` | 非流式对话。响应含用户 `message_id`、`sources` 与 `code_results`；可用 `resume_message_id` 恢复本人的未完成执行 |
-| 对话 | `POST` | `/api/chat/stream` | SSE 流式对话。`conversation` 后的 `message` 事件返回用户消息 ID；支持同消息续跑；`code_result` 事件带代码执行结果 |
-| 对话 | `GET` | `/api/chat/conversations` | 会话列表 |
-| 对话 | `GET` | `/api/chat/conversations/{conversation_id}` | 会话详情。助手消息含 `code_results`，刷新后仍在 |
-| 对话 | `PATCH` | `/api/chat/conversations/{conversation_id}` | 重命名会话（请求体只有 `title`） |
-| 对话 | `DELETE` | `/api/chat/conversations/{conversation_id}` | 删除会话 |
-| 对话 | `GET` | `/api/chat/tools` | 可用工具列表 |
-| 知识库 | `POST` | `/api/rag/documents/ingest` | 文本摄取（自动分块嵌入） |
-| 知识库 | `POST` | `/api/rag/documents/upload` | 上传 txt/md/json/xml/csv/doc/xls/ppt/docx/xlsx/pptx/pdf 文件，默认单文件不超过 10MB（扫描版 PDF 可配合 OCR） |
-| 知识库 | `GET` | `/api/rag/documents` | 文档列表 |
-| 知识库 | `GET` | `/api/rag/documents/{document_id}` | 文档详情 |
-| 知识库 | `DELETE` | `/api/rag/documents/{document_id}` | 删除文档 |
-| 知识库 | `POST` | `/api/rag/search` | 混合检索 |
-| MCP | `GET` | `/api/mcp/servers` | 已配置的 MCP 服务器 |
-| MCP | `GET` | `/api/mcp/tools` | 已连接 MCP 工具列表 |
-| 工作流 | `GET` / `POST` | `/api/workflows` | 工作流列表 / 创建（需 `WORKFLOW_ENABLED`） |
-| 工作流 | `GET` / `PUT` / `DELETE` | `/api/workflows/{workflow_id}` | 工作流详情、更新、删除 |
-| 工作流 | `GET` | `/api/workflows/{workflow_id}/executions` | 执行历史 |
-| 工作流 | `POST` | `/api/workflows/{workflow_id}/run` | 手动触发 |
-| 工作流 | `POST` | `/api/workflows/{workflow_id}/toggle` | 启停开关 |
-| 审计 | `GET` | `/api/admin/audit-logs` | 审计日志查询（系统管理员） |
-| 租户 | `GET` | `/api/admin/tenants` | 列出未停用租户；`include_inactive=true` 时含已停用（仅系统管理员） |
-| 租户 | `POST` | `/api/admin/tenants` | 创建租户；未停用名称唯一，重名 409（仅系统管理员） |
-| 租户 | `POST` | `/api/admin/tenants/{tenant_id}/users` | 在指定未停用租户下创建成员；角色固定为 member（仅系统管理员） |
+| 系统 | `GET` | `/api/v1/health` | 健康检查 |
+| 认证 | `POST` | `/api/v1/auth/login` | 用户名密码登录，返回双令牌 |
+| 认证 | `POST` | `/api/v1/auth/refresh` | 刷新令牌（refresh 轮转） |
+| 认证 | `GET` | `/api/v1/auth/me` | 当前用户信息 |
+| 认证 | `POST` | `/api/v1/auth/change-password` | 校验当前密码后改密，撤销旧刷新令牌并返回新双令牌 |
+| 认证 | `POST` | `/api/v1/auth/register` | 公开注册为 `default` 租户的 member，并返回双令牌 |
+| 认证 | `GET` | `/api/v1/auth/setup-status` | 是否还没有系统管理员 |
+| 认证 | `POST` | `/api/v1/auth/setup` | 没有系统管理员时创建首个管理员；已有时 404 |
+| 认证 | `POST` | `/api/v1/auth/users/{user_id}/revoke-tokens` | 系统管理员撤销该用户的刷新令牌 |
+| 认证 | `GET` | `/api/v1/auth/memberships` | 当前用户已加入的租户 |
+| 认证 | `POST` | `/api/v1/auth/switch-tenant` | 换成已加入的租户并换发令牌；非成员 403 |
+| 邀请 | `POST` | `/api/v1/invitations` | 系统管理员或租户管理员生成邀请码 |
+| 邀请 | `GET` | `/api/v1/invitations` | 列出该租户的邀请码 |
+| 邀请 | `POST` | `/api/v1/invitations/accept` | 已登录用户凭码加入租户，不切换当前会话 |
+| 用户 | `GET` | `/api/v1/admin/users` | 系统管理员分页列出用户，含编号和租户名称 |
+| 用户 | `PATCH` | `/api/v1/admin/users/{user_id}` | 修改角色；不能修改自己 |
+| 用户 | `POST` | `/api/v1/admin/users/{user_id}/disable` | 停用用户，令牌随后失效；不能停用自己 |
+| 租户 | `PATCH` | `/api/v1/admin/tenants/{tenant_id}` | 修改未停用租户的名称 |
+| 租户 | `POST` | `/api/v1/admin/tenants/{tenant_id}/deactivate` | 停用租户；当前在该租户中的成员不能继续访问 |
+| 系统 | `GET` | `/api/v1/admin/system/status` | 系统管理员查看数据库、向量库、版本和启动时间 |
+| 对话 | `POST` | `/api/v1/chat` | 非流式对话。响应含用户 `message_id`、`sources` 与 `code_results`；可用 `resume_message_id` 恢复本人的未完成执行 |
+| 对话 | `POST` | `/api/v1/chat/stream` | SSE 流式对话。`conversation` 后的 `message` 事件返回用户消息 ID；支持同消息续跑；`code_result` 事件带代码执行结果 |
+| 运行 | `GET` | `/api/v1/runs/{run_id}` | 查询本人运行的状态、绑定消息与最终回复 |
+| 运行 | `GET` | `/api/v1/runs/{run_id}/events` | 携带 Last-Event-ID 回放已有运行的增量事件 |
+| 运行 | `POST` | `/api/v1/runs/{run_id}/cancel` | 显式取消本人运行，返回确认后的状态 |
+| 对话 | `GET` | `/api/v1/chat/conversations` | 会话列表 |
+| 对话 | `GET` | `/api/v1/chat/conversations/{conversation_id}` | 会话详情。助手消息含 `code_results`，刷新后仍在 |
+| 对话 | `PATCH` | `/api/v1/chat/conversations/{conversation_id}` | 重命名会话（请求体只有 `title`） |
+| 对话 | `DELETE` | `/api/v1/chat/conversations/{conversation_id}` | 删除会话 |
+| 对话 | `GET` | `/api/v1/chat/tools` | 可用工具列表 |
+| 知识库 | `POST` | `/api/v1/rag/documents/ingest` | 文本摄取（自动分块嵌入） |
+| 知识库 | `POST` | `/api/v1/rag/documents/upload` | 上传 txt/md/json/xml/csv/doc/xls/ppt/docx/xlsx/pptx/pdf 文件，默认单文件不超过 10MB（扫描版 PDF 可配合 OCR） |
+| 知识库 | `GET` | `/api/v1/rag/documents` | 文档列表 |
+| 知识库 | `GET` | `/api/v1/rag/documents/{document_id}` | 文档详情 |
+| 知识库 | `DELETE` | `/api/v1/rag/documents/{document_id}` | 删除文档 |
+| 知识库 | `POST` | `/api/v1/rag/search` | 混合检索 |
+| MCP | `GET` | `/api/v1/mcp/servers` | 已配置的 MCP 服务器 |
+| MCP | `GET` | `/api/v1/mcp/tools` | 已连接 MCP 工具列表 |
+| 工作流 | `GET` / `POST` | `/api/v1/workflows` | 工作流列表 / 创建（需 `WORKFLOW_ENABLED`） |
+| 工作流 | `GET` / `PUT` / `DELETE` | `/api/v1/workflows/{workflow_id}` | 工作流详情、更新、删除 |
+| 工作流 | `GET` | `/api/v1/workflows/{workflow_id}/executions` | 执行历史 |
+| 工作流 | `POST` | `/api/v1/workflows/{workflow_id}/run` | 手动触发 |
+| 工作流 | `POST` | `/api/v1/workflows/{workflow_id}/toggle` | 启停开关 |
+| 审计 | `GET` | `/api/v1/admin/audit-logs` | 审计日志查询（系统管理员） |
+| 租户 | `GET` | `/api/v1/admin/tenants` | 列出未停用租户；`include_inactive=true` 时含已停用（仅系统管理员） |
+| 租户 | `POST` | `/api/v1/admin/tenants` | 创建租户；未停用名称唯一，重名 409（仅系统管理员） |
+| 租户 | `POST` | `/api/v1/admin/tenants/{tenant_id}/users` | 在指定未停用租户下创建成员；角色固定为 member（仅系统管理员） |
 
-> 启动后访问 `http://127.0.0.1:8000/docs` 查看交互式 Swagger API 文档。
+> 启动后访问 `http://127.0.0.1:8000/docs` 查看交互式 Swagger API 文档。导出文件为 `docs/swagger.json`。
+
+命名失败使用 `{ "error": { "code", "message", "retry_after", "request_id" } }`。`request_id` 与响应头 `X-Request-ID` 相同，页面不展示。八种编码是：
+
+| code | HTTP | 用户可见结果 |
+|------|------|----------------|
+| `session_expired` | 401 | 登录已过期，请重新登录 |
+| `token_revoked` | 401 | 您的登录凭证已被管理员重置，请重新登录 |
+| `user_disabled` | 403 | 用户已被禁用，请联系管理员 |
+| `tenant_suspended` | 403 | 全屏提示租户已停用，请联系系统管理员，随后退出 |
+| `rate_limited` | 429 | 发送按钮禁用，并显示剩余秒数「N 秒后可重试」 |
+| `quota_exceeded` | 429 | 本租户配额已用尽，请联系租户管理员 |
+| `model_unavailable` | 502 | 模型服务暂不可用，请联系管理员检查模型配置 |
+| `file_too_large` | 413 | 上传文件超过上限，并写出上限字节数 |
+
+访问令牌过期后若刷新成功，原请求继续，不提示错误。错误密码仍是普通登录失败，不返回 `user_disabled`。系统管理员访问已停用租户的管理入口保持原有例外。
 
 ## 快速开始
 
@@ -278,14 +298,20 @@ cd ai-assistant
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env
+python -m app.cli init
 ```
+
+从项目根目录运行 `init`，它为新 `.env` 生成随机 `JWT_SECRET_KEY`，不会打印密钥或创建数据库。需要其他配置时，从 `.env.example` 取对应键并填写自己的值，保留已经生成的 JWT 密钥。已有 `.env` 时 init 会拒绝覆盖；保留原文件并安全配置密钥。可用 `python -m app.cli init --env-file <新文件路径>` 生成另一份配置，或安装命令入口后使用 `ai-assistant init`。自定义输出文件不会自动改变应用固定读取项目根 `.env` 的行为；部署时应显式将其中的值注入环境。
 
 `pip install -r requirements.txt` 会安装调度依赖 `croniter`。`pip install -e ".[workflow]"` 也会。`WORKFLOW_ENABLED` 默认是 `false`；打开后，进程启动时创建调度任务。到点是否执行尚未完成。
 
 Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[langgraph]"`（`langgraph>=1.0.0,<1.1`），再把 `AGENT_ORCHESTRATION` 设为 `langgraph`。这时只有明确要求多轮调研的问题才进入 Supervisor；不需要工具和知识库的问题只生成一次。没装这个包时，多轮请求回退五阶段管线。默认配置仍是 `self`。
 
-至少改 `JWT_SECRET_KEY`。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：在空用户库中同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。任一项为空时均跳过管理员引导，改由下一步的 `/setup` 创建。示例密码留空，请在本地或秘密管理中设置自主口令，勿提交仓库。
+init 已生成 `JWT_SECRET_KEY`；采用已有配置时须确认它不是空白或仓库默认值。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：在空用户库中同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。任一项为空时均跳过管理员引导，改由下一步的 `/setup` 创建。示例密码留空，请在本地或秘密管理中设置自主口令，勿提交仓库。
+
+需要同时引导三个内置账号时，将管理员用户名设为 `admin`，并通过部署环境分别注入 `INITIAL_ADMIN_PASSWORD`、`INITIAL_SYSTEM_PASSWORD`、`INITIAL_CULTURE_PASSWORD`。三人口令均至少 8 位；两项新增口令必须一起配置，配置不完整时拒绝写入。空用户库中会在同一事务创建 `admin`（系统管理员）、`system`（default 租户管理员）及 `culture`（member，`is_test_user=true`）；邮箱可以为空。只配置原管理员变量时保留单管理员引导。已有用户库不自动补种或认领同名账号，也不重置密码、角色或测试标记；移除环境变量不删除已经创建的用户。
+
+初始化创建的管理员和内置账号首次登录后进入 `/change-password`，完成前服务端拒绝业务请求，页面也不展示业务内容。CLI、环境变量和 `/setup` 创建的首次管理员遵循相同改密规则。公开注册的普通用户不因本规则被强制改密。数据库只保存 bcrypt 哈希；口令不应放进命令参数、日志或接口样例。实际部署应通过 HTTPS 提供登录、注册和改密页面/API。
 
 也可以用命令迁移数据库并创建系统管理员。在仓库根目录执行 `pip install -e .` 之后：
 
@@ -307,7 +333,7 @@ ai-assistant admin create-superuser --username admin
 
 命令的输出和日志只包含用户名。环境变量引导和页面 `/setup` 仍然可用。
 
-失败时看：`.env` 没被读到，多半是进程还停在改文件之前，重新启动后端。生产环境若 `JWT_SECRET_KEY` 仍是占位值，进程会拒绝启动，终端里有安全校验失败的报错。
+失败时看：`.env` 没被读到，多半是进程还停在改文件之前，重新启动后端。任何非 development 环境若 `JWT_SECRET_KEY` 为空白或仍是默认值，应用会在建表和账号引导前拒绝启动；日志给出 `ai-assistant init` 或设置环境变量的解法。进程未启动时不会提供 `/health`。初始化写入失败会报错且清理本次未完成文件，不更改原有配置。
 
 ### 2. 启动
 
@@ -325,14 +351,14 @@ npm run dev
 
 单进程托管时，先在 `frontend/` 执行 `npm run build`，再在 `.env` 设置 `SERVE_FRONTEND=true`，只启动上面的 `uvicorn`。差别见 [frontend/README.md](frontend/README.md)。
 
-失败时看：`http://127.0.0.1:8000/api/health` 应返回 `status` 为 `ok`。打不开 `5173` 时，确认命令是在 `frontend/` 里执行的。接口 404 或跨域失败时，确认前端开发服务把 `/api` 代理到 `8000`。
+失败时看：`http://127.0.0.1:8000/api/v1/health` 应返回 `status` 为 `ok`。打不开 `5173` 时，确认命令是在 `frontend/` 里执行的。接口 404 或跨域失败时，确认前端开发服务把 `/api` 代理到 `8000`。
 
 ### 3. 建立管理员
 
 三选一。
 
 - 第 1 步已经填了 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`：不要打开 `/setup`。用这两个值到 `/login` 登录。启动日志里会有已创建初始 `system_admin` 的提示。
-- 任一项为空，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后进入 `/chat`，这个向导随即关闭。
+- 任一项为空，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后先进入 `/change-password`，完成首次改密才能进入 `/chat`，这个初始化向导随即关闭。
 - 或者先执行 `ai-assistant migrate --yes`，再按第 1 步里的 `ai-assistant admin create-superuser` 创建系统管理员，然后到 `/login` 登录。
 
 失败时看：`/setup` 一打开就回到 `/login`，说明已经有系统管理员，用已有账号登录。向导提交后提示「初始化向导已关闭」，同样改为登录。页面一直停在「正在检查是否需要初始化」，说明后端没起来，先看第 2 步的健康检查。
@@ -341,13 +367,15 @@ npm run dev
 
 打开 `/login`。已有账号直接登录。新成员打开 `/register`，注册成功后进入 `/chat`，身份是 `default` 租户的 member。
 
+待首次改密的账号登录后会被引导到 `/change-password`。提交当前口令和不同的新口令（至少 8 位），成功后自动换发双令牌；旧刷新令牌失效。当前口令错误、两次新口令不一致或新口令不符合要求时留在改密页面；可以退出后重新登录。用户摘要返回 `must_change_password` 与 `is_test_user` 两个布尔值，测试身份以字段判断，不按用户名推断。旧版本已有用户默认不强制改密、不自动标记测试用户。
+
 失败时看：页面红字「用户名或密码错误」是登录凭据不对。注册红字「用户名已存在」时换一个用户名。密码少于 8 位会停在表单上，不会发出请求。
 
 ### 5. 发送第一条消息
 
 在 `/chat` 的输入框写一句话并发送。能看到助手回复，就说明这条旅程走完了。
 
-失败时看：发送按钮不可用时，先确认输入框里有文字。请求失败时看对话页上的错误提示，并再次打开 `http://127.0.0.1:8000/api/health`。没有模型密钥时，开发环境可能用模拟模型回答，这只说明对话链路通了。
+失败时看：发送按钮不可用时，先确认输入框里有文字。请求失败时看对话页上的错误提示，并再次打开 `http://127.0.0.1:8000/api/v1/health`。没有模型密钥时，开发环境可能用模拟模型回答，这只说明对话链路通了。
 
 ### Docker 一键部署
 
@@ -360,7 +388,7 @@ docker compose up -d --build
 
 编排包含 PostgreSQL 和开发用 Milvus（单容器）。默认 `RAG_VECTOR_STORE` 仍是 `local`。只有显式改为 `milvus` 时，应用才连接 `http://milvus:19530`。这不表示向量库闭环门槛已经通过。
 
-启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/health` 仍是健康检查。第一次建管理员、注册和发消息，按上面「快速开始」的第 3 到第 5 步，页面分别是 `/setup`、`/login`、`/register` 和 `/chat`。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
+启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/v1/health` 仍是健康检查。第一次建管理员、注册和发消息，按上面「快速开始」的第 3 到第 5 步，页面分别是 `/setup`、`/login`、`/register` 和 `/chat`。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
 
 ### 关键配置项
 
@@ -380,6 +408,8 @@ docker compose up -d --build
 | `DATABASE_URL` | 数据库连接串 | `sqlite:///./data/ai_assistant.db` |
 | `JWT_SECRET_KEY` | JWT 签名密钥（生产环境必须修改） | 默认占位值 |
 | `AUTH_ENABLED` | 是否启用认证 | `true` |
+| `INITIAL_SYSTEM_PASSWORD` | 三账号引导时 system 的独立初始口令，与 culture 口令一起配置；只在空用户库生效 | 空 |
+| `INITIAL_CULTURE_PASSWORD` | 三账号引导时 culture 的独立初始口令，与 system 口令一起配置；不提供默认口令 | 空 |
 | `LLM_PROVIDER` | 大模型提供商：`openai` / `ollama` / `mock` | `openai` |
 | `LLM_BASE_URL` | 大模型 API 地址（兼容 OpenAI 协议均可） | `https://api.deepseek.com/v1` |
 | `LLM_API_KEY` | 对话模型密钥。主密钥和兜底密钥都为空时，开发环境降为 Mock，对话页提示填写密钥并重启 | — |
@@ -390,6 +420,14 @@ docker compose up -d --build
 | `LLM_INTENT_API_KEY` | 意图分流专用密钥。留空则和对话用同一家 | — |
 | `LLM_INTENT_BASE_URL` | 意图分流的接口地址。留空则沿用对话地址 | — |
 | `LLM_INTENT_MODEL` | 意图分流的模型名。留空则沿用对话模型 | — |
+| `LLM_CHAT_FALLBACK_CHAIN` | 对话按顺序尝试的配置档，未知档名拒绝 | `chat,fallback` |
+| `LLM_INTENT_FALLBACK_CHAIN` | 意图识别按顺序尝试的配置档 | `intent,chat,fallback` |
+| `LLM_RERANK_PROVIDER` | 独立重排配置档的提供商描述；登记不启用检索重排 | 空 |
+| `LLM_RERANK_BASE_URL` | 重排配置档地址；不用于对话或嵌入请求 | 空 |
+| `LLM_RERANK_API_KEY` | 重排配置档密钥，只从环境配置，不写日志 | 空 |
+| `LLM_RERANK_MODEL` | 重排配置档模型名 | 空 |
+| `LLM_CIRCUIT_FAILURE_THRESHOLD` | 同配置连续瞬时故障达到此次数后开路 | `3` |
+| `LLM_CIRCUIT_COOLDOWN_SECONDS` | 开路冷却秒数，之后只允许一个半开探测 | `30` |
 | `LLM_CAPABILITY_GUARD_ENABLED` | 每次真实调用前核对上下文预算。关闭后回到 RAG-028 之前的行为 | `true` |
 | `LLM_CAPABILITY_DECLARED` | 运营者显式声明的窗口与最大输出（`部署!模型=窗口:最大输出`，按部署+模型生效）。未知模型靠它放行 | — |
 | `LLM_CAPABILITY_DECLARED_SOURCE` | 上面声明的依据来源。与声明同时填写才生效 | — |
@@ -464,9 +502,31 @@ docker compose up -d --build
 
 完整配置项见 [`.env.example`](.env.example)。
 
+### 会话附件
+
+输入框支持选择文件、粘贴 PNG/JPEG 图片、逐项移除附件；非法类型、超限和读取失败会显示在对应附件旁，移除或修正后才能发送。每文件最多 1048576 字节，不另设文件个数上限；支持仅发送附件。允许类型为 png/jpg/jpeg、md/doc/docx/xls/xlsx/ppt/pptx/pdf，以及 go/py/css/html/htm/java/js/json/xml/yaml/yml/c/h/cpp/cc/cxx/hpp/vue/ts，不含 txt/tsx/jsx。
+
+`POST /api/v1/chat` 和 `/api/v1/chat/stream` 可附 `attachments: [{name, content_base64}]`。后端先验证整批文件和图片模型能力，再保存用户消息；任一附件失败均不新增该消息或知识库数据。文档和源码正文经过输入安全检查后作为不可信数据进入当前消息，图片以真实多模态内容段进入模型。附件不摄取知识库、不建索引；历史接口只返回名称、字节数和 MIME，二进制内容不返回页面。续跑复用原消息附件，拒绝用新附件替换。
+
+图片使用 `detail=low`。目前仅已核对的 OpenAI 官方部署 `gpt-4o-mini` 登记了视觉计数，每图 2833 tokens，另计完整文本、框架、输出预留和安全余量；其他部署或模型即使有文本窗口声明，也会在发送前拒绝图片。默认模型不变。协议与计数依据为 [官方图片指南](https://developers.openai.com/api/docs/guides/images-vision)；low 适于粗略理解，不能当作精细 OCR 质量保证。旧 doc/ppt 仍依赖现有 LibreOffice 转换，缺失或解析失败明确拒绝。隔离模型测试证明载荷与持久化，不代表真实视觉质量已验收。
+
+### 模型用途与故障兜底
+
+`get_task_profile` 描述 `chat`、`intent`、`embedding`、`rerank` 四种用途。规划、执行和质量门沿用 `chat`；意图识别可独立配置。嵌入描述直接读取现有 `EMBEDDING_*`，实际检索仍使用原嵌入工厂，不因生成模型故障切换嵌入模型或索引。重排配置仅登记，当前不会发起重排请求或启用检索重排。未知用途或兜底档名明确拒绝。
+
+对话与意图链遇到连接失败、超时及允许兜底的 HTTP 状态时依次尝试下一档。连续三次瞬时故障后，同配置在本进程开路 30 秒，冷却结束只允许一个半开探测；成功关闭，失败再次开路。取消和预算拒绝不计瞬时故障，取消会释放探测名额；400 不换家，401/403 可兜底但不累积瞬时故障。流一旦输出内容，故障会结束当前回答，不能拼接另一家的回答。每一跳仍核对自身模型预算与缓存条件。
+
+熔断状态按用途、配置档、端点、模型及凭据摘要隔离，有容量和闲置过期限制，重启清空；不跨进程协调。密钥只参与不可逆摘要，不写入诊断日志。离线桩验证路由行为，不能替代两家真实提供商的对话验收。
+
 ### 同一次对话执行续跑
 
-`POST /api/chat` 和 `/api/chat/stream` 请求可携带 `resume_message_id`，并提供原 `conversation_id` 与完全相同的 `message`。非流式响应的 `message_id`、流式 `conversation` 后的 `message` 事件，以及会话详情中的用户消息 ID 都可以识别原消息。旧请求无需增加字段。
+流式连接使用 `run.started`、`node.started/finished`、`intent.classified`、`plan.generated`、`tool.call/result`、`token`、`citations`、`error`、`run.finished` 与 `heartbeat`。所有事件的 JSON 顶层有 `run_id`，帧有 `<run_id>:<序号>` 的递增 `id`；token 内容位于 `delta`，引用位于 `sources`。成功/失败/取消终态分别为 `done/failed/cancelled`。心跳在无输出 15 秒时携带 `ts`。错误提供固定脱敏的 `code/message/retryable`；限流错误为 `rate_limited`，通过 `retry_after_seconds` 倒计时等待，`retryable=false` 不表示可立即重试。
+
+浏览器在提交前生成 UUID `run_id`；同主体重复提交同编号返回 409，不再次执行模型或工具，其他主体统一拒绝。HTTP 断开只结束订阅，运行继续；重连只对 `/runs/{run_id}/events` 发 GET 并带 `Last-Event-ID`，不重发用户消息。浏览器在 30 秒连接/心跳超时后自动续流一次，仍失败可加载最终回复。主动停止须调用 cancel，界面等待服务端确认后才标已停止；取消前已提交的用户消息仍保留绑定。
+
+回放限于单进程：每运行最多 1000 个事件或 8 MiB，最多保留 100 个运行；终态保留 15 分钟。窗口过期明确返回 409，编号过期或无权访问返回 404，可按既有对话权限读取历史消息。缓存满且全为活动运行时拒绝新运行，不取消旧任务。进程重启丢失内存运行与回放；这不代表跨实例或持久化任务队列。查询、回放与取消均复核用户、租户、角色和令牌版本；关闭认证的既有开发演示主体只在开关仍关闭时生效。
+
+`POST /api/v1/chat` 和 `/api/v1/chat/stream` 请求可携带 `resume_message_id`，并提供原 `conversation_id` 与完全相同的 `message`。非流式响应的 `message_id`、流式 `conversation` 后的 `message` 事件，以及会话详情中的用户消息 ID 都可以识别原消息。旧请求无需增加字段。
 
 恢复只支持当前用户本人的自研管线活动执行，复用原用户消息，不新增消息或重复扣配额；系统管理员也不能代恢复他人的执行。归属不符返回 404，文本不符返回 400，无有效活动快照、执行仍在进行或编排/持久化开关不支持时返回 409；缺少会话 ID 返回 422。终态和过期执行不恢复，普通重发文本仍创建新消息。
 
@@ -507,7 +567,7 @@ normalization / metric` 全部一致才算同一套索引。**同维度不同模
 
 ```bash
 python scripts/rebuild_embedding_index.py status
-curl -s localhost:8000/api/health | python -c "import sys,json;print(json.load(sys.stdin)['checks']['vector_store']['embedding_index'])"
+curl -s localhost:8000/api/v1/health | python -c "import sys,json;print(json.load(sys.stdin)['checks']['vector_store']['embedding_index'])"
 ```
 
 `legacy_chunks > 0` 或 `status` 为 `unavailable` / `legacy_quarantined` 时按下面二选一处理。
@@ -658,7 +718,7 @@ with source, target:
     source.backup(target)
 ```
 
-恢复时把目标文件设为该进程的 `DATABASE_URL` 再启动，并请求 `GET /api/health`。确认 `status` 为 `ok`，且目标文件的 `alembic_version` 与源文件相同。自动备份脚本、PostgreSQL、Milvus 和上传目录的备份这里不提供。
+恢复时把目标文件设为该进程的 `DATABASE_URL` 再启动，并请求 `GET /api/v1/health`。确认 `status` 为 `ok`，且目标文件的 `alembic_version` 与源文件相同。自动备份脚本、PostgreSQL、Milvus 和上传目录的备份这里不提供。
 
 ## 文档切分策略
 
@@ -774,7 +834,7 @@ mypy app/
 
 ### 知识库检索结果关系
 
-`POST /api/rag/search` 保留原有响应字段，并提供 `chunk_id`、`parent_id`、`chunk_kind`（`parent` / `child` / `unknown`）、`retrieval_origin`（`hit` / `parent_expansion`）和 `expanded_from_chunk_id`。未知块类型不推断为父块；直接命中的父块标为 `hit`。
+`POST /api/v1/rag/search` 保留原有响应字段，并提供 `chunk_id`、`parent_id`、`chunk_kind`（`parent` / `child` / `unknown`）、`retrieval_origin`（`hit` / `parent_expansion`）和 `expanded_from_chunk_id`。未知块类型不推断为父块；直接命中的父块标为 `hit`。
 
 知识库页面显示命中子块、命中父块或扩展父块及其 ID 关系。`top_k` 是检索命中上限，父块展开后可能增加；扩展父块继承触发子块的融合分数，不是独立重新评分。结果仍按块 ID 去重，文本相同的不同块可能同时出现。
 
@@ -795,7 +855,7 @@ mypy app/
 | `not_vectorized` | 全部状态可判定，所有块均明确未向量化 |
 | `unknown` | 存在未知旧块、没有块或存储块数量不一致；已知计数仍返回 |
 
-`GET /api/rag/documents/{document_id}/chunks` 新增 `embedding_status`、`embedding_skip_reason`、`oversized`。原因包括 `input_limit_exceeded`（超过已批准的输入预算）、`input_limit_unverified`（模型/端点限制未核对）、`input_count_unverified`（缺少计数方法），无法识别的历史原因统一为 `unknown_reason`，不回传任意异常正文。旧块有向量时判为已向量化，没有向量又没有明确处理记录时判为未知。状态只说明存储记录，不能证明向量维度、模型或外部索引兼容。字段不改变现有认证、租户或文档权限。
+`GET /api/v1/rag/documents/{document_id}/chunks` 新增 `embedding_status`、`embedding_skip_reason`、`oversized`。原因包括 `input_limit_exceeded`（超过已批准的输入预算）、`input_limit_unverified`（模型/端点限制未核对）、`input_count_unverified`（缺少计数方法），无法识别的历史原因统一为 `unknown_reason`，不回传任意异常正文。旧块有向量时判为已向量化，没有向量又没有明确处理记录时判为未知。状态只说明存储记录，不能证明向量维度、模型或外部索引兼容。字段不改变现有认证、租户或文档权限。
 
 超限且无法安全拆分的结构保留原文、标记 `oversized`，不发出该块的 Embedding 请求、不伪造向量。未向量化不等于未保存，也不保证完全无法被稀疏检索或父块关联取回。异步导入/重解析的任务完成后，查询文档详情和分块核对结果；提交任务不表示已经向量化完成。管理页面尚未新增这些状态的专用展示，当前通过 API/Swagger 查看。
 
@@ -809,7 +869,7 @@ mypy app/
 
 `file_ops` 默认关闭。运维仅可将明确允许所有对话用户阅读的公开共享文本资料配置到 `FILE_OPS_ALLOWED_ROOTS`，格式为 JSON 别名到绝对目录的映射，例如 `{"public":"E:/shared-public"}`，然后启用 `FILE_OPS_ENABLED`。不得配置租户上传目录、数据库、密钥、生产配置或用户私有目录。工具接收 `root` 别名、相对 `path` 和可选 `max_bytes`，只读有限 UTF-8 文本；没有写入、删除或列目录接口。`FILE_OPS_MAX_BYTES` 默认 65536。
 
-`GET /api/health` 的 `checks.tools.web_search` 和 `checks.tools.file_ops` 展示脱敏配置状态，不展示密钥或主机根路径，也不发起收费探测。可选工具不可用不改变既有数据库/向量库连通性判定。运行中关闭搜索或文件开关后，新的对话工具清单回到旧四工具；部署回滚应恢复上一源码发行和匹配的 Prompt 登记。配置默认值见 `.env.example`，本卡验收证据见 `docs/plans/implementation_pagt_001.md`。
+`GET /api/v1/health` 的 `checks.tools.web_search` 和 `checks.tools.file_ops` 展示脱敏配置状态，不展示密钥或主机根路径，也不发起收费探测。可选工具不可用不改变既有数据库/向量库连通性判定。运行中关闭搜索或文件开关后，新的对话工具清单回到旧四工具；部署回滚应恢复上一源码发行和匹配的 Prompt 登记。配置默认值见 `.env.example`，本卡验收证据见 `docs/plans/implementation_pagt_001.md`。
 
 ## 贡献
 

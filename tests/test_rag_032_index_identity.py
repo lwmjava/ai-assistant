@@ -1082,13 +1082,13 @@ def test_milvus_without_active_index_is_unavailable(db: Session, fake_pymilvus) 
 
 
 def _health_body(db: Session) -> dict:
-    """取 /api/health 响应体；health 与用例共用同一个 engine，无需替换 Session。"""
+    """取 /api/v1/health 响应体；health 与用例共用同一个 engine，无需替换 Session。"""
     from fastapi.testclient import TestClient
 
     from app.main import app
 
     client = TestClient(app)
-    resp = client.get("/api/health")
+    resp = client.get("/api/v1/health")
     return resp.json()
 
 

@@ -31,7 +31,7 @@ from app.agents.skills.base import (
 from app.agents.skills.loader import _BUILTIN_DIR, discover_skills, load_skill_from_yaml
 from app.agents.skills.versioning import validate_manifest
 from app.agents.tools.base import Tool, ToolRegistry
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +240,7 @@ class SkillManager:
                 'Return exactly {"name":"listed-name","confidence":0.0} with confidence in [0,1], '
                 "or null when no skill applies. Do not execute skills or tools.")),
                 ChatMessage(role=ChatRole.USER, content=payload)]
-            if sum(len(message.content.encode("utf-8")) for message in messages) > 32768:
+            if sum(len(content_text(message.content).encode("utf-8")) for message in messages) > 32768:
                 return []
             reply = await asyncio.wait_for(llm.chat(messages, LLMOptions(
                 temperature=0, max_tokens=128, timeout=5)), timeout=5)

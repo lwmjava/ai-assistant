@@ -116,17 +116,17 @@ def test_http_stream_does_not_report_failure_after_reply(
     monkeypatch.setattr(settings, "SECURITY_RATE_LIMIT", False)
     monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", "self")
     monkeypatch.setattr(AgentPipeline, "run_stream", _finish_immediately)
-    with client.stream("POST", "/api/chat/stream", json={"message": "请写完"}) as resp:
+    with client.stream("POST", "/api/v1/chat/stream", json={"message": "请写完"}) as resp:
         assert resp.status_code == 200
         body = "".join(resp.iter_text())
-    payloads = [
-        json.loads(line[5:].strip())
-        for line in body.splitlines()
-        if line.startswith("data:") and line[5:].strip()
-    ]
-    assert all(item.get("data") != "生成失败，请稍后重试" for item in payloads)
-    assert any(item.get("type") == "done" for item in payloads)
-    conversation_id = next(item["data"] for item in payloads if item.get("type") == "conversation")
+    payloads = []
+    for frame in body.replace("\r\n", "\n").split("\n\n"):
+        fields = dict(line.split(":", 1) for line in frame.splitlines() if ":" in line)
+        if "event" in fields and "data" in fields:
+            payloads.append((fields["event"].strip(), json.loads(fields["data"].strip())))
+    assert all(name != "error" for name, _ in payloads)
+    assert any(name == "run.finished" and item["status"] == "done" for name, item in payloads)
+    conversation_id = next(item["conversation_id"] for name, item in payloads if name == "conversation")
     assistant = _assistant_rows(conversation_id)
     assert len(assistant) == 1
     assert assistant[0].status == "complete"

@@ -122,17 +122,17 @@ def client(persist_identity):
 def test_null_limits_leave_chat_and_text_ingest_open(client) -> None:
     tenant = _tenant(name="quota-null")
     http = client(_user(tenant.id, Role.MEMBER.value))
-    chat = http.post("/api/chat", json={"message": "未设上限"})
+    chat = http.post("/api/v1/chat", json={"message": "未设上限"})
     assert chat.status_code == 200
     ingested = http.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={"title": "纯文本", "text": "这段文字不写源文件。"},
     )
     assert ingested.status_code == 200
     limited = _tenant(name="quota-text-zero", storage_limit_bytes=0)
     http_limited = client(_user(limited.id, Role.MEMBER.value))
     still_open = http_limited.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={"title": "零字节上限", "text": "纯文本摄取不占用源文件额度。"},
     )
     assert still_open.status_code == 200
@@ -146,33 +146,34 @@ def test_null_limits_leave_chat_and_text_ingest_open(client) -> None:
 def test_message_limit_blocks_the_next_send_and_recovers_after_delete(client) -> None:
     tenant = _tenant(name="quota-messages", message_limit=1)
     http = client(_user(tenant.id, Role.MEMBER.value))
-    first = http.post("/api/chat", json={"message": "第一条"})
+    first = http.post("/api/v1/chat", json={"message": "第一条"})
     assert first.status_code == 200
     conversation_id = first.json()["conversation_id"]
     before = _counts(tenant.id)
 
     blocked = http.post(
-        "/api/chat",
+        "/api/v1/chat",
         json={"message": "第二条", "conversation_id": conversation_id},
     )
     assert blocked.status_code == 429
-    assert blocked.json() == {
-        "code": "quota_exceeded",
-        "limit_type": "messages",
-        "used": 1,
-        "limit": 1,
-    }
+    body = blocked.json()
+    assert body["code"] == "quota_exceeded"
+    assert body["limit_type"] == "messages"
+    assert body["used"] == 1
+    assert body["limit"] == 1
+    assert body["error"]["code"] == "quota_exceeded"
+    assert body["error"]["retry_after"] is None
     assert _counts(tenant.id) == before
 
-    streamed = http.post("/api/chat/stream", json={"message": "流式也要拦住"})
+    streamed = http.post("/api/v1/chat/stream", json={"message": "流式也要拦住"})
     assert streamed.status_code == 429
     assert streamed.json()["limit_type"] == "messages"
     assert "text/event-stream" not in streamed.headers.get("content-type", "")
     assert _counts(tenant.id) == before
 
-    deleted = http.delete(f"/api/chat/conversations/{conversation_id}")
+    deleted = http.delete(f"/api/v1/chat/conversations/{conversation_id}")
     assert deleted.status_code == 200
-    again = http.post("/api/chat", json={"message": "删掉之后可以再发"})
+    again = http.post("/api/v1/chat", json={"message": "删掉之后可以再发"})
     assert again.status_code == 200
     assert _counts(tenant.id) == (1, 1)
 
@@ -202,20 +203,21 @@ def test_upload_and_batch_stop_before_writing_files(client, monkeypatch, tmp_pat
         )
 
     blocked = http.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("too-big.txt", b"12345678901", "text/plain")},
     )
     assert blocked.status_code == 429
-    assert blocked.json() == {
-        "code": "quota_exceeded",
-        "limit_type": "source_bytes",
-        "used": 0,
-        "limit": 10,
-    }
+    body = blocked.json()
+    assert body["code"] == "quota_exceeded"
+    assert body["limit_type"] == "source_bytes"
+    assert body["used"] == 0
+    assert body["limit"] == 10
+    assert body["error"]["code"] == "quota_exceeded"
+    assert body["error"]["retry_after"] is None
     assert _files(tmp_path) == []
 
     batch = http.post(
-        "/api/rag/import-jobs/upload",
+        "/api/v1/rag/import-jobs/upload",
         files=[
             ("files", ("a.txt", b"12345678", "text/plain")),
             ("files", ("b.txt", b"12345678", "text/plain")),
@@ -233,7 +235,7 @@ def test_upload_and_batch_stop_before_writing_files(client, monkeypatch, tmp_pat
     assert after_docs == before_docs
 
     allowed = http.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("ok.txt", b"1234", "text/plain")},
     )
     assert allowed.status_code == 200
@@ -246,7 +248,7 @@ def test_upload_and_batch_stop_before_writing_files(client, monkeypatch, tmp_pat
         relative = document.storage_path
     assert relative is not None
 
-    soft = http.delete(f"/api/rag/documents/{document_id}")
+    soft = http.delete(f"/api/v1/rag/documents/{document_id}")
     assert soft.status_code == 200
     with Session(engine) as session:
         assert used_source_bytes(session, tenant.id) == 4
@@ -271,7 +273,7 @@ def test_url_over_limit_leaves_no_file(client, monkeypatch, tmp_path: Path) -> N
         return FakeResponse()
 
     monkeypatch.setattr("httpx.AsyncClient.get", fake_get)
-    created = http.post("/api/rag/import-jobs/url", json={"url": "https://example.com/quota"})
+    created = http.post("/api/v1/rag/import-jobs/url", json={"url": "https://example.com/quota"})
     assert created.status_code == 202
     with Session(engine) as session:
         job = session.get(ImportJob, created.json()["id"])
@@ -293,7 +295,7 @@ def test_failed_ingest_removes_the_new_file(client, monkeypatch, tmp_path: Path)
 
     monkeypatch.setattr(RAGService, "ingest_parsed_document", explode)
     failed = http.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("fail.txt", b"hello", "text/plain")},
     )
     assert failed.status_code == 500
@@ -321,7 +323,7 @@ def test_unreadable_existing_source_rejects_upload(client, monkeypatch, tmp_path
     monkeypatch.setattr("app.services.quota.source_file_size", unreadable)
     http = client(_user(tenant.id, Role.MEMBER.value))
     response = http.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("new.txt", b"hi", "text/plain")},
     )
     assert response.status_code == 503
@@ -335,19 +337,19 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
     tenant = _tenant(name="quota-admin", message_limit=3, storage_limit_bytes=9)
     member = client(_user(tenant.id, Role.MEMBER.value, user_id="quota-member"))
     denied = member.patch(
-        f"/api/admin/tenants/{tenant.id}/quota",
+        f"/api/v1/admin/tenants/{tenant.id}/quota",
         json={"message_limit": 1, "storage_limit_bytes": 1, "reason": "成员不能改"},
     )
     assert denied.status_code == 403
 
     admin = client(_user(tenant.id, Role.SYSTEM_ADMIN.value, user_id="quota-admin-user"))
     missing = admin.patch(
-        f"/api/admin/tenants/{tenant.id}/quota",
+        f"/api/v1/admin/tenants/{tenant.id}/quota",
         json={"message_limit": 1, "storage_limit_bytes": 1},
     )
     assert missing.status_code == 422
     negative = admin.patch(
-        f"/api/admin/tenants/{tenant.id}/quota",
+        f"/api/v1/admin/tenants/{tenant.id}/quota",
         json={"message_limit": -1, "storage_limit_bytes": 1, "reason": "负数"},
     )
     assert negative.status_code == 422
@@ -358,7 +360,7 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
         assert row.storage_limit_bytes == 9
 
     updated = admin.patch(
-        f"/api/admin/tenants/{tenant.id}/quota",
+        f"/api/v1/admin/tenants/{tenant.id}/quota",
         json={"message_limit": 4, "storage_limit_bytes": None, "reason": " 放宽消息上限 "},
     )
     assert updated.status_code == 200
@@ -384,7 +386,7 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
 
     monkeypatch.setattr(settings, "AUDIT_ENABLED", False)
     closed = admin.patch(
-        f"/api/admin/tenants/{tenant.id}/quota",
+        f"/api/v1/admin/tenants/{tenant.id}/quota",
         json={"message_limit": 1, "storage_limit_bytes": 1, "reason": "审计关闭"},
     )
     assert closed.status_code == 503
@@ -402,7 +404,7 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
 
     monkeypatch.setattr("app.services.quota.AuditLog", BrokenAudit)
     failed = admin.patch(
-        f"/api/admin/tenants/{tenant.id}/quota",
+        f"/api/v1/admin/tenants/{tenant.id}/quota",
         json={"message_limit": 2, "storage_limit_bytes": 2, "reason": "审计失败"},
     )
     assert failed.status_code == 503

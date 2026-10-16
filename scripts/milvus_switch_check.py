@@ -700,7 +700,7 @@ async def _upload_corpus(client: Any, backend_label: str, store: Any = None) -> 
     uploaded: list[dict[str, str]] = []
     for item in CORPUS:
         response = client.post(
-            "/api/rag/documents/upload",
+            "/api/v1/rag/documents/upload",
             files={
                 "file": (
                     f"{backend_label}-{item['filename']}",
@@ -721,7 +721,7 @@ async def _upload_corpus(client: Any, backend_label: str, store: Any = None) -> 
 
 
 def _http_search(client: Any, query: str, top_k: int = 5) -> tuple[list[dict[str, Any]], str]:
-    response = client.post("/api/rag/search", json={"query": query, "top_k": top_k})
+    response = client.post("/api/v1/rag/search", json={"query": query, "top_k": top_k})
     if response.status_code != 200:
         raise AcceptanceCheckError(
             f"检索失败：query={query!r} status={response.status_code} body={response.text[:300]}"

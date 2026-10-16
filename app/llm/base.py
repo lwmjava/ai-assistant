@@ -4,11 +4,14 @@
 业务层（Agent 编排、检索等）只依赖本模块定义的抽象，便于替换与测试。
 """
 
+import base64
+import binascii
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from enum import Enum
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatRole(str, Enum):
@@ -19,11 +22,59 @@ class ChatRole(str, Enum):
     ASSISTANT = "assistant"
 
 
+class TextContentPart(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    type: Literal["text"] = "text"
+    text: str
+
+
+class ImageURL(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    url: str = Field(repr=False)
+    detail: Literal["low"] = "low"
+
+    @field_validator("url")
+    @classmethod
+    def validate_data_url(cls, value: str) -> str:
+        prefix, separator, encoded = value.partition(",")
+        if not separator or prefix not in {"data:image/png;base64", "data:image/jpeg;base64"} or not encoded:
+            raise ValueError("图片必须是受支持的 base64 data URL")
+        try:
+            base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("图片 base64 编码无效") from exc
+        return value
+
+
+class ImageContentPart(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    type: Literal["image_url"] = "image_url"
+    image_url: ImageURL
+
+
+ChatContent = str | list[TextContentPart | ImageContentPart]
+
+
+def content_text(content: ChatContent) -> str:
+    """文字历史/提示词只读文字段，绝不把图片编码插值成文本。"""
+    if isinstance(content, str):
+        return content
+    return "".join(part.text for part in content if isinstance(part, TextContentPart))
+
+
+def user_message_content(text: str, image_urls: Sequence[str] = ()) -> ChatContent:
+    if not image_urls:
+        return text
+    return [TextContentPart(text=text), *[ImageContentPart(image_url=ImageURL(url=url)) for url in image_urls]]
+
+
 class ChatMessage(BaseModel):
     """单条对话消息。"""
 
+    model_config = ConfigDict(hide_input_in_errors=True)
+
     role: ChatRole
-    content: str
+    content: ChatContent
 
 
 class LLMOptions(BaseModel):

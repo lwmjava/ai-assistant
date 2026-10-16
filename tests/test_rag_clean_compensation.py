@@ -81,8 +81,8 @@ def test_sync_upload_keeps_raw_file_and_deduplicates(db, tmp_path, monkeypatch):
     raw = b"# title\r\n    code()\r\n"
     try:
         client = TestClient(app)
-        first = client.post("/api/rag/documents/upload", files={"file": ("sample.md", raw, "text/markdown")})
-        second = client.post("/api/rag/documents/upload", files={"file": ("sample.md", raw, "text/markdown")})
+        first = client.post("/api/v1/rag/documents/upload", files={"file": ("sample.md", raw, "text/markdown")})
+        second = client.post("/api/v1/rag/documents/upload", files={"file": ("sample.md", raw, "text/markdown")})
         assert first.status_code == second.status_code == 200
         assert first.json()["id"] == second.json()["id"]
         with Session(db) as session:

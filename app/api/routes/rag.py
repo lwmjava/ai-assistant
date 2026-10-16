@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
+from app.api.errors import PublicHTTPError, error_responses, public_response
 from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.security import Role
@@ -72,6 +73,9 @@ def _enforce_upload_limit(filename: str, size: int) -> None:
             max_bytes=settings.RAG_UPLOAD_MAX_BYTES,
         )
     except UploadLimitError as exc:
+        if exc.status_code == 413:
+            raise PublicHTTPError(413, "file_too_large", detail=exc.detail,
+                                  extra={"limit_bytes": settings.RAG_UPLOAD_MAX_BYTES}) from exc
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
@@ -418,7 +422,8 @@ async def ingest_document(
     return _doc_with_vectorization(doc, rag, current_user)
 
 
-@router.post("/documents/upload", response_model=DocumentOut)
+@router.post("/documents/upload", response_model=DocumentOut, responses=error_responses(
+    "session_expired", "user_disabled", "tenant_suspended", "file_too_large", "quota_exceeded"))
 async def upload_document(
     request: Request,
     file: UploadFile = File(...),
@@ -437,7 +442,7 @@ async def upload_document(
     try:
         held = begin_source_quota(session, current_user.tenant_id, len(raw))
     except QuotaExceededError as exc:
-        return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
+        return public_response(429, "quota_exceeded", legacy=exc.as_dict())
     except SourceFileUnreadableError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -510,6 +515,7 @@ async def upload_document(
 @router.post(
     "/import-jobs/upload",
     response_model=ImportBatchOut,
+    responses=error_responses("file_too_large", "quota_exceeded"),
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def create_upload_jobs(
@@ -530,7 +536,7 @@ async def create_upload_jobs(
     try:
         held = begin_source_quota(session, current_user.tenant_id, additional)
     except QuotaExceededError as exc:
-        return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content=exc.as_dict())
+        return public_response(429, "quota_exceeded", legacy=exc.as_dict())
     except SourceFileUnreadableError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

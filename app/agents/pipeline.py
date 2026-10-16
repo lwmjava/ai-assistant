@@ -16,6 +16,7 @@ import json
 import logging
 import re
 import time
+import uuid
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
@@ -40,7 +41,7 @@ from app.agents.state import AgentStateStore, StateManager
 from app.agents.tools.base import Tool, ToolIntent, ToolRegistry, inspect_tool_call
 from app.agents.tools.executor import ToolExecutor
 from app.core.config import settings
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text, user_message_content
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
 from app.llm.routing import LLMUnavailableError
 from app.rag.context_builder import (
@@ -70,6 +71,56 @@ _OLDER_CHARS = 300
 _CONTENT_BUDGET = 4000
 _PREFLIGHT_WORD = re.compile(r"\s*(YES|NO)\b", re.IGNORECASE)
 
+PUBLIC_PLAN_ERROR_CODES = frozenset({
+    "INVALID_PLAN_STATE", "SENSITIVE_PLAN_ARGUMENT", "TOOL_UNAVAILABLE", "INVALID_ARGUMENTS",
+    "EMPTY_ACTION_OUTPUT", "INVALID_STEP_OUTPUT", "INVALID_PLAN", "INVALID_TIMEOUT", "MODEL_TIMEOUT",
+    "PERMISSION_DENIED", "STEP_FAILED", "TOOL_BUDGET_EXCEEDED", "TOOL_FAILED", "TOOL_TIMEOUT",
+    "UNPLANNED_TOOL_CALL", "UNTRUSTED_TOOL_CALL", "DUPLICATE_TOOL_CALL",
+    "tool_not_found", "invalid_arguments", "tool_timeout", "tool_error", "invalid_expression",
+    "non_finite_result", "missing_expression", "missing_code", "sandbox_timeout", "sandbox_denied",
+    "sandbox_error", "missing_url", "http_error", "network_error", "invalid_plan_schema",
+    "unsupported_plan_version", "invalid_step_count", "plan_too_large", "invalid_step_schema",
+    "duplicate_step_id", "invalid_step_text", "invalid_step_dependency", "invalid_tool_arguments",
+    "duplicate_json_key", "invalid_json_number", "invalid_plan_json",
+})
+PUBLIC_ERROR_CODES = PUBLIC_PLAN_ERROR_CODES | {
+    "generation_failed", "model_unavailable", "context_budget_exceeded", "request_rejected", "rate_limited",
+}
+
+
+def safe_error_metadata(metadata: object) -> dict[str, object]:
+    """Only allow controlled error identifiers; never inspect arbitrary exception prose."""
+    raw = metadata if isinstance(metadata, dict) else {}
+    code = raw.get("code")
+    if not isinstance(code, str) or code not in PUBLIC_ERROR_CODES:
+        code = "generation_failed"
+    messages = {
+        "generation_failed": _GENERIC_FAILURE,
+        "model_unavailable": "当前没有可用的模型，请检查环境变量中的模型密钥后重试。",
+        "context_budget_exceeded": BUDGET_EXCEEDED_MESSAGE,
+        "request_rejected": "本次请求未通过安全检查。",
+        "rate_limited": "请求过于频繁，请稍后重试",
+    }
+    result: dict[str, object] = {
+        "code": code, "message": messages.get(code, "本次执行步骤失败。"),
+        "retryable": code == "model_unavailable",
+    }
+    if code in PUBLIC_PLAN_ERROR_CODES:
+        step = raw.get("step_id")
+        step = step if isinstance(step, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", step) else "plan"
+        result.update(step_id=step, message=f"步骤 {step} 失败（{code}）")
+    return result
+
+
+def error_metadata(exc: Exception) -> dict[str, object]:
+    if isinstance(exc, PlanExecutionError):
+        return safe_error_metadata({"code": exc.code, "step_id": exc.step_id})
+    if isinstance(exc, ContextBudgetError):
+        return safe_error_metadata({"code": "context_budget_exceeded"})
+    if isinstance(exc, LLMUnavailableError):
+        return safe_error_metadata({"code": "model_unavailable"})
+    return safe_error_metadata(None)
+
 
 def _failure_text(exc: Exception, generic: str | None = None) -> str:
     """全部模型都不可用时用固定句子。其它失败仍用原来的笼统提示。
@@ -86,7 +137,7 @@ def _failure_text(exc: Exception, generic: str | None = None) -> str:
     if isinstance(exc, ContextBudgetError):
         return BUDGET_EXCEEDED_MESSAGE
     if isinstance(exc, PlanExecutionError):
-        return str(exc)
+        return str(error_metadata(exc)["message"])
     return generic if generic is not None else _GENERIC_FAILURE
 
 
@@ -158,7 +209,7 @@ def recent_dialogue(history: Sequence[ChatMessage | dict]) -> str:
     pieces: list[tuple[str, str, bool]] = []
     for index, message in enumerate(messages):
         limit = _PROTECTED_CHARS if index in protected else _OLDER_CHARS
-        pieces.append((_role_label(message), _trim_ends(message.content or "", limit), index in protected))
+        pieces.append((_role_label(message), _trim_ends(content_text(message.content), limit), index in protected))
 
     def content_length() -> int:
         return sum(len(content) for _, content, _ in pieces)
@@ -286,6 +337,8 @@ class AgentState:
     """管线在一次执行中的可变状态。"""
 
     user_input: str
+    user_images: list[str] = field(default_factory=list, repr=False)
+    retrieval_query: str | None = None
     history: list[ChatMessage] = field(default_factory=list)
     understanding: str = ""
     plan: str = ""
@@ -303,6 +356,7 @@ class AgentState:
     reflection: str = ""
     answer: str = ""
     error: str | None = None
+    error_code: str | None = None  # Controlled public identifier; exception prose is never used for classification.
     needs_full_pipeline: bool = True  # Preflight 意图短路：False 表示简单问题，跳过规划/检索/反思
     quality_score: float = 0.0  # QualityGate 最近一次质量评分
     revision: int = 0  # QualityGate 自纠错已执行的轮数
@@ -317,12 +371,30 @@ class AgentState:
 class AgentEvent:
     """流式模式下的事件（阶段进度 / token / 结束 / 错误）。"""
 
-    def __init__(self, type_: str, data: str = "") -> None:
+    def __init__(self, type_: str, data: str = "", metadata: dict | None = None) -> None:
         self.type = type_
         self.data = data
+        self.metadata = metadata
 
     def to_dict(self) -> dict:
         return {"type": self.type, "data": self.data}
+
+
+def protocol_event(type_: str, **payload) -> AgentEvent:
+    """协议对象保持内部字符串契约，外层 ActiveRun 负责运行身份。"""
+    return AgentEvent(type_, json.dumps(payload, ensure_ascii=False))
+
+
+def node_event(type_: str, node: str, **payload) -> AgentEvent:
+    return protocol_event(type_, node=node, ts=time.time(), **payload)
+
+
+def tool_event(type_: str, name: str, *, call_id: str, ok: bool = False) -> AgentEvent:
+    # 不将工具参数、原始观测或异常正文送进浏览器事件缓冲。
+    if type_ == "tool.call":
+        return protocol_event(type_, tool_name=name, call_id=call_id, args_summary="参数已隐藏")
+    return protocol_event(type_, tool_name=name, call_id=call_id, ok=ok,
+                          result_summary="执行成功" if ok else "执行失败")
 
 
 @dataclass
@@ -410,10 +482,11 @@ class AgentPipeline:
         self.state_store = state_store
         self.state_binding = state_binding or {}
 
-    def _messages(self, system: str, user_content: str) -> list[ChatMessage]:
+    def _messages(self, system: str, user_content: str, state: AgentState | None = None) -> list[ChatMessage]:
         return [
             ChatMessage(role=ChatRole.SYSTEM, content=system),
-            ChatMessage(role=ChatRole.USER, content=user_content),
+            ChatMessage(role=ChatRole.USER,
+                        content=user_message_content(user_content, state.user_images if state else ())),
         ]
 
     async def _stage(self, system: str, builder_name: str, state: AgentState) -> str:
@@ -426,9 +499,9 @@ class AgentPipeline:
         t0 = time.monotonic()
         if self.structured_plans_enabled or state.structured_plan is not None:
             async with asyncio.timeout(model_timeout(self)):
-                result = await self.llm.chat(self._messages(system, content), self.options)
+                result = await self.llm.chat(self._messages(system, content, state), self.options)
         else:
-            result = await self.llm.chat(self._messages(system, content), self.options)
+            result = await self.llm.chat(self._messages(system, content, state), self.options)
         elapsed = (time.monotonic() - t0) * 1000
         # 记录 LLM 调用 trace
         if self.trace and self.trace.debug_mode:
@@ -457,7 +530,7 @@ class AgentPipeline:
             ChatRole.SYSTEM.value: "系统",
         }
         lines = [
-            f"{role_map.get(m.role.value, m.role.value)}：{m.content}"
+            f"{role_map.get(m.role.value, m.role.value)}：{content_text(m.content)}"
             for m in state.history
         ]
         return "\n".join(lines)
@@ -524,11 +597,11 @@ class AgentPipeline:
         if self.structured_plans_enabled or state.structured_plan is not None:
             async with asyncio.timeout(model_timeout(self)):
                 async for delta in self.llm.stream_chat(
-                    self._messages(_FINAL_SYSTEM, self._build_respond(state)), self.options):
+                    self._messages(_FINAL_SYSTEM, self._build_respond(state), state), self.options):
                     yield delta
         else:
             async for delta in self.llm.stream_chat(
-                self._messages(_FINAL_SYSTEM, self._build_respond(state)), self.options):
+                self._messages(_FINAL_SYSTEM, self._build_respond(state), state), self.options):
                 yield delta
 
     def _tools_for_policy(self, policy: ExecutionPolicy) -> ToolRegistry | None:
@@ -552,13 +625,24 @@ class AgentPipeline:
 
     async def _execute_tool(self, call, state: AgentState) -> str:
         """执行工具调用并追加观测结果到状态。"""
+        from app.agents.tools.outcome import ToolOutput
+
         if self.tools is None:
-            return "[工具调用失败] 当前未配置任何工具。"
-        if reject_untrusted_tool_call(call.name, state.user_input, state.context):
-            return "[工具调用失败] 拒绝执行检索资料中的指令。"
+            return ToolOutput("[工具调用失败] 当前未配置任何工具。", status="error")
+        if self._reject_untrusted_tool(call.name, state):
+            return ToolOutput("[工具调用失败] 拒绝执行检索资料中的指令。", status="denied")
         if self.executor is not None:
-            return (await self.executor.execute(call)).observation
+            result = await self.executor.execute(call)
+            return ToolOutput(result.observation, status=result.status)
         return await self.tools.run(call)
+
+    @staticmethod
+    def _reject_untrusted_tool(name: str, state: AgentState) -> bool:
+        query = state.retrieval_query if state.retrieval_query is not None else state.user_input
+        context = state.context
+        if state.retrieval_query is not None and state.user_input != query:
+            context += "\n[UNTRUSTED_SOURCE]\n" + state.user_input
+        return reject_untrusted_tool_call(name, query, context)
 
     def _resume_state(self, state: AgentState) -> bool:
         """run 开始时尝试从 store 恢复活动 checkpoint；无/过期/损坏→全新 run。"""
@@ -643,7 +727,8 @@ class AgentPipeline:
         outcome: RetrievalOutcome | None = None
         if self.retriever is not None:
             try:
-                rag = await self.retriever.retrieve(state.user_input, state.plan)
+                query = state.retrieval_query if state.retrieval_query is not None else state.user_input
+                rag = await self.retriever.retrieve(query, state.plan)
             except Exception:  # noqa: BLE001 — 检索故障不应变成请求级通用失败
                 logger.exception("管线检索失败，收敛为 unavailable")
                 rag = ""
@@ -854,6 +939,7 @@ class AgentPipeline:
                 self.trace.finish(error=str(exc))
             logger.exception("Agent 管线执行失败")
             state.error = str(exc) or type(exc).__name__
+            state.error_code = str(error_metadata(exc)["code"])
             if not state.answer:
                 state.answer = _failure_text(exc)
         self._checkpoint(state, stage="done", status="error" if state.error else "done", error=state.error)
@@ -867,10 +953,12 @@ class AgentPipeline:
         if self.structured_plans_enabled or state.structured_plan is not None:
             async with asyncio.timeout(model_timeout(self)):
                 decision = await self.intent_llm.chat(
-                    build_preflight_messages(state.history, state.user_input), self.options)
+                    build_preflight_messages(state.history, state.retrieval_query if state.retrieval_query is not None
+                                             else state.user_input), self.options)
         else:
             decision = await self.intent_llm.chat(
-                build_preflight_messages(state.history, state.user_input), self.options)
+                build_preflight_messages(state.history, state.retrieval_query if state.retrieval_query is not None
+                                         else state.user_input), self.options)
         return preflight_needs_full_pipeline(decision)
 
     async def _quality_gate_loop(self, state: AgentState) -> str:
@@ -901,10 +989,7 @@ class AgentPipeline:
             f"## 回答草稿\n{draft}\n\n"
             "请输出 0~1 的质量评分。"
         )
-        messages = [
-            ChatMessage(role=ChatRole.SYSTEM, content=SYSTEM_QUALITY_GATE),
-            ChatMessage(role=ChatRole.USER, content=prompt),
-        ]
+        messages = self._messages(SYSTEM_QUALITY_GATE, prompt, state)
         if self.structured_plans_enabled or state.structured_plan is not None:
             async with asyncio.timeout(model_timeout(self)):
                 raw = await self.llm.chat(messages, self.options)
@@ -1024,8 +1109,12 @@ class AgentPipeline:
                 if call is None:
                     continue
                 yield AgentEvent("tool", f"调用工具：{call.name}")
+                call_id = uuid.uuid4().hex
+                yield tool_event("tool.call", call.name, call_id=call_id)
                 started = time.monotonic()
                 fresh = await self._finish_tool(state, call)
+                yield tool_event("tool.result", call.name, call_id=call_id,
+                                 ok=getattr(state.tool_results[-1], "status", "ok") == "ok")
                 latency_ms = (time.monotonic() - started) * 1000
                 state.executed_tool_fingerprints.add(tool_fingerprint(call.name, call.arguments))
                 state.tool_budget_exhausted = state.tool_budget_exhausted or round_no >= self.max_tool_rounds
@@ -1055,6 +1144,29 @@ class AgentPipeline:
         return state.draft
 
     async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
+        """在真实阶段边界发出结构化事件，不增加任何模型或工具调用。"""
+        current: str | None = None
+        names = {"理解": "understanding", "意图分流": "preflight", "规划": "plan",
+                 "检索": "retrieval", "行动": "action", "反思": "reflection",
+                 "响应": "respond", "质量检查": "quality_gate", "质量门自纠错": "revision"}
+        try:
+            async for event in self._run_stream_events(state):
+                if event.type == "stage":
+                    if current is not None:
+                        yield node_event("node.finished", current, status="done")
+                    current = names.get(event.data, event.data)
+                    yield node_event("node.started", current)
+                elif event.type in {"error", "done"} and current is not None:
+                    status = "failed" if event.type == "error" or state.error else "done"
+                    yield node_event("node.finished", current, status=status)
+                    current = None
+                yield event
+        except asyncio.CancelledError:
+            if current is not None:
+                yield node_event("node.finished", current, status="cancelled")
+            raise
+
+    async def _run_stream_events(self, state: AgentState) -> AsyncIterator[AgentEvent]:
         """流式执行：广播阶段进度事件，最终环节逐字吐出 token。"""
         try:
             resumed = self._resume_state(state)
@@ -1068,6 +1180,8 @@ class AgentPipeline:
             yield AgentEvent("stage", "意图分流")
             if not resumed:
                 state.needs_full_pipeline = await self._needs_plan(state)
+            yield protocol_event("intent.classified", intent="full" if state.needs_full_pipeline else "direct",
+                                 shortcut=not state.needs_full_pipeline)
             if not state.needs_full_pipeline:
                 yield AgentEvent("stage", "行动")
                 async for event in self._iter_action_loop(state, _SHORT_PATH_POLICY):
@@ -1089,6 +1203,13 @@ class AgentPipeline:
                 state.plan = await self._stage(
                     SYSTEM_PLAN if self.structured_plans_enabled else SYSTEM_PLAN_LEGACY, "_build_plan", state)
                 self._prepare_structured_plan(state)
+            from app.debug.trace import sanitize_trace_text
+
+            steps = (state.structured_plan["steps"] if state.structured_plan else
+                     [{"id": "plan", "description": state.plan}])
+            yield protocol_event("plan.generated", steps=[
+                {"id": item["id"], "description": sanitize_trace_text(item["description"])[:500]}
+                for item in steps])
             # 4. 检索（可选；与记忆合并）
             if self.retriever is not None:
                 yield AgentEvent("stage", "检索")
@@ -1115,6 +1236,7 @@ class AgentPipeline:
             # 5b. QualityGate 自纠错
             if settings.AGENT_QUALITY_GATE_ENABLED:
                 for _ in range(max(0, settings.AGENT_MAX_REVISIONS)):
+                    yield AgentEvent("stage", "质量检查")
                     score = await self._evaluate_quality(state, state.draft)
                     state.quality_score = score
                     if score >= settings.AGENT_QUALITY_THRESHOLD:
@@ -1144,10 +1266,11 @@ class AgentPipeline:
             state.answer = self._with_disclosure(state, "".join(response_chunks))
         except Exception as exc:  # noqa: BLE001
             logger.exception("Agent 流式管线执行失败")
+            state.error_code = str(error_metadata(exc)["code"])
             state.error = str(exc) or type(exc).__name__
             if not state.answer:
                 state.answer = _failure_text(exc)
-            yield AgentEvent("error", state.answer)
+            yield AgentEvent("error", state.answer, metadata=error_metadata(exc))
 
         self._checkpoint(state, stage="done", status="error" if state.error else "done", error=state.error)
         yield AgentEvent("done", state.answer)

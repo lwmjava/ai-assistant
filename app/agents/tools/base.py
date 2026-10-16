@@ -233,10 +233,11 @@ class ToolRegistry:
         """执行一次工具调用，返回结构化观测文本。"""
         bound = getattr(self, "_executor", None)
         if bound is not None:
-            return (await bound.execute(call)).observation
+            result = await bound.execute(call)
+            return ToolOutput(result.observation, status=result.status)
         tool = self.get(call.name)
         if tool is None:
-            return f"[工具调用失败] 未找到名为「{call.name}」的工具。"
+            return ToolOutput(f"[工具调用失败] 未找到名为「{call.name}」的工具。", status="error")
         arguments = call.arguments or {}
         user_id = log_context.get_user_id() or None
         tenant_id = log_context.get_tenant_id() or None
@@ -248,25 +249,26 @@ class ToolRegistry:
             latency_ms = (time.monotonic() - started) * 1000
             await self._record_audit(call, user_id, tenant_id, risk, False, reason, latency_ms)
             logger.info("工具调用被拒绝：%s reason=%s", call.name, reason)
-            return f"[工具调用被拒绝] {call.name}：调用未授权。"
+            return ToolOutput(f"[工具调用被拒绝] {call.name}：调用未授权。", status="denied")
 
         timeout = tool.contract.timeout_seconds if tool.contract else 30.0
         try:
             async with asyncio.timeout(timeout):
                 observation = await tool.execute(arguments)
         except TimeoutError:
-            observation = f"[工具执行错误] {call.name}：执行超时。"
+            observation = ToolOutput(f"[工具执行错误] {call.name}：执行超时。", status="timeout")
         except Exception as exc:  # noqa: BLE001 — 工具异常不应中断整个管线
             if call.name in {"web_search", "file_ops", "file_ops_write"}:
                 logger.warning("工具执行失败：%s type=%s", call.name, type(exc).__name__)
-                observation = f"[工具执行错误] {call.name}：工具暂时不可用。"
+                observation = ToolOutput(f"[工具执行错误] {call.name}：工具暂时不可用。", status="error")
             else:
                 logger.exception("工具执行失败：%s", call.name)
-                observation = f"[工具执行错误] {call.name}：{exc}"
+                observation = ToolOutput(f"[工具执行错误] {call.name}：{exc}", status="error")
         latency_ms = (time.monotonic() - started) * 1000
         await self._record_audit(call, user_id, tenant_id, risk, True, None, latency_ms)
 
-        return format_tool_observation(call.name, arguments, observation)
+        return ToolOutput(format_tool_observation(call.name, arguments, observation),
+                          status=getattr(observation, "status", "ok"))
 
 
 def inspect_tool_call(text: str) -> ToolIntent:

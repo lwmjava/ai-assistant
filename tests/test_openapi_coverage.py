@@ -1,4 +1,4 @@
-"""核对 /api 业务路由是否出现在 OpenAPI 中，以及 README 端点表是否指向这些路径。"""
+"""核对 /api/v1 业务路由是否出现在 OpenAPI 中，以及 README 端点表是否指向这些路径。"""
 
 from __future__ import annotations
 
@@ -17,12 +17,12 @@ _Operation = tuple[str, str]
 
 
 def business_operations(routes: Iterable[object]) -> set[_Operation]:
-    """收集纳入文档、路径以 /api 开头的路由方法。"""
+    """收集纳入文档、路径以 /api/v1 开头的路由方法。"""
     found: set[_Operation] = set()
     for route in routes:
         if not isinstance(route, APIRoute):
             continue
-        if not route.include_in_schema or not route.path.startswith("/api"):
+        if not route.include_in_schema or not route.path.startswith("/api/v1"):
             continue
         for method in route.methods:
             if method in _SKIP_METHODS:
@@ -32,12 +32,12 @@ def business_operations(routes: Iterable[object]) -> set[_Operation]:
 
 
 def hidden_api_paths(routes: Iterable[object]) -> list[str]:
-    """返回被排除在文档之外的 /api 路由路径。"""
+    """返回被排除在文档之外的 /api/v1 路由路径。"""
     hidden: list[str] = []
     for route in routes:
         if not isinstance(route, APIRoute):
             continue
-        if route.path.startswith("/api") and not route.include_in_schema:
+        if route.path.startswith("/api/v1") and not route.include_in_schema:
             hidden.append(route.path)
     return hidden
 
@@ -109,7 +109,7 @@ def readme_endpoint_rows(markdown: str) -> list[_Operation]:
 
 
 def test_openapi_covers_business_routes() -> None:
-    """每个 /api 业务路由都在 OpenAPI 里，并且带有摘要或说明。"""
+    """每个 /api/v1 业务路由都在 OpenAPI 里，并且带有摘要或说明。"""
     schema = app.openapi()
     registered = business_operations(app.routes)
     documented = openapi_operations(schema)
@@ -118,7 +118,7 @@ def test_openapi_covers_business_routes() -> None:
     missing_text = [
         f"{method} {path}"
         for (path, method), operation in sorted(documented.items())
-        if path.startswith("/api") and not operation_has_text(operation)
+        if path.startswith("/api/v1") and not operation_has_text(operation)
     ]
     assert missing_text == []
 
@@ -134,12 +134,12 @@ def test_openapi_readme_paths_are_subset() -> None:
 
 def test_openapi_chat_stream_is_event_stream() -> None:
     """流式对话的文档声明响应媒体类型为 text/event-stream。"""
-    operation = openapi_operations(app.openapi())[("/api/chat/stream", "POST")]
+    operation = openapi_operations(app.openapi())[("/api/v1/chat/stream", "POST")]
     assert "text/event-stream" in response_media_types(operation)
 
 
 def test_openapi_missing_operation_is_reported() -> None:
     """比较函数能发现假路由表中多出来的一条，补上后不再报告。"""
-    registered = {("/api/example", "GET")}
-    assert missing_operations(registered, set()) == ["GET /api/example"]
-    assert missing_operations(registered, {("/api/example", "GET")}) == []
+    registered = {("/api/v1/example", "GET")}
+    assert missing_operations(registered, set()) == ["GET /api/v1/example"]
+    assert missing_operations(registered, {("/api/v1/example", "GET")}) == []

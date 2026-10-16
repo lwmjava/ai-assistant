@@ -51,5 +51,7 @@ class Message(SQLModel, TimestampMixin, table=True):
     status: str = Field(default="complete")
     # 本轮选用的技能名，JSON 数组文本。未选用时为空，读成空列表。
     skill_names: str | None = Field(default=None)
+    # 用户当前消息的验证后附件；对外历史仅提供元数据，不暴露二进制内容。
+    attachments: str | None = Field(default=None)
 
     conversation: Conversation | None = Relationship(back_populates="messages")

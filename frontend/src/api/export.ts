@@ -1,11 +1,11 @@
 /** 下载当前租户对话原文。成功时浏览器保存 conversations.json。 */
 
 import { exportFailureMessage } from '@/lib/export-message'
-import { notifySessionExpired, refreshTokens } from '@/lib/http'
+import { API_BASE, notifySessionExpired, refreshTokens } from '@/lib/http'
 import { getAccessToken } from '@/store/auth'
 
 async function postExport(token: string | null): Promise<Response> {
-  return fetch('/api/export/conversations', {
+  return fetch(`${API_BASE}/export/conversations`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })

@@ -118,6 +118,49 @@ def isolated_real_transport(monkeypatch):
     return provider, calls
 
 
+def test_official_entry_accepts_single_chat_hop_from_factory(monkeypatch, tmp_path):
+    from app.llm.factory import set_llm_provider_override
+    from app.llm.routing import reset_circuits
+
+    set_llm_provider_override(None)
+    reset_circuits()
+    monkeypatch.setattr(runner.settings, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(runner.settings, "LLM_BASE_URL", "https://api.deepseek.com/v1")
+    monkeypatch.setattr(runner.settings, "LLM_API_KEY", "isolated-test-key")
+    monkeypatch.setattr(runner.settings, "LLM_DEFAULT_MODEL", "deepseek-flash")
+    monkeypatch.setattr(runner.settings, "LLM_INTENT_API_KEY", "")
+    monkeypatch.setattr(runner.settings, "LLM_FALLBACK_API_KEY", "")
+    monkeypatch.setattr(runner.settings, "LLM_INTENT_FALLBACK_CHAIN", "chat")
+    monkeypatch.setattr(runner.settings, "LLM_CHAT_FALLBACK_CHAIN", "chat")
+    monkeypatch.setattr(runner.settings, "LLM_RESPONSE_CACHE_ENABLED", False)
+    monkeypatch.setattr(runner.settings, "LLM_CAPABILITY_GUARD_ENABLED", True)
+    calls = []
+
+    async def reply(self, messages, options):
+        calls.append(messages)
+        return await runner.SmokeIntentModel().chat(messages, options)
+
+    monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
+    provider = runner.get_llm_provider("intent")
+    assert type(provider) is not runner.OpenAICompatibleProvider
+    assert runner.real_single_uncached_intent(provider)
+    assert provider._effective_capability() is not None
+    target = tmp_path / "official.json"
+    assert asyncio.run(runner.run("official", tmp_path, target)) == 0
+    report = json.loads(target.read_text(encoding="utf-8"))
+    assert report["provider"] == "openai-compatible"
+    assert report["model"] == "deepseek-flash"
+    assert len(calls) == report["model_requests"] == 12
+    monkeypatch.setattr(runner.settings, "LLM_RESPONSE_CACHE_ENABLED", True)
+    assert not runner.real_single_uncached_intent(provider)
+    monkeypatch.setattr(runner.settings, "LLM_RESPONSE_CACHE_ENABLED", False)
+    monkeypatch.setattr(runner.settings, "LLM_INTENT_API_KEY", "isolated-intent-key")
+    monkeypatch.setattr(runner.settings, "LLM_INTENT_BASE_URL", "https://api.deepseek.com/v1")
+    monkeypatch.setattr(runner.settings, "LLM_INTENT_MODEL", "deepseek-flash")
+    monkeypatch.setattr(runner.settings, "LLM_INTENT_FALLBACK_CHAIN", "intent,chat")
+    assert not runner.real_single_uncached_intent(runner.get_llm_provider("intent"))
+
+
 def test_complete_official_entry_with_isolated_transport(isolated_real_transport, tmp_path):
     provider, calls = isolated_real_transport
     target = tmp_path / "official.json"

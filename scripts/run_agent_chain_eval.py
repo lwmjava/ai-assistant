@@ -481,10 +481,22 @@ def write_report(path: Path, payload: dict) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def real_single_uncached_intent(provider) -> bool:
+    """正式评测只接受一个未缓存的真实兼容客户端。单跳熔断包装仍是这一个客户端。"""
+    if settings.LLM_RESPONSE_CACHE_ENABLED or not isinstance(provider, OpenAICompatibleProvider):
+        return False
+    key = getattr(provider, "api_key", "")
+    model = getattr(provider, "model", "")
+    if not isinstance(key, str) or not key.strip() or not isinstance(model, str) or not model.strip():
+        return False
+    folded = model.lower()
+    return "mock" not in folded and "smoke" not in folded and model != "unknown"
+
+
 def build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, records, call_attempts=None) -> dict:
     metrics = score(cases, routes)
     tool_metrics = score_tools(cases, tool_names)
-    real = type(provider) is OpenAICompatibleProvider
+    real = real_single_uncached_intent(provider)
     if call_attempts is None:
         call_attempts = [{"case_id": case["case_id"], "stage": "route", "attempts": [reply_attempt(raw)]}
                          for case, raw in zip(cases, raws, strict=True)]
@@ -530,10 +542,7 @@ async def run(mode: str, report_dir: Path, out: Path | None = None) -> int:
             print("AGENT_EVAL_ERROR:frozen_dataset_required")
             return 2
         provider = get_llm_provider("intent")
-        if (type(provider) is not OpenAICompatibleProvider or not provider.api_key.strip()
-                or not provider.model.strip() or "mock" in provider.model.lower()
-                or "smoke" in provider.model.lower() or provider.model == "unknown"
-                or settings.LLM_RESPONSE_CACHE_ENABLED):
+        if not real_single_uncached_intent(provider):
             print("AGENT_EVAL_ERROR:real_single_uncached_intent_required")
             return 2
         endpoint_hash(provider.base_url)

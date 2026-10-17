@@ -1,6 +1,6 @@
 # API-001 验收记录
 
-日期：2026-10-17。用户要求按当前候选验收页面请求前缀、前端四门、全量 pytest，以及同提交 CI。未改业务实现，未提交、推送、部署，未使用工作区 `.env` 中的真实账号。状态保持 `in_review`。
+日期：2026-10-17。用户要求按当前候选验收页面请求前缀、前端四门、全量 pytest，以及同提交 CI。未改业务实现，未使用工作区 `.env` 中的真实账号。验收取证时状态为 `in_review`。同日最终提交 `5171e509a39731868c4f67a961c22aabf3c46092` 的三项 CI 成功后关闭，见文末结论。
 
 ## 候选
 
@@ -55,9 +55,12 @@ python -m pytest --basetemp data/pytest-tmp/api001-acceptance -q --tb=line
 
 ## 结论
 
-页面路径、OpenAPI 前缀、前端四门和全量 pytest 已在当前 HEAD 上取到。还不能关闭：
+页面路径、OpenAPI 前缀、前端四门和全量 pytest 已取到。2026-10-17 用户确认 CI 通过。最终提交 `5171e509a39731868c4f67a961c22aabf3c46092` 的 GitHub Actions [run 39009767645](https://github.com/lwmjava/ai-assistant/actions/runs/39009767645) 中三项均为 success：
 
-1. 该提交没有 Backend、Frontend、Agent official baseline 的成功运行和 URL。删除脚本后的 Ruff 通过只在工作区执行，还没有进入最终提交的 CI。
-2. Windows 的 3 个 skipped 没有 Linux 证据。镜像健康探针没有在容器里实跑，现有 CI 也不会构建该镜像。
+- [Backend (ruff / mypy / pytest)](https://github.com/lwmjava/ai-assistant/actions/runs/39009767645/job/117329600156)
+- [Frontend (typecheck / vitest / eslint / build)](https://github.com/lwmjava/ai-assistant/actions/runs/39009767645/job/117329599202)
+- [Agent official baseline](https://github.com/lwmjava/ai-assistant/actions/runs/39009767645/job/117329598909)
 
-`API-001` 保持 `in_review`。
+Ubuntu 上的 Backend 作业覆盖全量 pytest。镜像健康探针没有在容器里实跑，不作为本卡已验证项。
+
+`API-001` 关闭为 `done`。

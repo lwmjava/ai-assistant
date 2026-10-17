@@ -5675,6 +5675,7 @@ tasks:
   - id: "ERR-001"
     title: "统一错误码端到端验收"
     status: "done"
+    completed_at: "2026-10-17"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -5724,6 +5725,7 @@ tasks:
       commands:
         - "pytest -k 'error or code'"
     execution:
+      final_acceptance_20261017: "九种场景已在隔离页面逐条操作；刷新跨会话与正文超时由 error-contract 32 项复验通过。错误码源码与 5171e509a39731868c4f67a961c22aabf3c46092 一致，该提交三项 CI 均为 success。证据：docs/reviews/2026-10-17-err-001-recheck.md。"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -7021,7 +7023,8 @@ tasks:
 
   - id: "API-001"
     title: "对外路径改为 /api/v1"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-17"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7066,6 +7069,7 @@ tasks:
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮版本/OpenAPI专项通过；最终全量仍失败，当前候选前端/页面/CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       acceptance_20261017: "页面登录、刷新、会话和授权导出均走 /api/v1；前端四门退出 0；全量 2530 passed / 3 skipped。移除一次性实机脚本后 ruff check . 退出 0。该提交没有 Backend/Frontend/Agent CI。状态保留 in_review。证据：docs/reviews/2026-10-17-api-001-acceptance.md。"
+      final_acceptance_20261017: "用户确认 CI 通过后核对最终提交 5171e509a39731868c4f67a961c22aabf3c46092。GitHub Actions run 39009767645 的 Backend、Frontend、Agent official baseline 均为 success。页面与 OpenAPI 证据见 docs/reviews/2026-10-17-api-001-acceptance.md。镜像健康探针未在容器中实跑，不写成已验证。状态改为 done。"
       plan: "docs/plans/plan_api_001_20261015.md"
       owner: "个人开发者"
       nightly:

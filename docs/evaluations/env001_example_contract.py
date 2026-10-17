@@ -80,7 +80,8 @@ def check_example(path: Path) -> dict:
                      if binding.error]
     values = dotenv_values(path, interpolate=False) if not syntax_errors else {}
     key_set = set(keys)
-    secret_names = [key for key in fields if key.endswith("_API_KEY") or key in {"JWT_SECRET_KEY", "MILVUS_TOKEN"}]
+    secret_names = [key for key in fields if key.endswith(("_API_KEY", "_PASSWORD"))
+                    or key in {"JWT_SECRET_KEY", "MILVUS_TOKEN"}]
     result = {"fields": len(fields), "keys": len(keys), "matched": len(set(fields) & key_set),
               "missing": sorted(set(fields) - key_set), "extra": sorted(key_set - set(fields)),
               "duplicates": sorted(key for key, count in Counter(keys).items() if count > 1),
@@ -88,7 +89,7 @@ def check_example(path: Path) -> dict:
               "nonempty_secret_fields": sorted(key for key in secret_names if values.get(key)),
               "syntax_error_lines": syntax_errors,
               "legacy_initial_admin_password_present": bool(values.get("INITIAL_ADMIN_PASSWORD")),
-              "legacy_password_governance": "ENV-002 pending; this check is not production-safety acceptance",
+              "legacy_password_governance": "All example passwords must be empty; not production-safety acceptance",
               "source_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
               "example_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     result["passed"] = not any(result[key] for key in (
@@ -113,10 +114,12 @@ def self_test() -> list[str]:
     with patch.dict(os.environ, {}, clear=True):
         defaults = cls(_env_file=None)
     checks = []
-    assert len(type(model).model_fields) == 181
+    _, fields = source_fields()
+    assert set(type(model).model_fields) == set(fields)
+    assert set(model.model_dump()) == set(fields)
     assert model.model_dump()["RAG_REFUSE_MESSAGE"] == defaults.model_dump()["RAG_REFUSE_MESSAGE"]
     assert load_example(EXAMPLE, {"PORT": "8123"}).model_dump()["PORT"] == 8123
-    checks.extend(["real_settings_load_181", "unicode_default_roundtrip", "process_override_priority"])
+    checks.extend(["real_settings_load_all_source_fields", "unicode_default_roundtrip", "process_override_priority"])
     assert check_example(EXAMPLE)["passed"]
     checks.append("complete_labeled_keys")
     with tempfile.TemporaryDirectory(prefix="env001-fixtures-", dir=ROOT / "data") as folder:
@@ -133,6 +136,11 @@ def self_test() -> list[str]:
             target.write_text(mutation, encoding="utf-8")
             assert not check_example(target)["passed"], name
             checks.append(name + "_rejected")
+        for key in fields:
+            if key.endswith("_PASSWORD"):
+                target.write_text(text.replace(f"{key}=\n", f"{key}=synthetic-only\n"), encoding="utf-8")
+                assert key in check_example(target)["nonempty_secret_fields"], key
+        checks.append("all_example_passwords_rejected_when_nonempty")
         for value in ("nan", "inf", "1e309", "false"):
             try:
                 load_example(EXAMPLE, {"CACHE_TTL_SECONDS": value})

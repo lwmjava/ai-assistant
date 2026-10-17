@@ -307,7 +307,7 @@ python -m app.cli init
 
 Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[langgraph]"`（`langgraph>=1.0.0,<1.1`），再把 `AGENT_ORCHESTRATION` 设为 `langgraph`。这时只有明确要求多轮调研的问题才进入 Supervisor；不需要工具和知识库的问题只生成一次。没装这个包时，多轮请求回退五阶段管线。默认配置仍是 `self`。
 
-init 已生成 `JWT_SECRET_KEY`；采用已有配置时须确认它不是空白或仓库默认值。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：在空用户库中同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。任一项为空时均跳过管理员引导，改由下一步的 `/setup` 创建。示例密码留空，请在本地或秘密管理中设置自主口令，勿提交仓库。
+init 已生成 `JWT_SECRET_KEY`；采用已有配置时须确认它不是空白或仓库默认值。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：在空用户库中同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。单管理员模式下任一项为空时跳过管理员引导，改由下一步的 `/setup` 创建。示例密码留空，请在本地或秘密管理中设置自主口令，勿提交仓库。
 
 需要同时引导三个内置账号时，将管理员用户名设为 `admin`，并通过部署环境分别注入 `INITIAL_ADMIN_PASSWORD`、`INITIAL_SYSTEM_PASSWORD`、`INITIAL_CULTURE_PASSWORD`。三人口令均至少 8 位；两项新增口令必须一起配置，配置不完整时拒绝写入。空用户库中会在同一事务创建 `admin`（系统管理员）、`system`（default 租户管理员）及 `culture`（member，`is_test_user=true`）；邮箱可以为空。只配置原管理员变量时保留单管理员引导。已有用户库不自动补种或认领同名账号，也不重置密码、角色或测试标记；移除环境变量不删除已经创建的用户。
 
@@ -358,7 +358,7 @@ npm run dev
 三选一。
 
 - 第 1 步已经填了 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`：不要打开 `/setup`。用这两个值到 `/login` 登录。启动日志里会有已创建初始 `system_admin` 的提示。
-- 任一项为空，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后先进入 `/change-password`，完成首次改密才能进入 `/chat`，这个初始化向导随即关闭。
+- 单管理员模式下任一项为空，而且库里还没有系统管理员：打开 `http://localhost:5173/setup`，填写用户名和至少 8 位密码。成功后先进入 `/change-password`，完成首次改密才能进入 `/chat`，这个初始化向导随即关闭。
 - 或者先执行 `ai-assistant migrate --yes`，再按第 1 步里的 `ai-assistant admin create-superuser` 创建系统管理员，然后到 `/login` 登录。
 
 失败时看：`/setup` 一打开就回到 `/login`，说明已经有系统管理员，用已有账号登录。向导提交后提示「初始化向导已关闭」，同样改为登录。页面一直停在「正在检查是否需要初始化」，说明后端没起来，先看第 2 步的健康检查。
@@ -392,7 +392,7 @@ docker compose up -d --build
 
 ### 关键配置项
 
-`.env.example` 当前覆盖 `Settings` 的全部 **181 个字段**，每项标注“选填”或“条件必填”。选填表示源码提供默认值；条件必填表示生产部署或选择对应能力时需要填写，并不表示启动会自动校验所有条件。示例中的部分值是使用示例，源码默认值以 `app/core/config.py` 为准。解析成功不代表生产安全配置或外部模型、OCR、检索服务可用；首次管理员密码留空，需由部署者自主配置，仓库不提供可直接登录的示例口令。
+`.env.example` 当前覆盖 `Settings` 的全部 **189 个字段**（2026-10-17 快照，验收按源码字段集合动态核对），每项标注“选填”或“条件必填”。选填表示源码提供默认值；条件必填表示生产部署或选择对应能力时需要填写，并不表示启动会自动校验所有条件。示例中的部分值是使用示例，源码默认值以 `app/core/config.py` 为准。解析成功不代表生产安全配置或外部模型、OCR、检索服务可用；首次管理员密码留空，需由部署者自主配置，仓库不提供可直接登录的示例口令。
 
 从仓库根目录用项目解释器执行以下核对。它只读配置源码和示例，在隔离命名空间加载真实 `Settings`，**不导入应用、不读取本地 `.env`**；缺项、额外项、重复键或缺标注会失败。
 

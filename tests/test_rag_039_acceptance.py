@@ -9,6 +9,7 @@ import asyncio
 import threading
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -267,10 +268,16 @@ async def test_partial_batch_is_running_until_all_children_finish(isolated):
         user = session.get(User, "u-a")
         assert user is not None
         batch_id = import_jobs.create_import_batch(session, user, total_jobs=3, source_type="file").id
-    upload(db, source="done.txt", batch=batch_id)
+    done = upload(db, source="done.txt", batch=batch_id)
     missing = upload(db, source="missing.txt", batch=batch_id)
-    upload(db, source="last.txt", batch=batch_id)
+    last = upload(db, source="last.txt", batch=batch_id)
     with Session(db) as session:
+        base = datetime(2026, 1, 1, tzinfo=UTC)
+        for offset, job_id in enumerate((done, missing, last)):
+            queued = session.get(ImportJob, job_id)
+            assert queued is not None
+            queued.created_at = base + timedelta(seconds=offset)
+            session.add(queued)
         job = session.get(ImportJob, missing)
         assert job is not None
         job.storage_path = "data/knowledge/t-a/absent.txt"

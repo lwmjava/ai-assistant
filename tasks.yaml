@@ -6569,6 +6569,7 @@ tasks:
         - "pytest tests/test_p0_regression.py tests/test_rag.py tests/test_workflow.py -q"
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；当前版本全量2529通过/1失败/3跳过，不能关闭；须修复或隔离批次终态失败并重跑最终全量及CI。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      batch_order_fix_20261017: "用户批准修复批次终态测试排序；固定三个任务created_at，原断言不变。同时间戳/乱序ID故障注入旧测失败、修复通过；专项18通过，全量2530通过/3跳过/0失败(exit0)，Ruff/mypy通过，586输入无漂移。见 docs/plans/implementation_qa005_batch_order_fix_20261017.md；新提交Ubuntu CI未取得，保持in_review。"
       ci_regression_followup:
         date: "2026-10-14"
         plan: "docs/plans/plan_qa_005_ci_regression_20261014.md"
@@ -6711,7 +6712,7 @@ tasks:
 
   - id: "ENV-001"
     title: ".env.example 覆盖全部配置字段"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -6737,12 +6738,12 @@ tasks:
         - ".env"
         - "生产密钥"
       deliverables:
-        - "当前 181 个字段都有键，并标明选填或条件必填（2026-10-14用户批准更新历史125口径）"
+        - "当前 Settings 全部字段都有键，并标明选填或条件必填（2026-10-17快照189项，按源码集合动态验收）"
       non_goals:
         - "不新增配置项来凑数"
         - "不把密钥写进示例"
     acceptance:
-        - "对照结果是当前 181/181（2026-10-14用户批准）"
+        - "对照结果与当前Settings字段集合完全一致（2026-10-17快照189/189）"
         - "没有示例里多出来的键"
     risk:
       level: "L1"
@@ -6754,16 +6755,20 @@ tasks:
       commands:
         - "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/env001_example_contract.py --self-test"
     execution:
+      acceptance_20261017: "用户明确委托另一名未参与修复的Agent独立审核并授权主Agent代行业务验收；189/189及15项配置检查、独立反例、Ruff/mypy通过，最终输入一致；按两卡契约关闭。业务报告docs/reviews/2026-10-17-ENV业务验收.md，独立报告docs/reviews/2026-10-17-ENV独立审核.md，最终清单docs/reviews/env_acceptance_final_manifest_20261017.json。以下2026-10-14至修复初轮记录是历史状态，不作当前待办。"
+      drift_fix_20261017: "本轮修复计划docs/plans/plan_env_drift_fix_20261017.md；实现及当前验证见docs/plans/implementation_env_drift_fix_20261017.md、docs/reviews/env_drift_evidence_20261017.json。历史181及旧失败记录仅代表原时点，保持in_review，未提交或发布。"
       closure_review_20261016: "用户本轮已委托Agent代行验收；实际189字段，self-test仍断言181而失败；system/culture口令两项未标注，当前核对passed=false。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       owner: "个人开发者"
-      plan: "docs/plans/plan_env_001_20261014.md"
-      implementation: "docs/plans/implementation_env_001_20261014.md"
-      closure: "docs/plans/closure_env_001_20261014.md"
-      evidence: "docs/reviews/env001_delivery_evidence_20261014.json"
-      review: "docs/reviews/env001_entry_review_20261014.md"
-      final_review: "docs/reviews/2026-10-14-ENV-001-最终人工审核第1轮.md"
+      plan: "docs/plans/plan_env_drift_fix_20261017.md"
+      implementation: "docs/plans/implementation_env_drift_fix_20261017.md"
+      closure: "docs/plans/closure_env_001_002_20261017.md"
+      evidence: "docs/reviews/env_business_acceptance_evidence_20261017.json"
+      review: "docs/reviews/2026-10-17-ENV独立审核.md"
+      final_review: "docs/reviews/2026-10-17-ENV独立审核.md"
+      business_acceptance: "docs/reviews/2026-10-17-ENV业务验收.md"
+      final_manifest: "docs/reviews/env_acceptance_final_manifest_20261017.json"
       progress: "2026-10-14当前实现：示例补44项沿用源码默认，原137有效配置值及config源码不变，181/181、0额外/重复/未标注。旧示例真实覆盖红例exit1；新示例隔离实际Settings及14边界回归exit0，避免导入会读取.env的全局实例；README同步口径及原Compose缺省端口。独立Settings加载/16边界与旧新181值一致验收通过；损坏语法误通过P2先红后修并独立复核闭合，无未修复P1/P2。源码/示例/核对脚本最终指纹已绑定；最终/root/env_final_audit未参与实现与既有审查，实际独立Settings与CLI技术审核通过，用户业务验收未委托，仍in_review；COV-001已有工作保留。"
-      pending: "原INITIAL_ADMIN_PASSWORD历史示例治理归ENV-002，本卡不承接、不声称示例生产安全；用户未委托人工业务验收，最终独立审核结论需交用户决策。"
+      pending: "无本卡待验收项；用户2026-10-17明确委托代验，独立审核和业务验收通过。仅关闭本卡，不代表生产启用或全项目发布。"
       nightly:
         eligible: false
         production_access: false
@@ -6772,7 +6777,7 @@ tasks:
 
   - id: "ENV-002"
     title: "示例口令退出仓库"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -6816,11 +6821,22 @@ tasks:
         - "rg -n PASSWORD .env.example"
         - "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/env002_bootstrap_contract.py"
       evidence:
+        - "docs/reviews/env_business_acceptance_evidence_20261017.json"
+        - "docs/reviews/env_independent_review_evidence_20261017.json"
         - "docs/reviews/env002_bootstrap_evidence_20261014.json"
         - "docs/reviews/env002_delivery_evidence_20261014.json"
     progress: "2026-10-14起实施：示例管理员密码留空，README删除可执行固定密码并说明任一输入为空跳过。实际Settings红例exit1后最终10项SQLite/bcrypt隔离入口验收exit0，181字段14项回归exit0，ruff/mypy exit0；源码默认与引导逻辑未改。计划、实现说明与关闭对账分别见docs/plans/plan_env_002_20261014.md、implementation_env_002_20261014.md、closure_env_002_20261014.md。COV-001/ENV-001既有改动保留，未Git提交或推送。"
-    pending: "2026-10-15最终/root/env002_final独立技术审核通过（docs/reviews/2026-10-15-ENV-002-最终人工审核第1轮.md），实跑10/6/14项exit0、12输入指纹匹配，无剩余P1/P2；候选清单docs/reviews/env002_candidate_manifest_20261015.json。前置ENV-001及本卡用户业务验收未委托，保持in_review。真实生产启动、已部署账号改密和Git历史清理不在本卡范围，未验证。"
+    pending: "无本卡待验收项；前置ENV-001已按当前189字段契约关闭，本卡独立审核及受委托业务验收通过。真实生产启动、已部署账号改密、Git历史清理和整项目发布不在本卡范围，不提交、不推送、不部署。"
     execution:
+      acceptance_20261017: "用户明确授权代验；三个原CLI 15/12/6项及16种配置组合通过，三账号缺项/短口令拒绝无写入、角色与标记、真实bcrypt、幂等和日志保密通过；独立主审及反向复核无P1/P2，Ruff/mypy及最终指纹核对通过，按契约关闭。以下旧记录仅为原时点历史状态。"
+      plan: "docs/plans/plan_env_drift_fix_20261017.md"
+      implementation: "docs/plans/implementation_env_drift_fix_20261017.md"
+      closure: "docs/plans/closure_env_001_002_20261017.md"
+      evidence: "docs/reviews/env_business_acceptance_evidence_20261017.json"
+      final_review: "docs/reviews/2026-10-17-ENV独立审核.md"
+      business_acceptance: "docs/reviews/2026-10-17-ENV业务验收.md"
+      final_manifest: "docs/reviews/env_acceptance_final_manifest_20261017.json"
+      drift_fix_20261017: "本轮修复计划docs/plans/plan_env_drift_fix_20261017.md；实现及当前验证见docs/plans/implementation_env_drift_fix_20261017.md、docs/reviews/env_drift_evidence_20261017.json。历史181及旧失败记录仅代表原时点，保持in_review，未提交或发布。"
       closure_review_20261016: "用户本轮已委托Agent代行验收；bootstrap核对因ENV-001失败；独立probe缺INITIAL_SYSTEM_PASSWORD，不能沿用历史10/6/14通过。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       owner: "个人开发者"
       nightly:

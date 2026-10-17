@@ -28,7 +28,8 @@ def run():
         SQLModel.metadata.create_all(engine)
         ns["settings"] = types.SimpleNamespace(INITIAL_ADMIN_USERNAME=username,
                                                INITIAL_ADMIN_PASSWORD=password,
-                                               INITIAL_ADMIN_EMAIL="")
+                                               INITIAL_ADMIN_EMAIL="",
+                                               INITIAL_SYSTEM_PASSWORD="", INITIAL_CULTURE_PASSWORD="")
         with Session(engine) as session:
             ns["ensure_initial_admin"](session)
         with Session(engine) as session:
@@ -45,7 +46,8 @@ def run():
         initial_tenant_id = row.id
     ns["settings"] = types.SimpleNamespace(INITIAL_ADMIN_USERNAME="independent-entry",
                                            INITIAL_ADMIN_PASSWORD=secret,
-                                           INITIAL_ADMIN_EMAIL="probe@example.invalid")
+                                           INITIAL_ADMIN_EMAIL="probe@example.invalid",
+                                           INITIAL_SYSTEM_PASSWORD="", INITIAL_CULTURE_PASSWORD="")
     with Session(engine) as session:
         ns["ensure_initial_admin"](session)
     with Session(engine) as session:

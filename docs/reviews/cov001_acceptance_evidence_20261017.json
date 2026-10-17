@@ -1,0 +1,61 @@
+{
+  "measurement_sha": "d5311557c07273137104105f961cc20fe0e281b1",
+  "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest --cov=app --cov-report=term-missing --cov-report=json:docs/reviews/cov001_coverage_20261017.json --cov-report=xml:docs/reviews/cov001_coverage_20261017.xml --cov-fail-under=0 --junitxml=docs/reviews/cov001_pytest_20261017.xml --basetemp=data/cov001-acceptance-20261017/tmp -o cache_dir=data/cov001-acceptance-20261017/cache",
+  "env": {
+    "DATABASE_URL": "sqlite:///./data/cov001-acceptance-20261017/test_ai_assistant.db",
+    "COVERAGE_FILE": "data/cov001-acceptance-20261017/.coverage",
+    "PYTHONUTF8": "1",
+    "PYTHONIOENCODING": "utf-8"
+  },
+  "exit_code": 0,
+  "pytest": {
+    "passed": 2530,
+    "skipped": 3,
+    "failed": 0,
+    "warnings": 3,
+    "seconds": 637.27
+  },
+  "totals": {
+    "covered_lines": 14951,
+    "num_statements": 17075,
+    "percent_covered": 87.56076134699853,
+    "percent_covered_display": "88",
+    "missing_lines": 2124,
+    "excluded_lines": 52
+  },
+  "exact_percent": 87.56076134699853,
+  "at_least_70_percent": true,
+  "files": 211,
+  "all_app_files_present": true,
+  "input_manifest": "docs/reviews/cov001_acceptance_inputs_20261017.json",
+  "inputs_unchanged": true,
+  "reports": {
+    "docs/reviews/cov001_coverage_20261017.json": "841f45b321bf09d07409e267ea53e78c0c4e18838e8575103099a7770767a222",
+    "docs/reviews/cov001_coverage_20261017.xml": "427161471f340b2ffa83d9c8e0df5578e9feabbde22c5cae60731bc86db76535",
+    "docs/reviews/cov001_pytest_20261017.xml": "b0903fe6bce66cf7253a1f776034a2be333ec6cd0ab9be124d699ac5d23327ea",
+    "docs/reviews/cov001_terminal_20261017.txt": "32a933194312122df3393305e039a9ad75cec4064278d5dec30986595050fcf9"
+  },
+  "ci": {
+    "sha": "d5311557c07273137104105f961cc20fe0e281b1",
+    "run_id": 38996604616,
+    "url": "https://github.com/lwmjava/ai-assistant/actions/runs/38996604616",
+    "backend": "success",
+    "frontend": "success",
+    "agent_official": "success"
+  },
+  "other_checks": {
+    "ruff": 0,
+    "mypy": 0,
+    "pip_check": 0,
+    "cli_boundaries": 0
+  },
+  "limits": [
+    "Windows statement coverage only",
+    "no added subprocess collection",
+    "not branch/frontend coverage",
+    "no production model quality claim"
+  ],
+  "independent_review": "docs/reviews/cov001_independent_acceptance_20261017.md",
+  "closing_record": "docs/plans/closure_cov001_20261017.md",
+  "final_verification": "input/report hashes, JUnit, YAML IDs/status/dependencies/links checked; no implementation inputs changed"
+}

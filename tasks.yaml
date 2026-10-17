@@ -6653,7 +6653,8 @@ tasks:
 
   - id: "COV-001"
     title: "覆盖率数字：可复现报告"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-17"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -6698,6 +6699,7 @@ tasks:
         - "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/cov001-cli-boundary-cases-v1.py"
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；前置QA-005未关闭；87.20%为旧候选测量，当前输入变化后需重新绑定覆盖率证据。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      final_acceptance_20261017: "用户要求当前版本验收：d531155技术版本全量覆盖率命令exit0，2530通过/3跳过/零失败，211/211 app文件，14951/17075=87.56076134699853%（87.56%）达到70%。607输入无漂移，原coverage API/JSON/XML/JUnit/终端独立复算一致，12CLI边界及Ruff/mypy/pipcheck通过；同SHA Ubuntu三类CI全通过，QA/NFR前置done，独立代验支持done。仅Windows后端语句口径，非分支/前端/Linux覆盖率；旧Linux未测项不构成无平台代码变化的新增门禁。详见docs/plans/closure_cov001_20261017.md。"
       owner: "个人开发者"
       plan: "docs/plans/plan_cov_001_20261014.md"
       implementation: "docs/plans/implementation_cov_001_20261014.md"
@@ -6705,7 +6707,7 @@ tasks:
       progress: "2026-10-14用户明确实施并批准pytest-cov7.1.0/coverage7.10.6开发依赖，仅新增这两包，原包版本不变；开工423项旧验证输入匹配，明确为历史证据。真实完整--cov=app测量2329passed/0failed/error/skipped/exit0，716.04秒；全部205 app文件进入语句覆盖，13859/15894=87.19642632439914%（87.20%），2035缺失/52默认排除行，本卡后端语句口径达到70%，不代表前端/分支/CI整项达标。无新增omit/exclude/70%门禁，不改业务测试。独立Coverage API逐文件与JSON/XML/JUnit/423输入/当前依赖复算一致，12边界/7CLI机制反例通过，无P1/P2；Ruff/mypy205源/pipcheck/登记v7通过。报告与完整命令/环境/输入指纹docs/reviews/cov001_delivery_evidence_20261014.json，关闭对账docs/plans/closure_cov_001_20261014.md；不以合成数字验收。"
       evidence: "docs/reviews/cov001_delivery_evidence_20261014.json"
       closure: "docs/plans/closure_cov_001_20261014.md"
-      pending: "QA-005前置仍in_review，当前最终提交CI/人工验收未完成；本卡Linux完整命令及最终提交CI未执行，用户仅调用技能未委托人工业务验收；整卡最终人工审核前置未满足，不done。"
+      pending: "无本卡未完成验收项；2026-10-17用户委托当前版本验收、QA-005前置和同技术SHA CI及独立复算已完成，见final_acceptance_20261017。旧closure记录为历史；未测Linux/分支/前端覆盖率，不宣称项目可发布。"
       nightly:
         eligible: false
         production_access: false

@@ -6921,7 +6921,8 @@ tasks:
 
   - id: "CLI-002"
     title: "init 写入 JWT，跳过 init 时拒绝默认密钥"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-17"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -6962,6 +6963,7 @@ tasks:
         - "pytest -k \"init or jwt\""
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮专项通过但Windows文件权限/链接/竞争相关3跳过；Linux和最终Ubuntu CI未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      linux_platform_20261017: "同一实现在 Linux 容器实跑三项均通过：符号链接拒绝且不改原文件、新建文件 0600、同步失败前被替换的文件保留。三个文件 blob 与 ea7b288 相同，该提交 Ubuntu Backend 已记录对应测试文件全部通过。证据：docs/reviews/2026-10-17-cli-002-linux-platform.md。"
       plan: "docs/plans/plan_cli_002_20261015.md"
       owner: "个人开发者"
       nightly:

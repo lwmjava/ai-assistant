@@ -7065,6 +7065,7 @@ tasks:
         - "pytest -k \"openapi or api\""
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮版本/OpenAPI专项通过；最终全量仍失败，当前候选前端/页面/CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      acceptance_20261017: "页面登录、刷新、会话和授权导出均走 /api/v1；前端四门退出 0；全量 2530 passed / 3 skipped。移除一次性实机脚本后 ruff check . 退出 0。该提交没有 Backend/Frontend/Agent CI。状态保留 in_review。证据：docs/reviews/2026-10-17-api-001-acceptance.md。"
       plan: "docs/plans/plan_api_001_20261015.md"
       owner: "个人开发者"
       nightly:

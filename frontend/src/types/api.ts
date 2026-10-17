@@ -29,6 +29,13 @@ export interface UserInfo {
   email: string | null
   role: Role
   is_active: boolean
+  must_change_password: boolean
+  is_test_user: boolean
+}
+
+export interface ChangePasswordRequest {
+  current_password: string
+  new_password: string
 }
 
 export interface UserAdminOut extends UserInfo {
@@ -93,12 +100,29 @@ export interface SourceRef {
   filename: string
   page: number | null
   section: string | null
+  /** 摘录原文片段，用于展示引用内容。 */
+  excerpt?: string | null
+  /** 分块 id，可定位到具体分块。 */
+  chunk_id?: string | null
+  /** 所属文档 id，可跳转知识库定位。 */
+  document_id?: string | null
 }
 
 export interface CodeResult {
   status: 'ok' | 'error' | 'timeout' | string
   stdout: string
   reason: string
+}
+
+export interface ChatAttachmentInput {
+  name: string
+  content_base64: string
+}
+
+export interface ChatAttachmentSummary {
+  name: string
+  size: number
+  mime_type: string
 }
 
 export interface MessageOut {
@@ -109,6 +133,8 @@ export interface MessageOut {
   created_at: string
   sources?: SourceRef[]
   code_results?: CodeResult[]
+  skill_names?: string[]
+  attachments?: ChatAttachmentSummary[]
   /** complete：正常写完。stopped：生成已停下，不是完整回复。 */
   status?: 'complete' | 'stopped' | string
 }
@@ -120,6 +146,7 @@ export interface ConversationDetail extends ConversationOut {
 export interface ChatRequest {
   message: string
   conversation_id: string | null
+  attachments?: ChatAttachmentInput[]
 }
 
 export interface ChatResponse {
@@ -128,6 +155,7 @@ export interface ChatResponse {
   model: string | null
   sources?: SourceRef[]
   code_results?: CodeResult[]
+  skill_names?: string[]
 }
 
 /**
@@ -137,16 +165,32 @@ export interface ChatResponse {
  */
 export type SendMode = 'stream' | 'once'
 
-/** 流式事件类型：stage=管线阶段、token=增量文本、tool=工具调用、sources=检索来源、done=完成、error=失败。 */
+/** 运行事件类型；所有 data 携带 run_id，传输帧有递增 id。 */
 export type StreamEventType =
-  | 'stage'
+  | 'run.started'
+  | 'node.started'
+  | 'node.finished'
+  | 'intent.classified'
+  | 'plan.generated'
   | 'token'
-  | 'tool'
-  | 'sources'
+  | 'tool.call'
+  | 'tool.result'
+  | 'citations'
   | 'code_result'
-  | 'done'
+  | 'subtask'
+  | 'run.finished'
+  | 'heartbeat'
   | 'error'
+  | 'rate_limit'
   | 'conversation'
+  | 'message'
+
+/** 图执行完成后的子任务摘要。只接受版本 1、名称为 research 或 draft、状态为 done。 */
+export interface SubtaskSummary {
+  name: 'research' | 'draft'
+  status: 'done'
+  summary: string
+}
 
 export interface StreamEvent {
   type: StreamEventType
@@ -189,6 +233,50 @@ export interface DocumentOut {
   updated_at: string
 }
 
+export interface DocumentChunkOut {
+  id: string
+  chunk_index: number
+  content: string
+  source: string | null
+  strategy: string | null
+  page: number | null
+  section: string | null
+  created_at: string
+}
+
+
+/** 引用原文核验的定位信息（页码 / 段落 / 源范围；缺失为 null，不推断）。 */
+export interface ChunkLocatorOut {
+  chunk_id: string
+  chunk_index: number
+  page: number | null
+  section: string | null
+  source_start: number | null
+  source_end: number | null
+  /** 仅父块在显式请求且通过独立鉴权后返回；默认为 null。 */
+  content: string | null
+}
+
+/**
+ * 引用原文核验结果（ADR-0007 只读核验）。
+ *
+ * 只有命中块本身的正文与定位信息，没有整章 / 整文档正文、源文件与控制面字段。
+ */
+export interface ChunkEvidenceOut {
+  chunk_id: string
+  document_id: string
+  document_title: string
+  version_state: string
+  chunk_index: number
+  content: string
+  source: string | null
+  page: number | null
+  section: string | null
+  source_start: number | null
+  source_end: number | null
+  parent: ChunkLocatorOut | null
+}
+
 export interface ImportJobOut {
   id: string
   status: string
@@ -201,6 +289,13 @@ export interface SearchResultOut {
   content: string
   source: string | null
   score: number
+  /** 可选以兼容旧版检索响应；缺失时页面标为未知，不推断父子关系。 */
+  chunk_id?: string
+  parent_id?: string | null
+  chunk_kind?: 'parent' | 'child' | 'unknown'
+  retrieval_origin?: 'hit' | 'parent_expansion'
+  expanded_from_chunk_id?: string | null
+  score_inherited_from_chunk_id?: string | null
 }
 
 // ── 工具与 MCP ───────────────────────────────────────
@@ -281,6 +376,37 @@ export interface AuditLogPage {
   total: number
   page: number
   page_size: number
+}
+
+export interface SkillListOut {
+  id: string
+  tenant_id: string
+  owner_id: string
+  owner_username: string | null
+  tenant_name: string | null
+  name: string
+  description: string
+  keywords: string[]
+  source: 'builtin' | 'private' | 'global' | string
+  scope: 'builtin' | 'private' | 'global' | string
+  enabled: boolean
+}
+
+export interface SkillDetailOut extends SkillListOut {
+  constraints: string
+  system_prompt: string
+  example: string
+  version: string
+}
+
+export interface SkillWrite {
+  name: string
+  description: string
+  keywords: string[]
+  constraints: string
+  system_prompt: string
+  example: string
+  scope?: 'private' | 'global'
 }
 
 export interface HealthInfo {

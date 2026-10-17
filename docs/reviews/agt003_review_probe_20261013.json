@@ -1,0 +1,54 @@
+{
+  "empty_action_run": {
+    "draft_empty": true,
+    "error": null,
+    "tool_calls": 0,
+    "code_results": [],
+    "checkpoint_status": "done",
+    "events": []
+  },
+  "empty_action_stream": {
+    "draft_empty": true,
+    "error": null,
+    "tool_calls": 0,
+    "code_results": [],
+    "checkpoint_status": "done",
+    "events": [
+      "stage",
+      "stage",
+      "stage",
+      "stage",
+      "token",
+      "done"
+    ]
+  },
+  "missing_args_counts_as_selection_hit": {
+    "tool_selection_recall": 1.0,
+    "actual_builtin_validation_error": "missing_code",
+    "recording_tool_calls_by_evaluator": 0
+  },
+  "agent004_input": {
+    "history": [
+      {
+        "role": "user",
+        "content": "请调用 code_sandbox 运行刚才那段冒泡排序。"
+      },
+      {
+        "role": "assistant",
+        "content": "确认后我就执行。回复好的即可继续。"
+      }
+    ],
+    "user_input": "好的",
+    "expected_tools": [
+      "code_sandbox"
+    ],
+    "sent_message_count": 2,
+    "omitted_code_in_dataset": true
+  },
+  "scope": "E2 controlled offline behavior; not new real-model quality evidence",
+  "source_hashes": {
+    "app/agents/pipeline.py": "b0fc989e742526d23f5089192581d45d1dd8116f50d5f8a230cefb8d84626e95",
+    "scripts/run_agent_chain_eval.py": "0cce4c41abef7887067d4f30d9d2ac02ef95fbf9674c5c92b677c4196dab319d",
+    "evals/datasets/agent-chain-v0.1/cases.json": "69899cc091e4ee28cbc1972cce3d210c61510f594aa11547f3e23ac608dfb1d6"
+  }
+}

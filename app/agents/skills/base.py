@@ -106,6 +106,22 @@ class SkillManifest:
     enabled: bool = True
     # 来源文件路径（由 SkillManager 加载时自动填充）
     source_path: str = ""
+    # builtin：内置 YAML。private：创建者私有。global：系统全局。
+    origin: str = "builtin"
+
+    @property
+    def content_revision(self) -> str:
+        """Canonical content identity; never accepts a caller-supplied digest."""
+        from app.agents.skills.versioning import content_revision
+
+        return content_revision(self)
+
+    @property
+    def effective_version(self) -> str:
+        """Publishing version bound to the content that will actually execute."""
+        from app.agents.skills.versioning import effective_version
+
+        return effective_version(self)
 
 
 @dataclass
@@ -139,3 +155,7 @@ class SkillContext:
     skill_name: str = ""
     # 匹配置信度
     confidence: float = 0.0
+    # 选中技能的来源：builtin、private 或 global。围栏只套后两种。
+    origin: str = "builtin"
+    # Exact activated snapshots, not all matching candidates or an authority grant.
+    versions: list[dict[str, str]] = field(default_factory=list)

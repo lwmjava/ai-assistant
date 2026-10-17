@@ -6,9 +6,11 @@ import remarkGfm from 'remark-gfm'
 import { Bot, UserRound } from 'lucide-react'
 
 import { StageTracker } from './StageTracker'
+import { SubtaskSummary } from './SubtaskSummary'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/cn'
-import type { CodeResult, MessageOut, SourceRef } from '@/types/api'
+import { attachmentSize } from '@/lib/chat-attachments'
+import type { CodeResult, MessageOut, SourceRef, SubtaskSummary as SubtaskItem } from '@/types/api'
 
 export interface MessageListProps {
   messages: MessageOut[]
@@ -19,6 +21,14 @@ export interface MessageListProps {
   stageStages: string[]
   currentStage: string | null
   tools: string[]
+  intent?: string | null
+  planSteps?: string[]
+  reconnecting?: boolean
+  cancelling?: boolean
+  shortcut?: boolean
+  retryable?: boolean
+  onRetry?: () => void
+  subtasks?: SubtaskItem[]
   streaming: boolean
   streamError: string | null
   /** 用户主动停止。气泡上标已停止，不显示断线按钮。 */
@@ -109,12 +119,6 @@ function Bubble({
   )
 }
 
-function sourceLabel(source: SourceRef): string {
-  const parts = [source.filename]
-  if (source.page != null && source.page >= 1) parts.push(`第 ${source.page} 页`)
-  if (source.section) parts.push(source.section)
-  return parts.join(' · ')
-}
 
 function hideHostPaths(text: string): string {
   return text
@@ -155,12 +159,43 @@ function CodeResults({ results }: { results?: CodeResult[] }) {
 function SourceNotes({ sources }: { sources?: SourceRef[] }) {
   if (!sources?.length) return null
   return (
-    <ul className="mt-2 space-y-1 text-xs text-text-faint">
-      {sources.map((source, index) => (
-        <li key={`${source.filename}-${source.page ?? ''}-${source.section ?? ''}-${index}`}>
-          {sourceLabel(source)}
-        </li>
-      ))}
+    <ul className="mt-2 space-y-1.5 text-xs">
+      {sources.map((source, index) => {
+        const num = index + 1
+        const page = source.page != null && source.page >= 1 ? `第 ${source.page} 页` : ''
+        const seg = source.section ? source.section : ''
+        const meta = [page, seg].filter(Boolean).join(' · ')
+        const excerpt = source.excerpt && source.excerpt.length > 120
+          ? `${source.excerpt.slice(0, 120)}…`
+          : source.excerpt
+        return (
+          <li
+            key={`${source.filename}-${source.chunk_id ?? ''}-${index}`}
+            className="rounded border border-border/60 bg-surface-2/30 px-2.5 py-2"
+          >
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0 rounded bg-surface-2/60 px-1.5 text-[10px] font-semibold text-text-muted">{num}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="truncate font-medium text-text">{source.filename}</span>
+                  {meta && <span className="text-text-faint">· {meta}</span>}
+                  {source.document_id && (
+                    <a
+                      href={`/knowledge?doc=${encodeURIComponent(source.document_id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 font-medium text-text-muted hover:bg-surface-2/50 hover:text-text"
+                    >
+                      查看来源 ↗
+                    </a>
+                  )}
+                </div>
+                {excerpt && <p className="mt-1 leading-relaxed text-text-muted">{excerpt}</p>}
+              </div>
+            </div>
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -173,6 +208,14 @@ export function MessageList({
   stageStages,
   currentStage,
   tools,
+  intent,
+  planSteps,
+  reconnecting,
+  cancelling,
+  shortcut,
+  retryable,
+  onRetry,
+  subtasks = [],
   streaming,
   streamError,
   awaiting = false,
@@ -210,23 +253,37 @@ export function MessageList({
               <CodeResults results={m.code_results} />
             </>
           ) : (
-            <div className="markdown">{m.content}</div>
+            <div>
+              {m.content && <div className="markdown">{m.content}</div>}
+              {Boolean(m.attachments?.length) && <ul aria-label="消息附件" className="mt-2 space-y-1 text-xs">
+                {m.attachments?.map((attachment, index) => <li key={`${attachment.name}-${index}`} className="break-all rounded border border-border px-2 py-1">
+                  {attachment.name} · {attachmentSize(attachment.size)}
+                  {attachment.mime_type && <span className="ml-1 text-text-muted">{attachment.mime_type}</span>}
+                </li>)}
+              </ul>}
+            </div>
           )}
         </Bubble>
       ))}
 
-      {(awaiting || streaming || streamingText || streamError || stopped || interrupted) && (
+      {(awaiting || streaming || cancelling || streamingText || streamError || stopped || interrupted) && (
         <Bubble role="assistant">
           {awaiting ? (
             <TypingDots />
           ) : (
             <div className="space-y-3">
+              {cancelling && <p role="status" className="text-sm text-text-muted">正在停止…</p>}
               <StageTracker
                 stages={stageStages}
                 currentStage={currentStage}
                 tools={tools}
                 streaming={streaming}
+                intent={intent}
+                planSteps={planSteps}
+                reconnecting={reconnecting}
+                shortcut={shortcut}
               />
+              <SubtaskSummary items={subtasks} />
               {streamingText ? (
                 <>
                   <div className="markdown">
@@ -263,7 +320,11 @@ export function MessageList({
                 </div>
               )}
               {streamError && !interrupted && (
-                <p className="text-sm text-danger">{streamError}</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-danger">{streamError}</p>
+                  {retryable && onRetry && <button type="button" onClick={onRetry}
+                    className="min-h-touch rounded-lg border border-border px-3 py-1.5 text-sm text-text hover:bg-surface-2">重试</button>}
+                </div>
               )}
             </div>
           )}

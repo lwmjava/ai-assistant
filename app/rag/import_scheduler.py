@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from app.core.config import settings
-from app.rag.import_jobs import run_import_jobs_once
+from app.rag.import_jobs import recover_interrupted_import_jobs, run_import_jobs_once
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ async def _loop() -> None:
 
             with Session(engine) as session:
                 await purge_expired_documents(session, now=datetime.now(UTC))
-        except Exception:  # noqa: BLE001
-            logger.exception("RAG 导入调度器 tick 异常")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("rag_import_scheduler_failed exception_type=%s", type(exc).__name__)
         try:
             await asyncio.sleep(settings.RAG_IMPORT_INTERVAL_SECONDS)
         except asyncio.CancelledError:
@@ -47,6 +47,7 @@ async def start_scheduler() -> None:
         return
     if not _is_scheduler_runnable():
         return
+    recover_interrupted_import_jobs()
     _task = asyncio.create_task(_loop())
     logger.info("RAG 导入调度器任务已创建")
 

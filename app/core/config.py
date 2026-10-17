@@ -8,13 +8,53 @@
 """
 
 import functools
+import logging
 from pathlib import Path
 
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 项目根目录下的 .env（相对路径会随进程工作目录变化，这里固定为绝对路径）
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _ENV_FILE = _PROJECT_ROOT / ".env"
+
+logger = logging.getLogger(__name__)
+
+#: 退避抖动的默认比例（±）。``RetryPolicy.jitter`` 的默认值与「总时限能否放下一次
+#: 退避」的启动校验都取自这里，避免两处常量漂移。
+RETRY_BACKOFF_JITTER_RATIO = 0.2
+
+
+def retrieval_retry_effectively_disabled(
+    *,
+    deadline_seconds: float,
+    max_attempts: int,
+    backoff_base: float,
+    backoff_max: float,
+    enabled: bool = True,
+    jitter: float = RETRY_BACKOFF_JITTER_RATIO,
+) -> bool:
+    """判断在当前配置下「有限退避重试」是否**实际不会发生**。
+
+    判据（写死在这里，别处不得另算）：第一次退避等待的上界
+    ``min(base, max) * (1 + jitter)`` 必须**严格小于**总时限，否则第一次失败后
+    必然走进「预算不够等 → 放弃」分支，一次重试都不会发生。
+
+    这是配置层的静态判据，与运行期 ``retry_async`` 的 ``give_up_budget`` 分支
+    同源：后者比较的是「实际剩余预算」，这里比较的是「最坏情况下的初始预算」。
+    二者由 ``test_deadline_backoff_constraint_*`` 一致性用例守护。
+
+    注：``backoff_base<=0`` 表示**零退避**——``first_wait_upper=0 < deadline`` 本就
+    返回 False（重试有效），运行期 ``wait=0`` 也视为「立即重试」而非「放弃」。
+    这不是「重试被禁用」，不要把它写进告警口径。
+    """
+    if not enabled or max(1, int(max_attempts)) <= 1:
+        return True
+    if deadline_seconds <= 0:
+        # 关闭时限时每次 attempt 都能打出去，重试本身有效（只是不再限时）。
+        return False
+    first_wait_upper = min(backoff_base, backoff_max) * (1.0 + jitter)
+    return first_wait_upper >= deadline_seconds
 
 
 class Settings(BaseSettings):
@@ -57,6 +97,8 @@ class Settings(BaseSettings):
     INITIAL_ADMIN_USERNAME: str = ""
     INITIAL_ADMIN_PASSWORD: str = ""
     INITIAL_ADMIN_EMAIL: str = ""
+    INITIAL_SYSTEM_PASSWORD: str = ""
+    INITIAL_CULTURE_PASSWORD: str = ""
 
     # ── CORS ──
     CORS_ORIGINS: str = "*"  # 逗号分隔；生产环境应显式指定，禁止 *
@@ -73,6 +115,28 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
     LLM_DEFAULT_MODEL: str = "deepseek-chat"
     LLM_TEMPERATURE: float = 0.7
+    # Process caches are opt-in, bounded, and restricted to authenticated requests.
+    LLM_RESPONSE_CACHE_ENABLED: bool = False
+    RETRIEVAL_CACHE_ENABLED: bool = False
+    CACHE_TTL_SECONDS: float = Field(default=60.0, gt=0, le=3600, allow_inf_nan=False)
+    CACHE_MAX_ENTRIES: int = Field(default=256, ge=1, le=10000)
+    CACHE_MAX_BYTES: int = Field(default=8 * 1024 * 1024, ge=1, le=64 * 1024 * 1024)
+    CACHE_MAX_ENTRY_BYTES: int = Field(default=256 * 1024, ge=1, le=64 * 1024 * 1024)
+
+    @field_validator(
+        "CACHE_TTL_SECONDS", "CACHE_MAX_ENTRIES", "CACHE_MAX_BYTES", "CACHE_MAX_ENTRY_BYTES", mode="before"
+    )
+    @classmethod
+    def _cache_numeric_types(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("cache budgets must be numeric, not boolean")
+        return value
+
+    @model_validator(mode="after")
+    def _cache_size_budget(self) -> "Settings":
+        if self.CACHE_MAX_ENTRY_BYTES > self.CACHE_MAX_BYTES:
+            raise ValueError("CACHE_MAX_ENTRY_BYTES must not exceed CACHE_MAX_BYTES")
+        return self
     LLM_MAX_TOKENS: int = 2048
     LLM_TIMEOUT: float = 60.0
     # 第二家。密钥为空表示没有兜底。
@@ -88,6 +152,34 @@ class Settings(BaseSettings):
     # 失败后的尝试顺序。只认 chat、intent、fallback。
     LLM_CHAT_FALLBACK_CHAIN: str = "chat,fallback"
     LLM_INTENT_FALLBACK_CHAIN: str = "intent,chat,fallback"
+    # 重排仅登记独立配置，不自动启用检索路径或套用 chat 协议。
+    LLM_RERANK_PROVIDER: str = ""
+    LLM_RERANK_BASE_URL: str = ""
+    LLM_RERANK_API_KEY: str = ""
+    LLM_RERANK_MODEL: str = ""
+    LLM_CIRCUIT_FAILURE_THRESHOLD: int = Field(default=3, ge=1, le=100)
+    LLM_CIRCUIT_COOLDOWN_SECONDS: float = Field(default=30.0, gt=0, le=3600, allow_inf_nan=False)
+
+    @field_validator("LLM_CIRCUIT_FAILURE_THRESHOLD", "LLM_CIRCUIT_COOLDOWN_SECONDS", mode="before")
+    @classmethod
+    def _circuit_numeric_types(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("circuit budgets must be numeric, not boolean")
+        return value
+
+    # ── 模型能力契约与调用预算（RAG-028）──
+    # 护栏在**每次真实请求发出前**核对：实际 payload + 输出预留 + 余量 ≤ 已验证上下文窗口。
+    # 计数优先用官方计数器，没有官方计数器时用经校准的保守估算，并把方法名写进结果。
+    LLM_CAPABILITY_GUARD_ENABLED: bool = True
+    # 运营者声明：模型不在已核对能力表内时，必须显式登记窗口与最大输出才放行。
+    # 格式：model=窗口:最大输出，多项用逗号分隔，例：my-model=32768:4096
+    LLM_CAPABILITY_DECLARED: str = ""
+    # 声明的依据来源（与声明同时填写，用于追溯依据，不填则声明不生效）
+    LLM_CAPABILITY_DECLARED_SOURCE: str = ""
+    # 预算余量：覆盖消息框架、工具描述等计数误差
+    LLM_BUDGET_SAFETY_MARGIN: int = 512
+    # max_tokens 未显式给出时，按此值预留输出（与 LLM_MAX_TOKENS 同量级）
+    LLM_OUTPUT_RESERVE_TOKENS: int = 2048
 
     # ── 嵌入模型（RAG 检索）──
     # 默认使用阿里通义千问（DashScope 兼容模式）：与 OpenAI 的 /embeddings 协议一致。
@@ -101,6 +193,38 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
     # 单次 /embeddings 请求的文本条数。DashScope text-embedding-v3/v4 上限为 10。
     EMBEDDING_BATCH_SIZE: int = 10
+    # 单次嵌入 HTTP 超时（秒）。嵌入是短请求，不该复用 LLM_TIMEOUT（对话生成
+    # 需要长输出，60s 合理）；且它必须能被下面的检索总时限夹住。
+    # 注意：写入 / 导入 / 重建索引路径同样使用这个超时（它们是同一个 provider）。
+    EMBEDDING_TIMEOUT_SECONDS: float = 15.0
+    # 索引身份（ADR-0008）：换模型或改归一化/度量都要换索引，不能原地混写。
+    EMBEDDING_INDEX_VERSION: str = "1"  # 显式索引版本，重建新索引时递增
+    # 下面两项**只接受当前真实生效的那一组**（l2 / cosine）：实现固定按它们执行，
+    # 其它取值会在索引身份构造时直接报 IndexIdentityError（摄取与检索一起失败），
+    # 不存在「登记了一套、实际按另一套算」的中间态。要支持别的值，先实现对应行为。
+    EMBEDDING_NORMALIZATION: str = "l2"
+    EMBEDDING_METRIC: str = "cosine"
+
+    # ── 检索调用韧性（RAG-038）：总时限 + 有限退避 + 取消传播 ──
+    # 一次检索 = 嵌入 + 向量检索，**共用**这一个总预算，而不是每个子调用各一个。
+    # 依赖方抖动时宁可「体面失败 + 明确披露」，也不要把整个请求拖死。
+    RAG_RETRIEVAL_RESILIENCE_ENABLED: bool = True
+    # 总时限（秒）。0 或负数 = 关闭时限与重试（休眠/无网排障用）。
+    RAG_RETRIEVAL_DEADLINE_SECONDS: float = 8.0
+    # 单个子调用的最大尝试次数（**含首次**）。3 = 最多 2 次重试；
+    # 只对连接错误 / 读超时 / 429 / 5xx 重试，4xx 与业务错误一律只打一次。
+    RAG_RETRIEVAL_MAX_ATTEMPTS: int = 3
+    # 退避基数与上限（秒）：第 n 次失败等 base * 2**(n-1)，夹到 max，再叠抖动。
+    # ⚠️ 约束：总时限必须**严格大于**「第一次退避等待的上界」
+    # min(base, max) * (1 + RETRY_BACKOFF_JITTER_RATIO)，否则第一次失败后必然走
+    # 「预算不够等 → 放弃」，一次重试都不会发生（启动告警会明确指出）。
+    RAG_RETRIEVAL_BACKOFF_BASE_SECONDS: float = 0.2
+    RAG_RETRIEVAL_BACKOFF_MAX_SECONDS: float = 1.5
+    # 嵌入**单批**的写入侧预算（秒）。未绑定检索 deadline 时（导入 / 重建索引 /
+    # 语义切分等写入路径）每批各拿一个，不复用上面的检索总时限——写入一通调用
+    # 可能含几十批，用 8s 的检索预算覆盖整通会把正常导入打断（RAG-038 复审 High-01）。
+    # 0 或负数 = 写入侧不限时（只受 EMBEDDING_TIMEOUT_SECONDS 约束）。
+    RAG_EMBED_BATCH_DEADLINE_SECONDS: float = 20.0
 
     # ── 向量库与检索 ──
     RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus
@@ -109,7 +233,54 @@ class Settings(BaseSettings):
     # 默认切分策略：structured | paragraph | sliding_window | token_aware |
     # semantic | parent_child | auto（按文档特征路由）
     RAG_CHUNK_STRATEGY: str = "structured"
+    # ── RAG-031 LLM 辅助切分边界（默认关闭）──
+    # 结构保护之后，对正文间隙的主题边界让 LLM 只建议「句子序号」，代码按序号切取原文；
+    # 坏 JSON / 注入 / 超时 / 预算耗尽一律规则降级，不改写原文、不阻塞摄取。
+    RAG_LLM_BOUNDARY_ENABLED: bool = False
+    # 单次发给模型的正文片段上限（字符）。超过则该间隙不调用模型，规则切分。
+    RAG_LLM_BOUNDARY_MAX_CHARS: int = 1500
+    # 单篇文档最多发起几次边界建议调用（费用护栏）。
+    RAG_LLM_BOUNDARY_MAX_CALLS: int = 3
+    # 模型输出预留 token（边界序号数组很短）。
+    RAG_LLM_BOUNDARY_MAX_OUTPUT_TOKENS: int = 256
+    # 单次边界建议调用超时（秒）。
+    RAG_LLM_BOUNDARY_TIMEOUT_SECONDS: float = 15.0
+    # ── RAG-040 章节摘要（默认关闭；派生数据，不进检索向量，不替代原文块）──
+    # 章节摘要是可选、版本绑定的派生数据；原文仍是事实与引用依据（ADR-0005 §3/§9）。
+    RAG_SECTION_SUMMARY_ENABLED: bool = False
+    # 单任务最多发起几次摘要调用（费用护栏）。
+    RAG_SECTION_SUMMARY_MAX_CALLS: int = 8
+    # 单批正文字符上限：大章节超此值切批逐批摘要后合并。
+    RAG_SECTION_SUMMARY_MAX_CHARS_PER_BATCH: int = 4000
+    # 单条摘要输出预留 token。
+    RAG_SECTION_SUMMARY_MAX_OUTPUT_TOKENS: int = 256
+    # 单次摘要调用超时（秒）。
+    RAG_SECTION_SUMMARY_TIMEOUT_SECONDS: float = 20.0
     RAG_TOP_K: int = 5  # 每次检索返回的最大块数
+    RAG_MIN_SIMILARITY: float = 0.4  # 稠密相似度低于该值可少返回或全不返回（0.4 为 2026-10-02 拍板阈值）
+    # 全被低分过滤时的拒答提示
+    RAG_REFUSE_MESSAGE: str = (
+        "未检索到足够相关的知识库资料，未能给出可靠答案。"
+        "请补充关键词，或确认相关资料已上传至知识库。"
+    )
+    # 只控制「面向用户的提示层」：关闭后不再给模型注入披露指令，
+    # 也不再前置披露语、不再做全低分终态拒答（等同 RAG-037 之前的旧行为）。
+    # 检索状态本身（ok / no_hit / below_threshold / unavailable）仍照常记录与暴露。
+    RAG_STATUS_NOTICE_ENABLED: bool = True
+    # 零候选时的披露语：允许基于模型知识作答，但须声明未使用知识库内容。
+    RAG_NO_HIT_NOTICE: str = (
+        "知识库中没有检索到与问题相关的资料。"
+        "本次回答未使用知识库内容，属于模型自身知识，不能当作知识库结论引用。"
+    )
+    # 检索未完成（嵌入 / 向量库 / 后端异常）时给模型的指令：必须说明检索不可用。
+    RAG_UNAVAILABLE_NOTICE: str = (
+        "知识库检索服务当前不可用，本次没有取得任何知识库资料。"
+        "必须明确告知用户检索失败，不得把模型自身知识包装成知识库结论。"
+    )
+    # 上面两条是给模型的指令，下面是应用层确定性前置到最终回复的面向用户文案。
+    # 两者必须分开：指令用于约束生成，前置文案用于保证「不冒充」不依赖模型服从。
+    RAG_NO_HIT_REPLY: str = "【提示】知识库中没有检索到相关资料，以下回答基于模型自身知识，不是知识库结论。"
+    RAG_UNAVAILABLE_REPLY: str = "【提示】知识库检索服务当前不可用，以下回答不含知识库内容。"
     RAG_HYBRID_RRF_K: int = 60  # 倒数排名融合（RRF）的常数 k
     # 检索过取倍数：先取 top_k * N，再剔除注入块后截断到 top_k。
     RAG_RETRIEVAL_CANDIDATE_MULTIPLIER: int = 3
@@ -132,7 +303,9 @@ class Settings(BaseSettings):
     RAG_IMPORT_ENABLED: bool = True
     RAG_IMPORT_INTERVAL_SECONDS: float = 3.0
     RAG_IMPORT_FETCH_TIMEOUT: float = 30.0
-    RAG_IMPORT_MAX_CONCURRENCY: int = 2
+    # 单进程所有执行入口共用并发上限；每轮批次数与并发数分别控制。
+    RAG_IMPORT_MAX_CONCURRENCY: int = Field(default=2, ge=1, le=1000)
+    RAG_IMPORT_BATCH_SIZE: int = Field(default=2, ge=1, le=1000)
     # 单文件上传上限（字节）。默认 10 MiB。等于上限可以上传，超过则拒绝。
     RAG_UPLOAD_MAX_BYTES: int = 10 * 1024 * 1024
     # 允许的扩展名，逗号分隔，不带点。只看文件名的最后一个后缀。
@@ -148,7 +321,9 @@ class Settings(BaseSettings):
     RAG_OCR_MODEL: str = ""
 
     # ── Agent 工具调用（Function Calling）──
-    AGENT_MAX_TOOL_ROUNDS: int = 5  # 「行动」阶段单次对话最多执行的工具调用次数
+    # 「行动」阶段单次对话最多执行的工具调用次数（PRD §5.1.3 max_tool_calls=10）。
+    # 范围 1~100；达到上限后停止工具行动并在最终回复前说明（PAGT-003）。
+    AGENT_MAX_TOOL_ROUNDS: int = Field(default=10, ge=1, le=100)
 
     # ── 技能系统（Skill System）──
     # YAML 声明式技能注册，Agent 按条件匹配激活（Prompt 注入 / 工具模式）
@@ -210,6 +385,30 @@ class Settings(BaseSettings):
     AGENT_QUALITY_THRESHOLD: float = 0.6  # 质量门合格阈值
     AGENT_MAX_REVISIONS: int = 2  # 「行动」草稿不合格时的最大自纠错轮数
 
+    # ── Agent 运行时状态持久化（PAGT-006，ADR-0010 决定3）──
+    # 仅在工具轮/终态写 checkpoint，不逐 token、不逐 LLM 阶段写。
+    AGENT_STATE_PERSIST_ENABLED: bool = True  # 是否落 agent_run_states checkpoint
+    AGENT_STATE_TTL_SECONDS: int = 604800  # checkpoint 存活时长（秒），默认 7 天
+    AGENT_STATE_CHECKPOINT_TOOL_ROUND: bool = True  # 是否在每个工具轮结束时写 checkpoint
+
+    # ── 国内联网搜索与共享资料只读工具 ──
+    # 未配置密钥时搜索不注册，不影响服务启动。未知 provider 在可用性检查中拒绝。
+    SEARCH_PROVIDER: str = "dashscope"
+    SEARCH_DASHSCOPE_API_KEY: str = ""
+    SEARCH_ZHIPU_API_KEY: str = ""
+    SEARCH_BOCHA_API_KEY: str = ""
+    SEARCH_BAIDU_API_KEY: str = ""
+    SEARCH_DASHSCOPE_MODEL: str = "qwen-plus"
+    SEARCH_ZHIPU_MODEL: str = "web-search-pro"
+    SEARCH_BAIDU_MODEL: str = "ernie-4.5-turbo-32k"
+    SEARCH_TIMEOUT_SECONDS: float = 15.0
+    SEARCH_MAX_RESULTS: int = 5
+    SEARCH_MAX_RESPONSE_BYTES: int = 1048576
+    FILE_OPS_ENABLED: bool = False
+    # 仅限运维授权公开共享资料：JSON 对象 {别名: 绝对根路径}。
+    FILE_OPS_ALLOWED_ROOTS: str = "{}"
+    FILE_OPS_MAX_BYTES: int = 65536
+
     # ── MCP（Model Context Protocol）客户端 ──
     # 将企业系统的 MCP 服务器工具注入 Agent 工具箱，打通「AI ↔ 企业系统」。
     MCP_ENABLED: bool = False  # 是否启用 MCP 客户端（默认关闭，避免无配置时尝试连接）
@@ -253,6 +452,59 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         """解析 CORS_ORIGINS 为列表。"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @field_validator("RAG_IMPORT_BATCH_SIZE", "RAG_IMPORT_MAX_CONCURRENCY", mode="before")
+    @classmethod
+    def _validate_import_budget_type(cls, value: object) -> object:
+        """环境变量可用整数字符串；布尔值与浮点数不能冒充调度预算。"""
+        if isinstance(value, bool) or not isinstance(value, int | str):
+            raise ValueError("导入批次与并发上限必须是 1..1000 的整数")
+        return value
+
+    @field_validator("AGENT_MAX_TOOL_ROUNDS", mode="before")
+    @classmethod
+    def _validate_tool_budget_type(cls, value: object) -> object:
+        """环境变量可用整数字符串；布尔值与浮点数不能冒充工具调用预算（PAGT-003）。"""
+        if isinstance(value, bool) or not isinstance(value, int | str):
+            raise ValueError("单次对话工具调用上限必须是 1..100 的整数")
+        return value
+
+    @model_validator(mode="after")
+    def _warn_if_retry_effectively_disabled(self) -> "Settings":
+        """总时限小到放不下一次退避时，启动即告警。
+
+        「有限退避重试」是 RAG-038 的承诺之一，但它在总时限偏小时会被静默禁用：
+        第一次失败后剩余预算不够等退避，直接走 ``give_up_budget``，一次都不重试。
+        这时配置看起来启用着重试，实际等价于 ``MAX_ATTEMPTS=1``。与其让人从日志里
+        猜，不如在配置装载时就说清楚。
+        """
+        if not retrieval_retry_effectively_disabled(
+            deadline_seconds=self.RAG_RETRIEVAL_DEADLINE_SECONDS,
+            max_attempts=self.RAG_RETRIEVAL_MAX_ATTEMPTS,
+            backoff_base=self.RAG_RETRIEVAL_BACKOFF_BASE_SECONDS,
+            backoff_max=self.RAG_RETRIEVAL_BACKOFF_MAX_SECONDS,
+            enabled=self.RAG_RETRIEVAL_RESILIENCE_ENABLED,
+        ):
+            return self
+        reason = (
+            "总开关关闭"
+            if not self.RAG_RETRIEVAL_RESILIENCE_ENABLED
+            else f"MAX_ATTEMPTS={self.RAG_RETRIEVAL_MAX_ATTEMPTS}"
+            if self.RAG_RETRIEVAL_MAX_ATTEMPTS <= 1
+            else "总时限放不下第一次退避等待"
+        )
+        logger.warning(
+            "rag_retry_effectively_disabled deadline=%.3f backoff_base=%.3f "
+            "backoff_max=%.3f max_attempts=%s reason=%s hint=%s",
+            self.RAG_RETRIEVAL_DEADLINE_SECONDS,
+            self.RAG_RETRIEVAL_BACKOFF_BASE_SECONDS,
+            self.RAG_RETRIEVAL_BACKOFF_MAX_SECONDS,
+            self.RAG_RETRIEVAL_MAX_ATTEMPTS,
+            reason,
+            "重试实际已禁用：请调大 RAG_RETRIEVAL_DEADLINE_SECONDS，"
+            "或调小 RAG_RETRIEVAL_BACKOFF_BASE_SECONDS",
+        )
+        return self
 
 
 @functools.lru_cache(maxsize=1)

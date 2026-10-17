@@ -1,6 +1,6 @@
 """系统管理员的租户创建与列表。"""
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.security import Role
 from app.models.user import Tenant, User
@@ -27,11 +27,13 @@ class TenantInactiveError(Exception):
     """租户已停用。"""
 
 
+class TenantAlreadyActiveError(Exception):
+    """租户已启用。"""
+
+
 def create_tenant(session: Session, *, name: str) -> Tenant:
     """创建未停用租户。同名且仍启用的租户已存在时拒绝。"""
-    existing = session.exec(
-        select(Tenant).where(Tenant.name == name, Tenant.is_active.is_(True))
-    ).first()
+    existing = session.exec(select(Tenant).where(Tenant.name == name, col(Tenant.is_active).is_(True))).first()
     if existing is not None:
         raise TenantNameTakenError(name)
     tenant = Tenant(name=name, is_active=True)
@@ -81,7 +83,7 @@ def list_tenants(session: Session, *, include_inactive: bool) -> list[Tenant]:
     """按名称列出租户。默认不含已停用。"""
     stmt = select(Tenant)
     if not include_inactive:
-        stmt = stmt.where(Tenant.is_active.is_(True))
+        stmt = stmt.where(col(Tenant.is_active).is_(True))
     return list(session.exec(stmt.order_by(Tenant.name)).all())
 
 
@@ -95,7 +97,7 @@ def rename_tenant(session: Session, tenant_id: str, name: str) -> Tenant:
     taken = session.exec(
         select(Tenant).where(
             Tenant.name == name,
-            Tenant.is_active.is_(True),
+            col(Tenant.is_active).is_(True),
             Tenant.id != tenant.id,
         )
     ).first()
@@ -121,6 +123,29 @@ def deactivate_tenant(session: Session, tenant_id: str) -> Tenant:
     for user in users:
         user.token_version += 1
         session.add(user)
+    session.commit()
+    session.refresh(tenant)
+    return tenant
+
+
+def activate_tenant(session: Session, tenant_id: str) -> Tenant:
+    """重新启用已停用租户。与其他未停用租户重名时拒绝，不恢复已作废的令牌。"""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        raise TenantNotFoundError(tenant_id)
+    if tenant.is_active:
+        raise TenantAlreadyActiveError(tenant_id)
+    taken = session.exec(
+        select(Tenant).where(
+            Tenant.name == tenant.name,
+            col(Tenant.is_active).is_(True),
+            Tenant.id != tenant.id,
+        )
+    ).first()
+    if taken is not None:
+        raise TenantNameTakenError(tenant.name)
+    tenant.is_active = True
+    session.add(tenant)
     session.commit()
     session.refresh(tenant)
     return tenant

@@ -1,0 +1,261 @@
+{
+  "schema_version": "rag-015-switch-v1",
+  "run_at": "2026-10-07T15:25:25.267289+00:00",
+  "run_id": "9bcab969f2",
+  "milvus_uri": "http://127.0.0.1:19530",
+  "collection_prefix": "rag015_switch_check_9bcab969f2",
+  "corpus": [
+    {
+      "logical_id": "cedar-warranty",
+      "filename": "cedar-warranty.txt",
+      "text": "Cedar orchard warranty requires an amber receipt and lunar serial number."
+    },
+    {
+      "logical_id": "harbor-maintenance",
+      "filename": "harbor-maintenance.txt",
+      "text": "Harbor turbine maintenance uses a cobalt wrench and a weekly pressure log."
+    },
+    {
+      "logical_id": "alpine-calibration",
+      "filename": "alpine-calibration.txt",
+      "text": "Alpine sensor calibration uses a violet beacon and a quartz reference."
+    }
+  ],
+  "queries": [
+    "amber receipt warranty",
+    "cobalt wrench maintenance",
+    "quartz beacon calibration",
+    "unseen neutral phrase"
+  ],
+  "paths": {
+    "default_local": {
+      "status": "pass",
+      "configured_backend": "local",
+      "uploaded_document_ids": [
+        "51daa7f01c634c57966ff6ba6521f8a5",
+        "402471df6a864d3ca161840639ce62e5",
+        "02f07ca8b33241db88a07f40377761be"
+      ],
+      "sql_chunk_count": 3,
+      "embedding_normalization": "l2",
+      "embedding_norm_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "retrieval_status": "ok",
+      "hit_document_ids": [
+        "51daa7f01c634c57966ff6ba6521f8a5",
+        "02f07ca8b33241db88a07f40377761be",
+        "402471df6a864d3ca161840639ce62e5"
+      ]
+    },
+    "milvus_upload_visible": {
+      "status": "pass",
+      "uploaded_document_ids": [
+        "3861abd9d3a148108d5d6b29adc690d4",
+        "977f2c7ab82346598cb611b6823fd3dc",
+        "2fd7721714354894a532c7814c236572"
+      ],
+      "sql_vectorized_chunk_count": 3,
+      "embedding_normalization": "l2",
+      "embedding_norm_range": {
+        "min": 1.0,
+        "max": 1.0
+      },
+      "milvus_matching_vector_count": 3
+    },
+    "switch_back_local": {
+      "status": "pass",
+      "sql_chunk_count": 3,
+      "retrieval_status": "ok",
+      "hit_document_ids": [
+        "51daa7f01c634c57966ff6ba6521f8a5",
+        "02f07ca8b33241db88a07f40377761be",
+        "402471df6a864d3ca161840639ce62e5"
+      ],
+      "data_vs_empty_distinguished": true
+    }
+  },
+  "cross_backend": {
+    "status": "completed",
+    "milvus_seed_method": "explicit_store_add_after_acceptance_observation",
+    "counts_as_upload_write_proof": false,
+    "milvus_indexed_chunk_count": 3,
+    "milvus_indexed_chunks_with_tokens": 3,
+    "queries": {
+      "amber receipt warranty": {
+        "local_order": [
+          "cedar-warranty",
+          "alpine-calibration",
+          "harbor-maintenance"
+        ],
+        "milvus_order": [
+          "cedar-warranty",
+          "alpine-calibration",
+          "harbor-maintenance"
+        ],
+        "only_local": [],
+        "only_milvus": [],
+        "rank_differences": {},
+        "score_range": {
+          "local": {
+            "min": 0.03200204813108039,
+            "max": 0.03278688524590164
+          },
+          "milvus": {
+            "min": 0.031746031746031744,
+            "max": 0.03278688524590164
+          }
+        },
+        "similarity_range": {
+          "local": {
+            "min": 0.0,
+            "max": 0.4803844614152615
+          },
+          "milvus": {
+            "min": 0.0,
+            "max": 0.4803844392299652
+          }
+        }
+      },
+      "cobalt wrench maintenance": {
+        "local_order": [
+          "harbor-maintenance",
+          "cedar-warranty",
+          "alpine-calibration"
+        ],
+        "milvus_order": [
+          "harbor-maintenance",
+          "cedar-warranty",
+          "alpine-calibration"
+        ],
+        "only_local": [],
+        "only_milvus": [],
+        "rank_differences": {},
+        "score_range": {
+          "local": {
+            "min": 0.031746031746031744,
+            "max": 0.03278688524590164
+          },
+          "milvus": {
+            "min": 0.031746031746031744,
+            "max": 0.03278688524590164
+          }
+        },
+        "similarity_range": {
+          "local": {
+            "min": 0.0,
+            "max": 0.4629100498862758
+          },
+          "milvus": {
+            "min": 0.0,
+            "max": 0.4629100561141968
+          }
+        }
+      },
+      "quartz beacon calibration": {
+        "local_order": [
+          "alpine-calibration",
+          "cedar-warranty",
+          "harbor-maintenance"
+        ],
+        "milvus_order": [
+          "alpine-calibration",
+          "harbor-maintenance",
+          "cedar-warranty"
+        ],
+        "only_local": [],
+        "only_milvus": [],
+        "rank_differences": {
+          "cedar-warranty": {
+            "local": 2,
+            "milvus": 3
+          },
+          "harbor-maintenance": {
+            "local": 3,
+            "milvus": 2
+          }
+        },
+        "score_range": {
+          "local": {
+            "min": 0.031746031746031744,
+            "max": 0.03278688524590164
+          },
+          "milvus": {
+            "min": 0.031746031746031744,
+            "max": 0.03278688524590164
+          }
+        },
+        "similarity_range": {
+          "local": {
+            "min": 0.0,
+            "max": 0.4803844614152615
+          },
+          "milvus": {
+            "min": 0.0,
+            "max": 0.4803844392299652
+          }
+        }
+      },
+      "unseen neutral phrase": {
+        "local_order": [
+          "harbor-maintenance",
+          "cedar-warranty",
+          "alpine-calibration"
+        ],
+        "milvus_order": [
+          "harbor-maintenance",
+          "cedar-warranty",
+          "alpine-calibration"
+        ],
+        "only_local": [],
+        "only_milvus": [],
+        "rank_differences": {},
+        "score_range": {
+          "local": {
+            "min": 0.015873015873015872,
+            "max": 0.01639344262295082
+          },
+          "milvus": {
+            "min": 0.031746031746031744,
+            "max": 0.03278688524590164
+          }
+        },
+        "similarity_range": {
+          "local": {
+            "min": 0.0,
+            "max": 0.15430334996209194
+          },
+          "milvus": {
+            "min": 0.0,
+            "max": 0.15430335700511932
+          }
+        }
+      }
+    },
+    "queries_with_hit_set_difference": 0,
+    "queries_with_rank_difference": 1
+  },
+  "limitations": [
+    "MockEmbeddingProvider 仅用于确定性链路对照，不代表生产语义质量。",
+    "范数检查证明本次 Mock 样本为单位向量，不等同于生产写入路径已主动执行 L2 归一化。",
+    "Milvus 跨库样本由脚本显式补种以保证样本齐备；上传写链路是否真的写入，由 milvus_upload_visible 单独判定。",
+    "Milvus 侧 similarity 取自 pymilvus 返回的 distance（COSINE 度量下的余弦相似度），精度为 float32，与本地 numpy 结果存在约 1e-8 量级差异。"
+  ],
+  "milvus_preflight": {
+    "status": "pass",
+    "probe_uri": "http://127.0.0.1:19530",
+    "error": null
+  },
+  "pymilvus_version": "2.5.11",
+  "milvus_cleanup": {
+    "status": "pass",
+    "collection": "rag015_switch_check_9bcab969f2__v1__0071e24feabb"
+  },
+  "final_backend": "local",
+  "all_acceptance_paths_passed": true,
+  "result": "pass",
+  "temp_cleanup": {
+    "status": "pass"
+  }
+}

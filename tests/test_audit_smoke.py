@@ -7,15 +7,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
 
+from sqlmodel import Session, select
+
 from app.audit import (
     AuditAction,
     AuditLog,
-    AuditLogger,
     get_audit_logger,
     reset_audit_logger,
 )
 from app.core.database import engine, init_db
-from sqlmodel import Session, select
 
 
 def setup():
@@ -157,7 +157,19 @@ print("  OK")
 # ── Test 8: AuditLog model has all required columns ──
 print("Test 8: AuditLog table columns")
 columns = {c.name for c in AuditLog.__table__.columns}
-required = {"id", "user_id", "tenant_id", "action", "resource_type", "resource_id", "details", "ip_address", "user_agent", "created_at", "updated_at"}
+required = {
+    "id",
+    "user_id",
+    "tenant_id",
+    "action",
+    "resource_type",
+    "resource_id",
+    "details",
+    "ip_address",
+    "user_agent",
+    "created_at",
+    "updated_at",
+}
 assert required.issubset(columns), f"Missing columns: {required - columns}"
 print("  OK")
 

@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (ruff / mypy / pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e ".[dev,langgraph]"
+      - name: Ruff lint
+        run: ruff check .
+      - name: Mypy typecheck
+        run: mypy app/
+      - name: Pytest
+        run: pytest
+      - name: RAG baseline gate
+        env:
+          RAG_BACKEND: native
+          RAG_CHUNK_STRATEGY: structured
+          RAG_VECTOR_STORE: local
+          RAG_EFFECTIVE_DATE_FILTER: 'false'
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+        run: |
+          python scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
+          python scripts/rag_gate_check.py --report evals/reports/rag-v0.1-baseline-ci.json --baseline evals/reports/rag-v0.1-baseline-20260919.json
+
+  agent-baseline:
+    name: Agent official baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RAG_BACKEND: native
+      LLM_PROVIDER: openai
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL || 'https://api.deepseek.com/v1' }}
+      LLM_DEFAULT_MODEL: ${{ vars.LLM_DEFAULT_MODEL || 'deepseek-flash' }}
+      LLM_CHAT_FALLBACK_CHAIN: chat
+      LLM_INTENT_FALLBACK_CHAIN: chat
+      LLM_RESPONSE_CACHE_ENABLED: 'false'
+      LLM_CAPABILITY_GUARD_ENABLED: 'true'
+      LLM_CAPABILITY_DECLARED: ${{ vars.LLM_CAPABILITY_DECLARED }}
+      LLM_CAPABILITY_DECLARED_SOURCE: ${{ vars.LLM_CAPABILITY_DECLARED_SOURCE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e ".[dev]"
+      - name: Agent official evaluation
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          python scripts/run_agent_chain_eval.py --mode official --out evals/reports/agent-ci/official.json
+      - name: Agent report gate and regression probes
+        run: |
+          endpoint_hash=$(python - <<'PY'
+          import contextlib
+          import os
+          import sys
+          with contextlib.redirect_stdout(sys.stderr):
+              from scripts.run_agent_chain_eval import endpoint_hash
+          print(endpoint_hash(os.environ['LLM_BASE_URL']))
+          PY
+          )
+          python scripts/agent_gate_check.py --report evals/reports/agent-ci/official.json --expected-model "$LLM_DEFAULT_MODEL" --expected-endpoint-hash "$endpoint_hash"
+          python scripts/agent_gate_probe.py --report evals/reports/agent-ci/official.json --expected-model "$LLM_DEFAULT_MODEL" --expected-endpoint-hash "$endpoint_hash" --out-dir evals/reports/agent-ci/synthetic-probes
+      - name: Upload Agent evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-chain-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evals/reports/agent-ci/
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend:
+    name: Frontend (typecheck / vitest / eslint / build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Vitest
+        working-directory: frontend
+        run: npm test
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+      - name: Build
+        working-directory: frontend
+        run: npm run build

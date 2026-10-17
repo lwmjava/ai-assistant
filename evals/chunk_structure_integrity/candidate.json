@@ -1,0 +1,2876 @@
+{
+  "version": "structure-integrity-v0.1",
+  "dataset_sha256": "83f77e0940d7be92a7d9ddb5491f44a88119a11291769d7c027a4d21ec9dce3a",
+  "provenance": "AI-authored synthetic Smoke/Adversarial; not Gold",
+  "params": {
+    "chunk_size": 40,
+    "chunk_overlap": 0
+  },
+  "offline_test_char_limit": null,
+  "scope": "Structural diagnostics only; not retrieval quality or production input certification",
+  "embedding": "Local MockEmbeddingProvider(dim=8); deterministic chain only, no retrieval quality claim",
+  "rows": [
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "fixed_chars",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "format_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "layout_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "paragraph",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "recursive",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "sliding_window",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "token_aware",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "structured",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "semantic",
+      "layer": "chunks",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 73,
+          "median": 6.0,
+          "sorted_chars": [
+            4,
+            6,
+            73
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 73,
+          "median": 6.0,
+          "sorted_chars": [
+            4,
+            6,
+            73
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "parents",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "strategy": "parent_child",
+      "layer": "children",
+      "inferred_source_chunks": 0,
+      "metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        },
+        "parent_containment_violations": 0,
+        "parent_containment_unverified": 0
+      }
+    }
+  ],
+  "chunking_revision": "working-tree"
+}

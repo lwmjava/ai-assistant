@@ -1,10 +1,11 @@
 /** 知识库页：文本摄取、文件上传、混合检索与文档管理。 */
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { FileText, FileUp, Plus, RotateCw, Search, Trash2 } from 'lucide-react'
+import { Download, FileText, FileUp, Plus, RotateCw, Search, Trash2 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -13,9 +14,11 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
-import { createConfirmation, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
+import { createConfirmation, downloadDocumentSource, fetchImportJob, useDeleteDocument, useDocuments, useIngestDocument, usePublishDocument, useDocumentChunks, useReparseDocument, useSearch, useUploadDocument } from '@/api/rag'
 import { ApiError, hideStackTrace, isSessionExpiredError } from '@/lib/http'
-import { can } from '@/lib/permissions'
+import { can, canControlDocument } from '@/lib/permissions'
+import { ChunkContent } from '@/components/knowledge/ChunkContent'
+import { ChunkEvidence } from '@/components/knowledge/ChunkEvidence'
 import { cn, formatDateTime, timeAgo } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
 import type { DocumentOut, SearchResultOut } from '@/types/api'
@@ -138,8 +141,8 @@ function SearchPanel() {
               type="number"
               min={1}
               max={50}
-              label="返回条数"
-              wrapClassName="w-28"
+              label="检索命中上限"
+              wrapClassName="w-32"
               error={errors.top_k?.message}
               {...register('top_k')}
             />
@@ -154,6 +157,8 @@ function SearchPanel() {
             </Button>
           </div>
         </div>
+
+        <p className="text-sm text-text-muted">检索命中上限，父块展开后可能增加。</p>
 
         {search.error && !isSessionExpiredError(search.error) && (
           <ErrorState error={search.error} onRetry={() => search.reset()} className="border-0 bg-transparent py-6" />
@@ -178,19 +183,86 @@ function SearchPanel() {
 }
 
 function SearchResultRow({ result, index }: { result: SearchResultOut; index: number }) {
+  const isExpandedParent = result.retrieval_origin === 'parent_expansion'
+  const resultLabel = isExpandedParent
+    ? '扩展父块'
+    : result.retrieval_origin === 'hit' && result.chunk_kind === 'child'
+      ? '命中子块'
+      : result.retrieval_origin === 'hit' && result.chunk_kind === 'parent'
+        ? '命中父块'
+        : '命中块（未知）'
+
   return (
     <li className="panel-inset p-3">
-      <div className="mb-1.5 flex items-center gap-2">
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
         <Badge tone="primary">#{index + 1}</Badge>
+        <Badge tone={isExpandedParent ? 'accent' : 'neutral'}>{resultLabel}</Badge>
         <span className="font-mono text-xs text-text-faint">score {result.score.toFixed(4)}</span>
         {result.source && (
           <span className="truncate text-xs text-text-faint">来源：{result.source}</span>
         )}
       </div>
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">
-        {result.content}
-      </p>
+      <dl className="mb-2 space-y-1 text-sm text-text-muted">
+        <div className="flex flex-wrap gap-x-2">
+          <dt>块 ID</dt>
+          <dd className="min-w-0 break-all font-mono">{result.chunk_id || '未知（接口未提供）'}</dd>
+        </div>
+        <div className="flex flex-wrap gap-x-2">
+          <dt>上级父块 ID</dt>
+          <dd className="min-w-0 break-all font-mono">
+            {result.parent_id || (
+              result.parent_id === null && result.chunk_kind && result.chunk_kind !== 'unknown'
+                ? '无（当前为父块）'
+                : '未知关系'
+            )}
+          </dd>
+        </div>
+        {isExpandedParent && (
+          <div className="flex flex-wrap gap-x-2">
+            <dt>扩展来源子块 ID</dt>
+            <dd className="min-w-0 break-all font-mono">
+              {result.expanded_from_chunk_id || '未知（接口未提供）'}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {result.score_inherited_from_chunk_id && (
+        <p className="mb-2 break-all text-sm text-text-muted">
+          父块 score 继承子块 <span className="font-mono">{result.score_inherited_from_chunk_id}</span>，未单独计算。
+        </p>
+      )}
+      <ChunkContent content={result.content} />
+      {/* 后端每次请求独立复核权限；未提供块 ID 时组件自己给出说明。 */}
+      <div className="mt-2">
+        <ChunkEvidence chunkId={result.chunk_id || null} />
+      </div>
     </li>
+  )
+}
+
+function DocumentChunkList({ documentId }: { documentId: string }) {
+  const chunks = useDocumentChunks(documentId)
+  if (chunks.isLoading) return <div className="px-4 py-3 text-xs text-text-faint">加载分块…</div>
+  if (chunks.error) return <div className="px-4 py-3 text-xs text-danger">分块加载失败</div>
+  const rows = chunks.data ?? []
+  if (rows.length === 0) return <div className="px-4 py-3 text-xs text-text-faint">该文档暂无分块</div>
+  return (
+    <ul className="space-y-2">
+      {rows.map((c) => (
+        <li key={c.id} className="rounded border border-border/60 bg-surface-2/30 px-3 py-2">
+          <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-faint">
+            <span className="font-mono font-semibold text-text-muted">#{c.chunk_index + 1}</span>
+            {c.page != null && c.page >= 1 && <span>· 第 {c.page} 页</span>}
+            {c.section && <span>· {c.section}</span>}
+            {c.strategy && <span>· {c.strategy}</span>}
+          </div>
+          <ChunkContent content={c.content} />
+          <div className="mt-1.5">
+            <ChunkEvidence chunkId={c.id} />
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -199,79 +271,126 @@ function DocumentRow({
   canDelete,
   canPublish,
   canRebuild,
+  canDownload,
   rebuilding,
+  downloading,
   onDelete,
   onPublish,
   onRebuild,
+  onDownload,
+  expanded = false,
+  onToggle,
+  highlight = false,
 }: {
   doc: DocumentOut
   canDelete: boolean
   canPublish: boolean
   canRebuild: boolean
+  canDownload: boolean
   rebuilding: boolean
+  downloading: boolean
   onDelete: (doc: DocumentOut) => void
   onPublish: (doc: DocumentOut) => void
   onRebuild: (doc: DocumentOut) => void
+  onDownload: (doc: DocumentOut) => void
+  expanded?: boolean
+  onToggle: () => void
+  highlight?: boolean
 }) {
   return (
-    <li className="group/item grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-surface-2/50 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_auto]">
-      <div className="min-w-0">
-        <p className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium text-text">{doc.title}</span>
-          {doc.deleted_at ? (
-            <Badge tone="danger">已删除</Badge>
-          ) : (
-            <Badge tone={doc.version_state === 'published' ? 'success' : 'warning'}>
-              {VERSION_LABELS[doc.version_state] ?? doc.version_state}
-            </Badge>
+    <li
+      id={`doc-${doc.id}`}
+      className={cn(
+        'group/item border-b border-border transition-colors last:border-0',
+        highlight && 'bg-surface-2/60 ring-1 ring-accent',
+      )}>
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_6rem_7rem_auto]">
+        <div className="min-w-0">
+          <p className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex min-w-0 items-center gap-1 text-left text-sm font-medium text-text hover:text-primary"
+              aria-expanded={expanded}
+            >
+              <span className={cn('transition-transform', expanded && 'rotate-90')}>▸</span>
+              <span className="truncate">{doc.title}</span>
+            </button>
+            {doc.deleted_at ? (
+              <Badge tone="danger">已删除</Badge>
+            ) : (
+              <Badge tone={doc.version_state === 'published' ? 'success' : 'warning'}>
+                {VERSION_LABELS[doc.version_state] ?? doc.version_state}
+              </Badge>
+            )}
+            {rebuilding && (
+              <Badge tone="warning" dot pulse>
+                重建中
+              </Badge>
+            )}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-text-faint">
+            {doc.source ? `来源：${doc.source} · ` : ''}
+            {formatDateTime(doc.created_at)}
+          </p>
+        </div>
+        <div className="hidden sm:block">
+          <button type="button" onClick={onToggle} className="cursor-pointer">
+            <Badge tone={expanded ? 'primary' : 'neutral'}>{doc.chunk_count} 分块</Badge>
+          </button>
+        </div>
+        <p className="hidden text-xs text-text-faint sm:block">{timeAgo(doc.updated_at)}</p>
+        <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && !canRebuild && !canDownload && 'invisible')}>
+          {canPublish && !doc.deleted_at && ['draft', 'scheduled', 'replaced'].includes(doc.version_state) && (
+            <button
+              type="button"
+              onClick={() => onPublish(doc)}
+              className="rounded-md px-2 text-xs text-primary hover:bg-primary/10"
+            >
+              发布
+            </button>
           )}
-          {rebuilding && (
-            <Badge tone="warning" dot pulse>
-              重建中
-            </Badge>
+          {canRebuild && !doc.deleted_at && (
+            <button
+              type="button"
+              onClick={() => onRebuild(doc)}
+              disabled={rebuilding}
+              aria-label={`重建文档 ${doc.title}`}
+              className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
+            >
+              <RotateCw className={cn('size-3.5', rebuilding && 'animate-spin')} aria-hidden />
+            </button>
           )}
-        </p>
-        <p className="mt-0.5 truncate text-xs text-text-faint">
-          {doc.source ? `来源：${doc.source} · ` : ''}
-          {formatDateTime(doc.created_at)}
-        </p>
+          {canDownload && !doc.deleted_at && (
+            <button
+              type="button"
+              onClick={() => onDownload(doc)}
+              disabled={downloading}
+              aria-label={`下载源文件 ${doc.title}`}
+              title="下载原始上传文件"
+              className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
+            >
+              <Download className={cn('size-3.5', downloading && 'animate-pulse')} aria-hidden />
+            </button>
+          )}
+          {canDelete && !doc.deleted_at && (
+            <button
+              type="button"
+              onClick={() => onDelete(doc)}
+              aria-label={`删除文档 ${doc.title}`}
+              className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-danger/15 hover:text-danger focus-visible:opacity-100 group-hover/item:opacity-100"
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </button>
+          )}
+        </div>
       </div>
-      <div className="hidden sm:block">
-        <Badge tone="neutral">{doc.chunk_count} 分块</Badge>
-      </div>
-      <p className="hidden text-xs text-text-faint sm:block">{timeAgo(doc.updated_at)}</p>
-      <div className={cn('flex justify-end gap-1', !canDelete && !canPublish && !canRebuild && 'invisible')}>
-        {canPublish && !doc.deleted_at && ['draft', 'scheduled', 'replaced'].includes(doc.version_state) && (
-          <button
-            type="button"
-            onClick={() => onPublish(doc)}
-            className="rounded-md px-2 text-xs text-primary hover:bg-primary/10"
-          >
-            发布
-          </button>
-        )}
-        {canRebuild && !doc.deleted_at && (
-          <button
-            type="button"
-            onClick={() => onRebuild(doc)}
-            disabled={rebuilding}
-            aria-label={`重建文档 ${doc.title}`}
-            className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover/item:opacity-100 disabled:opacity-40"
-          >
-            <RotateCw className={cn('size-3.5', rebuilding && 'animate-spin')} aria-hidden />
-          </button>
-        )}
-        {canDelete && !doc.deleted_at && (
-          <button
-            type="button"
-            onClick={() => onDelete(doc)}
-            aria-label={`删除文档 ${doc.title}`}
-            className="grid size-9 place-items-center rounded-md text-text-faint opacity-0 transition-all hover:bg-danger/15 hover:text-danger focus-visible:opacity-100 group-hover/item:opacity-100"
-          >
-            <Trash2 className="size-3.5" aria-hidden />
-          </button>
-        )}
-      </div>
+      {expanded && (
+        <div className="border-t border-border/60 bg-surface-1/40 px-4 pb-4 pt-3">
+          <p className="mb-2 text-xs font-medium text-text-faint">分块详情（按块序展示）</p>
+          <DocumentChunkList documentId={doc.id} />
+        </div>
+      )}
     </li>
   )
 }
@@ -279,6 +398,10 @@ function DocumentRow({
 export default function KnowledgePage() {
   const toast = useToast()
   const role = useAuthStore((s) => s.user?.role)
+  const user = useAuthStore((s) => s.user)
+  const canRead = can(role, 'knowledge_bases', 'read')
+  const [searchParams] = useSearchParams()
+  const focusDocId = searchParams.get('doc')
   const userTenantId = useAuthStore((s) => s.user?.tenant_id)
   const canWrite = can(role, 'knowledge_bases', 'write')
   const canDelete = can(role, 'knowledge_bases', 'delete')
@@ -288,6 +411,8 @@ export default function KnowledgePage() {
   const [pendingDelete, setPendingDelete] = useState<DocumentOut | null>(null)
   const [pendingRebuild, setPendingRebuild] = useState<DocumentOut | null>(null)
   const [rebuildingId, setRebuildingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [showDeleted, setShowDeleted] = useState(false)
   const [versionState, setVersionState] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -302,6 +427,12 @@ export default function KnowledgePage() {
     () => [...(documents.data ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [documents.data],
   )
+  useEffect(() => {
+    if (!focusDocId) return
+    const el = document.getElementById(`doc-${focusDocId}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focusDocId, docs])
+
 
   async function handleFile(file: File) {
     try {
@@ -362,6 +493,21 @@ export default function KnowledgePage() {
       toast.error('重建失败', err instanceof ApiError ? err.detail : undefined)
     } finally {
       setRebuildingId(null)
+    }
+  }
+
+  /** 源文件下载入口只在「后端也判定为可控」的文档上出现，见 canControlDocument 的注释。 */
+  async function handleDownload(doc: DocumentOut) {
+    if (downloadingId) return
+    setDownloadingId(doc.id)
+    try {
+      await downloadDocumentSource(doc)
+      toast.success('已开始下载', doc.source ? `源文件：${doc.source}` : undefined)
+    } catch (err) {
+      if (isSessionExpiredError(err)) return
+      toast.error('下载失败', err instanceof Error ? err.message : undefined)
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -470,15 +616,21 @@ export default function KnowledgePage() {
           <ul>
             {docs.map((doc) => (
               <DocumentRow
+                highlight={focusDocId === doc.id}
                 key={doc.id}
                 doc={doc}
                 canDelete={canDelete}
                 canPublish={canSeeDeleted}
                 canRebuild={canWrite}
+                canDownload={canRead && canControlDocument(doc, user)}
                 rebuilding={rebuildingId === doc.id}
+                downloading={downloadingId === doc.id}
                 onDelete={setPendingDelete}
+                expanded={expandedId === doc.id}
+                onToggle={() => setExpandedId(expandedId === doc.id ? null : doc.id)}
                 onPublish={(item) => void handlePublish(item)}
                 onRebuild={setPendingRebuild}
+                onDownload={(item) => void handleDownload(item)}
               />
             ))}
           </ul>

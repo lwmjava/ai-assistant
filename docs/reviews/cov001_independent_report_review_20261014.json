@@ -1,0 +1,1346 @@
+{
+  "agent": "/root/cov_verify_review",
+  "evidence_level": "E2 real application isolated full pytest",
+  "covered": 13859,
+  "statements": 15894,
+  "excluded_lines": 52,
+  "exact_percent": 87.19642632439914,
+  "at_least_70": true,
+  "file_count": 205,
+  "input_count": 423,
+  "input_changes": [],
+  "dependencies": {
+    "pytest": "8.4.2",
+    "pytest-cov": "7.1.0",
+    "coverage": "7.10.6",
+    "ruff": "0.8.4",
+    "mypy": "1.14.1",
+    "langgraph": "1.0.10",
+    "fastapi": "0.115.6",
+    "sqlmodel": "0.0.22",
+    "mcp": "1.12.4",
+    "llama-index-core": "0.12.42",
+    "langchain-text-splitters": "1.1.3"
+  },
+  "junit": {
+    "tests": 2329,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0
+  },
+  "xml_matches_json_and_coverage_api": true,
+  "per_file": [
+    {
+      "path": "app/__init__.py",
+      "statements": 1,
+      "covered": 1,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/__init__.py",
+      "statements": 2,
+      "covered": 2,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/fast_path.py",
+      "statements": 109,
+      "covered": 106,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/pipeline.py",
+      "statements": 703,
+      "covered": 665,
+      "excluded_lines": [
+        23,
+        24,
+        281,
+        282,
+        283
+      ]
+    },
+    {
+      "path": "app/agents/plan.py",
+      "statements": 128,
+      "covered": 126,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/plan_runtime.py",
+      "statements": 110,
+      "covered": 95,
+      "excluded_lines": [
+        16,
+        17,
+        19
+      ]
+    },
+    {
+      "path": "app/agents/prompts.py",
+      "statements": 10,
+      "covered": 10,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/route.py",
+      "statements": 32,
+      "covered": 32,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/skills/__init__.py",
+      "statements": 3,
+      "covered": 3,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/skills/base.py",
+      "statements": 73,
+      "covered": 65,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/skills/loader.py",
+      "statements": 84,
+      "covered": 74,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/skills/manager.py",
+      "statements": 213,
+      "covered": 197,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/skills/versioning.py",
+      "statements": 143,
+      "covered": 135,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/state.py",
+      "statements": 88,
+      "covered": 81,
+      "excluded_lines": [
+        19,
+        20,
+        41,
+        42,
+        45,
+        46,
+        49,
+        50,
+        51
+      ]
+    },
+    {
+      "path": "app/agents/supervisor.py",
+      "statements": 170,
+      "covered": 166,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/__init__.py",
+      "statements": 3,
+      "covered": 3,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/base.py",
+      "statements": 176,
+      "covered": 160,
+      "excluded_lines": [
+        28,
+        29
+      ]
+    },
+    {
+      "path": "app/agents/tools/builtin.py",
+      "statements": 96,
+      "covered": 91,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/contract.py",
+      "statements": 28,
+      "covered": 28,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/executor.py",
+      "statements": 107,
+      "covered": 105,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/file_ops.py",
+      "statements": 215,
+      "covered": 189,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/outcome.py",
+      "statements": 10,
+      "covered": 9,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/sandbox/__init__.py",
+      "statements": 3,
+      "covered": 3,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/sandbox/base.py",
+      "statements": 79,
+      "covered": 77,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/sandbox/proc.py",
+      "statements": 339,
+      "covered": 279,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/sandbox/runtime.py",
+      "statements": 36,
+      "covered": 36,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/sandbox/sandbox.py",
+      "statements": 104,
+      "covered": 83,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/tools/web_search.py",
+      "statements": 155,
+      "covered": 147,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/agents/version_registry.py",
+      "statements": 200,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/__init__.py",
+      "statements": 0,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/deps.py",
+      "statements": 52,
+      "covered": 46,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/router.py",
+      "statements": 16,
+      "covered": 16,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/__init__.py",
+      "statements": 0,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/admin_system.py",
+      "statements": 22,
+      "covered": 19,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/admin_tenants.py",
+      "statements": 93,
+      "covered": 82,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/admin_users.py",
+      "statements": 55,
+      "covered": 51,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/audit.py",
+      "statements": 90,
+      "covered": 32,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/auth.py",
+      "statements": 103,
+      "covered": 93,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/chat.py",
+      "statements": 252,
+      "covered": 214,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/export.py",
+      "statements": 27,
+      "covered": 25,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/health.py",
+      "statements": 86,
+      "covered": 78,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/invitations.py",
+      "statements": 52,
+      "covered": 45,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/mcp.py",
+      "statements": 22,
+      "covered": 12,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/rag.py",
+      "statements": 463,
+      "covered": 369,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/skills.py",
+      "statements": 100,
+      "covered": 100,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/api/routes/workflow.py",
+      "statements": 143,
+      "covered": 136,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/audit/__init__.py",
+      "statements": 3,
+      "covered": 3,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/audit/logger.py",
+      "statements": 60,
+      "covered": 46,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/audit/models.py",
+      "statements": 56,
+      "covered": 56,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/channels/__init__.py",
+      "statements": 0,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/channels/base.py",
+      "statements": 31,
+      "covered": 30,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/channels/http_channel.py",
+      "statements": 7,
+      "covered": 6,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/channels/registry.py",
+      "statements": 19,
+      "covered": 17,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/cli.py",
+      "statements": 63,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/__init__.py",
+      "statements": 0,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/config.py",
+      "statements": 242,
+      "covered": 241,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/database.py",
+      "statements": 24,
+      "covered": 24,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/json_logging.py",
+      "statements": 28,
+      "covered": 28,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/log_context.py",
+      "statements": 19,
+      "covered": 19,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/migration.py",
+      "statements": 258,
+      "covered": 149,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/response_cache.py",
+      "statements": 107,
+      "covered": 105,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/security.py",
+      "statements": 55,
+      "covered": 49,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/core/trace_middleware.py",
+      "statements": 16,
+      "covered": 16,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/debug/__init__.py",
+      "statements": 2,
+      "covered": 2,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/debug/trace.py",
+      "statements": 105,
+      "covered": 102,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/evolution/__init__.py",
+      "statements": 5,
+      "covered": 5,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/evolution/distiller.py",
+      "statements": 122,
+      "covered": 23,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/evolution/models.py",
+      "statements": 105,
+      "covered": 105,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/evolution/reflector.py",
+      "statements": 64,
+      "covered": 48,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/evolution/scheduler.py",
+      "statements": 69,
+      "covered": 26,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/__init__.py",
+      "statements": 3,
+      "covered": 3,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/base.py",
+      "statements": 21,
+      "covered": 21,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/budget.py",
+      "statements": 46,
+      "covered": 46,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/capabilities.py",
+      "statements": 135,
+      "covered": 120,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/counters.py",
+      "statements": 50,
+      "covered": 45,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/factory.py",
+      "statements": 75,
+      "covered": 73,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/mock.py",
+      "statements": 23,
+      "covered": 22,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/openai_compatible.py",
+      "statements": 172,
+      "covered": 159,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/llm/routing.py",
+      "statements": 58,
+      "covered": 55,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/main.py",
+      "statements": 72,
+      "covered": 59,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/mcp/__init__.py",
+      "statements": 5,
+      "covered": 5,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/mcp/adapter.py",
+      "statements": 8,
+      "covered": 8,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/mcp/client.py",
+      "statements": 96,
+      "covered": 84,
+      "excluded_lines": [
+        32,
+        33
+      ]
+    },
+    {
+      "path": "app/mcp/config.py",
+      "statements": 38,
+      "covered": 28,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/mcp/manager.py",
+      "statements": 64,
+      "covered": 31,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/memory/__init__.py",
+      "statements": 4,
+      "covered": 4,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/memory/base.py",
+      "statements": 36,
+      "covered": 36,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/memory/compressor.py",
+      "statements": 51,
+      "covered": 39,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/memory/manager.py",
+      "statements": 59,
+      "covered": 44,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/__init__.py",
+      "statements": 7,
+      "covered": 7,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/agent_state.py",
+      "statements": 22,
+      "covered": 22,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/base.py",
+      "statements": 7,
+      "covered": 7,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/conversation.py",
+      "statements": 24,
+      "covered": 24,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/membership.py",
+      "statements": 24,
+      "covered": 24,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/rag.py",
+      "statements": 210,
+      "covered": 210,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/skill.py",
+      "statements": 22,
+      "covered": 22,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/user.py",
+      "statements": 29,
+      "covered": 29,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/models/workflow.py",
+      "statements": 43,
+      "covered": 43,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/__init__.py",
+      "statements": 7,
+      "covered": 7,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/access.py",
+      "statements": 64,
+      "covered": 63,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/backend/__init__.py",
+      "statements": 12,
+      "covered": 5,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/backend/base.py",
+      "statements": 10,
+      "covered": 10,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/backend/factory.py",
+      "statements": 40,
+      "covered": 40,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/backend/langchain_backend.py",
+      "statements": 89,
+      "covered": 82,
+      "excluded_lines": [
+        166,
+        167
+      ]
+    },
+    {
+      "path": "app/rag/backend/llamaindex_backend.py",
+      "statements": 115,
+      "covered": 103,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/backend/native.py",
+      "statements": 49,
+      "covered": 49,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/cache.py",
+      "statements": 79,
+      "covered": 75,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/__init__.py",
+      "statements": 2,
+      "covered": 2,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/base.py",
+      "statements": 85,
+      "covered": 82,
+      "excluded_lines": [
+        14,
+        15
+      ]
+    },
+    {
+      "path": "app/rag/chunking/factory.py",
+      "statements": 42,
+      "covered": 42,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/llm_boundaries.py",
+      "statements": 94,
+      "covered": 90,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/plan.py",
+      "statements": 56,
+      "covered": 55,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/registry.py",
+      "statements": 18,
+      "covered": 18,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/routing.py",
+      "statements": 60,
+      "covered": 57,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/__init__.py",
+      "statements": 9,
+      "covered": 9,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/fixed_chars.py",
+      "statements": 21,
+      "covered": 20,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/format_aware.py",
+      "statements": 23,
+      "covered": 18,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/layout_aware.py",
+      "statements": 83,
+      "covered": 76,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/paragraph.py",
+      "statements": 17,
+      "covered": 16,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/parent_child.py",
+      "statements": 86,
+      "covered": 83,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/recursive.py",
+      "statements": 53,
+      "covered": 51,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/semantic.py",
+      "statements": 50,
+      "covered": 18,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/sliding_window.py",
+      "statements": 21,
+      "covered": 20,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/structured.py",
+      "statements": 8,
+      "covered": 8,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/strategies/token_aware.py",
+      "statements": 34,
+      "covered": 31,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/chunking/structure.py",
+      "statements": 189,
+      "covered": 178,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/cleaning.py",
+      "statements": 52,
+      "covered": 52,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/confirmations.py",
+      "statements": 29,
+      "covered": 27,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/context_builder.py",
+      "statements": 190,
+      "covered": 181,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/context_merge.py",
+      "statements": 13,
+      "covered": 13,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_parsers/__init__.py",
+      "statements": 3,
+      "covered": 3,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_parsers/base.py",
+      "statements": 33,
+      "covered": 31,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_parsers/legacy_office.py",
+      "statements": 52,
+      "covered": 49,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_parsers/libreoffice.py",
+      "statements": 47,
+      "covered": 19,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_parsers/office.py",
+      "statements": 357,
+      "covered": 256,
+      "excluded_lines": [
+        31,
+        32
+      ]
+    },
+    {
+      "path": "app/rag/document_parsers/pdf.py",
+      "statements": 69,
+      "covered": 62,
+      "excluded_lines": [
+        28,
+        29,
+        33,
+        34
+      ]
+    },
+    {
+      "path": "app/rag/document_parsers/registry.py",
+      "statements": 13,
+      "covered": 12,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_parsers/service.py",
+      "statements": 25,
+      "covered": 25,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_parsers/text.py",
+      "statements": 24,
+      "covered": 23,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/document_storage.py",
+      "statements": 52,
+      "covered": 48,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/effective_date.py",
+      "statements": 62,
+      "covered": 58,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/embeddings/__init__.py",
+      "statements": 5,
+      "covered": 5,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/embeddings/base.py",
+      "statements": 39,
+      "covered": 35,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/embeddings/factory.py",
+      "statements": 21,
+      "covered": 19,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/embeddings/input_limits.py",
+      "statements": 10,
+      "covered": 10,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/embeddings/mock.py",
+      "statements": 25,
+      "covered": 25,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/embeddings/openai_compatible.py",
+      "statements": 60,
+      "covered": 59,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/evidence.py",
+      "statements": 96,
+      "covered": 88,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/import_jobs.py",
+      "statements": 563,
+      "covered": 522,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/import_scheduler.py",
+      "statements": 43,
+      "covered": 40,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/import_trace.py",
+      "statements": 21,
+      "covered": 21,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/index_identity.py",
+      "statements": 70,
+      "covered": 66,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/index_registry.py",
+      "statements": 201,
+      "covered": 192,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/ingestion.py",
+      "statements": 67,
+      "covered": 63,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/ocr/__init__.py",
+      "statements": 5,
+      "covered": 5,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/ocr/base.py",
+      "statements": 25,
+      "covered": 24,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/ocr/factory.py",
+      "statements": 12,
+      "covered": 11,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/ocr/openai_vision.py",
+      "statements": 105,
+      "covered": 79,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/ocr/tesseract.py",
+      "statements": 111,
+      "covered": 87,
+      "excluded_lines": [
+        15,
+        16
+      ]
+    },
+    {
+      "path": "app/rag/resilience.py",
+      "statements": 145,
+      "covered": 143,
+      "excluded_lines": [
+        82,
+        83,
+        84,
+        85,
+        142,
+        143
+      ]
+    },
+    {
+      "path": "app/rag/retention.py",
+      "statements": 87,
+      "covered": 80,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/retrieval_guard.py",
+      "statements": 25,
+      "covered": 25,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/retrieval_status.py",
+      "statements": 59,
+      "covered": 58,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/retriever.py",
+      "statements": 86,
+      "covered": 84,
+      "excluded_lines": [
+        37,
+        38,
+        39,
+        40,
+        41
+      ]
+    },
+    {
+      "path": "app/rag/section_summaries.py",
+      "statements": 176,
+      "covered": 153,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/service.py",
+      "statements": 656,
+      "covered": 599,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/upload_limits.py",
+      "statements": 26,
+      "covered": 26,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/vectorstore/__init__.py",
+      "statements": 3,
+      "covered": 3,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/vectorstore/base.py",
+      "statements": 37,
+      "covered": 37,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/vectorstore/factory.py",
+      "statements": 9,
+      "covered": 7,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/vectorstore/local.py",
+      "statements": 163,
+      "covered": 156,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/rag/vectorstore/milvus.py",
+      "statements": 171,
+      "covered": 159,
+      "excluded_lines": [
+        96,
+        97,
+        352,
+        356,
+        360
+      ]
+    },
+    {
+      "path": "app/schemas/__init__.py",
+      "statements": 0,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/schemas/admin.py",
+      "statements": 39,
+      "covered": 38,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/schemas/auth.py",
+      "statements": 50,
+      "covered": 48,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/schemas/invitation.py",
+      "statements": 27,
+      "covered": 27,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/schemas/quota.py",
+      "statements": 25,
+      "covered": 23,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/schemas/tenant.py",
+      "statements": 34,
+      "covered": 31,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/__init__.py",
+      "statements": 21,
+      "covered": 21,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/input_filter.py",
+      "statements": 38,
+      "covered": 38,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/log_redaction.py",
+      "statements": 117,
+      "covered": 111,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/log_sanitizer.py",
+      "statements": 19,
+      "covered": 19,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/output_filter.py",
+      "statements": 32,
+      "covered": 32,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/prompt_injection.py",
+      "statements": 26,
+      "covered": 26,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/rate_limiter.py",
+      "statements": 56,
+      "covered": 53,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/restricted_identifier_fence.py",
+      "statements": 33,
+      "covered": 31,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/security/types.py",
+      "statements": 25,
+      "covered": 25,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/__init__.py",
+      "statements": 0,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/admin_users.py",
+      "statements": 75,
+      "covered": 68,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/agent_execution_guard.py",
+      "statements": 41,
+      "covered": 41,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/agent_state_cleanup.py",
+      "statements": 40,
+      "covered": 36,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/agent_state_service.py",
+      "statements": 104,
+      "covered": 89,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/auth_service.py",
+      "statements": 168,
+      "covered": 85,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/cache_scope.py",
+      "statements": 105,
+      "covered": 99,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/chat_service.py",
+      "statements": 488,
+      "covered": 416,
+      "excluded_lines": [
+        44,
+        45,
+        46
+      ]
+    },
+    {
+      "path": "app/services/export_service.py",
+      "statements": 128,
+      "covered": 126,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/invitations.py",
+      "statements": 74,
+      "covered": 68,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/membership.py",
+      "statements": 46,
+      "covered": 39,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/quota.py",
+      "statements": 127,
+      "covered": 121,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/skill_service.py",
+      "statements": 278,
+      "covered": 242,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/services/tenant_admin.py",
+      "statements": 82,
+      "covered": 77,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/workflow/__init__.py",
+      "statements": 0,
+      "covered": 0,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/workflow/bridge.py",
+      "statements": 11,
+      "covered": 11,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/workflow/engine.py",
+      "statements": 83,
+      "covered": 66,
+      "excluded_lines": []
+    },
+    {
+      "path": "app/workflow/scheduler.py",
+      "statements": 83,
+      "covered": 48,
+      "excluded_lines": []
+    }
+  ],
+  "report_sha256": {
+    "data\\cov001-r1\\coverage.json": "cd4684df1c3e9e3ddd70378640fcf70937432149e5050bc26f18916c27d772cb",
+    "data\\cov001-r1\\coverage.xml": "359dd41782bd51a762280802e4116584c59a41354a83b430a337b2042e8d4478",
+    "data\\cov001-r1\\pytest.xml": "2b0b3070bd3931157bd4e8efd8cf03588f8ca9446d9f071f0f9675b57939c609",
+    "data\\cov001-r1\\pytest.log": "82feeab96a62da473e4529e8955ea51e0cfe301497cbd912bd0fbb2ab22604a2",
+    "data\\cov001-r1\\input-manifest.json": "b19211959950ed58da8c7bfb9bf84e497cbd909b1f0cb5a349edc1ff6968f4d1",
+    "data\\cov001-r1\\exit-code.txt": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+  },
+  "verification_script_sha256": "bd85aeb118f6897b9ac2e55e4e2b61b121e5fea7076ba8eb135f3d618bd60b5a",
+  "verification_source": "from pathlib import Path\nimport coverage, hashlib, json, math, importlib.metadata, xml.etree.ElementTree as ET\nrepo = Path.cwd()\nrun = repo/'data/cov001-r1'\nreport = json.loads((run/'coverage.json').read_text(encoding='utf-8'))\nmanifest = json.loads((run/'input-manifest.json').read_text(encoding='utf-8'))\ninputs = manifest['inputs']\ndef sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()\nchanged = [p for p,h in inputs.items() if hashlib.sha256((repo/p).read_bytes().replace(b'\\r\\n',b'\\n')).hexdigest() != h]\nassert not changed, changed\nversions = {p:importlib.metadata.version(p) for p in manifest['dependencies']}\nassert versions == manifest['dependencies']\nactual_files = {p.relative_to(repo).as_posix() for p in (repo/'app').rglob('*.py')}\nfiles = {p.replace('\\\\','/'):d for p,d in report['files'].items()}\nassert set(files)==actual_files, (actual_files-set(files),set(files)-actual_files)\ncov = coverage.Coverage(data_file=str(run/'.coverage'))\ncov.load()\ncovered=total=excluded=0\nper_file=[]\nfor p,d in sorted(files.items()):\n    _, statements, exclusions, missing, _ = cov.analysis2(str(repo/p))\n    n_total,n_covered,n_excluded=len(statements),len(statements)-len(missing),len(exclusions)\n    s=d['summary']\n    assert (n_total,n_covered,n_excluded)==(s['num_statements'],s['covered_lines'],s['excluded_lines']),p\n    assert set(exclusions)==set(d['excluded_lines']),p\n    assert set(missing)==set(d['missing_lines']),p\n    covered+=n_covered; total+=n_total; excluded+=n_excluded\n    per_file.append({'path':p,'statements':n_total,'covered':n_covered,'excluded_lines':sorted(exclusions)})\ntotals=report['totals']\nassert total>0 and math.isfinite(totals['percent_covered'])\nassert (total,covered,excluded)==(totals['num_statements'],totals['covered_lines'],totals['excluded_lines'])\nexact=100*covered/total\nassert math.isclose(exact,totals['percent_covered'],abs_tol=1e-12)\nxml=ET.parse(run/'coverage.xml').getroot()\nassert (int(xml.attrib['lines-valid']),int(xml.attrib['lines-covered']))==(total,covered)\njunit_path=run/'junit.xml'\nif not junit_path.exists(): junit_path=run/'pytest.xml'\njunit=ET.parse(junit_path).getroot()\nsuites=list(junit.iter('testsuite'))\nstat={k:sum(int(s.get(k,0)) for s in suites) for k in ['tests','errors','failures','skipped']}\nassert stat=={'tests':2329,'errors':0,'failures':0,'skipped':0},stat\ncases=list(junit.iter('testcase'))\nassert len(cases)==2329\nassert (run/'exit-code.txt').read_text().strip() == '0'\nlog=(run/'pytest.log').read_text(encoding='utf-8')\nassert '2329 passed' in log and 'Coverage JSON written' in log\nout={'agent':'/root/cov_verify_review','evidence_level':'E2 real application isolated full pytest','covered':covered,'statements':total,'excluded_lines':excluded,'exact_percent':exact,'at_least_70':exact>=70,'file_count':len(files),'input_count':len(inputs),'input_changes':changed,'dependencies':versions,'junit':stat,'xml_matches_json_and_coverage_api':True,'per_file':per_file,'report_sha256':{str(p.relative_to(repo)):sha(p) for p in [run/'coverage.json',run/'coverage.xml',junit_path,run/'pytest.log',run/'input-manifest.json',run/'exit-code.txt']},'verification_script_sha256':sha(Path(__file__))}\npath=repo/'docs/reviews/cov001_independent_report_review_20261014.json'\npath.write_text(json.dumps(out,indent=2,ensure_ascii=False,allow_nan=False),encoding='utf-8')\nprint(json.dumps({k:v for k,v in out.items() if k not in ['per_file','report_sha256','dependencies']},indent=2))\n\n",
+  "actual_command": [
+    "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+    "data/cov001-independent-verify-app.py"
+  ],
+  "verification_exit_code": 0,
+  "full_pytest_exit_code": 0
+}

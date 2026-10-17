@@ -229,9 +229,13 @@ async def test_ingest_rolls_back_document_when_embedding_fails(session: Session)
     from collections.abc import Sequence
 
     from app.models.rag import Document
-    from app.rag.embeddings.base import EmbeddingProvider
+    from app.rag.embeddings.base import EmbeddingInputPolicy, EmbeddingProvider
 
     class BoomEmbedding(EmbeddingProvider):
+        input_policy = EmbeddingInputPolicy(
+            max_input_tokens=8192, counter=len, counting_method="synthetic-test", source="fixture"
+        )
+
         async def embed(self, texts: Sequence[str]) -> list[list[float]]:
             raise RuntimeError("embedding down")
 
@@ -389,6 +393,111 @@ async def test_search_expands_child_hits_to_parent(
     assert any(r.id == parent.id for r in results)
 
 
+async def test_parent_expand_keeps_child_and_inherits_score(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """父块展开：命中子块时子块保留 + 父块追加，父块继承子块评分与相似度。"""
+    rag = RAGService(session, "pc-lock")
+    doc = await rag.ingest_text(
+        "父块A内容。子块B内容。子块C内容。",
+        title="父子锁定",
+        source="test",
+        user_id="pc-lock-user",
+        strategy="parent_child",
+    )
+    parent = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id.is_(None),
+        )
+    ).first()
+    child = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id == parent.id,
+        )
+    ).first()
+    assert parent is not None and child is not None
+
+    async def fake_hybrid_search(*args, **kwargs):
+        return [
+            ChunkResult(
+                id=child.id,
+                content=child.content,
+                source="test",
+                document_id=doc.id,
+                score=0.8,
+                similarity=0.61,
+            )
+        ]
+
+    monkeypatch.setattr(rag._backend._store, "hybrid_search", fake_hybrid_search)
+    results = await rag.search("父块A")
+    ids = [r.id for r in results]
+    assert child.id in ids, "命中子块应保留，不只返回父块"
+    assert parent.id in ids, "命中子块应追加父块"
+    parent_result = next(r for r in results if r.id == parent.id)
+    assert parent_result.score == pytest.approx(0.8)
+    assert parent_result.similarity == pytest.approx(0.61)
+
+
+async def test_parent_expand_dedupes_when_parent_child_both_hit(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """父子同时命中时，父块只出现一次（去重）。"""
+    rag = RAGService(session, "pc-dedupe")
+    doc = await rag.ingest_text(
+        "父块X内容。子块Y内容。",
+        title="父子去重",
+        source="test",
+        user_id="pc-dedupe-user",
+        strategy="parent_child",
+    )
+    parent = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id.is_(None),
+        )
+    ).first()
+    child = session.exec(
+        select(DocumentChunk).where(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.parent_id == parent.id,
+        )
+    ).first()
+    assert parent is not None and child is not None
+
+    async def fake_hybrid_search(*args, **kwargs):
+        return [
+            ChunkResult(
+                id=child.id,
+                content=child.content,
+                source="test",
+                document_id=doc.id,
+                score=0.7,
+                similarity=0.5,
+            ),
+            ChunkResult(
+                id=parent.id,
+                content=parent.content,
+                source="test",
+                document_id=doc.id,
+                score=0.9,
+                similarity=0.8,
+            ),
+        ]
+
+    monkeypatch.setattr(rag._backend._store, "hybrid_search", fake_hybrid_search)
+    results = await rag.search("父块X")
+    ids = [r.id for r in results]
+    assert ids.count(parent.id) == 1, "父子同时命中时父块去重"
+    parent_result = next(r for r in results if r.id == parent.id)
+    assert parent_result.score == 0.9
+    assert parent_result.similarity == 0.8
+    assert parent_result.retrieval_origin == "hit"
+    assert parent_result.score_inherited_from_chunk_id is None
+
+
 async def test_retriever_as_pipeline_hook(session: Session) -> None:
     rag = RAGService(session, "hook-tenant", embedding_provider=MockEmbeddingProvider(dim=256))
     await rag.ingest_text(
@@ -406,7 +515,7 @@ async def test_retriever_as_pipeline_hook(session: Session) -> None:
 # ── 文档生命周期（接口层）──────────────────────────
 def test_document_lifecycle(client: TestClient) -> None:
     ingest = client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={
             "text": "知识库检索允许用户用自然语言提问并获取相关段落。",
             "title": "知识库说明",
@@ -417,21 +526,21 @@ def test_document_lifecycle(client: TestClient) -> None:
     doc_id = ingest.json()["id"]
     assert ingest.json()["chunk_count"] > 0
 
-    listing = client.get("/api/rag/documents")
+    listing = client.get("/api/v1/rag/documents")
     assert listing.status_code == 200
     assert any(d["id"] == doc_id for d in listing.json())
 
-    detail = client.get(f"/api/rag/documents/{doc_id}")
+    detail = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert detail.status_code == 200
     assert detail.json()["id"] == doc_id
 
-    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
     assert deleted.json()["deleted"] is True
 
-    listing_after = client.get("/api/rag/documents")
+    listing_after = client.get("/api/v1/rag/documents")
     assert all(item["id"] != doc_id for item in listing_after.json())
-    detail_after = client.get(f"/api/rag/documents/{doc_id}")
+    detail_after = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert detail_after.status_code == 200
     assert detail_after.json()["deleted_at"] is not None
 
@@ -439,7 +548,7 @@ def test_document_lifecycle(client: TestClient) -> None:
 def test_reparse_deleted_document_is_rejected(client: TestClient) -> None:
     """已删除的文档不能重建，当前版标志保持不变。"""
     ingest = client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={
             "text": "QA004 删除后不能重建。",
             "title": "删除后重建",
@@ -448,23 +557,23 @@ def test_reparse_deleted_document_is_rejected(client: TestClient) -> None:
     )
     assert ingest.status_code == 200
     doc_id = ingest.json()["id"]
-    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
-    before = client.get(f"/api/rag/documents/{doc_id}")
+    before = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert before.status_code == 200
-    reparse = client.post(f"/api/rag/documents/{doc_id}/reparse")
+    reparse = client.post(f"/api/v1/rag/documents/{doc_id}/reparse")
     assert reparse.status_code == 400
-    after = client.get(f"/api/rag/documents/{doc_id}")
+    after = client.get(f"/api/v1/rag/documents/{doc_id}")
     assert after.status_code == 200
     assert after.json()["deleted_at"] is not None
     assert after.json()["is_current"] == before.json()["is_current"]
-    listing = client.get("/api/rag/documents")
+    listing = client.get("/api/v1/rag/documents")
     assert all(item["id"] != doc_id for item in listing.json())
 
 
 def test_ingest_validation(client: TestClient) -> None:
     resp = client.post(
-        "/api/rag/documents/ingest", json={"text": "", "title": ""}
+        "/api/v1/rag/documents/ingest", json={"text": "", "title": ""}
     )
     assert resp.status_code == 400
 
@@ -472,17 +581,17 @@ def test_ingest_validation(client: TestClient) -> None:
 def test_member_can_delete_own_document(member_client: TestClient) -> None:
     """ADR-0001：成员可删除自己上传的文档。"""
     ingest = member_client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={"text": "成员可读写的知识条目。", "title": "成员文档", "source": "rbac"},
     )
     assert ingest.status_code == 200
     doc_id = ingest.json()["id"]
 
-    deleted = member_client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = member_client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
     assert deleted.json()["deleted"] is True
 
-    missing = member_client.get(f"/api/rag/documents/{doc_id}")
+    missing = member_client.get(f"/api/v1/rag/documents/{doc_id}")
     assert missing.status_code == 404
 
 
@@ -498,7 +607,7 @@ def test_upload_rejects_non_text(
 ) -> None:
     _patch_storage_root(monkeypatch, tmp_path)
     files = {"file": ("data.bin", io.BytesIO(b"\x00\x01\x02"), "application/octet-stream")}
-    resp = client.post("/api/rag/documents/upload", files=files)
+    resp = client.post("/api/v1/rag/documents/upload", files=files)
     assert resp.status_code == 400
     assert "当前允许" in resp.json()["detail"]
     assert _stored_upload_files(tmp_path) == []
@@ -510,7 +619,7 @@ def test_upload_rejects_oversize_before_save(
     _patch_storage_root(monkeypatch, tmp_path)
     monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", 4)
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("note.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert resp.status_code == 413
@@ -525,7 +634,7 @@ def test_upload_accepts_file_at_configured_size_limit(
     raw = "不超过上限。".encode()
     monkeypatch.setattr(settings, "RAG_UPLOAD_MAX_BYTES", len(raw))
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("note.txt", io.BytesIO(raw), "text/plain")},
     )
     assert resp.status_code == 200
@@ -552,7 +661,7 @@ def test_upload_accepts_supported_text_types(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("doc.json", io.BytesIO(b'{\"name\":\"alice\"}'), "application/json")},
     )
     assert resp.status_code == 200
@@ -571,7 +680,7 @@ def test_upload_returns_ocr_required_for_pdf(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("scan.pdf", io.BytesIO(b"%PDF"), "application/pdf")},
     )
     assert resp.status_code == 400
@@ -620,7 +729,7 @@ def test_upload_returns_500_when_ingest_fails(
         fake_ingest_parsed_document,
     )
     resp = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("doc.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert resp.status_code == 500
@@ -649,7 +758,7 @@ def test_upload_stores_source_file_and_downloads_it(
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     raw = b"%PDF-1.4 demo bytes"
     upload = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("manual.pdf", io.BytesIO(raw), "application/pdf")},
     )
     assert upload.status_code == 200
@@ -660,7 +769,7 @@ def test_upload_stores_source_file_and_downloads_it(
     assert doc.storage_path
     assert resolve_source_file_path(doc.storage_path).exists()
 
-    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    download = client.get(f"/api/v1/rag/documents/{doc_id}/download")
     assert download.status_code == 200
     assert download.content == raw
     assert "manual.pdf" in download.headers["content-disposition"]
@@ -687,7 +796,7 @@ def test_delete_document_keeps_source_file_until_purge(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     upload = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("keep.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert upload.status_code == 200
@@ -699,13 +808,13 @@ def test_delete_document_keeps_source_file_until_purge(
     source_path = resolve_source_file_path(doc.storage_path)
     assert source_path.exists()
 
-    deleted = client.delete(f"/api/rag/documents/{doc_id}")
+    deleted = client.delete(f"/api/v1/rag/documents/{doc_id}")
     assert deleted.status_code == 200
     session.expire_all()
     kept = session.get(Document, doc_id)
     assert kept is not None and kept.deleted_at is not None
     assert source_path.exists()
-    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    download = client.get(f"/api/v1/rag/documents/{doc_id}/download")
     assert download.status_code == 404
 
 
@@ -730,7 +839,7 @@ def test_download_missing_source_file_returns_404(
 
     monkeypatch.setattr("app.api.routes.rag.parse_uploaded_document", fake_parse)
     upload = client.post(
-        "/api/rag/documents/upload",
+        "/api/v1/rag/documents/upload",
         files={"file": ("lost.txt", io.BytesIO(b"hello"), "text/plain")},
     )
     assert upload.status_code == 200
@@ -741,39 +850,60 @@ def test_download_missing_source_file_returns_404(
     assert doc.storage_path
     assert delete_source_file(doc.storage_path) is True
 
-    download = client.get(f"/api/rag/documents/{doc_id}/download")
+    download = client.get(f"/api/v1/rag/documents/{doc_id}/download")
     assert download.status_code == 404
 
 
 def test_search_endpoint(client: TestClient) -> None:
     client.post(
-        "/api/rag/documents/ingest",
+        "/api/v1/rag/documents/ingest",
         json={
             "text": "Agent 编排将任务拆解为理解、规划、行动、反思、响应五个阶段。",
             "title": "Agent 流程",
             "source": "search",
         },
     )
-    resp = client.post("/api/rag/search", json={"query": "Agent 有几个阶段", "top_k": 3})
+    resp = client.post("/api/v1/rag/search", json={"query": "Agent 有几个阶段", "top_k": 3})
     assert resp.status_code == 200
     assert any("阶段" in r["content"] for r in resp.json())
 
 
 def test_search_empty_query(client: TestClient) -> None:
-    resp = client.post("/api/rag/search", json={"query": "  "})
+    resp = client.post("/api/v1/rag/search", json={"query": "  "})
     assert resp.status_code == 400
+
+
+def _register_local_index(session: Session, dim: int = 4) -> str:
+    """登记并激活一个 local 索引，返回其 id。
+
+    索引治理生效后，身份未知的分块（``index_id`` 为 NULL）**不参与检索**：
+    直接构造分块再检索的用例，若不先登记索引，就会命中「有历史数据但没有生效
+    索引」而被拒绝。因此这些用例必须显式声明自己的分块属于哪个索引。
+    """
+    from app.rag.index_identity import EmbeddingIndexIdentity
+    from app.rag.index_registry import resolve_write_index
+
+    identity = EmbeddingIndexIdentity(
+        backend="local",
+        provider="stub",
+        model="direct-store-test-model",
+        dim=dim,
+    )
+    return resolve_write_index(session, identity).id
 
 
 async def test_hybrid_search_skips_mismatched_embedding_dimensions(
     session: Session,
 ) -> None:
-    """同租户混维向量不得让检索 500，只召回与查询同维的分块。"""
+    """同租户混维向量不得让检索 500，只召回与索引登记同维的分块。"""
     import json
 
     from app.models.rag import Document
+    from app.rag.index_identity import IndexIdentityError
     from app.rag.vectorstore.local import LocalVectorStore
 
     tenant_id = "mix-dim-tenant"
+    index_id = _register_local_index(session, dim=4)
     doc = Document(tenant_id=tenant_id, user_id="mix-user", title="混维", chunk_count=2)
     session.add(doc)
     session.commit()
@@ -788,6 +918,7 @@ async def test_hybrid_search_skips_mismatched_embedding_dimensions(
             source="ok",
             embedding=json.dumps([1.0, 0.0, 0.0, 0.0]),
             tokens=json.dumps(["兼容", "维度"]),
+            index_id=index_id,
         )
     )
     session.add(
@@ -799,6 +930,7 @@ async def test_hybrid_search_skips_mismatched_embedding_dimensions(
             source="old",
             embedding=json.dumps([1.0, 0.0]),
             tokens=json.dumps(["旧", "维度"]),
+            index_id=index_id,
         )
     )
     session.commit()
@@ -813,13 +945,14 @@ async def test_hybrid_search_skips_mismatched_embedding_dimensions(
     assert any("兼容维度" in hit.content for hit in hits)
     assert all("旧维度不应" not in hit.content for hit in hits)
 
-    empty = await LocalVectorStore(session).hybrid_search(
-        query_embedding=[0.0, 1.0, 0.0],
-        query_tokens=["兼容"],
-        tenant_id=tenant_id,
-        top_k=5,
-    )
-    assert empty == []
+    # 查询向量维度与索引登记不符是「混用」，不是「查过了没有」：必须显式报错。
+    with pytest.raises(IndexIdentityError):
+        await LocalVectorStore(session).hybrid_search(
+            query_embedding=[0.0, 1.0, 0.0],
+            query_tokens=["兼容"],
+            tenant_id=tenant_id,
+            top_k=5,
+        )
 
 
 def _seed_hybrid_chunks(
@@ -832,11 +965,13 @@ def _seed_hybrid_chunks(
     """写入同租户当前文档分块，返回 document_id。
 
     chunks 为 (content, embedding, tokens)，按给定顺序插入。
+    分块挂到本用例登记的 local 索引名下——否则身份未知的分块不参与检索。
     """
     import json
 
     from app.models.rag import Document
 
+    index_id = _register_local_index(session, dim=len(chunks[0][1]))
     doc = Document(
         tenant_id=tenant_id,
         user_id=f"{tenant_id}-user",
@@ -856,6 +991,7 @@ def _seed_hybrid_chunks(
                 source=f"src-{index}",
                 embedding=json.dumps(embedding),
                 tokens=json.dumps(tokens),
+                index_id=index_id,
             )
         )
     session.commit()
@@ -1187,9 +1323,14 @@ def test_sources_keep_filename_and_existing_location(tmp_path: Path) -> None:
             ],
         )
         assert sources == [
-            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费"},
-            {"filename": "notes.txt", "page": None, "section": None},
-            {"filename": "仅标题", "page": None, "section": None},
+            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费",
+             "chunk_id": located_chunk.id, "document_id": located.id, "excerpt": "第三页"},
+            {"filename": "handbook.pdf", "page": 3, "section": "费用/月费",
+             "chunk_id": duplicate.id, "document_id": located.id, "excerpt": "第三页重复"},
+            {"filename": "notes.txt", "page": None, "section": None,
+             "chunk_id": plain_chunk.id, "document_id": plain.id, "excerpt": "没有页码"},
+            {"filename": "仅标题", "page": None, "section": None,
+             "chunk_id": titled_chunk.id, "document_id": titled.id, "excerpt": "用标题当文件名"},
         ]
     finally:
         session.close()

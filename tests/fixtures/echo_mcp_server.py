@@ -4,9 +4,8 @@
 用于验证真实的 stdio 传输链路（连接 / 列举 / 调用）。
 仅依赖 ``mcp``，不依赖项目代码。
 
-适配 mcp 2.x 的低级 ``Server`` API：通过 ``add_request_handler`` 注册
-``tools/list`` 与 ``tools/call`` 处理器，并以对应的 Params 类型校验入参、
-返回对应的 Result 类型。
+按实际SDK接口注册：2.x使用add_request_handler，1.x使用list_tools/call_tool
+装饰器。工具输入、内容与真实stdio传输保持一致。
 """
 
 import asyncio
@@ -52,8 +51,18 @@ async def handle_call_tool(_ctx, request: CallToolRequestParams) -> CallToolResu
     )
 
 
-server.add_request_handler("tools/list", PaginatedRequestParams, handle_list_tools)
-server.add_request_handler("tools/call", CallToolRequestParams, handle_call_tool)
+if hasattr(server, "add_request_handler"):
+    server.add_request_handler("tools/list", PaginatedRequestParams, handle_list_tools)
+    server.add_request_handler("tools/call", CallToolRequestParams, handle_call_tool)
+else:
+    @server.list_tools()
+    async def list_tools() -> list[Tool]:
+        return (await handle_list_tools(None, PaginatedRequestParams())).tools
+
+    @server.call_tool()
+    async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+        result = await handle_call_tool(None, CallToolRequestParams(name=name, arguments=arguments))
+        return result.content
 
 
 async def main() -> None:

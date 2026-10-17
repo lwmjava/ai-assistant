@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-14",
+  "authorized_model_calls": 12,
+  "files": {
+    "app/agents/pipeline.py": "469867a3f2ba317c984f0fff959eaebafd49e981616f846df3ba8ceeefb53973",
+    "app/agents/prompts.py": "168da056cc188e63e6edd741119644bfc22d4d1c00827433a999b9c4210dba51",
+    "scripts/run_agent_chain_eval.py": "6f834be7563bd194042d1ac38c7c1407f253677bf2a8be6a34750249ef10b8c3",
+    "scripts/agent_gate_check.py": "4d4dd605cb6716ddaa5bd03bba780ed397f446f3f217ec31338a791722d97674",
+    "scripts/agent_gate_probe.py": "eaff9498cb16c71c46fc87ce148d808ceaf290b8af8127338000cb0d0f37670b",
+    "evals/datasets/agent-chain-v0.1.1/cases.json": "77ff27c8c67c68afb55eed51384e20dd07171b1d047de6cde346c976f38f5ad6",
+    "evals/datasets/agent-chain-v0.1.1/index.json": "929e4114ef2f548de0e2d89e3d28f8ebb174f57caee39273c911fd3518c58251"
+  }
+}

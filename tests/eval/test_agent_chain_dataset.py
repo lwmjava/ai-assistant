@@ -43,11 +43,17 @@ class AgentChainCase(BaseModel):
     tags: list[str] = Field(min_length=1)
 
 
-def test_agent_chain_dataset_matches_index_and_has_no_secrets() -> None:
-    cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
-    index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+@pytest.mark.parametrize("dataset", ["agent-chain-v0.1", "agent-chain-v0.1.1"])
+def test_agent_chain_dataset_matches_index_and_has_no_secrets(dataset: str) -> None:
+    folder = ROOT / "evals/datasets" / dataset
+    cases = json.loads((folder / "cases.json").read_text(encoding="utf-8"))
+    index = json.loads((folder / "index.json").read_text(encoding="utf-8"))
+    from scripts.run_agent_chain_eval import schema_valid
+
+    schema = json.loads((ROOT / "evals/schemas/agent_chain_case.schema.json").read_text(encoding="utf-8"))
     parsed: list[AgentChainCase] = []
     for raw in cases:
+        assert schema_valid(raw, schema)
         try:
             parsed.append(AgentChainCase.model_validate(raw))
         except ValidationError as exc:
@@ -57,7 +63,8 @@ def test_agent_chain_dataset_matches_index_and_has_no_secrets() -> None:
     assert index["counts"]["critical_followup"] == sum(case.critical_followup for case in parsed)
     assert all(case.synthetic and case.tier == "silver" for case in parsed)
     assert all(case.provenance.review_status == "silver" for case in parsed)
-    blob = CASES_PATH.read_text(encoding="utf-8")
+    assert all(case.dataset_version == index["dataset_version"] for case in parsed)
+    blob = (folder / "cases.json").read_text(encoding="utf-8")
     assert scan_secrets(blob) == []
 
 
@@ -86,7 +93,7 @@ def test_tool_choice_prompt_hides_expected_fields_and_skips_real_tools() -> None
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
+    cases = module.load_cases()
 
     async def fake_sandbox(arguments):
         raise AssertionError("评测不应执行沙箱")
@@ -96,7 +103,7 @@ def test_tool_choice_prompt_hides_expected_fields_and_skips_real_tools() -> None
         import app.agents.tools.builtin as builtin
 
         builtin.code_sandbox = fake_sandbox
-        names, _raws = __import__("asyncio").run(module.predict_tools(module.SmokeIntentModel(), cases))
+        names, _raws, records = __import__("asyncio").run(module.predict_tools(module.SmokeIntentModel(), cases))
     finally:
         builtin.code_sandbox = original
     assert module.SIDE_EFFECTS == {"sandbox": 0, "mcp": 0, "network": 0, "rag": 0, "database": 0}
@@ -104,6 +111,7 @@ def test_tool_choice_prompt_hides_expected_fields_and_skips_real_tools() -> None
     assert chosen["agent-003"] == ["code_sandbox"]
     assert chosen["agent-004"] == ["code_sandbox"]
     assert chosen["agent-001"] == []
+    assert sum(record["recorded_calls"] for record in records) == 2
 
 
 def test_eval_report_refuses_overwrite(tmp_path: Path) -> None:

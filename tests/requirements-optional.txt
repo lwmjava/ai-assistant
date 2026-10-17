@@ -1,0 +1,8 @@
+# QA-005验证组合，安装到项目指定conda环境；默认生产依赖不变。
+# 安装前使用当前环境的版本约束，禁止为运行可选测试升级/降级已有包。
+mcp==1.12.4
+llama-index-core==0.12.42
+langchain-text-splitters==1.1.3
+# 新传递依赖Deprecated 3.x使用3.12语法，项目mypy仍以3.11检查。
+Deprecated==1.2.18
+wrapt==1.17.3

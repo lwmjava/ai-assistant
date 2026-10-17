@@ -182,7 +182,8 @@ def test_log_login_failure_hides_password_and_traceback(
 ) -> None:
     """登录失败的日志不含提交的口令，响应正文不含回溯。"""
 
-    def _reject(session: object, username: str, password: str) -> None:
+    def _reject(session: object, username: str, password: str, *, report_disabled: bool = False) -> None:
+        assert report_disabled is True
         logging.getLogger("app.services.auth_service").error("登录失败 password=%s", password)
         return None
 
@@ -190,7 +191,7 @@ def test_log_login_failure_hides_password_and_traceback(
     caplog.set_level(logging.INFO)
     client = TestClient(app, raise_server_exceptions=False)
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": "nobody", "password": PASSWORD},
     )
     assert response.status_code == 401
@@ -214,7 +215,7 @@ def test_log_upload_failure_hides_api_key_and_traceback(
     try:
         client = TestClient(app, raise_server_exceptions=False)
         response = client.post(
-            "/api/rag/documents/upload",
+            "/api/v1/rag/documents/upload",
             files={"file": (filename, b"hello", "text/plain")},
         )
     finally:
@@ -245,7 +246,7 @@ def test_log_chat_failure_hides_token_and_traceback(
     message = f"token={TOKEN} Bearer {JWT}"
     try:
         client = TestClient(app, raise_server_exceptions=False)
-        response = client.post("/api/chat", json={"message": message})
+        response = client.post("/api/v1/chat", json={"message": message})
     finally:
         app.dependency_overrides.pop(get_current_user, None)
     assert response.status_code == 500

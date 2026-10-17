@@ -3,7 +3,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.security import Role
 from app.models.membership import Invitation, Membership
@@ -97,7 +97,7 @@ def list_invitations(session: Session, user: User, tenant_id: str | None) -> lis
     """列出发码人可见的邀请码，包含邀请码本身。"""
     tenant = resolve_invite_tenant(session, user, tenant_id)
     rows = session.exec(
-        select(Invitation).where(Invitation.tenant_id == tenant.id).order_by(Invitation.created_at.desc())
+        select(Invitation).where(Invitation.tenant_id == tenant.id).order_by(col(Invitation.created_at).desc())
     ).all()
     return list(rows)
 

@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-14",
+  "authorization": "用户已配置.env，明确要求直接使用可用模型/密钥/API执行新版真实official",
+  "requested_model": "deepseek-flash",
+  "report": "evals/reports/agent-chain-v0.1-official-20261014T022048326800Z.json",
+  "report_sha256": "23362879bb7f47f0967bd3a67c49dc879508bbd3352a89764272aaa6185d7efc",
+  "official_exit_code": 1,
+  "gate_exit_code": 1,
+  "logical_model_calls": 12,
+  "metrics": {
+    "route_accuracy": 1.0,
+    "followup_recall": 1.0,
+    "tool_selection_recall": 1.0,
+    "tool_call_validity_recall": 0.5
+  },
+  "failed_cases": [
+    {
+      "case_id": "agent-004",
+      "error_code": "prior_code_mismatch",
+      "predicted_tools": [
+        "code_sandbox"
+      ],
+      "recorded_calls": 0
+    }
+  ],
+  "report_schema_version": "agent-chain-report-2.0.0",
+  "evaluator_version": "agent-chain-eval-0.3.0",
+  "dataset_version": "0.1.1",
+  "real_model_calls_repeated": false,
+  "ci_runs": 0,
+  "git_publish_actions": 0,
+  "server_model_identity_verified": false,
+  "side_effect_claim": "runner only proposes and validates calls through memory recording fake; side_effects fields are design declaration not dynamic execution counters; real model HTTP traffic is present",
+  "original_inputs_unchanged": true,
+  "failure_detail": "agent-004 bubble_sort function AST unchanged; only print output adds 排序结果: prefix, violating approved prior-code AST binding; not an incorrect sorting algorithm",
+  "independent_review": "docs/reviews/2026-10-14-AGT-003-official独立复核.md"
+}

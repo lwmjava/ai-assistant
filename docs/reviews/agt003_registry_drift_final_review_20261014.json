@@ -1,0 +1,243 @@
+{
+  "current": "prompt-model-v3",
+  "drift": [
+    {
+      "path": "app/agents/pipeline.py",
+      "registered": "a39060c2197f02bfcff03a4bd32cc82774a189e69da51d1ebd445cec09ab97e9",
+      "head": "469867a3f2ba317c984f0fff959eaebafd49e981616f846df3ba8ceeefb53973",
+      "current": "0a637f7e8f208c3f51d752c799e4df6f29f75ca7241b89f276ce6557e012a2f0",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/plan.py",
+      "registered": null,
+      "head": "09181160c178539491fbd7056bd9beeb1f4c221631d5387c64f15efb11511f6f",
+      "current": "09181160c178539491fbd7056bd9beeb1f4c221631d5387c64f15efb11511f6f",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/plan_runtime.py",
+      "registered": null,
+      "head": "447d57457bd45b713930e1228577453bc1ef3ddbd0a46cd292ead5d30deefa0a",
+      "current": "447d57457bd45b713930e1228577453bc1ef3ddbd0a46cd292ead5d30deefa0a",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/prompts.py",
+      "registered": "0bc23c1582a4f651b87a8a9b31b5c8d85739e08ad8aa73b1e3080ac966197868",
+      "head": "168da056cc188e63e6edd741119644bfc22d4d1c00827433a999b9c4210dba51",
+      "current": "168da056cc188e63e6edd741119644bfc22d4d1c00827433a999b9c4210dba51",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/skills/base.py",
+      "registered": "704b118832a942b4700528525fb0073cbd59bffe67972592b0859161f67c19a9",
+      "head": "762ad5c9e0560e639f2e2cc1ab29dd0f0f384806817ec61264ef6bbcb2dcf5ce",
+      "current": "762ad5c9e0560e639f2e2cc1ab29dd0f0f384806817ec61264ef6bbcb2dcf5ce",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/skills/loader.py",
+      "registered": "1cf6f41d3d3bd37ddc27ca85af89db270c82df430e758c639ee418abfb0417c9",
+      "head": "c347a53a270bd1ecd0cce7c5f06525b1007d64d2fc64c491c0128ce95a72d0aa",
+      "current": "c347a53a270bd1ecd0cce7c5f06525b1007d64d2fc64c491c0128ce95a72d0aa",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/skills/manager.py",
+      "registered": "aba7354f454deaf0d33772a6913fdb705d9f083ec992bae22ad4cc881b740075",
+      "head": "29c8ee266842dafcbbad12813525b0b4aa10232a453f9a37554115a84272a809",
+      "current": "29c8ee266842dafcbbad12813525b0b4aa10232a453f9a37554115a84272a809",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/skills/versioning.py",
+      "registered": null,
+      "head": "e87082e90da844e5ee26f61624783f469240df7a84c49f0ebf28280a40b998b0",
+      "current": "e87082e90da844e5ee26f61624783f469240df7a84c49f0ebf28280a40b998b0",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/state.py",
+      "registered": null,
+      "head": "57c78269832fbc02cdadf4968abb61c74d199eed09432582f9c4f4e678a5737f",
+      "current": "57c78269832fbc02cdadf4968abb61c74d199eed09432582f9c4f4e678a5737f",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/tools/base.py",
+      "registered": "d295dab0948135ac4baf6ff4b57ec1ed370fc79befec5058e0bd640cc1f93b5b",
+      "head": "f53a0d32bf0991a70f2ec9c718874e7855bd5376993e01cdd546a016d9b6ead9",
+      "current": "f53a0d32bf0991a70f2ec9c718874e7855bd5376993e01cdd546a016d9b6ead9",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/tools/builtin.py",
+      "registered": "5da0586c310c7527914c74419bef8ccc9fdd3ee53fb852bc3111ba763ef81b3f",
+      "head": "74251a7354f1fa9c17ac4d900ede16de36de06e06ac975bfbfb113eeb90b7829",
+      "current": "74251a7354f1fa9c17ac4d900ede16de36de06e06ac975bfbfb113eeb90b7829",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/tools/contract.py",
+      "registered": null,
+      "head": "d9cfb7a737b0f5c93760531e68d72d004a83815d71a3ed06858dc9c96d8d63f4",
+      "current": "d9cfb7a737b0f5c93760531e68d72d004a83815d71a3ed06858dc9c96d8d63f4",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/tools/executor.py",
+      "registered": null,
+      "head": "dfd8203bf477ad0709a0fcbdd081c75a2313eb8a3756aa3135334424c3f233e6",
+      "current": "dfd8203bf477ad0709a0fcbdd081c75a2313eb8a3756aa3135334424c3f233e6",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/tools/file_ops.py",
+      "registered": "f7402efdb9c02e5e569275ca5357953fea48ea2af3e0bb782e6336daa8535047",
+      "head": "c6c2e1a4fa802a1b94f515317b9115360b3da3900f47988676ccf5470c3a3c0d",
+      "current": "c6c2e1a4fa802a1b94f515317b9115360b3da3900f47988676ccf5470c3a3c0d",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/tools/outcome.py",
+      "registered": null,
+      "head": "d4b6489227e6d6f3b35d3451c54eccebc0a6040da90a6595120d78ec6f929a73",
+      "current": "d4b6489227e6d6f3b35d3451c54eccebc0a6040da90a6595120d78ec6f929a73",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/agents/tools/web_search.py",
+      "registered": "488c36eca6833cfaf63787af5d82c17fbfd7f5e041a6e587181756c7eab849a2",
+      "head": "985f9bfaf430cfe7752b6ed3724e819b2b4b4bab5e66ac80d3a022dbdc33a5a2",
+      "current": "985f9bfaf430cfe7752b6ed3724e819b2b4b4bab5e66ac80d3a022dbdc33a5a2",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/api/routes/chat.py",
+      "registered": "5b7ae5e6b511bb83e7b67e2adbe9be044228e6a2e68883e8fa7021b9ffd84af8",
+      "head": "3dddbe88424aeaa04060cead806eee35487bbfd35af13d4be20acdd8e350c85a",
+      "current": "3dddbe88424aeaa04060cead806eee35487bbfd35af13d4be20acdd8e350c85a",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/audit/models.py",
+      "registered": "8cac9f08da17a9135a1a80994db407f0c65bb10d5630a4c4a21985564b3faabd",
+      "head": "a941d550ffb092c05d7f2a2dbf07e16ad1b2c6cf270afa4485e6577fd77a6388",
+      "current": "a941d550ffb092c05d7f2a2dbf07e16ad1b2c6cf270afa4485e6577fd77a6388",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/core/config.py",
+      "registered": "08cfa3ee30ded37cc1f621b8d79c916e05034d22bd1e19367db6839bfd029a53",
+      "head": "74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432",
+      "current": "74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/core/database.py",
+      "registered": "3160662240eca4ef38dafc9afa55f7077388710cbca8f35b02a7e1c8a80d8953",
+      "head": "3f2c0128f0df542b135777123df9d911f2d4ffed97370f8050acfb85bf7001ce",
+      "current": "3f2c0128f0df542b135777123df9d911f2d4ffed97370f8050acfb85bf7001ce",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/core/response_cache.py",
+      "registered": null,
+      "head": "6704cf0cb6574e737b8d92407481c9a165d4bda07770ebdc623c9ae03e56588c",
+      "current": "6704cf0cb6574e737b8d92407481c9a165d4bda07770ebdc623c9ae03e56588c",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/llm/mock.py",
+      "registered": "930f24224e28db72689d27b9475e4bdce008f0d281ae753de663e56958dc1107",
+      "head": "37ca2e32f271299af8dba5790cfce3aad366d6cc4c668b3028d45eae8fd12ab0",
+      "current": "37ca2e32f271299af8dba5790cfce3aad366d6cc4c668b3028d45eae8fd12ab0",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/llm/openai_compatible.py",
+      "registered": "4dc2a10b5852ed6c94fc0b3903a5bdfb588ddb5d5d518253205ae34b7485c923",
+      "head": "422bbd6c965264fb5ef275f83431e99dbbe8e35c79e4d1cbe041ceca1e20f3ac",
+      "current": "422bbd6c965264fb5ef275f83431e99dbbe8e35c79e4d1cbe041ceca1e20f3ac",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/main.py",
+      "registered": "49932886bf22ad2b981ad4f2f50b337695c0c7588069801cd0ac51d5359aafde",
+      "head": "a89fffb1078bc7fd47638080ba043200455b76c6f8e7c51ad4d786adb01f0ee6",
+      "current": "a89fffb1078bc7fd47638080ba043200455b76c6f8e7c51ad4d786adb01f0ee6",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/models/__init__.py",
+      "registered": "2b481593e34ff55e56996e1ceaf129d970d039e269b20e4d381fd0581805ee34",
+      "head": "ccf87d25b49ef1a733303b4eee4850501dc790539f758c0c211370de4f8a45ca",
+      "current": "ccf87d25b49ef1a733303b4eee4850501dc790539f758c0c211370de4f8a45ca",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/models/agent_state.py",
+      "registered": null,
+      "head": "9e0bd43fd3562c8600d7c2199e235478d0250ad2e53d76fa570644e57f841424",
+      "current": "9e0bd43fd3562c8600d7c2199e235478d0250ad2e53d76fa570644e57f841424",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/rag/cache.py",
+      "registered": null,
+      "head": "c650e4dd4e359da4ff02ed8ca0a2a485b2355725d31334660fd8bd507a3d5d48",
+      "current": "c650e4dd4e359da4ff02ed8ca0a2a485b2355725d31334660fd8bd507a3d5d48",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/rag/service.py",
+      "registered": "bd5dd7197a9c59cdbde41a6c900713dd9d8a0c4fa6df5573eb47cfe7c5b1cd59",
+      "head": "61a4654a5760734af26e3ae8e2df8c9ea866a13ca3ee1489620a254fdd667337",
+      "current": "61a4654a5760734af26e3ae8e2df8c9ea866a13ca3ee1489620a254fdd667337",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/services/agent_execution_guard.py",
+      "registered": null,
+      "head": "7da73a9cfe9e2b48b499589dbfe3f558dc023d5635579266be87c177c7c02b34",
+      "current": "7da73a9cfe9e2b48b499589dbfe3f558dc023d5635579266be87c177c7c02b34",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/services/agent_state_cleanup.py",
+      "registered": null,
+      "head": "e682eb3548d2edb7d2aaca81a585b042c8ab0eff50d528fa94a691b123e0c119",
+      "current": "e682eb3548d2edb7d2aaca81a585b042c8ab0eff50d528fa94a691b123e0c119",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/services/agent_state_service.py",
+      "registered": null,
+      "head": "b5c11b2468ca782efd9917d70aa0a5b19b56da0461b00a8460c744ab9a23d25a",
+      "current": "b5c11b2468ca782efd9917d70aa0a5b19b56da0461b00a8460c744ab9a23d25a",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/services/cache_scope.py",
+      "registered": null,
+      "head": "1f31bd5ceabb5719cb90da7c8c00023416af258b6c9ec848d4774d9f932ed9f8",
+      "current": "1f31bd5ceabb5719cb90da7c8c00023416af258b6c9ec848d4774d9f932ed9f8",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/services/chat_service.py",
+      "registered": "82a4dc741f5e2ea9156b771a623b4a1afe0ba69105ed4e95f7b5724f3f72a0d2",
+      "head": "616ad0d7db6d4c371246547a1ccab35b957b02349b1cc91725104d7fbe947868",
+      "current": "616ad0d7db6d4c371246547a1ccab35b957b02349b1cc91725104d7fbe947868",
+      "head_already_drifted": true
+    },
+    {
+      "path": "app/services/quota.py",
+      "registered": "29d5a166cf1add0fc7c744b97c47e50d2c0cd260471394693ff0547782532c71",
+      "head": "1e0f6582c2d950ba9ebf927d94bc5a2fe997d448965be887a7dc9def400fa660",
+      "current": "1e0f6582c2d950ba9ebf927d94bc5a2fe997d448965be887a7dc9def400fa660",
+      "head_already_drifted": true
+    }
+  ]
+}

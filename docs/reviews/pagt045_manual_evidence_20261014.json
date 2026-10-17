@@ -1,0 +1,182 @@
+{
+  "date": "2026-10-14",
+  "head": "ee54252d3be42a9827a15849c0c8b8f5552151d7",
+  "agent": "/root/accept_plan_skill",
+  "authorized_business_acceptance": true,
+  "evidence_class": "E2 isolated integration; E3 supplement",
+  "python": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+  "files": {
+    "app/agents/pipeline.py": "469867a3f2ba317c984f0fff959eaebafd49e981616f846df3ba8ceeefb53973",
+    "app/agents/plan.py": "09181160c178539491fbd7056bd9beeb1f4c221631d5387c64f15efb11511f6f",
+    "app/agents/plan_runtime.py": "888ee8eaff4821ba2dfee8be6c8c30a6b0d4de91306a936db31608e96bde15fa",
+    "app/agents/prompts.py": "168da056cc188e63e6edd741119644bfc22d4d1c00827433a999b9c4210dba51",
+    "app/agents/skills/base.py": "762ad5c9e0560e639f2e2cc1ab29dd0f0f384806817ec61264ef6bbcb2dcf5ce",
+    "app/agents/skills/builtin/code_review.yaml": "393163fa0120c352b40e51f3498d304d92a5ee0929f330fe3d5cc4c2b32500ef",
+    "app/agents/skills/builtin/releases.json": "5095600808f22c11ddafb3c1fd3cf5a6adfa1b39ee5bd1b9a97ff19d246a9a15",
+    "app/agents/skills/builtin/translator.yaml": "b26ce002d2440433dda2e5ffbb84b5cb18241ff2510d4cf21f0407d39e15e262",
+    "app/agents/skills/loader.py": "c347a53a270bd1ecd0cce7c5f06525b1007d64d2fc64c491c0128ce95a72d0aa",
+    "app/agents/skills/manager.py": "29c8ee266842dafcbbad12813525b0b4aa10232a453f9a37554115a84272a809",
+    "app/agents/skills/versioning.py": "e87082e90da844e5ee26f61624783f469240df7a84c49f0ebf28280a40b998b0",
+    "app/agents/state.py": "57c78269832fbc02cdadf4968abb61c74d199eed09432582f9c4f4e678a5737f",
+    "app/agents/tools/base.py": "f53a0d32bf0991a70f2ec9c718874e7855bd5376993e01cdd546a016d9b6ead9",
+    "app/agents/tools/builtin.py": "74251a7354f1fa9c17ac4d900ede16de36de06e06ac975bfbfb113eeb90b7829",
+    "app/agents/tools/executor.py": "dfd8203bf477ad0709a0fcbdd081c75a2313eb8a3756aa3135334424c3f233e6",
+    "app/agents/tools/file_ops.py": "c6c2e1a4fa802a1b94f515317b9115360b3da3900f47988676ccf5470c3a3c0d",
+    "app/agents/tools/outcome.py": "d4b6489227e6d6f3b35d3451c54eccebc0a6040da90a6595120d78ec6f929a73",
+    "app/agents/tools/web_search.py": "985f9bfaf430cfe7752b6ed3724e819b2b4b4bab5e66ac80d3a022dbdc33a5a2",
+    "app/api/routes/health.py": "597a4a70b7eb115be60bd351e32d19987c0ce309ed41c295f3f571d224dc78bf",
+    "app/core/config.py": "74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432",
+    "app/llm/mock.py": "37ca2e32f271299af8dba5790cfce3aad366d6cc4c668b3028d45eae8fd12ab0",
+    "app/services/chat_service.py": "616ad0d7db6d4c371246547a1ccab35b957b02349b1cc91725104d7fbe947868",
+    "app/services/skill_service.py": "5d0050794ac3505ad4834deecb922163c16ceb578c18c376bd10dea3aad250e3",
+    "docs/adr/0011-structured-sequential-agent-plan.md": "1ce698ae24c4ee809a4d5eae161232f37dece5b6124b342f5ff0c1643222832c",
+    "docs/agents/skill-version-spec-v1.md": "d4434924ac9979779966513cfcbd5f6b4d7f72aaf08763837d301fa3ebac79c4",
+    "docs/ai-prompts/skills/task-card-delivery/SKILL.md": "97248dec90e7b927da655e6c336dccd12ae4c634d3cc4ff9e8cc4e9dd806c2dd",
+    "docs/evaluations/agent-structured-plan-v1.md": "351daca3e6f3ef36fe82d71c1076a9751a5cbe5b46dea25fe59b81382943526b",
+    "docs/evaluations/skill-version-regression-v1.md": "b94b4d3c6ae392275be306f2db3b17bddac2350235fc8cd60bcb2dcbe970cefa",
+    "docs/plans/plan_pagt_005_20261013.md": "b1df3497e34834863cc0b36450613f617bb9038c8b180df912a414d5070a774e",
+    "docs/plans/plan_pagt_005_review_fixes_20261013.md": "96dfa6cddb05f4e97022ce9899193e977e66d4035ff2de003b24265af2becbe1",
+    "docs/reviews/pagt045_manual_probe_20261014.py": "ec380271ec5fa2248e7459e6585ed5873a916f0c1c77fee582c31caaec94f4e8",
+    "tests/conftest.py": "00ffb3da933e6107ce9a25c47b32909e316eb7566b6151e198dba63ca1d1930c",
+    "tests/eval/test_rag006_pipeline.py": "9ed702991156aed0959a0d54c31d7c3c93ad2b39175832f900ca0a145d57cd63",
+    "tests/eval/test_skill_tenant_selection.py": "045fb59fa5b64dd5140c1af7184aed1a16df34a021bc2cf11c1ae4cce502d351",
+    "tests/test_agent_chain.py": "ea98677566a16876b4ea579fe7629e7cdab700aa8e12dc67c64276fc6a6530c0",
+    "tests/test_agent_runtime_recovery.py": "33897424e72391ee31cb4245bd35a0fcae5633cb3e239bf24ebc1bc0b539ea4e",
+    "tests/test_agent_state_resume.py": "38b968c6899fea6a7b28a31660af789994ed80cd8d408ec664727f01c274a9f1",
+    "tests/test_chat.py": "a924477d221cf64383a81d3775064e84adc3e8a2d9d180659df1b04df8643eb7",
+    "tests/test_mcp.py": "b13dc6b341460a01d26fade981f8fc732c4d1e1967d8750ff4bdf442ee92d343",
+    "tests/test_pagt001_integration.py": "02cf7d6079e64977cb27eecfbd2debbd034f36ff65ee2ee16057c75eb387219e",
+    "tests/test_pagt001_review.py": "a1aa740b9f94632940191229eb225cd02b7c116424903a79837e37a1a34fcd84",
+    "tests/test_pagt001_tools.py": "e4f127573eaf822a51f180ffcd07e9d488ebca821e24d23a67376ee8c428fcc0",
+    "tests/test_pipeline_budget.py": "a6477dd7a480983618ecb1312f7387dc5cbe1c412c46722edb69e9d9b1c2b1f1",
+    "tests/test_plan_checkpoint_consistency.py": "de2ddfe05c32306f6cfb0624c4d6fcdbcf6daa727527d5650eab53d2ec2e54ea",
+    "tests/test_plan_entry_acceptance.py": "9725f8b20ecae395263b393dea43d0c7d01d002cc4f1d9329f60fa295a0762a3",
+    "tests/test_plan_schema.py": "302a2edfb5089c7a2aa9c12386b3560d63cda9ff22407b591c111a2ed3750f86",
+    "tests/test_plan_tool_outcomes.py": "41b76d635aa71036ccdda98ba89ab70737e6c0e85764086428447a3e54685725",
+    "tests/test_rag_019_acceptance.py": "830ed171ff0ff2d3aad8782c99893b54a7c2589523760af31324981ca00b701a",
+    "tests/test_rag_028_model_capability.py": "b30b67016722d9dc4c22ff9163711700c98174f0c345358f04a6b233b1d9bc57",
+    "tests/test_rag_029_pipeline_alignment.py": "4ae59c2096ac42c362f20885d96540c240673a37660fd5c0ed0738e56c12753f",
+    "tests/test_rag_037_retrieval_status.py": "b3ac811fb402405fe2ba278dc4cebd04755b1dfe110358d1920f7751242e420c",
+    "tests/test_rag_log_minimization.py": "2bd5a340287e1674fdf3af117a4899dd35cc0926cb261fdf6c6ee0afd0f418f5",
+    "tests/test_sandbox.py": "e06a06576622c78352f93032025f39cb331b2a4f18c45aab56f5829de644e7d9",
+    "tests/test_skill_manager_versions.py": "88d93e8d37f5186125a24e3bb7b3481b495b6a9b36015f81737a87e6a8aba7a3",
+    "tests/test_skill_selection.py": "351fd8b29aa7f314cb2578abbaf2da87ea0bd2f44733b351c13de1e12d41f99e",
+    "tests/test_skill_smoke.py": "9a8b011ea0f5ee8f8588d61c946c9a4ad035025655a9b43919befc5fabd2b152",
+    "tests/test_skill_version_counterexamples.py": "88df10df16859a1fbc7769cae7b00c27d258894e8589a34f03a81b99135fa22c",
+    "tests/test_skill_version_entry.py": "12c3586d8e76b27ae021d4a48d252afd46052ca044cb447e65b32c09606c68b4",
+    "tests/test_skill_versioning.py": "c816decd0a15abfca8d969f29fcdd80c19bbb054a3aef2669c0a51fa6337957c",
+    "tests/test_structured_plan_runtime.py": "dab9bc24796c4127ee11da9beed8cd62e02950c2f5d585a039e3efd38fad44b3",
+    "tests/test_supervisor.py": "4fde63a05adbcdaac47a99cbda45d30c08b9bb19534606e8d0f796be356f8a0a",
+    "tests/test_tools.py": "13a8f81f2dadc6068d5da82dacc26dbb279b7fd5a79f87dbb2a23a95e3cbeebb"
+  },
+  "junit": {
+    "data/pagt004-manual-20261014.xml": {
+      "sha256": "a8edf7bd6a9e487604d43a683a2684d795692859d79f023893c15627417c5a4c",
+      "summary": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "398",
+        "time": "28.325",
+        "timestamp": "2026-10-14T01:00:19.706403+08:00",
+        "hostname": "DESKTOP-NSMV8MF"
+      }
+    },
+    "data/pagt045-manual-probe-20261014.xml": {
+      "sha256": "54f2c6436677a31e5fe8829da4141ec744562fe38a5a70282b138c5abf9afbf1",
+      "summary": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "8",
+        "time": "6.282",
+        "timestamp": "2026-10-14T01:01:05.540630+08:00",
+        "hostname": "DESKTOP-NSMV8MF"
+      }
+    },
+    "data/pagt005-manual-20261014.xml": {
+      "sha256": "2ff9c2abd82134d00f9f53db5ff3b831e0c6fa75620c47a3b2af5db1cde0e518",
+      "summary": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "105",
+        "time": "34.832",
+        "timestamp": "2026-10-14T01:01:23.484272+08:00",
+        "hostname": "DESKTOP-NSMV8MF"
+      }
+    },
+    "data/pagt001-manual-dependency-20261014.xml": {
+      "sha256": "1ab30e0dc2dce6383427b3f57f7880f037702c5f1ec789132f4a8519712eb59a",
+      "summary": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "119",
+        "time": "3.420",
+        "timestamp": "2026-10-14T01:02:27.124887+08:00",
+        "hostname": "DESKTOP-NSMV8MF"
+      }
+    },
+    "docs/reviews/pagt045_manual_probe_final_20261014.xml": {
+      "sha256": "885e7103aa3e89236937cb48d4b3bb492752b360bde0d05390040627f56a16c6",
+      "summary": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "8",
+        "time": "4.968",
+        "timestamp": "2026-10-14T01:05:42.596784+08:00",
+        "hostname": "DESKTOP-NSMV8MF"
+      },
+      "executed_by": "/root/accept_agt007",
+      "exit_code": 0,
+      "basetemp": "data/pytest-tmp-pagt045-final-20261014",
+      "command": "& 'D:/DepTooL/anaconda3/envs/ai-assistant/python.exe' -m pytest docs/reviews/pagt045_manual_probe_20261014.py -q -p tests.conftest -p no:cacheprovider --basetemp=data/pytest-tmp-pagt045-final-20261014 --junitxml=docs/reviews/pagt045_manual_probe_final_20261014.xml",
+      "environment": {
+        "RAG_BACKEND": "native",
+        "ENV": "development",
+        "DATABASE_URL": "sqlite:///./data/test_ai_assistant.db",
+        "PYTHONPATH": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant"
+      },
+      "exec_chunk": "ab91db"
+    }
+  },
+  "prior004_comparison": {
+    "matched": 36,
+    "total": 37,
+    "changed": [
+      "app/agents/pipeline.py"
+    ]
+  },
+  "prior005_comparison": {
+    "matched": 20,
+    "total": 20
+  },
+  "test_exit_codes": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "provider": "entry-plan-script-v1 and CapturingProvider(Mock); not real model quality",
+  "dataset": "AI Smoke/Adversarial, not Gold",
+  "recommendation": {
+    "PAGT-004": "done within approved contract",
+    "PAGT-005": "done within approved contract"
+  },
+  "initial_probe_sha256": "edf5d8073de0965ae136c1b0006972920fd4ad25b44035a3c89df2adbf92226e",
+  "probe_lint": {
+    "initial": "4 formatting/import diagnostics; initial individual exit not retained, composite shell exit0 after evidence generation",
+    "final_command": "python -m ruff check docs/reviews/pagt045_manual_probe_20261014.py --no-cache",
+    "final_exit_code": 0,
+    "changes": "import organization, imported fixture aliases and line wrapping; no business assertion changes"
+  },
+  "final_unchanged_product_fingerprints": true,
+  "final_changed_files": []
+}

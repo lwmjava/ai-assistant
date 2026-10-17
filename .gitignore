@@ -89,3 +89,6 @@ Thumbs.db
 .superpowers/
 
 # docs/product/ 是产品需求与设计基线，纳入版本库以便协作与防漂移。
+
+# 子 Agent 遗留的 git worktree 副本（孤儿目录，内含整份源码，勿入库）
+/.worktrees/

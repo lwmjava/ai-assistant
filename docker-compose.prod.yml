@@ -1,0 +1,63 @@
+# 单实例生产配置；必须显式指定隔离的 --env-file，默认仅启动 app/db。
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aiassistant}
+      POSTGRES_DB: ${POSTGRES_DB:-aiassistant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?必须提供数据库随机口令}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 1g
+
+  app:
+    build:
+      context: .
+      args:
+        INSTALL_MILVUS: "false"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    environment:
+      ENV: production
+      DATABASE_URL: ${DATABASE_URL:?必须提供指向db的数据库连接串并对口令做URL编码}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?必须提供随机JWT密钥}
+      LLM_API_KEY: ${LLM_API_KEY:?必须提供模型密钥}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      LLM_DEFAULT_MODEL: ${LLM_DEFAULT_MODEL:-deepseek-chat}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:?必须提供真实Embedding供应商}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:?必须提供真实Embedding密钥}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:?必须提供Embedding服务地址}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:?必须提供Embedding模型}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:?必须提供Embedding维度}
+      RAG_VECTOR_STORE: local
+      RAG_ENABLED: "true"
+      SERVE_FRONTEND: "true"
+      AUTH_ENABLED: "true"
+      CORS_ORIGINS: ${CORS_ORIGINS:?必须显式提供允许的前端来源}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_SYSTEM_PASSWORD: ${INITIAL_SYSTEM_PASSWORD:-}
+      INITIAL_CULTURE_PASSWORD: ${INITIAL_CULTURE_PASSWORD:-}
+    ports:
+      - "${APP_BIND_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
+    volumes:
+      - appdata:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 2g
+
+volumes:
+  pgdata:
+  appdata:

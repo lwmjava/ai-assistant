@@ -1,0 +1,115 @@
+{
+  "run_id": 38507665586,
+  "run_url": "https://github.com/lwmjava/ai-assistant/actions/runs/38507665586",
+  "commit": "ddaa1cca93d17640ed7373b9cd2284505dfe4e8e",
+  "local_head": "ddaa1cca93d17640ed7373b9cd2284505dfe4e8e",
+  "artifact_id": 11868083895,
+  "zip_sha256": "ca0cda2cab37669d797f7a3c41a865e776f73af11f3579454ab6446622f76979",
+  "official": {
+    "mode": "official",
+    "model": "deepseek-flash",
+    "model_requests": 12,
+    "dataset_version": "0.1.1",
+    "evaluator_version": "agent-chain-eval-0.3.0",
+    "report_schema_version": "agent-chain-report-2.0.0",
+    "gate_version": "agent-chain-gate-2.0.0",
+    "route_accuracy": 1.0,
+    "followup_recall": 1.0,
+    "tool_selection_recall": 1.0,
+    "tool_call_validity_recall": 1.0
+  },
+  "source_hash_mismatches": [
+    "app/agents/__init__.py",
+    "app/agents/route.py",
+    "app/agents/skills/__init__.py",
+    "app/agents/tools/__init__.py",
+    "app/agents/tools/sandbox/__init__.py",
+    "app/agents/tools/sandbox/base.py",
+    "app/agents/tools/sandbox/runtime.py",
+    "app/agents/tools/sandbox/sandbox.py",
+    "app/llm/factory.py",
+    "app/llm/base.py",
+    "app/llm/budget.py",
+    "app/llm/capabilities.py"
+  ],
+  "probe_manifest": {
+    "evidence": "synthetic-controlled-faults-mechanism-only-not-model-quality",
+    "source_model": "deepseek-flash",
+    "results": [
+      {
+        "probe": "route",
+        "exit_code": 1,
+        "target_metric": "route_accuracy",
+        "reason_codes": [
+          "AGENT_GATE_METRIC:route_accuracy"
+        ]
+      },
+      {
+        "probe": "followup",
+        "exit_code": 1,
+        "target_metric": "followup_recall",
+        "reason_codes": [
+          "AGENT_GATE_METRIC:followup_recall"
+        ]
+      },
+      {
+        "probe": "tool",
+        "exit_code": 1,
+        "target_metric": "tool_selection_recall",
+        "reason_codes": [
+          "AGENT_GATE_METRIC:tool_selection_recall",
+          "AGENT_GATE_METRIC:tool_call_validity_recall"
+        ]
+      },
+      {
+        "probe": "arguments",
+        "exit_code": 1,
+        "target_metric": "tool_call_validity_recall",
+        "reason_codes": [
+          "AGENT_GATE_METRIC:tool_call_validity_recall"
+        ]
+      }
+    ]
+  },
+  "ci_log_markers": [
+    "AGENT_GATE_PASS",
+    "AGENT_PROBE_PASS:route,followup,tool,arguments"
+  ],
+  "main_branch": {
+    "protected": false,
+    "required_status_checks": {
+      "enforcement_level": "off",
+      "contexts": [],
+      "checks": []
+    }
+  },
+  "rulesets": [],
+  "protection_endpoint": "403 Resource not accessible by integration",
+  "task_result": "PAGT-007 done: real CI official and four probes passed, required checks active, independent final acceptance passed.",
+  "git_blob_hash_mismatches": [],
+  "lf_normalized_worktree_mismatches": [
+    "app/agents/plan_runtime.py"
+  ],
+  "worktree_hash_note": "All 37 CI source hashes match committed Git blobs. Worktree matches raw or CRLF-to-LF bytes; mixed line endings in plan_runtime.py match raw Git blob.",
+  "worktree_content_mismatches": [],
+  "required_check_followup": {
+    "ruleset_id": 25052747,
+    "enforcement": "active",
+    "target": "~DEFAULT_BRANCH (main)",
+    "checks": [
+      "Agent official baseline",
+      "Backend (ruff / mypy / pytest)",
+      "Frontend (typecheck / vitest / eslint / build)"
+    ],
+    "strict": true,
+    "bypass_actors": [],
+    "current_user_can_bypass": "never",
+    "evidence": "pagt007_required_checks_20261014.json"
+  },
+  "local_raw_cli_recheck": {
+    "exit_code": 1,
+    "reason": "AGENT_GATE_ERROR:invalid_input_or_identity",
+    "limitation": "CI Linux raw source bytes differ from Windows CRLF checkout; original report unchanged. All Git blob identities match; independent reproduction pending."
+  },
+  "independent_final_acceptance": "2026-10-14-PAGT-007-最终收尾验收.md"
+}

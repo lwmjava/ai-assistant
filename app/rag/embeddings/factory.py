@@ -43,6 +43,6 @@ def get_embedding_provider() -> EmbeddingProvider:
         api_key=settings.EMBEDDING_API_KEY,
         model=settings.EMBEDDING_MODEL,
         dim=settings.EMBEDDING_DIM,
-        timeout=settings.LLM_TIMEOUT,
+        timeout=settings.EMBEDDING_TIMEOUT_SECONDS,
         batch_size=settings.EMBEDDING_BATCH_SIZE,
     )

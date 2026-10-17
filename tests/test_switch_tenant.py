@@ -51,7 +51,7 @@ def _user(username: str, role: Role, tenant_id: str) -> str:
 
 
 def _login(client: TestClient, username: str) -> dict:
-    resp = client.post("/api/auth/login", json={"username": username, "password": PASSWORD})
+    resp = client.post("/api/v1/auth/login", json={"username": username, "password": PASSWORD})
     assert resp.status_code == 200
     return resp.json()
 
@@ -78,21 +78,21 @@ def test_member_switch_changes_conversation_list_and_invalidates_refresh() -> No
 
     tokens = _login(client, "ada")
     headers = {"Authorization": f"Bearer {tokens['access_token']}"}
-    before = client.get("/api/chat/conversations", headers=headers)
+    before = client.get("/api/v1/chat/conversations", headers=headers)
     assert before.status_code == 200
     assert {item["title"] for item in before.json()} == {"home-chat"}
 
-    switched = client.post("/api/auth/switch-tenant", headers=headers, json={"tenant_id": other})
+    switched = client.post("/api/v1/auth/switch-tenant", headers=headers, json={"tenant_id": other})
     assert switched.status_code == 200
     new_tokens = switched.json()
     assert decode_token(new_tokens["access_token"])["tenant_id"] == other
     assert decode_token(new_tokens["access_token"])["role"] == Role.MEMBER.value
 
-    stale = client.post("/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    stale = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert stale.status_code == 401
 
     listed = client.get(
-        "/api/chat/conversations",
+        "/api/v1/chat/conversations",
         headers={"Authorization": f"Bearer {new_tokens['access_token']}"},
     )
     assert listed.status_code == 200
@@ -113,7 +113,7 @@ def test_non_member_switch_is_forbidden_and_leaves_token_version() -> None:
         tenant_id = before.tenant_id
 
     denied = client.post(
-        "/api/auth/switch-tenant",
+        "/api/v1/auth/switch-tenant",
         headers={"Authorization": f"Bearer {tokens['access_token']}"},
         json={"tenant_id": other},
     )
@@ -121,7 +121,7 @@ def test_non_member_switch_is_forbidden_and_leaves_token_version() -> None:
 
     admin = _login(client, "root")
     admin_denied = client.post(
-        "/api/auth/switch-tenant",
+        "/api/v1/auth/switch-tenant",
         headers={"Authorization": f"Bearer {admin['access_token']}"},
         json={"tenant_id": other},
     )
@@ -134,7 +134,7 @@ def test_non_member_switch_is_forbidden_and_leaves_token_version() -> None:
         assert user.token_version == version
 
     missing_body = client.post(
-        f"/api/auth/switch-tenant?tenant_id={other}",
+        f"/api/v1/auth/switch-tenant?tenant_id={other}",
         headers={"Authorization": f"Bearer {tokens['access_token']}"},
     )
     assert missing_body.status_code == 422

@@ -17,6 +17,10 @@ export interface StageTrackerProps {
   currentStage: string | null
   tools: string[]
   streaming: boolean
+  intent?: string | null
+  planSteps?: string[]
+  reconnecting?: boolean
+  shortcut?: boolean
   className?: string
 }
 
@@ -32,17 +36,27 @@ export function StageTracker({
   currentStage,
   tools,
   streaming,
+  intent,
+  planSteps = [],
+  reconnecting = false,
+  shortcut = false,
   className,
 }: StageTrackerProps) {
   const list = useMemo(
     // 未开始时用简要序列占位，让用户在发送前就知道会有哪几步
-    () => (stages.length ? mergeStages(stages) : [...PIPELINE_STAGES_BRIEF]),
-    [stages],
+    () => (shortcut ? [] : stages.length ? mergeStages(stages) : [...PIPELINE_STAGES_BRIEF]),
+    [stages, shortcut],
   )
   const started = stages.length > 0
 
   return (
     <div className={cn('space-y-2', className)}>
+      {reconnecting && <p role="status" className="text-sm text-text-muted">连接中断，正在重连…</p>}
+      {intent && <p className="text-xs text-text-muted">意图：{intent}</p>}
+      {planSteps.length > 0 && <details className="rounded-lg border border-border px-3 py-2 text-sm">
+        <summary className="cursor-pointer">执行步骤（{planSteps.length}）</summary>
+        <ol className="mt-2 list-decimal space-y-1 pl-5">{planSteps.map((step, i) => <li key={i}>{step}</li>)}</ol>
+      </details>}
       <div className="flex flex-wrap items-center gap-1.5">
         {list.map((stage, idx) => {
           const isCurrent = streaming && stage === currentStage

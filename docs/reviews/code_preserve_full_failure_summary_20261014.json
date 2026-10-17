@@ -1,0 +1,479 @@
+{
+  "total_failures": 79,
+  "failures": [
+    {
+      "name": "test_independent_runner_missing_real_identity_creates_no_report",
+      "class": "tests.eval.test_agent_gate_entry",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_passes_on_real_report",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_recall_degradation",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_mrr_degradation",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_ndcg_degradation",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_violation_case",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_mock_embedding",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_config_mismatch",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_missing_report",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "assert '无法读取' in \"\\n鏃犳硶璇诲彇 E:\\\\culture\\\\SmartCustomerServiceSystem\\\\ai-assistant\\\\data\\\\pytest-tmp-code-preserve-full-20261014\\\\test_ga...sistant\\\\\\\\data\\\\\\\\pytest-tmp-code-preserve-full-20261014\\\\\\\\test_gate_rejects_mis"
+    },
+    {
+      "name": "test_gate_rejects_missing_metric",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[nan-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[nan-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[nan-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[nan-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[nan-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[inf-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[inf-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[inf-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[inf-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[inf-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-inf-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-inf-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-inf-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-inf-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-inf-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-0.1-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-0.1-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-0.1-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-0.1-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[-0.1-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.1-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.1-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.1-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.1-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.1-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[True-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[True-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[True-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[True-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[True-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[False-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[False-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[False-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[False-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[False-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.0-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.0-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.0-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.0-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[1.0-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value8-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value8-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value8-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value8-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value8-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value9-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value9-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value9-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value9-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[value9-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000-path0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000-path1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000-path2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000-path3]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000-path4]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[-1]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[0.0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[0.5]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[True]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[False]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[nan]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[inf]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[-inf]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[value9]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_violation_count[value10]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric_structure[path0-value0]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric_structure[path1-invalid]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    },
+    {
+      "name": "test_gate_rejects_invalid_metric_structure[path2-value2]",
+      "class": "tests.eval.test_rag_gate",
+      "unicode_decode": false,
+      "message": "TypeError: argument of type 'NoneType' is not iterable"
+    }
+  ]
+}

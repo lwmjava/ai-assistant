@@ -25,4 +25,6 @@ class ChunkingRegistry:
         builder = self._builders.get(name)
         if builder is None:
             raise ValueError(f"不支持的切分策略: {name}")
-        return builder(**kwargs)
+        strategy = builder(**kwargs)
+        strategy._input_policy = getattr(kwargs.get("embedding"), "input_policy", None)
+        return strategy

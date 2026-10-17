@@ -1,0 +1,48 @@
+{
+  "task": "PAGT-007",
+  "run_id": 38410432101,
+  "run_url": "https://github.com/lwmjava/ai-assistant/actions/runs/38410432101",
+  "commit": "4d627e63e2a8ec15df6dac87bf9432e6759e8380",
+  "job_id": 115341012662,
+  "agent_job_conclusion": "failure",
+  "official_exit": 1,
+  "model": "deepseek-flash",
+  "model_requests": 12,
+  "metrics": {
+    "route_accuracy": 1.0,
+    "followup_recall": 1.0,
+    "tool_selection_recall": 0.5
+  },
+  "thresholds": {
+    "route_accuracy": 0.9,
+    "followup_recall": 1.0,
+    "tool_selection_recall": 1.0
+  },
+  "report_sha256": "3d8c2a4ba346a1cf2934050fd996f8dcc66e96813808bd9d9bf2aec177ae6ada",
+  "artifact_id": 11820118773,
+  "artifact_zip_digest": "sha256:ec659fa67b6a6870b2be122d05640fd08756e8603fe6bab3f282a4aa577ca262",
+  "observed_failure": {
+    "case_id": "agent-004",
+    "expected_tools": [
+      "code_sandbox"
+    ],
+    "predicted_tools": [],
+    "tool_reply_empty": true
+  },
+  "server_empty_response_cause": "not observable from current string provider interface",
+  "ci_gate_and_probes": "skipped due to official quality exit1",
+  "same_commit_local_gate_exit": 1,
+  "same_commit_local_gate_reason": "AGENT_GATE_METRIC:tool_selection_recall",
+  "independent_review_agent": "pagt007_entry_validation_v2",
+  "no_additional_model_calls": true,
+  "final_manual_review": "not run; automatic acceptance failed",
+  "frontend": "success",
+  "backend_as_of_observation": {
+    "ruff": "success",
+    "mypy": "success",
+    "pytest": "in_progress"
+  },
+  "published_changes": "only PAGT-007 and F07 revision; no PR, merge or deployment",
+  "post_run_evidence_git_state": "local working tree only; no third push or CI",
+  "independent_review_sha256": "504f2ee33d0cc88b450ef59089390395c70e687f92f894a320995943137ba3b7"
+}

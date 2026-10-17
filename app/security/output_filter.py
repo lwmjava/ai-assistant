@@ -11,6 +11,7 @@
 import re
 from dataclasses import dataclass, field
 
+from app.security.restricted_identifier_fence import RestrictedIdentifierFence
 from app.security.types import SecurityContext
 
 # ── 有害内容模式 ──
@@ -59,13 +60,17 @@ class OutputFilter:
             print("检测到有害内容:", result.reasons)
     """
 
-    def __init__(self, *, block_on_flag: bool = False) -> None:
+    def __init__(self, *, block_on_flag: bool = False,
+                 restricted_fence: RestrictedIdentifierFence | None = None) -> None:
         """初始化输出过滤器。
 
         Args:
             block_on_flag: 检测到有害内容时是否阻断输出（默认仅告警）。
+            restricted_fence: 可选的受限标识围栏；传入后在输出侧屏蔽受限标识
+                并把 sanitized_text 替换为脱敏文本。默认 None＝不启用（向后兼容）。
         """
         self._block_on_flag = block_on_flag
+        self._restricted_fence = restricted_fence
 
     def filter(self, text: str, ctx: SecurityContext | None = None) -> OutputFilterResult:
         """检测模型输出中的有害内容。
@@ -83,6 +88,14 @@ class OutputFilter:
             if pattern.search(text):
                 result.matches.append(label)
                 result.reasons.append(f"检测到 {label} 内容")
+
+        # RAG-043：受限标识输出围栏（可选，默认不启用）。
+        if self._restricted_fence is not None:
+            fence_out = self._restricted_fence.filter(text)
+            if fence_out.flagged:
+                result.matches.append("restricted_id_leak")
+                result.reasons.append(f"屏蔽受限标识: {', '.join(fence_out.hits)}")
+                result.sanitized_text = fence_out.redacted_text
 
         result.flagged = bool(result.matches)
 

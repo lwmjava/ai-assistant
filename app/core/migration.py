@@ -33,13 +33,12 @@ def _get_alembic_config() -> Config:
     """获取 Alembic 配置对象。
 
     每次调用创建新实例，确保线程安全。
+    脚本目录按 alembic.ini 所在位置解析，不随当前工作目录变化。
     """
     if not _ALEMBIC_INI.exists():
-        raise FileNotFoundError(
-            f"alembic.ini 未找到：{_ALEMBIC_INI}。"
-            f"请确认从项目根目录运行，或设置 ALEMBIC_CONFIG 环境变量。"
-        )
+        raise FileNotFoundError(f"alembic.ini 未找到：{_ALEMBIC_INI}。")
     cfg = Config(str(_ALEMBIC_INI))
+    cfg.set_main_option("script_location", (_ALEMBIC_INI.parent / "alembic").as_posix())
     # 从应用配置注入数据库 URL（覆盖 alembic.ini 中的占位符）
     cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
     return cfg
@@ -155,7 +154,7 @@ def _stamp_legacy_unversioned_schema() -> None:
 
 
 def _ensure_message_columns() -> None:
-    """历史库被直接标到 head 时，补上消息来源列和停止状态列。"""
+    """历史库被直接标到 head 时，补上消息来源列、停止状态列和技能名列。"""
     from app.core.database import engine
 
     with engine.begin() as conn:
@@ -176,6 +175,30 @@ def _ensure_message_columns() -> None:
         if "code_results" not in columns:
             logger.warning("补齐缺失的代码结果列")
             conn.execute(text("ALTER TABLE messages ADD COLUMN code_results VARCHAR"))
+        if "skill_names" not in columns:
+            logger.warning("补齐缺失的消息技能名列")
+            conn.execute(text("ALTER TABLE messages ADD COLUMN skill_names TEXT"))
+
+
+def _ensure_quota_columns() -> None:
+    """版本已被标到 head、但配额列还没写上时，把可空整数列补上。"""
+    from app.core.database import engine
+
+    with engine.begin() as conn:
+        tables = set(inspect(conn).get_table_names())
+        if "tenants" in tables:
+            columns = {column["name"] for column in inspect(conn).get_columns("tenants")}
+            if "message_limit" not in columns:
+                logger.warning("补齐缺失的租户消息上限列")
+                conn.execute(text("ALTER TABLE tenants ADD COLUMN message_limit INTEGER"))
+            if "storage_limit_bytes" not in columns:
+                logger.warning("补齐缺失的租户源文件上限列")
+                conn.execute(text("ALTER TABLE tenants ADD COLUMN storage_limit_bytes INTEGER"))
+        if "rag_documents" in tables:
+            columns = {column["name"] for column in inspect(conn).get_columns("rag_documents")}
+            if "source_bytes" not in columns:
+                logger.warning("补齐缺失的文档源文件字节列")
+                conn.execute(text("ALTER TABLE rag_documents ADD COLUMN source_bytes INTEGER"))
 
 
 def _ensure_rag_schema_columns() -> None:
@@ -241,8 +264,9 @@ def _ensure_rag_schema_columns() -> None:
         ]:
             conn.execute(text(index_sql))
 
-        # 为历史库补齐分块元数据列（父子文档 / 策略 / 溯源）。
+        # 为历史库补齐分块元数据列（父子文档 / 策略 / 溯源 / 索引身份）。
         chunk_columns = {
+            "index_id": "ALTER TABLE rag_document_chunks ADD COLUMN index_id VARCHAR",
             "parent_id": "ALTER TABLE rag_document_chunks ADD COLUMN parent_id VARCHAR",
             "strategy": "ALTER TABLE rag_document_chunks ADD COLUMN strategy VARCHAR",
             "chunk_metadata": "ALTER TABLE rag_document_chunks ADD COLUMN chunk_metadata VARCHAR",
@@ -259,6 +283,12 @@ def _ensure_rag_schema_columns() -> None:
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_rag_document_chunks_parent_id "
                     "ON rag_document_chunks (parent_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_rag_document_chunks_index_id "
+                    "ON rag_document_chunks (index_id)"
                 )
             )
 
@@ -316,13 +346,63 @@ def _later_rag_tables_exist() -> bool:
     return _HEAD_RAG_TABLES.issubset(tables)
 
 
+def _quota_columns_present() -> bool:
+    """三列都在时，才可以把版本直接标到当前 head。"""
+    from app.core.database import engine
+
+    with engine.connect() as conn:
+        tables = set(inspect(conn).get_table_names())
+        if "tenants" not in tables or "rag_documents" not in tables:
+            return False
+        tenant_columns = {column["name"] for column in inspect(conn).get_columns("tenants")}
+        document_columns = {column["name"] for column in inspect(conn).get_columns("rag_documents")}
+    return {"message_limit", "storage_limit_bytes"}.issubset(tenant_columns) and "source_bytes" in document_columns
+
+
 def _stamp_if_schema_already_at_head() -> bool:
-    """若库结构已达到 head 对应对象，则只标记版本、不重跑 DDL。"""
+    """若库结构已达到 head 对应对象，则只标记版本、不重跑 DDL。
+
+    导入平台表已由 create_all 建出、但配额列还不在时，不能把版本标过加列迁移。
+    这种库先标到加列迁移的父修订，后面的 upgrade 再补列。
+    """
     current = get_current_revision()
     head = get_head_revision()
+    from app.core.database import engine
+
+    with engine.connect() as conn:
+        inspector = inspect(conn)
+        user_columns = (
+            {column["name"] for column in inspector.get_columns("users")}
+            if "users" in inspector.get_table_names() else set()
+        )
+        message_columns = (
+            {column["name"] for column in inspector.get_columns("messages")}
+            if "messages" in inspector.get_table_names() else set()
+        )
+    user_flags_present = {"is_test_user", "must_change_password"}.issubset(user_columns)
     if current == head:
+        if not user_flags_present:
+            raise RuntimeError("数据库修订已到最新版本，但用户安全标记列缺失；请核对并恢复正确 schema。")
+        if "attachments" not in message_columns:
+            raise RuntimeError("数据库修订已到最新版本，但消息附件列缺失；请核对并恢复正确 schema。")
         return False
     if not _later_rag_tables_exist():
+        return False
+    if not _quota_columns_present():
+        if current != "d7c2a91e4b18":
+            logger.warning(
+                "导入平台表已在，但配额列还没有。版本先标到 d7c2a91e4b18，再执行加列: current=%s",
+                current,
+            )
+            stamp("d7c2a91e4b18")
+        return False
+    if not user_flags_present:
+        if current != "c1d2e3f4a5b6":
+            stamp("c1d2e3f4a5b6")
+        return False
+    if "attachments" not in message_columns:
+        if current != "f1a6c8d2b903":
+            stamp("f1a6c8d2b903")
         return False
     logger.warning(
         "检测到 RAG 导入平台表已存在但 Alembic 修订落后，改为标记到 head: current=%s head=%s",
@@ -359,6 +439,7 @@ def auto_migrate() -> bool:
     if not pending:
         _ensure_rag_schema_columns()
         _ensure_message_columns()
+        _ensure_quota_columns()
         logger.info("数据库 schema 已是最新版本，无需迁移。")
         return True
 
@@ -370,6 +451,7 @@ def auto_migrate() -> bool:
         upgrade("head")
         _ensure_rag_schema_columns()
         _ensure_message_columns()
+        _ensure_quota_columns()
         logger.info("数据库迁移完成（%d 个版本）。", len(pending))
         return True
     except Exception as exc:
@@ -383,13 +465,10 @@ def auto_migrate() -> bool:
         return False
 
 
-# ── CLI 入口（当前通过 python -m 调用，后续可迁移到 click/typer CLI）──
-# SKELETON：CLI 完整实现 — 当前为最简骨架，可按需补充：
-#   - click/typer 命令行框架
-#   - `ai-assistant migrate` 入口
-#   - 彩色输出（rich 库）
-#   - 交互式确认（--yes / --check）
-#   - 审计日志写入
+# 迁移命令有两个入口，行为相同：
+# - python -m app.core.migration migrate
+# - ai-assistant migrate（app.cli，内部调用这里的 _cli_migrate）
+# 创建系统管理员不在本模块。
 
 
 def _cli_check() -> None:
@@ -442,8 +521,7 @@ def _cli_history() -> None:
 
 
 if __name__ == "__main__":
-    # 最简 CLI：python -m app.core.migration [check|migrate|history]
-    # 后续可迁移到成熟的命令行框架（click/typer）。
+    # python -m app.core.migration [check|migrate|history]
     args = sys.argv[1:]
     cmd = args[0] if args else "check"
 

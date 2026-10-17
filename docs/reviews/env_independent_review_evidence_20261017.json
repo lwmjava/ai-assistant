@@ -1,0 +1,49 @@
+{
+  "reviewer": "/root/env_independent_review",
+  "independence": "Did not implement repair",
+  "baseline_sha": "7cdfb29ae7aa42b103af7856211be89984e658c7",
+  "candidate": "HEAD plus hashes returned by independent CLI runs",
+  "platform": "win32",
+  "executable": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+  "commands": [
+    {
+      "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/env001_example_contract.py --self-test",
+      "chunk_id": "ff677b",
+      "wall_time_seconds": 3.7955437,
+      "exit_code": 0,
+      "original_token_count": 279,
+      "output": "{\r\n  \"fields\": 189,\r\n  \"keys\": 189,\r\n  \"matched\": 189,\r\n  \"missing\": [],\r\n  \"extra\": [],\r\n  \"duplicates\": [],\r\n  \"unlabeled\": [],\r\n  \"invalid_dotenv_keys\": [],\r\n  \"nonempty_secret_fields\": [],\r\n  \"syntax_error_lines\": [],\r\n  \"legacy_initial_admin_password_present\": false,\r\n  \"legacy_password_governance\": \"All example passwords must be empty; not production-safety acceptance\",\r\n  \"source_sha256\": \"37cfdcb42fc84b636f7841231d5f700eca2e1911865c4add9d030e50136d51a4\",\r\n  \"example_sha256\": \"f4dfd5bd9b73a5d6ca5894e409f9740c140a8dbadf016ec4524b2930fc25c731\",\r\n  \"passed\": true,\r\n  \"checks\": [\r\n    \"real_settings_load_all_source_fields\",\r\n    \"unicode_default_roundtrip\",\r\n    \"process_override_priority\",\r\n    \"complete_labeled_keys\",\r\n    \"missing_rejected\",\r\n    \"extra_rejected\",\r\n    \"duplicate_rejected\",\r\n    \"unlabeled_rejected\",\r\n    \"nonempty_secret_rejected\",\r\n    \"syntax_rejected\",\r\n    \"all_example_passwords_rejected_when_nonempty\",\r\n    \"nonfinite_and_invalid_numeric_rejected\",\r\n    \"invalid_boolean_rejected\",\r\n    \"private_dotenv_path_rejected_before_read\",\r\n    \"repeat_read_no_mutation\"\r\n  ]\r\n}\r\n"
+    },
+    {
+      "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/env002_bootstrap_contract.py",
+      "chunk_id": "55f9a1",
+      "wall_time_seconds": 5.7258687,
+      "exit_code": 0,
+      "original_token_count": 492,
+      "output": "{\r\n  \"version\": \"env002-v2\",\r\n  \"checks\": [\r\n    \"all_source_keys_actual_settings\",\r\n    \"source_default_empty\",\r\n    \"sample_password_empty\",\r\n    \"readme_partial_empty_setup_no_password_literal\",\r\n    \"bootstrap_combination_0_persisted_idempotent\",\r\n    \"bootstrap_combination_1_persisted_idempotent\",\r\n    \"bootstrap_combination_2_persisted_idempotent\",\r\n    \"bootstrap_combination_3_persisted_idempotent\",\r\n    \"bootstrap_combination_4_persisted_idempotent\",\r\n    \"existing_member_prevents_admin_backfill_idempotent\",\r\n    \"triple_missing_wrong_username_and_short_password_rejected_without_rows\",\r\n    \"triple_accounts_roles_flags_memberships_real_bcrypt_and_idempotency\"\r\n  ],\r\n  \"platform\": \"win32\",\r\n  \"python\": \"3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]\",\r\n  \"sha256\": {\r\n    \"app/core/security.py\": \"2b8609a0036107cf2a39d9f144ed562af3c42890b2b0aa401b5be0bfba22caac\",\r\n    \"app/models/base.py\": \"faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2\",\r\n    \"app/models/user.py\": \"051fa532f3bbf55475db679341935a9756a333ae871c2e156868d2e212da0a2c\",\r\n    \"app/models/membership.py\": \"d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4\",\r\n    \"app/services/membership.py\": \"8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f\",\r\n    \"app/services/auth_service.py\": \"82c693d415619645aaefe47dd2f7a69487fe2b6ca9444b95eccfc11fe1812826\",\r\n    \"app/core/config.py\": \"37cfdcb42fc84b636f7841231d5f700eca2e1911865c4add9d030e50136d51a4\",\r\n    \".env.example\": \"f4dfd5bd9b73a5d6ca5894e409f9740c140a8dbadf016ec4524b2930fc25c731\",\r\n    \"README.md\": \"9b7e3f97cb698a105ca5ac01319fac49f2d4ccc0a36a1de526e3600c67278b43\",\r\n    \"docs/evaluations/env002_bootstrap_contract.py\": \"1829636289715f55b14791e3259ed78a519512b3d4a813ec0980af1d546d4cc9\",\r\n    \"docs/evaluations/env001_example_contract.py\": \"f121c823d5b573ddb74720ec5a6cb1ba00dd9ad0fadcdd4d67fa19cb4b0820bf\"\r\n  },\r\n  \"result\": \"pass\"\r\n}\r\n"
+    },
+    {
+      "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/env002_independent_probe.py",
+      "chunk_id": "7c9d90",
+      "wall_time_seconds": 3.4299205,
+      "exit_code": 0,
+      "original_token_count": 404,
+      "output": "{\r\n  \"checks\": [\r\n    \"three_incomplete_inputs_no_persisted_rows\",\r\n    \"reuse_default_tenant_real_hash_email_and_membership\",\r\n    \"existing_admin_no_replacement_or_duplicate\",\r\n    \"bootstrap_logs_no_generated_secret_or_hash\",\r\n    \"actual_settings_blank_template_and_process_injection\",\r\n    \"readme_no_literal_password_assignment\"\r\n  ],\r\n  \"result\": \"pass\",\r\n  \"sha256\": {\r\n    \"app/core/security.py\": \"2b8609a0036107cf2a39d9f144ed562af3c42890b2b0aa401b5be0bfba22caac\",\r\n    \"app/models/base.py\": \"faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2\",\r\n    \"app/models/user.py\": \"051fa532f3bbf55475db679341935a9756a333ae871c2e156868d2e212da0a2c\",\r\n    \"app/models/membership.py\": \"d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4\",\r\n    \"app/services/membership.py\": \"8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f\",\r\n    \"app/services/auth_service.py\": \"82c693d415619645aaefe47dd2f7a69487fe2b6ca9444b95eccfc11fe1812826\",\r\n    \"app/core/config.py\": \"37cfdcb42fc84b636f7841231d5f700eca2e1911865c4add9d030e50136d51a4\",\r\n    \".env.example\": \"f4dfd5bd9b73a5d6ca5894e409f9740c140a8dbadf016ec4524b2930fc25c731\",\r\n    \"README.md\": \"9b7e3f97cb698a105ca5ac01319fac49f2d4ccc0a36a1de526e3600c67278b43\",\r\n    \"docs/evaluations/env002_bootstrap_contract.py\": \"1829636289715f55b14791e3259ed78a519512b3d4a813ec0980af1d546d4cc9\",\r\n    \"docs/evaluations/env001_example_contract.py\": \"f121c823d5b573ddb74720ec5a6cb1ba00dd9ad0fadcdd4d67fa19cb4b0820bf\",\r\n    \"docs/evaluations/env002_independent_probe.py\": \"8aef765d45f7b707fb7b34b910234f93d2d8582c05d5102e1a1f9c8bbf735ea0\"\r\n  }\r\n}\r\n"
+    }
+  ],
+  "additional_probe": {
+    "code": "import sys,ast,json,hashlib,secrets,types,io,logging,itertools\nfrom pathlib import Path\nfrom unittest.mock import patch\nsys.path.insert(0,str(Path.cwd()/'docs/evaluations'))\nfrom env001_example_contract import isolated_settings,EXAMPLE\nfrom env002_bootstrap_contract import source_namespace\nfrom sqlmodel import Session,SQLModel,create_engine,select\nns,_=source_namespace()\nu,t,m=[ns[n] for n in ('User','Tenant','Membership')]\nchecks=[]\n# Independent AST accounting and isolated Settings namespace equivalence.\ntree=ast.parse(Path('app/core/config.py').read_text(encoding='utf-8-sig'))\ncls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='Settings')\nfields={n.target.id for n in cls.body if isinstance(n,ast.AnnAssign)}\nwith patch.dict('os.environ',{},clear=True):\n loaded=isolated_settings()(_env_file=EXAMPLE)\nassert len(fields)==189 and set(loaded.model_dump())==fields\nchecks.append('independent_189_ast_vs_pydantic')\n# All sixteen present/absent input configurations, independent expected decision.\nfor bits in itertools.product((False,True),repeat=4):\n vals=[secrets.token_urlsafe(18) if b else '' for b in bits]\n cfg=dict(INITIAL_ADMIN_USERNAME='admin' if bits[0] else '',INITIAL_ADMIN_PASSWORD=vals[1],INITIAL_SYSTEM_PASSWORD=vals[2],INITIAL_CULTURE_PASSWORD=vals[3],INITIAL_ADMIN_EMAIL='')\n ns['settings']=types.SimpleNamespace(**cfg)\n e=create_engine('sqlite://');SQLModel.metadata.create_all(e)\n triple=bits[2] or bits[3]\n expected='triple' if all(bits) else ('reject' if triple else ('single' if bits[0] and bits[1] else 'skip'))\n with Session(e) as s:\n  rejected=False\n  try: ns['ensure_initial_admin'](s)\n  except ValueError: rejected=True\n  assert rejected==(expected=='reject')\n with Session(e) as s:\n  rows=s.exec(select(u)).all()\n  assert len(rows)=={'triple':3,'single':1,'skip':0,'reject':0}[expected]\n e.dispose()\nchecks.append('independent_16_configuration_truth_table')\n# Inactive default tenant refusal persists no user or membership.\ne=create_engine('sqlite://');SQLModel.metadata.create_all(e)\nwith Session(e) as s:\n s.add(t(name='default',is_active=False));s.commit()\nns['settings']=types.SimpleNamespace(INITIAL_ADMIN_USERNAME='admin',INITIAL_ADMIN_PASSWORD=secrets.token_urlsafe(18),INITIAL_SYSTEM_PASSWORD='',INITIAL_CULTURE_PASSWORD='',INITIAL_ADMIN_EMAIL='')\nwith Session(e) as s:\n try: ns['ensure_initial_admin'](s)\n except ns['DefaultTenantInactiveError']: pass\n else: raise AssertionError('inactive tenant accepted')\nwith Session(e) as s:\n assert not s.exec(select(u)).all() and not s.exec(select(m)).all()\ne.dispose();checks.append('inactive_default_tenant_rejected_without_identity_rows')\nprint(json.dumps({'checks':checks,'result':'pass'}))\n",
+    "chunk_id": "2f87f0",
+    "wall_time_seconds": 2.8058285,
+    "exit_code": 0,
+    "original_token_count": 43,
+    "output": "{\"checks\": [\"independent_189_ast_vs_pydantic\", \"independent_16_configuration_truth_table\", \"inactive_default_tenant_rejected_without_identity_rows\"], \"result\": \"pass\"}\r\n"
+  },
+  "constraints": "No .env, application imports, real database, network, commit, push or deployment; SQLite in-memory",
+  "gate_scope": {
+    "ruff_mypy_related": "Required because evaluation scripts changed; parent runs recorded separately",
+    "full_pytest": "Not triggered: no shared application path changed",
+    "linux": "Not triggered: no process/signal/filesystem/platform semantics changed; preexisting temporary fixture reads/writes unchanged",
+    "frontend": "Not triggered: no frontend/API contract changes"
+  }
+}

@@ -1,0 +1,376 @@
+"""Read approved public shared text files, never tenant storage or host secrets.
+
+Version 1.0.0; L0 read only, no write/list/delete, no retry and no cache. Root
+aliases are an operator-maintained public-sharing grant for every authenticated
+chat caller. They must not be used to expose tenant-private directories.
+"""
+
+import asyncio
+import json
+import os
+import re
+import stat
+import sys
+from pathlib import Path, PureWindowsPath
+from typing import Any
+
+from app.agents.tools.base import Tool
+from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
+from app.agents.tools.outcome import ToolOutput
+from app.core.config import get_settings
+from app.core.security import Role
+
+_ALIAS = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,31}\Z")
+_EXTENSIONS = {".txt", ".md", ".csv", ".json", ".rst"}
+_PRIVATE_NAMES = {
+    ".git", ".ssh", ".aws", ".azure", ".kube", ".codex", ".agents",
+    "credentials", "secrets", "uploads", "tenant", "tenants", "rag_sources", "knowledge",
+}
+_PRIVATE_SUFFIXES = {".db", ".sqlite", ".sqlite3", ".pem", ".key", ".p12", ".pfx"}
+_DEVICES = {"con", "prn", "aux", "nul", *[f"com{i}" for i in range(1, 10)], *[f"lpt{i}" for i in range(1, 10)]}
+_SECRET_CONTENT = re.compile(
+    r"-----BEGIN (?:[A-Z ]*PRIVATE KEY|OPENSSH)|"
+    r"(?i:(?:api[_-]?key|password|secret|access[_-]?token|authorization)\s*[\"']?\s*[:=]\s*[\"']?\S+)"
+)
+
+
+def _private_component(value: str) -> bool:
+    lower = value.casefold()
+    return (
+        lower in _PRIVATE_NAMES
+        or lower.split(".")[0] in _DEVICES
+        or lower.startswith(".env")
+        or Path(lower).suffix in _PRIVATE_SUFFIXES
+        or any(term in lower for term in ("credential", "secret", "password", "token"))
+    )
+
+
+def _linked(path: Path) -> bool:
+    info = path.lstat()
+    return stat.S_ISLNK(info.st_mode) or bool(getattr(info, "st_file_attributes", 0) & 0x400)
+
+
+def _check_chain(path: Path) -> None:
+    for item in (*reversed(path.parents), path):
+        if _linked(item):
+            raise ValueError("linked_path")
+
+
+def _approved_roots() -> dict[str, Path]:
+    settings = get_settings()
+    size = settings.FILE_OPS_MAX_BYTES
+    if type(size) is not int or not 1 <= size <= 65_536:
+        raise ValueError("invalid_configuration")
+    raw = settings.FILE_OPS_ALLOWED_ROOTS
+    if not isinstance(raw, str) or len(raw) > 16_384:
+        raise ValueError("invalid_configuration")
+    try:
+        mapping = json.loads(raw)
+    except RecursionError as exc:
+        raise ValueError("invalid_configuration") from exc
+    if not isinstance(mapping, dict) or len(mapping) > 32:
+        raise ValueError("invalid_configuration")
+    roots = {}
+    project = Path(__file__).resolve().parents[3]
+    private = [project / "app", project / "data" / "knowledge", project / "frontend"]
+    for alias, value in mapping.items():
+        if not isinstance(alias, str) or not _ALIAS.fullmatch(alias) or not isinstance(value, str):
+            raise ValueError("invalid_configuration")
+        root = Path(value)
+        if not root.is_absolute() or str(root).startswith("\\\\") or any(_private_component(p) for p in root.parts):
+            raise ValueError("invalid_configuration")
+        _check_chain(root)
+        resolved = root.resolve(strict=True)
+        if (
+            not resolved.is_dir()
+            or resolved == Path(resolved.anchor)
+            or project.is_relative_to(resolved)
+            or resolved == project / "data"
+        ):
+            raise ValueError("invalid_configuration")
+        if any(resolved.is_relative_to(p) for p in private):
+            raise ValueError("invalid_configuration")
+        roots[alias] = resolved
+    return roots
+
+
+def file_ops_availability() -> dict[str, str]:
+    """Validate grants without exposing host paths or file contents."""
+    if get_settings().FILE_OPS_ENABLED is not True:
+        return {"status": "unavailable", "reason": "disabled"}
+    try:
+        roots = _approved_roots()
+    except (OSError, ValueError, TypeError):
+        return {"status": "unavailable", "reason": "invalid_configuration"}
+    return {"status": "available" if roots else "unavailable", "reason": "configured" if roots else "no_allowed_roots"}
+
+
+def _observation(status: str, code: str, **extra: Any) -> str:
+    text = json.dumps({"status": status, "code": code, "untrusted": True, **extra}, ensure_ascii=False)
+    return text if status == "ok" else ToolOutput(text, status="error", error_code=code)
+
+
+def _handle_path(fd: int) -> Path:
+    """Bind validation to the actual opened object, not just the original string."""
+    if sys.platform == "win32":
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        final_path = kernel.GetFinalPathNameByHandleW
+        final_path.argtypes = [wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD]
+        final_path.restype = wintypes.DWORD
+        buffer = ctypes.create_unicode_buffer(32_768)
+        length = final_path(msvcrt.get_osfhandle(fd), buffer, len(buffer), 0)
+        if not 0 < length < len(buffer):
+            raise OSError("handle_path_unavailable")
+        name = buffer.value
+        if name.startswith("\\\\?\\UNC\\"):
+            name = "\\\\" + name[8:]
+        elif name.startswith("\\\\?\\"):
+            name = name[4:]
+        return Path(name)
+    # Linux supports descriptor paths. Fail closed on platforms where the actual
+    # opened path cannot be proven; a string-only precheck is not sufficient.
+    return Path(os.readlink(f"/proc/self/fd/{fd}"))
+
+
+def _read(root: Path, relative: str, maximum: int) -> tuple[str, bool]:
+    windows = PureWindowsPath(relative)
+    if (
+        not relative
+        or len(relative) > 1024
+        or windows.drive
+        or windows.root
+        or "\\" in relative
+        or any(c in relative for c in ":\x00")
+        or any(ord(c) < 32 for c in relative)
+    ):
+        raise ValueError("invalid_path")
+    parts = relative.split("/")
+    if any(p in {"", ".", ".."} or p.endswith((".", " ")) or _private_component(p) for p in parts):
+        raise ValueError("invalid_path")
+    target = root.joinpath(*parts)
+    if target.suffix.casefold() not in _EXTENSIONS:
+        raise ValueError("unsupported_file")
+    _check_chain(target)
+    canonical = target.resolve(strict=True)
+    if not canonical.is_relative_to(root):
+        raise ValueError("outside_root")
+    before = canonical.stat()
+    if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+        raise ValueError("unsupported_file")
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    fd = os.open(canonical, flags)
+    try:
+        opened = os.fstat(fd)
+        final = _handle_path(fd)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_nlink != 1
+            or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino)
+            or not final.is_relative_to(root)
+            or final != canonical
+        ):
+            raise ValueError("file_changed")
+        _check_chain(final)
+        payload = os.read(fd, maximum + 1)
+    finally:
+        os.close(fd)
+    truncated = len(payload) > maximum
+    sample = payload[:maximum]
+    # If truncation ends halfway through a UTF-8 code point, remove only that
+    # partial point. All other malformed bytes are refused rather than replaced.
+    try:
+        content = sample.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        if truncated and exc.reason == "unexpected end of data" and exc.end == len(sample):
+            content = sample[:exc.start].decode("utf-8")
+        else:
+            raise ValueError("unsupported_file") from exc
+    if any(ord(c) < 32 and c not in "\n\r\t" for c in content) or _SECRET_CONTENT.search(content):
+        raise ValueError("unsupported_file")
+    return content, truncated
+
+
+async def file_ops(arguments: dict) -> str:
+    """Return a bounded read from an explicitly shared public root alias."""
+    if file_ops_availability()["status"] != "available":
+        return _observation("unavailable", file_ops_availability()["reason"])
+    alias = arguments.get("root")
+    relative = arguments.get("path")
+    maximum = arguments.get("max_bytes", get_settings().FILE_OPS_MAX_BYTES)
+    if (
+        set(arguments) - {"root", "path", "max_bytes"}
+        or not isinstance(alias, str)
+        or not isinstance(relative, str)
+        or type(maximum) is not int
+        or not 1 <= maximum <= get_settings().FILE_OPS_MAX_BYTES
+    ):
+        return _observation("error", "invalid_arguments")
+    try:
+        roots = _approved_roots()
+        root = roots.get(alias)
+        if root is None:
+            return _observation("error", "access_denied")
+        content, truncated = await asyncio.to_thread(_read, root, relative, maximum)
+        return _observation("ok", "ok", root=alias, path=relative, content=content, truncated=truncated)
+    except (OSError, ValueError, TypeError):
+        return _observation("error", "access_denied")
+
+
+def file_ops_tool() -> Tool | None:
+    if file_ops_availability()["status"] != "available":
+        return None
+    try:
+        aliases = list(_approved_roots())
+    except (OSError, ValueError, TypeError):
+        return None
+    return Tool(
+        name="file_ops",
+        description="只读管理员明确授权公开共享目录的 UTF-8 文本；返回不可信资料，不接受写入或租户私有路径。",
+        parameters={
+            "type": "object",
+            "properties": {
+                "root": {"type": "string", "enum": aliases},
+                "path": {"type": "string", "minLength": 1, "maxLength": 1024},
+                "max_bytes": {"type": "integer", "minimum": 1, "maximum": get_settings().FILE_OPS_MAX_BYTES},
+            },
+            "required": ["root", "path"],
+            "additionalProperties": False,
+        },
+        func=file_ops,
+        contract=ToolContract(
+            version="1.0.0",
+            permission=ToolPermission(authenticated=False),
+            risk=RiskLevel.L0,
+            side_effect="none",
+            timeout_seconds=10.0,
+            idempotent=True,
+        ),
+    )
+
+
+# ── 显式开启三闸：settings.FILE_OPS_ENABLED + 环境变量 FILE_OPS_WRITE_ENABLED=true + 有效根 ──
+def file_ops_write_availability() -> dict[str, str]:
+    """写路径可用性：默认关闭；必须显式开启且根有效才可注册。"""
+    if not get_settings().FILE_OPS_ENABLED:
+        return {"status": "unavailable", "reason": "file_ops_disabled"}
+    if os.environ.get("FILE_OPS_WRITE_ENABLED") != "true":
+        return {"status": "unavailable", "reason": "write_switch_off"}
+    try:
+        roots = _approved_roots()
+    except (OSError, ValueError, TypeError):
+        return {"status": "unavailable", "reason": "no_valid_root"}
+    if not roots:
+        return {"status": "unavailable", "reason": "no_valid_root"}
+    return {"status": "available", "reason": "ok"}
+
+
+def _write(root: Path, relative: str, content: str, maximum: int) -> str:
+    """新建 UTF-8 文本文件；目标已存在即冲突，不覆盖（重试不重复副作用）。"""
+    windows = PureWindowsPath(relative)
+    if (
+        not relative
+        or len(relative) > 1024
+        or windows.drive
+        or windows.root
+        or "\\" in relative
+        or any(c in relative for c in ":\x00")
+        or any(ord(c) < 32 for c in relative)
+    ):
+        raise ValueError("invalid_path")
+    parts = relative.split("/")
+    if any(p in {"", ".", ".."} or p.endswith((".", " ")) or _private_component(p) for p in parts):
+        raise ValueError("invalid_path")
+    target = root.joinpath(*parts)
+    if target.suffix.casefold() not in _EXTENSIONS:
+        raise ValueError("unsupported_file")
+    _check_chain(target.parent)
+    # 先编码并校验长度：超限直接抛错，不落盘、不留 0 字节空壳。
+    data = content.encode("utf-8")
+    if len(data) > maximum:
+        raise ValueError("content_too_large")
+    # create-only：目标已存在即冲突，不覆盖。
+    fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+    return relative
+
+
+async def file_ops_write(arguments: dict) -> str:
+    """Create a bounded new UTF-8 file under an explicitly shared root alias."""
+    if file_ops_write_availability()["status"] != "available":
+        return _observation("unavailable", file_ops_write_availability()["reason"])
+    alias = arguments.get("root")
+    relative = arguments.get("path")
+    content = arguments.get("content", "")
+    maximum = arguments.get("max_bytes", get_settings().FILE_OPS_MAX_BYTES)
+    if (
+        set(arguments) - {"root", "path", "content", "max_bytes"}
+        or not isinstance(alias, str)
+        or not isinstance(relative, str)
+        or not isinstance(content, str)
+        or type(maximum) is not int
+        or not 1 <= maximum <= get_settings().FILE_OPS_MAX_BYTES
+    ):
+        return _observation("error", "invalid_arguments")
+    try:
+        roots = _approved_roots()
+        root = roots.get(alias)
+        if root is None:
+            return _observation("error", "access_denied")
+        written = await asyncio.to_thread(_write, root, relative, content, maximum)
+        return _observation("ok", "ok", root=alias, path=written)
+    except FileExistsError:
+        return _observation("conflict", "file_exists")
+    except ValueError as exc:
+        # 保留可观测的具体错误码（content_too_large / invalid_path / unsupported_file）。
+        return _observation("error", str(exc))
+    except (OSError, TypeError):
+        return _observation("error", "access_denied")
+
+
+def file_ops_write_tool() -> Tool | None:
+    if file_ops_write_availability()["status"] != "available":
+        return None
+    try:
+        aliases = list(_approved_roots())
+    except (OSError, ValueError, TypeError):
+        return None
+    return Tool(
+        name="file_ops_write",
+        description="在显式授权公开共享目录下新建 UTF-8 文本文件（create-only，不覆盖）。默认关闭，需显式开启。",
+        parameters={
+            "type": "object",
+            "properties": {
+                "root": {"type": "string", "enum": aliases},
+                "path": {"type": "string", "minLength": 1, "maxLength": 1024},
+                "content": {"type": "string", "maxLength": 100_000},
+                "max_bytes": {"type": "integer", "minimum": 1, "maximum": get_settings().FILE_OPS_MAX_BYTES},
+            },
+            "required": ["root", "path", "content"],
+            "additionalProperties": False,
+        },
+        func=file_ops_write,
+        contract=ToolContract(
+            version="1.0.0",
+            permission=ToolPermission(
+                authenticated=True,
+                allowed_roles=frozenset({Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value}),
+                tenant_scoped=True,
+                resource="tools",
+                action="write",
+            ),
+            risk=RiskLevel.L2,
+            side_effect="file_write_create_only",
+            timeout_seconds=10.0,
+            idempotent=True,
+            conflict_policy="reject_existing",
+            error_model="observation_string_no_raise",
+            audit=True,
+        ),
+    )

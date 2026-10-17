@@ -39,6 +39,11 @@ xlrd==2.0.2
 # 默认安装清单包含 cron 调度依赖。WORKFLOW_ENABLED 仍默认关闭，未打开时调度器不启动。
 croniter>=2.0.0
 
+# 可选：启用 LangGraph Supervisor 时安装（AGENT_ORCHESTRATION=langgraph）
+# 版本范围 langgraph>=1.0.0,<1.1。验收安装命令：pip install -e ".[langgraph]"
+# 这一行保持注释，不进入默认安装。没装时对话回退五阶段管线。
+# langgraph>=1.0.0,<1.1
+
 # 可选：RAG_BACKEND=langchain 时安装（中文 RecursiveCharacterTextSplitter + LC 检索适配）
 # langchain-core>=1.0,<2.0
 # langchain-text-splitters>=1.0,<2.0

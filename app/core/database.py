@@ -13,8 +13,11 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
 
-# SQLite 需要关闭同线程检查以配合多线程 ASGI 服务器。
-_connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+# SQLite 需要关闭同线程检查以配合多线程 ASGI 服务器；timeout=30 设置
+# busy timeout，让并发写事务等待锁释放而不是立即抛 database is locked。
+_connect_args = (
+    {"check_same_thread": False, "timeout": 30} if settings.DATABASE_URL.startswith("sqlite") else {}
+)
 
 # SQLite 文件路径的父目录若不存在则自动创建（避免首次运行因目录缺失而启动失败）。
 if settings.DATABASE_URL.startswith("sqlite"):
@@ -42,8 +45,10 @@ def init_db(*, auto_migrate: bool = True) -> None:
     # 导入模型以注册表结构（Side-effect import）。
     from app.audit import models as _audit_models  # noqa: F401
     from app.models import (
+        agent_state,  # noqa: F401
         conversation,  # noqa: F401
         rag,  # noqa: F401
+        skill,  # noqa: F401
         user,  # noqa: F401
         workflow,  # noqa: F401
     )

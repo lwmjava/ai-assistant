@@ -10,7 +10,6 @@
 """
 
 import uuid
-from datetime import UTC, datetime
 from enum import Enum
 
 from sqlmodel import JSON, Column, Field, SQLModel
@@ -49,6 +48,8 @@ class AuditAction(str, Enum):
     TENANT_DELETE = "tenant_delete"
     TENANT_ACTIVATE = "tenant_activate"
     TENANT_DEACTIVATE = "tenant_deactivate"
+    QUOTA_UPDATE = "quota_update"
+    EXPORT_REQUESTED = "export_requested"
 
     # ── 对话 ──
     CONVERSATION_CREATE = "conversation_create"
@@ -65,12 +66,22 @@ class AuditAction(str, Enum):
     WORKFLOW_DELETE = "workflow_delete"
     WORKFLOW_EXECUTE = "workflow_execute"
 
+    # ── 技能 ──
+    SKILL_CREATE = "skill_create"
+    SKILL_UPDATE = "skill_update"
+    SKILL_DISABLE = "skill_disable"
+    SKILL_ENABLE = "skill_enable"
+    SKILL_DELETE = "skill_delete"
+
     # ── 系统配置 ──
     SYSTEM_CONFIG_UPDATE = "system_config_update"
     FEATURE_FLAG_TOGGLE = "feature_flag_toggle"
 
     # ── CLI 危险操作 ──
     CLI_DANGEROUS_OP = "cli_dangerous_op"
+
+    # ── 工具调用（PAGT-002）──
+    TOOL_CALL = "tool_call"
 
     # ── 其他 ──
     OTHER = "other"

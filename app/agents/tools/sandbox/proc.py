@@ -14,7 +14,9 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.agents.tools.sandbox.base import SandboxConfig
 from app.agents.tools.sandbox.runtime import unix_wrapper_source
@@ -52,15 +54,29 @@ class ProcessOutcome:
 
 
 def process_alive(pid: int) -> bool:
-    """进程是否仍在运行。pid 无效时视为已结束。"""
+    """进程是否仍在运行；Linux 已退出的僵尸不属于正在执行的进程。"""
     if pid <= 0:
         return False
     if os.name == "nt":
         return _windows_process_alive(pid)
     try:
         os.kill(pid, 0)
+    except PermissionError:
+        return True
     except OSError:
         return False
+    if sys.platform == "linux":
+        try:
+            stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return True
+        # The command name may contain spaces and parentheses; state follows its final ')'.
+        _, separator, fields = stat.rpartition(")")
+        state = fields.split()
+        if separator and state and state[0] in {"Z", "X"}:
+            return False
     return True
 
 
@@ -137,10 +153,10 @@ def _run_unix(
 
 def _kill_process_group(pid: int) -> None:
     try:
-        os.killpg(pid, signal.SIGKILL)
+        getattr(os, "killpg")(pid, getattr(signal, "SIGKILL"))
     except OSError:
         try:
-            os.kill(pid, signal.SIGKILL)
+            os.kill(pid, getattr(signal, "SIGKILL"))
         except OSError:
             logger.warning("结束沙箱进程组失败")
 
@@ -158,11 +174,29 @@ def _terminate_unix_tree(parent_command: list[str], *, cwd: str) -> tuple[int, i
         child_pid = _wait_pid_file(parent_command)
         _kill_process_group(proc.pid)
         proc.wait(timeout=5)
+        deadline = time.monotonic() + 5
+        while process_alive(child_pid):
+            if time.monotonic() >= deadline:
+                raise TimeoutError("沙箱子进程未在期限内结束")
+            time.sleep(0.01)
         return proc.pid, child_pid
     finally:
         if proc.poll() is None:
             _kill_process_group(proc.pid)
             proc.wait(timeout=5)
+
+
+def _last_error_code() -> int:
+    """读取 Win32 最后一次错误码。
+
+    ctypes.get_last_error 仅在 Windows 平台存在；POSIX 平台的 typeshed
+    stub 不提供该属性，因此在此处做一次精确的类型抑制，避免 Linux CI
+    的 mypy 检查报错。本函数只会在 Windows 分支（_run_windows）执行，
+    POSIX 上永远不可达。
+    """
+    import ctypes
+
+    return ctypes.get_last_error()  # type: ignore[attr-defined]
 
 
 def _windows_kernel32():
@@ -179,7 +213,7 @@ def _run_windows(script_path: str, *, cwd: str, env: dict[str, str], timeout: fl
     _bind_win32(kernel32)
     job = _create_job(kernel32)
     if not job:
-        logger.warning("沙箱无法创建进程隔离，错误码 %s", ctypes.get_last_error())
+        logger.warning("沙箱无法创建进程隔离，错误码 %s", _last_error_code())
         return ProcessOutcome(isolation_error=ISOLATION_FAILURE)
 
     stdout_read = stdout_write = stderr_read = stderr_write = stdin_handle = None
@@ -199,10 +233,10 @@ def _run_windows(script_path: str, *, cwd: str, env: dict[str, str], timeout: fl
             stderr_handle=stderr_write,
         )
         if not process:
-            logger.warning("沙箱无法启动代码进程，错误码 %s", ctypes.get_last_error())
+            logger.warning("沙箱无法启动代码进程，错误码 %s", _last_error_code())
             return ProcessOutcome(isolation_error=ISOLATION_FAILURE, pid=0)
         if not kernel32.AssignProcessToJobObject(job, process):
-            logger.warning("沙箱无法绑定进程隔离，错误码 %s", ctypes.get_last_error())
+            logger.warning("沙箱无法绑定进程隔离，错误码 %s", _last_error_code())
             kernel32.TerminateProcess(process, 1)
             return ProcessOutcome(isolation_error=ISOLATION_FAILURE, pid=pid)
         kernel32.CloseHandle(stdout_write)

@@ -1,0 +1,9 @@
+{
+  "app/agents/skills/base.py": "d9ecc90c9c3fee7a9f4f405f03b724126622411956ecb9cf981054f18583c3b4",
+  "app/agents/skills/loader.py": "e37c43c96e7a6cb2f714478d668ba4dd605d292d7021c9ed08456f09a57c6444",
+  "app/agents/skills/manager.py": "953e33753f125487f074cb9fafb9fafb3177eef5e093bef504f708a30b4347ff",
+  "app/agents/skills/builtin/code_review.yaml": "393163fa0120c352b40e51f3498d304d92a5ee0929f330fe3d5cc4c2b32500ef",
+  "app/agents/skills/builtin/translator.yaml": "b26ce002d2440433dda2e5ffbb84b5cb18241ff2510d4cf21f0407d39e15e262",
+  "app/services/skill_service.py": "5d0050794ac3505ad4834deecb922163c16ceb578c18c376bd10dea3aad250e3",
+  "app/services/chat_service.py": "616ad0d7db6d4c371246547a1ccab35b957b02349b1cc91725104d7fbe947868"
+}

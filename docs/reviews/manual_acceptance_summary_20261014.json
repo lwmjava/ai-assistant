@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-14",
+  "head": "ee54252d3be42a9827a15849c0c8b8f5552151d7",
+  "authorization": "用户明确要求启用人工验收Agent对五卡做人工验收，代行可复现操作；不授权新增收费模型、CI、Git发布或生产操作",
+  "agents": [
+    "/root/accept_executor",
+    "/root/accept_plan_skill",
+    "/root/accept_agt007"
+  ],
+  "task_statuses": {
+    "AGT-003": "in_review",
+    "PAGT-006": "done",
+    "PAGT-004": "done",
+    "PAGT-005": "done",
+    "PAGT-007": "in_review"
+  },
+  "counts": {
+    "done": 109,
+    "in_review": 3,
+    "backlog": 71,
+    "cancelled": 1
+  },
+  "tracked_product_files": 571,
+  "unchanged_product_combined_sha256": "007f7c69accc1eb6663bbf1abd2245ede504e1e36745dbf75f79b0e6ecb76acb",
+  "source_fingerprint_validation_exit": 0,
+  "yaml_validation_exit": 0,
+  "junit_validation_exit": 0,
+  "tracked_changed_files": [
+    "docs/plans/closure_pagt_004_20261013.md",
+    "docs/plans/closure_pagt_005_20261013.md",
+    "docs/plans/closure_pagt_006_20261012.md",
+    "docs/plans/implementation_pagt_004.md",
+    "docs/plans/implementation_pagt_005.md",
+    "docs/plans/implementation_pagt_006_review_fixes_20261013.md",
+    "tasks.yaml"
+  ],
+  "junit": [
+    {
+      "path": "docs/reviews/agt007_manual_pytest_20261014.xml",
+      "sha256": "ca0971bd841d5e50c07c07d38fe456c1e1bf281963f451349aee9625579c43fa",
+      "tests": 239,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    {
+      "path": "docs/reviews/pagt045_manual_probe_final_20261014.xml",
+      "sha256": "885e7103aa3e89236937cb48d4b3bb492752b360bde0d05390040627f56a16c6",
+      "tests": 8,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    {
+      "path": "data/pagt004-manual-20261014.xml",
+      "sha256": "a8edf7bd6a9e487604d43a683a2684d795692859d79f023893c15627417c5a4c",
+      "tests": 398,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    {
+      "path": "data/pagt005-manual-20261014.xml",
+      "sha256": "2ff9c2abd82134d00f9f53db5ff3b831e0c6fa75620c47a3b2af5db1cde0e518",
+      "tests": 105,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    {
+      "path": "data/pagt001-manual-dependency-20261014.xml",
+      "sha256": "1ab30e0dc2dce6383427b3f57f7880f037702c5f1ec789132f4a8519712eb59a",
+      "tests": 119,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    }
+  ],
+  "new_official_model_calls": 0,
+  "new_ci_runs": 0,
+  "full_project_tests_executed": false,
+  "diff_check": "git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff --check: exit0; original CRLF retained",
+  "operational_failures_preserved": [
+    "Probe formatting issues and script assumption mistakes preserved in per-card reports",
+    "Root machine JSON initially rejected fitz warning prefix; raw preserved in agt007_manual_probe_raw_20261014.txt, JSON fields unchanged",
+    "Default git diff --check flagged original CRLF as trailing whitespace; rerun with cr-at-eol explicitly recognized original line endings"
+  ]
+}

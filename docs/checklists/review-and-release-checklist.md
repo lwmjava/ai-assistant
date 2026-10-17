@@ -47,14 +47,17 @@
 
 ## 6. 验证命令
 
-按影响运行并记录：
+按影响运行并记录；`AGENTS.md` 第 10 节触发的强制检查不得以专项测试替代：
 
 ```powershell
 pytest
 ruff check .
 mypy app/
 cd frontend
+npm ci
 npm run typecheck
+npm test
+npm run lint
 npm run build
 ```
 
@@ -62,6 +65,14 @@ npm run build
 - [ ] 未运行项有原因、风险、Owner 和截止日期。
 - [ ] Mock 测试没有替代必要的真实集成。
 - [ ] 失败案例已沉淀，未删除或弱化。
+- [ ] 开发前基线 SHA、已有改动及既有失败已记录；新增失败已归因。
+- [ ] 公共入口/执行链/模型调用/缓存/全局配置变化的全量 pytest 已通过，未用筛选或关闭相关功能替代。
+- [ ] 新增身份复核的旧成功 fixture 有有效 User/Tenant；撤销、停用和越权拒绝仍有断言。
+- [ ] 新增模型请求按用途统计，缓存/预算/取消/重试断言仍验证原业务结果。
+- [ ] 平台相关变化的 Linux 测试及同一最终提交 Ubuntu Backend CI 已通过；Windows 不作替代。
+- [ ] 报告与最终源码/测试/配置/依赖/评测输入指纹或提交 SHA 一致，相关输入变化后已重跑。
+- [ ] 必要检查失败/缺失/过期时业务卡未标 done；WIP 保存未被写成验收通过。
+- [ ] 合并前核验最终 SHA 的 Backend、Frontend、Agent official baseline 必需检查及分支保护/bypass 策略；未核验项未写成自动保护已生效。
 
 ## 7. Evaluation
 

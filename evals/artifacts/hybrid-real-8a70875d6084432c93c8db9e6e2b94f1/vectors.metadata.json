@@ -1,0 +1,13 @@
+{
+  "vectors_sha256": "029c1d7954cd72a0742f772ee7634e3db32ac596461a2e5c3a4e0020e5298e2e",
+  "corpus_sha256": "8be974176d5988e4802aa8c818638f8d348644a9e91c3ab59cc4636e37bf42e7",
+  "source_report": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\reports\\rag-036-real-embedding-20261008.json",
+  "source_report_sha256": "456980a2836c05dc00c35c05c17022dd85e08e45b54ade2ca439f699cad99388",
+  "embedding": {
+    "provider": "dashscope-openai-compatible",
+    "model": "text-embedding-v3",
+    "dim": 1024,
+    "deployment": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  },
+  "dataset_version": "hybrid-semantics-real-embedding-synthetic-v1"
+}

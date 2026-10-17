@@ -43,7 +43,7 @@ def _admin(client: TestClient) -> dict[str, str]:
         )
         session.commit()
     resp = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": "admin", "password": "Test@Pass123!"},
     )
     assert resp.status_code == 200
@@ -51,7 +51,7 @@ def _admin(client: TestClient) -> dict[str, str]:
 
 
 def _tenant(client: TestClient, headers: dict[str, str], name: str) -> str:
-    resp = client.post("/api/admin/tenants", headers=headers, json={"name": name})
+    resp = client.post("/api/v1/admin/tenants", headers=headers, json={"name": name})
     assert resp.status_code == 201
     return resp.json()["id"]
 
@@ -63,14 +63,14 @@ def test_member_login_stays_in_tenant_and_audit_hides_password() -> None:
     other_id = _tenant(client, headers, "Other")
 
     created = client.post(
-        f"/api/admin/tenants/{tenant_id}/users",
+        f"/api/v1/admin/tenants/{tenant_id}/users",
         headers=headers,
         json={"username": "ada", "password": PASSWORD, "email": "ada@example.com", "role": "system_admin"},
     )
     assert created.status_code == 422
 
     created = client.post(
-        f"/api/admin/tenants/{tenant_id}/users",
+        f"/api/v1/admin/tenants/{tenant_id}/users",
         headers=headers,
         json={"username": " ada ", "password": PASSWORD, "email": "ada@example.com"},
     )
@@ -99,7 +99,7 @@ def test_member_login_stays_in_tenant_and_audit_hides_password() -> None:
         session.add(Document(tenant_id=other_id, user_id="someone-else", title="their-doc"))
         session.commit()
 
-    login = client.post("/api/auth/login", json={"username": "ada", "password": PASSWORD})
+    login = client.post("/api/v1/auth/login", json={"username": "ada", "password": PASSWORD})
     assert login.status_code == 200
     token = login.json()["access_token"]
     payload = decode_token(token)
@@ -107,12 +107,12 @@ def test_member_login_stays_in_tenant_and_audit_hides_password() -> None:
     assert payload["role"] == "member"
     member_headers = {"Authorization": f"Bearer {token}"}
 
-    conversations = client.get("/api/chat/conversations", headers=member_headers)
+    conversations = client.get("/api/v1/chat/conversations", headers=member_headers)
     assert conversations.status_code == 200
     titles = {item["title"] for item in conversations.json()}
     assert titles == {"mine"}
 
-    documents = client.get("/api/rag/documents", headers=member_headers)
+    documents = client.get("/api/v1/rag/documents", headers=member_headers)
     assert documents.status_code == 200
     doc_titles = {item["title"] for item in documents.json()}
     assert doc_titles == {"mine-doc"}
@@ -122,7 +122,7 @@ def test_rejects_missing_inactive_and_duplicates() -> None:
     client = _client()
     headers = _admin(client)
     missing = client.post(
-        "/api/admin/tenants/missing/users",
+        "/api/v1/admin/tenants/missing/users",
         headers=headers,
         json={"username": "ada", "password": PASSWORD},
     )
@@ -135,7 +135,7 @@ def test_rejects_missing_inactive_and_duplicates() -> None:
         session.refresh(inactive)
         inactive_id = inactive.id
     closed = client.post(
-        f"/api/admin/tenants/{inactive_id}/users",
+        f"/api/v1/admin/tenants/{inactive_id}/users",
         headers=headers,
         json={"username": "ada", "password": PASSWORD},
     )
@@ -144,20 +144,20 @@ def test_rejects_missing_inactive_and_duplicates() -> None:
     tenant_id = _tenant(client, headers, "Acme")
     assert (
         client.post(
-            f"/api/admin/tenants/{tenant_id}/users",
+            f"/api/v1/admin/tenants/{tenant_id}/users",
             headers=headers,
             json={"username": "ada", "password": PASSWORD, "email": "ada@example.com"},
         ).status_code
         == 201
     )
     again = client.post(
-        f"/api/admin/tenants/{tenant_id}/users",
+        f"/api/v1/admin/tenants/{tenant_id}/users",
         headers=headers,
         json={"username": "ada", "password": PASSWORD},
     )
     assert again.status_code == 409
     email = client.post(
-        f"/api/admin/tenants/{tenant_id}/users",
+        f"/api/v1/admin/tenants/{tenant_id}/users",
         headers=headers,
         json={"username": "bea", "password": PASSWORD, "email": "ada@example.com"},
     )
@@ -183,11 +183,11 @@ def test_non_admin_cannot_create_member() -> None:
         )
         session.commit()
     login = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"username": "member", "password": "Test@Pass123!"},
     )
     resp = client.post(
-        f"/api/admin/tenants/{tenant_id}/users",
+        f"/api/v1/admin/tenants/{tenant_id}/users",
         headers={"Authorization": f"Bearer {login.json()['access_token']}"},
         json={"username": "ada", "password": PASSWORD},
     )

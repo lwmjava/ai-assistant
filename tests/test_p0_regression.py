@@ -25,7 +25,7 @@ from app.core.security import Role, hash_password
 from app.llm.base import ChatMessage, LLMOptions, LLMProvider
 from app.mcp.client import MCPClient
 from app.mcp.config import MCPServerConfig
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.rag.vectorstore.milvus import MilvusUnavailableError, MilvusVectorStore
 from app.security.types import SecurityContext
 from app.services.chat_service import ChatService
@@ -165,10 +165,27 @@ async def test_mcp_sse_transport_connects(monkeypatch) -> None:
 
 
 # ── Milvus 按文档删除 ───────────────────────────────
+def _stub_index_resolution(store) -> None:
+    """桩掉集合解析：这些用例只锁删除计数与 schema 校验，不涉索引登记。
+
+    索引身份决定了操作哪个集合（RAG-032），但本文件的用例没有真实会话，
+    因此显式声明目标索引，避免把身份解析和被测语义耦在一起。
+    """
+
+    class _StubIndex:
+        id = "stub-index"
+        name = "stub_collection"
+        dim = 4
+
+    store._resolve_index = lambda *args, **kwargs: _StubIndex()  # type: ignore[method-assign]
+    store._collection_name = _StubIndex.name
+
+
 def _milvus_store_with(rows: list[dict], fields: list[str] | None = None):
     store = MilvusVectorStore.__new__(MilvusVectorStore)
     store.session = None
     store._collection = _FakeMilvusCollection(rows, fields)
+    _stub_index_resolution(store)
     return store
 
 
@@ -243,6 +260,7 @@ async def test_milvus_rejects_collection_without_document_id(monkeypatch) -> Non
     store = MilvusVectorStore.__new__(MilvusVectorStore)
     store.session = None
     store._collection = None
+    _stub_index_resolution(store)
 
     with pytest.raises(MilvusUnavailableError, match="document_id"):
         await store.delete_by_document("doc-1", "tenant-1")
@@ -308,7 +326,9 @@ async def test_delete_document_cleans_vectors(session: Session) -> None:
     store = _RecordingStore()
     rag = RAGService(session, owner.tenant_id, vector_store=store)
     assert await rag.delete_document(doc.id, owner) is True
-    assert store.deleted == [(doc.id, owner.tenant_id)]
+    assert store.deleted == []  # 软删保留90天，物理清理由到期补偿路径负责。
+    session.refresh(doc)
+    assert doc.deleted_at is not None
 
 
 # ── Supervisor 类型与收敛 ───────────────────────────
@@ -321,6 +341,7 @@ async def test_supervisor_sends_chatmessage_objects() -> None:
     graph.llm = llm
     graph.options = LLMOptions()
     graph.max_revisions = 2
+    graph._user_images = []
 
     await graph._node_supervisor({"user_input": "你好", "plan": "", "research": ""})
     assert llm.calls, "supervisor 节点应发起一次 LLM 调用"
@@ -336,6 +357,7 @@ async def test_supervisor_draft_sends_chatmessage_objects() -> None:
     graph.llm = llm
     graph.options = LLMOptions()
     graph.max_revisions = 2
+    graph._user_images = []
 
     await graph._node_draft({"user_input": "你好", "plan": "", "research": "调研"})
     assert all(isinstance(m, ChatMessage) for m in llm.calls[0])
@@ -369,6 +391,15 @@ def _create_login_user(session: Session, username: str) -> User:
         session.delete(existing)
         session.commit()
 
+    tenant = session.get(Tenant, "audit-tenant")
+    if tenant is None:
+        session.add(Tenant(id="audit-tenant", name="审计登录租户", is_active=True))
+        session.commit()
+    elif not tenant.is_active:
+        tenant.is_active = True
+        session.add(tenant)
+        session.commit()
+
     user = User(
         id=f"user-{username}",
         tenant_id="audit-tenant",
@@ -393,7 +424,7 @@ def test_login_failure_writes_audit_log(session: Session) -> None:
     _create_login_user(session, username)
     with TestClient(app) as client:
         resp = client.post(
-            "/api/auth/login", json={"username": username, "password": "wrong-password"}
+            "/api/v1/auth/login", json={"username": username, "password": "wrong-password"}
         )
     assert resp.status_code == 401
 
@@ -416,7 +447,7 @@ def test_login_success_writes_audit_log(session: Session) -> None:
     user = _create_login_user(session, username)
     with TestClient(app) as client:
         resp = client.post(
-            "/api/auth/login", json={"username": username, "password": "pass-12345"}
+            "/api/v1/auth/login", json={"username": username, "password": "pass-12345"}
         )
     assert resp.status_code == 200
 

@@ -13,7 +13,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import get_current_user, require_permission
+from app.api.deps import require_permission
 from app.core.config import settings
 from app.models.user import User
 

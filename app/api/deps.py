@@ -7,7 +7,9 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
+from app.api.errors import PublicHTTPError
 from app.audit.models import AuditAction
+from app.core import log_context
 from app.core.config import settings
 from app.core.database import get_session
 from app.core.security import Role, check_permission, decode_token
@@ -36,6 +38,7 @@ get_db = get_session
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     session: Session = Depends(get_session),
 ) -> User:
@@ -44,11 +47,12 @@ def get_current_user(
     认证关闭时返回合成管理员主体（仅限开发/演示环境）。
     """
     if not settings.AUTH_ENABLED:
+        log_context.set_user(None, None)
         return _DISABLED_AUTH_PRINCIPAL
 
     if credentials is None or not credentials.credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+        raise PublicHTTPError(
+            status_code=status.HTTP_401_UNAUTHORIZED, code="session_expired",
             detail="未提供认证令牌",
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -56,8 +60,8 @@ def get_current_user(
     try:
         payload = decode_token(credentials.credentials)
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+        raise PublicHTTPError(
+            status_code=status.HTTP_401_UNAUTHORIZED, code="session_expired",
             detail="令牌无效或已过期",
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -71,20 +75,30 @@ def get_current_user(
 
     user_id = payload.get("sub")
     user = session.get(User, user_id) if user_id else None
-    if user is None or not user.is_active:
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户不存在或已禁用",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if not user.is_active:
+        raise PublicHTTPError(403, "user_disabled", detail="用户不存在或已禁用")
     # 系统管理员仍可进入管理接口并切走；其余角色在租户停用后不能继续访问。
     if user.role_enum is not Role.SYSTEM_ADMIN:
         tenant = session.get(Tenant, user.tenant_id)
         if tenant is None or not tenant.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+            raise PublicHTTPError(
+                status_code=status.HTTP_403_FORBIDDEN, code="tenant_suspended",
                 detail="租户已停用",
             )
+    log_context.set_user(user.id, user.tenant_id)
+    password_routes = {("GET", "/api/v1/auth/me"), ("POST", "/api/v1/auth/change-password")}
+    route_path = getattr(request.scope.get("route"), "path", request.url.path)
+    if user.must_change_password and (request.method, route_path) not in password_routes:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="首次登录请先修改密码",
+        )
     return user
 
 

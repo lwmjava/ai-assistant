@@ -4,18 +4,18 @@
 提供审计日志查询、过滤、分页功能。
 
 端点：
-- ``GET /api/admin/audit-logs`` — 查询审计日志（支持多条件过滤 + 分页）
+- ``GET /api/v1/admin/audit-logs`` — 查询审计日志（支持多条件过滤 + 分页）
 """
 
 import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
 from app.api.deps import get_current_user, get_db
-from app.audit.models import AuditAction, AuditLog
+from app.audit.models import AuditLog
 from app.core.security import Role
 
 logger = logging.getLogger(__name__)
@@ -136,7 +136,9 @@ def list_audit_logs(
     # 统计总数
     count_stmt = select(col(AuditLog.id)).select_from(AuditLog)
     # 复用过滤条件（手动构建以保持一致性）
-    count_stmt = _apply_filters_to_select(count_stmt, action, user_id, tenant_id, resource_type, resource_id, since, until)
+    count_stmt = _apply_filters_to_select(
+        count_stmt, action, user_id, tenant_id, resource_type, resource_id, since, until
+    )
     total = len(session.exec(count_stmt).all())
 
     # 分页 + 排序

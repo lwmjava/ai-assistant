@@ -12,9 +12,9 @@
 import json
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session, select, func
+from sqlmodel import Session, col, select
 
 from app.core.database import engine
 from app.evolution.models import (
@@ -26,7 +26,7 @@ from app.evolution.models import (
 )
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.factory import get_llm_provider
-from app.models.conversation import Conversation, Message
+from app.models.conversation import Conversation
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class Distiller:
         result = DistillResult()
 
         # 1. 获取近期对话
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         conversations = self._fetch_recent_conversations(cutoff, max_conversations)
 
         if not conversations:
@@ -129,9 +129,7 @@ class Distiller:
 
         result.analysis_period = f"最近 {hours} 小时"
         result.conversations_analyzed = len(conversations)
-        result.messages_analyzed = sum(
-            len(getattr(c, "messages", []) or []) for c in conversations
-        )
+        result.messages_analyzed = sum(len(getattr(c, "messages", []) or []) for c in conversations)
 
         # 2. 构建分析文本
         analysis_text = self._build_analysis_text(conversations)
@@ -220,9 +218,7 @@ class Distiller:
     # ── 数据获取 ──
 
     @staticmethod
-    def _fetch_recent_conversations(
-        cutoff: datetime, max_count: int
-    ) -> list[Conversation]:
+    def _fetch_recent_conversations(cutoff: datetime, max_count: int) -> list[Conversation]:
         """从数据库获取最近的、有实际对话内容的会话。"""
         try:
             with Session(engine) as session:
@@ -230,7 +226,7 @@ class Distiller:
                 stmt = (
                     select(Conversation)
                     .where(Conversation.updated_at >= cutoff)
-                    .order_by(Conversation.updated_at.desc())
+                    .order_by(col(Conversation.updated_at).desc())
                     .limit(max_count)
                 )
                 conversations = list(session.exec(stmt).all())
@@ -240,12 +236,10 @@ class Distiller:
                     _ = conv.messages  # 触发加载
 
                 # 过滤掉没有消息的会话
-                conversations = [
-                    c for c in conversations if len(c.messages) >= 2
-                ]
+                conversations = [c for c in conversations if len(c.messages) >= 2]
 
                 return conversations
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("获取近期对话失败")
             return []
 

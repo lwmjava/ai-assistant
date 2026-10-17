@@ -1,0 +1,33 @@
+{
+  "version": "llm-boundary-real-v0.1",
+  "prompt_version": "llm-boundary-prompt-v0.1",
+  "protocol_version": "llm-boundary-protocol-v0.1",
+  "model": {
+    "provider": "openai",
+    "deployment": "https://api.openai.com/v1",
+    "model": "gpt-4o-mini"
+  },
+  "prices_usd_per_1m": {
+    "input": 0.15,
+    "output": 0.6
+  },
+  "budget_usd": 0.1,
+  "hard_call_cap": 30,
+  "params": {
+    "max_chars_per_call": 1500,
+    "output_tokens": 256,
+    "max_calls_per_doc": 3,
+    "chunk_size": 40
+  },
+  "provenance": "AI-authored synthetic Smoke/Adversarial samples; NOT Gold; holdout not applicable (single-variable synthetic)",
+  "code_sha256": {
+    "app\\rag\\chunking\\llm_boundaries.py": "304a4ab313b395de79376f45af77ed5fc37ad4c591cbb1595e50ac517c4e55c4",
+    "app\\rag\\chunking\\structure.py": "919ccef3ebfa04254af5fbf928b565304f0a4b0ad6d5261edb08a7220815b7d6",
+    "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\llm_boundary\\run_real.py": "111609e71685657282c81b625b49a58c3c879218015e905db748fc2aa864c681"
+  },
+  "status": "blocked_no_credentials",
+  "real_calls": 0,
+  "http_attempts": 0,
+  "reason": "OPENAI_API_KEY 未配置（.env 与进程环境均为空）；现有 LLM_API_KEY 指向 api.deepseek.com，无法访问 gpt-4o-mini。按预检要求不发起调用。",
+  "quality_cost": "未验证（无凭据）"
+}

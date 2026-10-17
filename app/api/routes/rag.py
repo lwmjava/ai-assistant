@@ -4,20 +4,32 @@
 检索面默认同租户当前版本。控制面：成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
 """
 
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from sqlmodel import Session, select
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
+from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
+from app.api.errors import PublicHTTPError, error_responses, public_response
 from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.security import Role
-from app.models.rag import Document, ImportBatch, ImportJob
+from app.models.rag import Document, DocumentChunk, ImportBatch, ImportJob
 from app.models.user import User
 from app.rag.access import can_control_document, can_read_import, can_write_document, restrict_list_to_uploader
 from app.rag.document_parsers import (
@@ -28,9 +40,11 @@ from app.rag.document_parsers import (
     parse_uploaded_document,
 )
 from app.rag.document_storage import (
+    delete_source_file,
     resolve_source_file_path,
     save_source_file,
 )
+from app.rag.evidence import EVIDENCE_DENIED_MESSAGE, ChunkEvidence, EvidenceDeniedError, load_chunk_evidence
 from app.rag.import_jobs import (
     create_import_batch,
     create_reparse_job,
@@ -38,8 +52,9 @@ from app.rag.import_jobs import (
     create_url_import_job,
     retry_import_job,
 )
-from app.rag.service import RAGService
+from app.rag.service import DocumentVectorizationSummary, RAGService, chunk_vectorization_state
 from app.rag.upload_limits import UploadLimitError, check_upload_limits, parse_allowed_extensions
+from app.services.quota import QuotaExceededError, SourceFileUnreadableError, begin_source_quota
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +73,22 @@ def _enforce_upload_limit(filename: str, size: int) -> None:
             max_bytes=settings.RAG_UPLOAD_MAX_BYTES,
         )
     except UploadLimitError as exc:
+        if exc.status_code == 413:
+            raise PublicHTTPError(413, "file_too_large", detail=exc.detail,
+                                  extra={"limit_bytes": settings.RAG_UPLOAD_MAX_BYTES}) from exc
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _discard_new_source(relative_path: str) -> None:
+    """删掉这一次新写的源文件。文件已经不在则返回。删除失败则请求失败。"""
+    try:
+        delete_source_file(relative_path)
+    except OSError:
+        logger.exception("未能删除本次新写的源文件")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="源文件未能删除，请稍后重试或联系管理员",
+        ) from None
 
 
 class IngestRequest(BaseModel):
@@ -126,10 +156,31 @@ class DocumentOut(BaseModel):
     chunk_count: int
     created_at: str
     updated_at: str
+    vectorization_status: Literal["vectorized", "partial", "not_vectorized", "unknown"] = "unknown"
+    vectorized_chunk_count: int = 0
+    not_vectorized_chunk_count: int = 0
+    unknown_chunk_count: int = 0
+    embedding_skip_reason_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class DocumentDetail(DocumentOut):
     """文档详情（与概要一致，预留扩展字段）。"""
+
+
+class DocumentChunkOut(BaseModel):
+    """文档分块详情。"""
+
+    id: str
+    chunk_index: int
+    content: str
+    source: str | None
+    strategy: str | None
+    page: int | None
+    section: str | None
+    created_at: str
+    embedding_status: Literal["vectorized", "not_vectorized", "unknown"] = "unknown"
+    embedding_skip_reason: str | None = None
+    oversized: bool = False
 
 
 class SearchResultOut(BaseModel):
@@ -139,6 +190,46 @@ class SearchResultOut(BaseModel):
     content: str
     source: str | None
     score: float
+    chunk_id: str
+    parent_id: str | None = None
+    chunk_kind: Literal["parent", "child", "unknown"] = "unknown"
+    retrieval_origin: Literal["hit", "parent_expansion"] = "hit"
+    expanded_from_chunk_id: str | None = None
+    score_inherited_from_chunk_id: str | None = None
+
+
+class ChunkLocatorOut(BaseModel):
+    """块的定位信息。没有的部分显式为 ``None``，不推断、不编造。"""
+
+    chunk_id: str
+    chunk_index: int
+    page: int | None = None
+    section: str | None = None
+    source_start: int | None = None
+    source_end: int | None = None
+    # 只有显式请求父块正文且父块通过独立鉴权时才非空。
+    content: str | None = None
+
+
+class ChunkEvidenceOut(BaseModel):
+    """引用原文核验结果：命中块正文 + 必要定位信息。
+
+    刻意不含整文档正文、源文件、资源 ACL 或任何控制面字段：核验只回答
+    「这个命中块的原文是什么、在哪里」，不提供整章 / 整文件的旁路读取。
+    """
+
+    chunk_id: str
+    document_id: str
+    document_title: str
+    version_state: str
+    chunk_index: int
+    content: str
+    source: str | None = None
+    page: int | None = None
+    section: str | None = None
+    source_start: int | None = None
+    source_end: int | None = None
+    parent: ChunkLocatorOut | None = None
 
 
 class ImportJobOut(BaseModel):
@@ -175,8 +266,33 @@ class ImportBatchOut(BaseModel):
     jobs: list[ImportJobOut]
 
 
-def _doc_out(doc: Document) -> DocumentOut:
-    return DocumentOut(
+def _chunk_out(chunk: DocumentChunk) -> DocumentChunkOut:
+    metadata: dict = {}
+    if chunk.chunk_metadata:
+        try:
+            parsed_metadata = json.loads(chunk.chunk_metadata)
+            metadata = parsed_metadata if isinstance(parsed_metadata, dict) else {}
+        except json.JSONDecodeError:
+            metadata = {}
+    page_raw = metadata.get("page")
+    page = page_raw if isinstance(page_raw, int) and not isinstance(page_raw, bool) and page_raw >= 1 else None
+    section_raw = metadata.get("section_path")
+    section = section_raw if isinstance(section_raw, str) and section_raw else None
+    return DocumentChunkOut(
+        id=chunk.id,
+        chunk_index=chunk.chunk_index,
+        content=chunk.content,
+        source=chunk.source,
+        strategy=chunk.strategy,
+        page=page,
+        section=section,
+        created_at=chunk.created_at.isoformat() if chunk.created_at else "",
+        **chunk_vectorization_state(bool(chunk.embedding), chunk.chunk_metadata),
+    )
+
+
+def _doc_out(doc: Document, summary: DocumentVectorizationSummary | None = None) -> DocumentOut:
+    result = DocumentOut(
         id=doc.id,
         tenant_id=doc.tenant_id,
         user_id=doc.user_id,
@@ -189,6 +305,17 @@ def _doc_out(doc: Document) -> DocumentOut:
         created_at=doc.created_at.isoformat(),
         updated_at=doc.updated_at.isoformat(),
     )
+    if summary is not None:
+        result.vectorization_status = summary["vectorization_status"]
+        result.vectorized_chunk_count = summary["vectorized_chunk_count"]
+        result.not_vectorized_chunk_count = summary["not_vectorized_chunk_count"]
+        result.unknown_chunk_count = summary["unknown_chunk_count"]
+        result.embedding_skip_reason_counts = summary["embedding_skip_reason_counts"]
+    return result
+
+
+def _doc_with_vectorization(doc: Document, rag: RAGService, user: User) -> DocumentOut:
+    return _doc_out(doc, rag.summarize_vectorization([doc], user).get(doc.id))
 
 
 def _job_out(job: ImportJob) -> ImportJobOut:
@@ -254,20 +381,18 @@ async def ingest_document(
         session: 数据库会话（依赖注入）
 
     返回:
-        DocumentOut: 新文档概要，包含 id、租户/用户、标题、来源、分块数及时间戳
+        DocumentOut: 新文档概要；chunk_count 是已保存分块数量，不保证全部已向量化。
+        超出输入限制的结构保留原文；vectorization_status 和各状态计数说明向量化结果，
+        embedding_skip_reason_counts 给出允许公开的跳过原因计数。
 
     异常:
         400: text/title 为空，或文本无法切分为任何分块等业务校验失败
     """
     # 校验必填字段：正文与标题去空白后均不能为空
     if not req.text.strip() or not req.title.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="text 与 title 不能为空"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="text 与 title 不能为空")
     if req.version_state not in {None, "draft", "published"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="version_state 只能是 draft 或 published"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="version_state 只能是 draft 或 published")
     # 按当前用户租户创建 RAG 服务，保证多租户数据隔离
     rag = RAGService(session, current_user.tenant_id)
     try:
@@ -294,24 +419,42 @@ async def ingest_document(
         details={"title": doc.title, "chunk_count": doc.chunk_count, "source": "text"},
     )
     # 将 ORM 文档转为接口响应模型（时间戳格式化为 ISO 字符串）
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
-@router.post("/documents/upload", response_model=DocumentOut)
+@router.post("/documents/upload", response_model=DocumentOut, responses=error_responses(
+    "session_expired", "user_disabled", "tenant_suspended", "file_too_large", "quota_exceeded"))
 async def upload_document(
     request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
-) -> DocumentOut:
-    """上传文档并按文件类型自动提取文本后摄取为知识文档。"""
+) -> DocumentOut | JSONResponse:
+    """上传文档并按文件类型自动提取文本后摄取为知识文档。
+
+    成功响应中的 chunk_count 是保存数量，不保证所有分块均已向量化。
+    超出输入限制的结构保留原文，以 vectorization_status、各状态数量和
+    embedding_skip_reason_counts 呈现向量化结果及允许公开的跳过原因。
+    """
     filename = file.filename or "未命名文档"
     raw = await file.read()
     _enforce_upload_limit(filename, len(raw))
     try:
+        held = begin_source_quota(session, current_user.tenant_id, len(raw))
+    except QuotaExceededError as exc:
+        return public_response(429, "quota_exceeded", legacy=exc.as_dict())
+    except SourceFileUnreadableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="无法读取已有源文件，已拒绝本次上传",
+        )
+    storage_path: str | None = None
+    try:
         storage_path = save_source_file(current_user.tenant_id, raw, filename)
     except OSError:
         logger.exception("保存源文件失败: filename=%s", filename)
+        if held:
+            session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="保存源文件失败，请稍后重试或联系管理员",
@@ -324,10 +467,11 @@ async def upload_document(
         DocumentTextEmptyError,
         DocumentOcrRequiredError,
     ) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        )
+        assert storage_path is not None
+        _discard_new_source(storage_path)
+        if held:
+            session.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     rag = RAGService(session, current_user.tenant_id)
     try:
         doc = await rag.ingest_parsed_document(
@@ -336,9 +480,13 @@ async def upload_document(
             storage_path=storage_path,
         )
     except ValueError as exc:
+        assert storage_path is not None
+        _discard_new_source(storage_path)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception:  # noqa: BLE001 - 上传文件已解析成功，后续失败视为系统问题
         logger.exception("上传文档解析成功，但知识库摄取失败: filename=%s", filename)
+        assert storage_path is not None
+        _discard_new_source(storage_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="文档已解析，但知识库摄取失败，请稍后重试或联系管理员",
@@ -361,40 +509,52 @@ async def upload_document(
             "storage_path": storage_path,
         },
     )
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
 @router.post(
     "/import-jobs/upload",
     response_model=ImportBatchOut,
+    responses=error_responses("file_too_large", "quota_exceeded"),
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def create_upload_jobs(
     files: list[UploadFile] = File(...),
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
-) -> ImportBatchOut:
+) -> ImportBatchOut | JSONResponse:
     """批量上传文件并创建异步导入任务。"""
     if not files:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="至少上传一个文件"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="至少上传一个文件")
     prepared: list[tuple[str, bytes, str | None]] = []
     for file in files:
         filename = file.filename or "未命名文档"
         raw = await file.read()
         _enforce_upload_limit(filename, len(raw))
         prepared.append((filename, raw, file.content_type))
-    batch = create_import_batch(
-        session,
-        current_user,
-        total_jobs=len(prepared),
-        source_type="file",
-    )
-    jobs: list[ImportJob] = []
+    additional = sum(len(raw) for _, raw, _ in prepared)
     try:
+        held = begin_source_quota(session, current_user.tenant_id, additional)
+    except QuotaExceededError as exc:
+        return public_response(429, "quota_exceeded", legacy=exc.as_dict())
+    except SourceFileUnreadableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="无法读取已有源文件，已拒绝本次上传",
+        )
+    saved: list[str] = []
+    try:
+        batch = create_import_batch(
+            session,
+            current_user,
+            total_jobs=len(prepared),
+            source_type="file",
+            commit=not held,
+        )
+        jobs: list[ImportJob] = []
         for filename, raw, content_type in prepared:
             storage_path = save_source_file(current_user.tenant_id, raw, filename)
+            saved.append(storage_path)
             jobs.append(
                 create_upload_import_job(
                     session,
@@ -403,10 +563,16 @@ async def create_upload_jobs(
                     filename=filename,
                     content_type=content_type,
                     batch_id=batch.id,
+                    commit=not held,
                 )
             )
+        if held:
+            session.commit()
     except OSError:
         logger.exception("创建上传导入任务时保存源文件失败")
+        for relative_path in saved:
+            _discard_new_source(relative_path)
+        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="保存源文件失败，请稍后重试或联系管理员",
@@ -448,7 +614,7 @@ def list_import_jobs(
     stmt = select(ImportJob).where(ImportJob.tenant_id == current_user.tenant_id)
     if restrict_list_to_uploader(current_user):
         stmt = stmt.where(ImportJob.user_id == current_user.id)
-    stmt = stmt.order_by(ImportJob.updated_at.desc())
+    stmt = stmt.order_by(col(ImportJob.updated_at).desc())
     jobs = list(session.exec(stmt).all())
     return [_job_out(job) for job in jobs]
 
@@ -462,9 +628,7 @@ def get_import_job(
     """获取导入任务详情。"""
     job = session.get(ImportJob, job_id)
     if job is None or not _can_access_import_resource(job.user_id, job.tenant_id, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问")
     return _job_out(job)
 
 
@@ -477,14 +641,10 @@ def get_import_batch(
     """获取批量导入批次详情。"""
     batch = session.get(ImportBatch, batch_id)
     if batch is None or not _can_access_import_resource(batch.user_id, batch.tenant_id, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="导入批次不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="导入批次不存在或无权访问")
     jobs = list(
         session.exec(
-            select(ImportJob)
-            .where(ImportJob.batch_id == batch.id)
-            .order_by(ImportJob.created_at.asc())
+            select(ImportJob).where(ImportJob.batch_id == batch.id).order_by(col(ImportJob.created_at).asc())
         ).all()
     )
     return _batch_out(batch, jobs)
@@ -517,19 +677,13 @@ def download_import_job_source(
     """下载导入任务关联的源文件或 URL 快照。"""
     job = session.get(ImportJob, job_id)
     if job is None or not _can_access_import_resource(job.user_id, job.tenant_id, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="导入任务不存在或无权访问")
     if not job.storage_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     try:
         file_path = resolve_source_file_path(job.storage_path)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     return FileResponse(file_path, filename=job.source_name or Path(file_path).name)
 
 
@@ -542,14 +696,13 @@ def list_documents(
 ) -> list[DocumentOut]:
     """列出当前用户可见的文档。成员忽略已删除和状态筛选。"""
     rag = RAGService(session, current_user.tenant_id)
-    return [
-        _doc_out(d)
-        for d in rag.list_documents(
-            current_user,
-            include_deleted=include_deleted,
-            version_state=version_state,
-        )
-    ]
+    documents = rag.list_documents(
+        current_user,
+        include_deleted=include_deleted,
+        version_state=version_state,
+    )
+    summaries = rag.summarize_vectorization(documents, current_user)
+    return [_doc_out(doc, summaries.get(doc.id)) for doc in documents]
 
 
 @router.get("/documents/{document_id}", response_model=DocumentDetail)
@@ -562,10 +715,95 @@ def get_document(
     rag = RAGService(session, current_user.tenant_id)
     doc = rag.get_document(document_id, current_user)
     if doc is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
+    return DocumentDetail(**_doc_with_vectorization(doc, rag, current_user).model_dump())
+
+
+@router.get("/documents/{document_id}/chunks", response_model=list[DocumentChunkOut])
+def list_document_chunks(
+    document_id: str,
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
+    session: Session = Depends(get_db),
+) -> list[DocumentChunkOut]:
+    """列出文档的全部分块（按块序），供前端逐块展示。"""
+    rag = RAGService(session, current_user.tenant_id)
+    doc = rag.get_document(document_id, current_user)
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
+    return [_chunk_out(c) for c in rag.list_chunks(document_id, current_user)]
+
+
+def _evidence_out(evidence: ChunkEvidence) -> ChunkEvidenceOut:
+    locator = evidence.chunk
+    return ChunkEvidenceOut(
+        chunk_id=locator.chunk_id,
+        document_id=evidence.document_id,
+        document_title=evidence.document_title,
+        version_state=evidence.version_state,
+        chunk_index=locator.chunk_index,
+        content=evidence.content,
+        source=evidence.source,
+        page=locator.page,
+        section=locator.section,
+        source_start=locator.source_start,
+        source_end=locator.source_end,
+        parent=(
+            ChunkLocatorOut(
+                chunk_id=evidence.parent.chunk_id,
+                chunk_index=evidence.parent.chunk_index,
+                page=evidence.parent.page,
+                section=evidence.parent.section,
+                source_start=evidence.parent.source_start,
+                source_end=evidence.parent.source_end,
+                content=evidence.parent.content,
+            )
+            if evidence.parent is not None
+            else None
+        ),
+    )
+
+
+@router.get("/chunks/{chunk_id}/evidence", response_model=ChunkEvidenceOut)
+def get_chunk_evidence(
+    chunk_id: str,
+    document_id: str | None = None,
+    include_parent_content: bool = False,
+    current_user: User = Depends(require_permission("knowledge_bases", "read")),
+    session: Session = Depends(get_db),
+) -> ChunkEvidenceOut:
+    """核验命中块的引用原文与定位信息（ADR-0007 只读核验）。
+
+    只返回**该命中块本身**的正文，以及标题、版本状态、块序、页码 / 段落、
+    源范围这些必要定位信息；不返回整章、整文档正文或源文件。
+
+    每次请求都重新鉴权：主体权限 → 同租户 → Document/Chunk 真实关联 →
+    未软删 → 当前版本与时效规则 → uploader 模式下限定上传者。任一项不满足
+    统一返回 404 与固定文案，不返回正文，也不泄漏存在性细节。
+
+    请求参数:
+        chunk_id: 待核验块 ID；只是待核验线索，不是授权证明。
+        document_id: 调用方声称的所属文档；与实际关联不一致即拒绝。
+        include_parent_content: 是否返回父块正文；默认只给父块定位信息，
+            即便开启也要对父块独立复核同文档关系与同一检索授权。
+
+    异常:
+        404: 块不存在、无权核验、已软删、非当前版本或关联不自洽（文案一致）。
+    """
+    try:
+        evidence = load_chunk_evidence(
+            session,
+            chunk_id,
+            current_user,
+            document_id=document_id,
+            include_parent_content=include_parent_content,
         )
-    return DocumentDetail(**_doc_out(doc).model_dump())
+    except EvidenceDeniedError:
+        # 失败关闭：统一文案与统一状态码，异常原因只留在服务端。
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=EVIDENCE_DENIED_MESSAGE,
+        ) from None
+    return _evidence_out(evidence)
 
 
 @router.post(
@@ -593,11 +831,7 @@ async def reparse_document(
         job = create_reparse_job(session, current_user, document_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    if (
-        doc is not None
-        and current_user.role_enum == Role.SYSTEM_ADMIN
-        and doc.tenant_id != current_user.tenant_id
-    ):
+    if doc is not None and current_user.role_enum == Role.SYSTEM_ADMIN and doc.tenant_id != current_user.tenant_id:
         await audit_event(
             request,
             AuditAction.KNOWLEDGE_BASE_REINDEX,
@@ -623,23 +857,15 @@ def download_document(
     rag = RAGService(session, current_user.tenant_id)
     doc = rag.get_document(document_id, current_user)
     if doc is None or doc.deleted_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     if not doc.storage_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     try:
         file_path = resolve_source_file_path(doc.storage_path)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     if not file_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="源文件不存在")
     return FileResponse(file_path, filename=doc.source or Path(file_path).name)
 
 
@@ -656,9 +882,7 @@ async def delete_document(
 
     doc = session.get(Document, document_id)
     if doc is None or not can_write_document(doc, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     try:
         consume_confirmation(session, current_user, doc, "delete", confirmation_id)
     except ValueError as exc:
@@ -667,9 +891,7 @@ async def delete_document(
     rag = RAGService(session, owner_tenant_id)
     ok = await rag.delete_document(document_id, current_user)
     if not ok:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
     details = {
         "tenant_id": owner_tenant_id,
         "document_id": document_id,
@@ -708,7 +930,7 @@ async def publish_document(
     if published is None:
         session.rollback()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
-    return _doc_out(published)
+    return _doc_with_vectorization(published, rag, current_user)
 
 
 class ScheduleRequest(BaseModel):
@@ -732,7 +954,7 @@ def schedule_document(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
 @router.post("/documents/{document_id}/archive", response_model=DocumentOut)
@@ -746,7 +968,7 @@ def archive_document(
     doc = rag.archive_document(document_id, current_user)
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文档不存在或无权访问")
-    return _doc_out(doc)
+    return _doc_with_vectorization(doc, rag, current_user)
 
 
 class ConfirmationIn(BaseModel):
@@ -807,7 +1029,7 @@ def list_operation_confirmations(
     rows = session.exec(
         select(OperationConfirmation)
         .where(OperationConfirmation.actor_user_id == current_user.id)
-        .order_by(OperationConfirmation.created_at.desc())
+        .order_by(col(OperationConfirmation.created_at).desc())
     ).all()
     return [
         ConfirmationOut(
@@ -824,22 +1046,52 @@ def list_operation_confirmations(
 @router.post("/search", response_model=list[SearchResultOut])
 async def search(
     req: SearchRequest,
+    response: Response,
     current_user: User = Depends(require_permission("knowledge_bases", "read")),
     session: Session = Depends(get_db),
 ) -> list[SearchResultOut]:
-    """对知识库做混合检索，返回融合排序后的分块。"""
+    """按融合顺序返回命中并追加父块；top_k 为初始命中上限，展开后可增加。
+
+    检索状态与「实际生效后端」通过响应头暴露：后端工厂会在缺依赖时把
+    langchain / llamaindex 静默降级为 native，调用方需要能观察到真实生效值。
+    本端点不做相似度阈值过滤，因此状态只有 ok / no_hit 两种；检索失败仍以
+    503 呈现——显式检索接口不应把故障伪装成空结果。
+    """
     if not req.query.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空")
+    # 带上鉴权主体，使 uploader 模式的有效读范围同样贯穿 HTTP 检索面，
+    # 与对话检索保持一致（ADR-0001 §10）。
+    rag = RAGService(session, current_user.tenant_id, reader=current_user)
+    try:
+        results = await rag.search(req.query, req.top_k, backend=req.backend)
+    except Exception as exc:  # noqa: BLE001 — 显式检索接口的故障必须可见
+        # 不降级为空列表：空列表会被读成「查过了、没有」。用 503 并在响应头
+        # 标出 unavailable，让调用方能区分「知识库没有」与「检索没跑成」。
+        logger.exception("rag_search_unavailable exception_type=%s", type(exc).__name__)
+        # 头必须挂在异常自己的响应上：在异常处理前给 Response 设的头会被丢掉，
+        # 因此这里不再给 response.headers 赋值，避免留下看似生效的死代码。
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="query 不能为空"
-        )
-    rag = RAGService(session, current_user.tenant_id)
-    results = await rag.search(req.query, req.top_k, backend=req.backend)
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="知识库检索服务当前不可用，未能完成本次检索。",
+            headers={
+                "X-Retrieval-Status": "unavailable",
+                "X-RAG-Backend": rag.last_backend_name or "unknown",
+            },
+        ) from exc
+    response.headers["X-Retrieval-Status"] = "ok" if results else "no_hit"
+    response.headers["X-RAG-Backend"] = rag.last_backend_name or "unknown"
     return [
         SearchResultOut(
             document_id=r.document_id,
             content=r.content,
             source=r.source,
             score=round(r.score, 6),
+            chunk_id=r.id,
+            parent_id=r.parent_id,
+            chunk_kind=r.chunk_kind,
+            retrieval_origin=r.retrieval_origin,
+            expanded_from_chunk_id=r.expanded_from_chunk_id,
+            score_inherited_from_chunk_id=r.score_inherited_from_chunk_id,
         )
         for r in results
     ]

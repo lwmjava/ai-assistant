@@ -1,0 +1,943 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-14T10:08:17Z",
+  "task": "QA-005",
+  "kind": "CI regression correction; deterministic E2/E3, no real model quality claim",
+  "baseline_head": "0d900950176e8ae110dbf0b553ce7715e087d8a0",
+  "candidate_basis": "working-tree normalized SHA256 input manifest; not committed",
+  "environment": {
+    "python": "3.12.0",
+    "platform": "Windows-11-10.0.22621-SP0",
+    "dependencies": {
+      "pytest": "8.4.2",
+      "pytest-asyncio": "0.25.0",
+      "ruff": "0.8.4",
+      "mypy": "1.14.1",
+      "fastapi": "0.115.6",
+      "sqlmodel": "0.0.22",
+      "pydantic": "2.10.4",
+      "numpy": "2.1.3",
+      "langgraph": "1.0.10",
+      "mcp": "1.12.4",
+      "llama-index-core": "0.12.42",
+      "langchain-text-splitters": "1.1.3"
+    }
+  },
+  "pytest_environment": {
+    "PYTHONUTF8": "1",
+    "PYTHONIOENCODING": "utf-8",
+    "model_key_overrides": "empty process values",
+    "database": "sqlite:///./data/ci-fix-final2-20261014-test_ai_assistant.db"
+  },
+  "baseline": {
+    "summary": {
+      "tests": 2283,
+      "failures": 36,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 517.274
+    },
+    "exit_code": 1,
+    "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe -m pytest -q --tb=short --basetemp=data/pytest-tmp/ci-fix-baseline-20261014 --junitxml=data/ci-fix-baseline-20261014.xml",
+    "failures": [
+      {
+        "module": "tests.test_chat",
+        "test": "test_chat_returns_reply",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_conversation_lifecycle",
+        "message": "KeyError: 'conversation_id'"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_chat_with_rag_enabled_completes",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_chat_reply_includes_source_filename",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_chat_sources_empty_when_retrieval_disabled",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_chat_stream_includes_sources_event",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_chat_stream_returns_sse",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_code_result_persists_on_complete",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_code_result_persists_on_stream",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat",
+        "test": "test_code_result_persists_when_stopped",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 当前身份已失效，请重新登录"
+      },
+      {
+        "module": "tests.test_chat_controls",
+        "test": "test_viewer_cannot_send_and_member_can",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat_controls",
+        "test": "test_stream_emits_conversation_id",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat_controls",
+        "test": "test_rename_and_delete_follow_owner_and_same_tenant_admin",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_chat_controls",
+        "test": "test_same_tenant_members_cannot_see_each_other",
+        "message": "KeyError: 'conversation_id'"
+      },
+      {
+        "module": "tests.test_chat_controls",
+        "test": "test_stop_persists_partial_and_does_not_append",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 当前身份已失效，请重新登录"
+      },
+      {
+        "module": "tests.test_pagt001_integration",
+        "test": "test_tool_search_chat_api_persists_source_reply[dashscope]",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_pagt001_integration",
+        "test": "test_tool_search_chat_api_persists_source_reply[zhipu]",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_pagt001_integration",
+        "test": "test_tool_search_chat_api_persists_source_reply[bocha]",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_pagt001_integration",
+        "test": "test_tool_search_chat_api_persists_source_reply[baidu]",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_quota",
+        "test": "test_null_limits_leave_chat_and_text_ingest_open",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_quota",
+        "test": "test_message_limit_blocks_the_next_send_and_recovers_after_delete",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_rag_019_acceptance",
+        "test": "test_cache_acceptance_chatservice_stream_cancel_then_reenter",
+        "message": "AssertionError: cancelled ChatService request cannot cache unconsumed stream"
+      },
+      {
+        "module": "tests.test_rag_028_model_capability",
+        "test": "test_chat_service_returns_fixed_message_without_exception_text",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 租户已停用"
+      },
+      {
+        "module": "tests.test_rag_037_retrieval_status",
+        "test": "test_chat_service_stream_persists_disclosure",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 租户已停用"
+      },
+      {
+        "module": "tests.test_rag_037_retrieval_status",
+        "test": "test_chat_service_sync_final_text_carries_disclosure",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 租户已停用"
+      },
+      {
+        "module": "tests.test_rag_backend",
+        "test": "test_factory_defaults_native",
+        "message": "assert False"
+      },
+      {
+        "module": "tests.test_rate_limit_retry",
+        "test": "test_second_chat_returns_wait_and_writes_no_message",
+        "message": "AssertionError: {\"detail\":\"当前身份已失效，请重新登录\"}"
+      },
+      {
+        "module": "tests.test_rate_limit_retry",
+        "test": "test_zero_rate_response_has_no_retry_after",
+        "message": "AssertionError: {\"detail\":\"当前身份已失效，请重新登录\"}"
+      },
+      {
+        "module": "tests.test_rate_limit_retry",
+        "test": "test_under_limit_stream_has_no_rate_limit_event",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_rate_limit_retry",
+        "test": "test_stream_emits_rate_limit_before_error_and_writes_no_message",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_stream_session_detach",
+        "test": "test_stream_finishes_after_request_session_closes",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 当前身份已失效，请重新登录"
+      },
+      {
+        "module": "tests.test_stream_session_detach",
+        "test": "test_stream_finishes_while_request_session_stays_open",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 当前身份已失效，请重新登录"
+      },
+      {
+        "module": "tests.test_stream_session_detach",
+        "test": "test_http_stream_does_not_report_failure_after_reply",
+        "message": "assert 403 == 200"
+      },
+      {
+        "module": "tests.test_workflow",
+        "test": "test_bridge_executes_with_owner",
+        "message": "app.services.agent_execution_guard.ResumeRejectedError: 当前身份已失效，请重新登录"
+      },
+      {
+        "module": "tests.test_workflow",
+        "test": "test_webhook_called_on_success",
+        "message": "AssertionError: assert 'failed' == 'success'"
+      },
+      {
+        "module": "tests.test_workflow",
+        "test": "test_create_and_manual_run_and_history",
+        "message": "AssertionError: assert 'failed' == 'success'"
+      }
+    ],
+    "github_reported": "36 failed / 2224 passed / 4 skipped; independent Linux tree failure"
+  },
+  "red_process_status": {
+    "summary": {
+      "tests": 9,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 2.327
+    },
+    "exit_code": 1,
+    "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe -m pytest tests/test_sandbox_process_status.py -q --tb=short --basetemp=data/pytest-tmp/ci-fix-status-red-20261014 --junitxml=data/ci-fix-status-red-20261014.xml"
+  },
+  "targeted": {
+    "summary": {
+      "tests": 265,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 46.939
+    },
+    "exit_code": 0,
+    "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe -m pytest tests/test_chat.py tests/test_chat_controls.py tests/test_workflow.py tests/test_stream_session_detach.py tests/test_rate_limit_retry.py tests/test_quota.py tests/test_pagt001_integration.py tests/test_rag_019_acceptance.py tests/test_rag_028_model_capability.py tests/test_rag_037_retrieval_status.py tests/test_rag_backend.py tests/test_sandbox_process_status.py tests/test_sandbox.py tests/test_skill_semantic_entry.py tests/test_skill_semantic_counterexamples.py -q --tb=short --basetemp=data/pytest-tmp/ci-fix-target-20261014 --junitxml=data/ci-fix-target-20261014.xml",
+    "note": "before default-contract review correction; final full supersedes"
+  },
+  "final": {
+    "summary": {
+      "tests": 2292,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 496.846
+    },
+    "exit_code": 0,
+    "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe -m pytest -q --tb=short --basetemp=data/pytest-tmp/ci-fix-final2-20261014 --junitxml=data/ci-fix-final2-20261014.xml",
+    "report": "docs/reviews/ci_regression_final_20261014.xml",
+    "report_sha256": "32fd2dc5bbe5d5503c56071f71326422ad5a3d86a6be3f0a94e2c1511ee37219",
+    "log": "data/ci-fix-final2-20261014.log",
+    "warnings": 3
+  },
+  "checks": [
+    {
+      "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe -m ruff check --no-cache .",
+      "exit_code": 0
+    },
+    {
+      "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe -m mypy app/",
+      "exit_code": 0,
+      "source_files": 205
+    },
+    {
+      "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe -m pip check",
+      "exit_code": 0
+    },
+    {
+      "command": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe app/agents/version_registry.py check",
+      "exit_code": 0,
+      "version": "prompt-model-v6"
+    },
+    {
+      "command": "git -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff --check",
+      "exit_code": 0
+    }
+  ],
+  "linux": {
+    "red": {
+      "platform": "linux",
+      "python": "3.12.7",
+      "source_sha256": "a5bd7e3ec3298639f1384bcaecb9e7f06a925c0a44bb7a0e8dd8ef690939e59c",
+      "checks": [
+        {
+          "name": "zombie_is_not_running",
+          "proc_state": "Z",
+          "kill_zero_present": true,
+          "passed": false
+        },
+        {
+          "name": "current_process_is_running",
+          "passed": true
+        },
+        {
+          "name": "reaped_child_is_not_running",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_0",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_1",
+          "passed": false
+        },
+        {
+          "name": "terminate_tree_2",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_3",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_4",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_5",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_6",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_7",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_8",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_9",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_10",
+          "passed": false
+        },
+        {
+          "name": "terminate_tree_11",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_12",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_13",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_14",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_15",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_16",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_17",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_18",
+          "passed": false
+        },
+        {
+          "name": "terminate_tree_19",
+          "passed": true
+        }
+      ],
+      "passed": false
+    },
+    "red_exit_code": 1,
+    "green": {
+      "platform": "linux",
+      "python": "3.12.7",
+      "source_sha256": "2bacd1aaf6a3d81b40376f1fd9bd43c338b078bac94d725751d2e55c286d4a07",
+      "checks": [
+        {
+          "name": "zombie_is_not_running",
+          "proc_state": "Z",
+          "kill_zero_present": true,
+          "passed": true
+        },
+        {
+          "name": "current_process_is_running",
+          "passed": true
+        },
+        {
+          "name": "reaped_child_is_not_running",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_0",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_1",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_2",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_3",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_4",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_5",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_6",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_7",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_8",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_9",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_10",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_11",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_12",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_13",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_14",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_15",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_16",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_17",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_18",
+          "passed": true
+        },
+        {
+          "name": "terminate_tree_19",
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    "green_exit_code": 0,
+    "runtime": "Astral python-build-standalone CPython3.12.7 musl under docker-desktop WSL2; standard-library sandbox runner only",
+    "runtime_sha256": "5ed4a4078db3cbac563af66403aaa156cd6e48831d90382a1820db2b120627b5",
+    "command": "wsl -d docker-desktop -- /mnt/host/e/culture/SmartCustomerServiceSystem/ai-assistant/data/linux-python-3.12.7/python/bin/python3 /mnt/host/e/culture/SmartCustomerServiceSystem/ai-assistant/scripts/verify_sandbox_linux.py"
+  },
+  "review": {
+    "agent": "/root/ci_fix_review",
+    "report": "docs/reviews/ci_regression_review_20261014.md",
+    "p2_found": 1,
+    "p2_remaining": 0,
+    "default_contract_mutation": "declared default=langchain rejected; instance-only override=langchain isolated",
+    "final_evidence_verified": true,
+    "verified_inputs": 422
+  },
+  "inputs_sha256": "20892cb5fc51cc0a93b78dfaa2f04a9b52d59af61e8db3ced3739f91b53bad77",
+  "inputs": {
+    ".github/workflows/ci.yml": "0a4c5918b959bb5d752a717df70e970822065943e11c52a143b6a23d15e2b7fd",
+    "alembic/env.py": "81dc73e47fc0f04e0997ae3db465dcccef915763ffedf8bcf76c051883703137",
+    "alembic/script.py.mako": "ff65f3a196ac0f3b9557f0d11b58d0c8e32cf0cff40a039cf133b0fc7a0ddca0",
+    "alembic/versions/6f8d055bdc4a_initial_schema.py": "8e1875beee25cbe59c4a9367c01367e382ad76dbb6072d971870bfc7a1371121",
+    "alembic/versions/9a5f2c0e1c3b_add_rag_document_storage_path.py": "d88c8beaae13ac1096a870cfa04ee7f3abaf2481f14d6c0d2e2f66c00d9da8c3",
+    "alembic/versions/a1b2c3d4e5f6_add_document_chunk_plan.py": "c4fdc480a4e1185e68b1be4dc2e45d5ff439162f8643612e76c55e30e676fdd9",
+    "alembic/versions/a9c4e2b81d07_add_message_sources.py": "2be66494f73734f409b026f8354668fe79503214b9da4fec39497a7362f9c20a",
+    "alembic/versions/b2c3d4e5f607_add_embedding_index_registry.py": "89efd9e825f2082d7f19ad4dc6a6a3511b52cd921fd938f38b3302e5f7071369",
+    "alembic/versions/b7d9f3e41d2a_add_rag_import_platform.py": "95a75df1fe4aa085e2b2c93f66cd5729dfe0c8674c52cd1606d5dcf9b72a1abf",
+    "alembic/versions/c1d2e3f4a5b6_add_rag_section_summaries.py": "fe941524a544ea6b3b68558d2f08cc95b648d9a043a71a9ee4a721e9c2a56dec",
+    "alembic/versions/c3f1a2b4d5e6_add_rag_import_job_traces.py": "a2c35f880c439a796b6de70bee437674a86c84ec4ba9be9d66177dc9c303d1c0",
+    "alembic/versions/c4a8e1b27d90_add_message_status.py": "810e1e4d079fb8013a69393ece1b5d7a0cae0f63e28245cbf4bfc48d2347b82a",
+    "alembic/versions/d4e8b1c7a902_one_current_document_per_group.py": "55ae4a98ce76850e77de6a1267af8b08ad15c46844fd9a768133b39d0660777c",
+    "alembic/versions/d7c2a91e4b18_add_skills_and_message_skill_names.py": "af7006737e8c27953d50bbd1d74670cb30d97272cd236d7fb435d0b12b94f7dd",
+    "alembic/versions/e4b7a2c85d01_add_tenant_quota_columns.py": "7a0def8a6e0a95bf96fcc4609b67d7aecd5841eb36840bddef9fe67189d69882",
+    "alembic/versions/e7c3a9d1b584_add_document_deleted_at.py": "0dc46c6b03490b16712aedb6c1f8290600232321b1a1a65e19a978a8eeecf02d",
+    "alembic/versions/f8b2d4e6c173_add_document_version_state.py": "b0805014e127fb06a8bd989ed678d7e1c1ce3d48c3c1bc697371d6b3b8deeb57",
+    "alembic/versions/f9a014c6e001_add_rag_cleaning_and_cleanup_jobs.py": "87a5ef9fd824e799c52ebb29c6d48dc0e05510aa01d7ebfb074446cfc11ecdde",
+    "app/__init__.py": "65953acd1b9d2709b37f6bfcac082ae7251736eb0247d5486f0b93e95f9ef905",
+    "app/agents/__init__.py": "244c6b29de85ee1dd00f496878507cef2d47720696496edd3b575e0977b77dd5",
+    "app/agents/fast_path.py": "5c89ca5be4f000249535387de1de8a1532d4e8eafec02b39f0d69d8d3380c2cf",
+    "app/agents/pipeline.py": "0a637f7e8f208c3f51d752c799e4df6f29f75ca7241b89f276ce6557e012a2f0",
+    "app/agents/plan.py": "09181160c178539491fbd7056bd9beeb1f4c221631d5387c64f15efb11511f6f",
+    "app/agents/plan_runtime.py": "447d57457bd45b713930e1228577453bc1ef3ddbd0a46cd292ead5d30deefa0a",
+    "app/agents/prompts.py": "168da056cc188e63e6edd741119644bfc22d4d1c00827433a999b9c4210dba51",
+    "app/agents/route.py": "87d63e7f7113c48ebdf2698a6f3aae8d61e8a125841741f4f6dd6b6313a3f9e9",
+    "app/agents/skills/__init__.py": "6f19d417d3632f59a6842a50ed8d222aebb9077ccab5f9763ea28f27cdbd3370",
+    "app/agents/skills/base.py": "762ad5c9e0560e639f2e2cc1ab29dd0f0f384806817ec61264ef6bbcb2dcf5ce",
+    "app/agents/skills/builtin/code_review.yaml": "19a04eb62aadb392b012aba54541e85f1b0ebbdd4ca54543471bb9bf8bd45b1f",
+    "app/agents/skills/builtin/releases.json": "2840759588284e5ea29182e71c65cc18c7373c3907223433855f0d6a69a60080",
+    "app/agents/skills/builtin/translator.yaml": "fad45ac1d9ef2ab9a7593c9bda6994053147938ef07ff3c9834655fa10ddbbd7",
+    "app/agents/skills/loader.py": "c347a53a270bd1ecd0cce7c5f06525b1007d64d2fc64c491c0128ce95a72d0aa",
+    "app/agents/skills/manager.py": "fbd20580fd1d8cab50db227fc20427b8990c5749c3841bc7fe55650cd052ccbf",
+    "app/agents/skills/versioning.py": "0546716b39a13a642ebc373ece8bc4a7a960bebad1e22693cf60567216fb2b57",
+    "app/agents/state.py": "57c78269832fbc02cdadf4968abb61c74d199eed09432582f9c4f4e678a5737f",
+    "app/agents/supervisor.py": "3bc00a1fb60f3b95820b05546ee7eead7453e19cfd7f5404314b8b1e40029530",
+    "app/agents/tools/__init__.py": "f0eafeb03b82290deef5c06e327ac695f0d97a85bf1d511d3b287129bcad5761",
+    "app/agents/tools/base.py": "f53a0d32bf0991a70f2ec9c718874e7855bd5376993e01cdd546a016d9b6ead9",
+    "app/agents/tools/builtin.py": "74251a7354f1fa9c17ac4d900ede16de36de06e06ac975bfbfb113eeb90b7829",
+    "app/agents/tools/contract.py": "d9cfb7a737b0f5c93760531e68d72d004a83815d71a3ed06858dc9c96d8d63f4",
+    "app/agents/tools/executor.py": "dfd8203bf477ad0709a0fcbdd081c75a2313eb8a3756aa3135334424c3f233e6",
+    "app/agents/tools/file_ops.py": "c6c2e1a4fa802a1b94f515317b9115360b3da3900f47988676ccf5470c3a3c0d",
+    "app/agents/tools/outcome.py": "d4b6489227e6d6f3b35d3451c54eccebc0a6040da90a6595120d78ec6f929a73",
+    "app/agents/tools/sandbox/__init__.py": "6934413f881a28b80d121f72d65f646d4154b552412dda088e1b134396253ed0",
+    "app/agents/tools/sandbox/base.py": "c0055f1d9971b47e69ccf46a9e11ee5c7db9e1c0a1e113965e3924535d75ea98",
+    "app/agents/tools/sandbox/proc.py": "2bacd1aaf6a3d81b40376f1fd9bd43c338b078bac94d725751d2e55c286d4a07",
+    "app/agents/tools/sandbox/runtime.py": "1821d2347de0773b2be2517c0e4d7529bd31192710c27c0eff1f8d19e07c4ec6",
+    "app/agents/tools/sandbox/sandbox.py": "582758cd8f9667e85eb3ff288cd67f5b2ee61cec4fb7e6508f1551cb7499748d",
+    "app/agents/tools/web_search.py": "985f9bfaf430cfe7752b6ed3724e819b2b4b4bab5e66ac80d3a022dbdc33a5a2",
+    "app/agents/version_registry.py": "bc70bfa04dca6e7453fe30940ecd021eede9edc293648f6e652d0ada06cd081c",
+    "app/api/__init__.py": "ee9705738cb5c284122da88f1df9ab2c1daa5e003a1730ffd7b180ea581949db",
+    "app/api/deps.py": "b536f8f4833812807f8d81941cb0fb6663cd8d9945e187db26ca9db2e4207081",
+    "app/api/router.py": "ba76a76e2c81c05985b4ae10462fde1a22e9237da7224a55c525eebb849e0170",
+    "app/api/routes/__init__.py": "af29becdf1c6abfaea480acb330799b814cefa83995ab1ecceaa0b21357861d8",
+    "app/api/routes/admin_system.py": "a8fd7158e6fdb05e4fd6d74cdc28c4ce1bd7bbd90639cebeac25bae53fb5eb76",
+    "app/api/routes/admin_tenants.py": "618bbb29986e62f2b5c6ebd6266dff6035df22b8c279b03a4068689e3b884231",
+    "app/api/routes/admin_users.py": "3286916462add518705680db80c55b6c0770e3f4dcb4df2a007c590fd6c7f428",
+    "app/api/routes/audit.py": "b516666e88d55f529d874ceb2934483569a65fcd24ac3c25aaba47805fb27893",
+    "app/api/routes/auth.py": "a2444740724b251cadb36532ba324adce8d3e87deee188f994144aff572f0d08",
+    "app/api/routes/chat.py": "3dddbe88424aeaa04060cead806eee35487bbfd35af13d4be20acdd8e350c85a",
+    "app/api/routes/export.py": "6da68d1eb76ba07ac13cfb5a06eec8a9d9899fb739b2a747a8ff6e4afe1751a9",
+    "app/api/routes/health.py": "b9f9fdc82eb3480bf5ff974e644aee2c0a30dcbd9aad6c0df2c3509230d45ced",
+    "app/api/routes/invitations.py": "79a433ddbfb76689657f408c2b9ef1e07098d5214c1331db796c77da63f2fbb0",
+    "app/api/routes/mcp.py": "9d02e9e6c8cb97751f56b606b9a780cdc13b342310ca9f15529eb3de958e7bf1",
+    "app/api/routes/rag.py": "6b458292f22aad80b28fa4073634e4c237920df530d7b299bed26396701bda59",
+    "app/api/routes/skills.py": "ad4108ec3ae2a652521ff79f292157cd057f8680b1c1c7b354261ef0d039fc21",
+    "app/api/routes/workflow.py": "92ad0e54d004ff8298cfe94a2294e5e4551c4a1a01ab8fb6b63da542ef33ea62",
+    "app/audit/__init__.py": "366fa5ad20bee0194c6f6498ee4ee6da7ee4ac5a0ab054bdc6bd46d0d0dd48b9",
+    "app/audit/logger.py": "9c5bd2b106155ef89bb331d0508d758667cd6262ece92126ff76d49ba65f87b5",
+    "app/audit/models.py": "a941d550ffb092c05d7f2a2dbf07e16ad1b2c6cf270afa4485e6577fd77a6388",
+    "app/channels/__init__.py": "521945a3611659e1908c4e98d45262d205830571d567fdcf6d45139916d5ff4c",
+    "app/channels/base.py": "509efc376bccc71a2457270b684b62218a8db57d49756ea159ef0a97ad19792e",
+    "app/channels/http_channel.py": "db1b63f87fa220abe6fd5b8ea0990b8df6271c911e2040598d34ac0c665518a0",
+    "app/channels/registry.py": "85882aa4e58767c178392d61f9c42a9d60c466f255879009081adbe79fe4c77b",
+    "app/cli.py": "d6a520d3e9d8cb4e8bb184b10723167a0ff6fd84d6c41eb45a95905e34a70a15",
+    "app/core/__init__.py": "db492576efff8b28eb1e096e84c8df5625fdfb289612acefb319d43648320727",
+    "app/core/config.py": "74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432",
+    "app/core/database.py": "3f2c0128f0df542b135777123df9d911f2d4ffed97370f8050acfb85bf7001ce",
+    "app/core/json_logging.py": "5cd560beb10034e83aff0f883991d8115701f9ed6eb5c381e625a34793dccbdd",
+    "app/core/log_context.py": "ada6e8ca154d4a6137f79dcb52e7a6f84f1dd29e4b669141358b91b1427f0e1e",
+    "app/core/migration.py": "d4db5f3cc203f91af04c586e1fe942d63fae29ce3e5563025ccd71c29cf6bff6",
+    "app/core/response_cache.py": "6704cf0cb6574e737b8d92407481c9a165d4bda07770ebdc623c9ae03e56588c",
+    "app/core/security.py": "ba7dcbab425d01f0450222b6db0e5f7a4eab7520e3d74fffa221cd8da6e0ab82",
+    "app/core/trace_middleware.py": "4b257dfa1657857473d9febe9dbffd11466d5a86065d05b59a4e4ec12b6be83d",
+    "app/debug/__init__.py": "c17a5194acf3222e8065540b57471dead91aeed511a313139e18fa6ac8042357",
+    "app/debug/trace.py": "973c38646b697e278e2c77fa56e26dc173b923c7da9f33c50a3b59af3f6b9e00",
+    "app/evolution/__init__.py": "95b368ce20c71dcdf36e456421bc7895ddbf3211265435ec93c6f8e5af23c40a",
+    "app/evolution/distiller.py": "b0cfcb20bc3458a4d416d6c2012540acd39dd69f9c06bd7378b3fcb756badda4",
+    "app/evolution/models.py": "5932be1a18f1a7892fa38352e25a98a245480e452a399a4102ab62230fb5cd1b",
+    "app/evolution/reflector.py": "db92908d508fbdc3c294985c01beed1cdedabc680bacdbf98faa3e462c779ecc",
+    "app/evolution/scheduler.py": "ac459a57637680b362af1bf73b1811281ea80644a3d220141c14fd9f8fa4c036",
+    "app/llm/__init__.py": "fb0122cfae87d6097bae72fcccb031e6b22b2a5bd196180b5730bae3399e8f2d",
+    "app/llm/base.py": "e31404b37781c2a4d8591df67f927edbd719f698e598fe5b263dfa063924751b",
+    "app/llm/budget.py": "c110e11d893e818fe0fe72c582e52ffa707f2a978a9acb55493293c6fdcdee9a",
+    "app/llm/capabilities.py": "48edbbd7db071687dd56d0e9b89c75a7d9873c2acff947e9f507411db936a8f3",
+    "app/llm/counters.py": "1ec3f1db5657c222aaeb1d21bbcc197f50c9965eca804c7542eb9e24093869b8",
+    "app/llm/factory.py": "31409f52fac1647a6c3a8e08860851e691fa04abbe6faab1682be4b928b2ff69",
+    "app/llm/mock.py": "37ca2e32f271299af8dba5790cfce3aad366d6cc4c668b3028d45eae8fd12ab0",
+    "app/llm/openai_compatible.py": "422bbd6c965264fb5ef275f83431e99dbbe8e35c79e4d1cbe041ceca1e20f3ac",
+    "app/llm/routing.py": "d8a8cca7b079f713d75960b04a28808cadc8ecbf1ae90160e466346c72fad71a",
+    "app/main.py": "a89fffb1078bc7fd47638080ba043200455b76c6f8e7c51ad4d786adb01f0ee6",
+    "app/mcp/__init__.py": "bec37eee377f1459f5087ef42b429b8acf3092b5d6a7535ef2c7adff8427f5c9",
+    "app/mcp/adapter.py": "9600c2039540323e288c4e5d8f0a4717f97dd9bf324dbc58c7afc405c253276f",
+    "app/mcp/client.py": "9ad0af8fe00fec83462e03a3a7a662cce95484a25684cf9af5b8b88ac951df20",
+    "app/mcp/config.py": "879888b8795dee846393093472142072665da37e6d8ca25ba6c5d70c47c3af56",
+    "app/mcp/manager.py": "e567ae5ae7e1ab89c3fa3088cddfe8c0a8996bfe15250a7641cdd541dfb92af5",
+    "app/memory/__init__.py": "ba332e31b1d3d281f88e02882cebe0544ffd7bbeaadf5e70e1807a6dec1667ec",
+    "app/memory/base.py": "22bb00048670231bbcb6df5c922cb1caad0a17d46961ab0f2226f579e8fcee91",
+    "app/memory/compressor.py": "35d18dfb9f5ec4753175442241eca2ef4aa6174284ce075ab1236ca35e845e69",
+    "app/memory/manager.py": "cc30577ed359016576787c8228796101eebaad9d802f785485e98afe4963b2f4",
+    "app/models/__init__.py": "ccf87d25b49ef1a733303b4eee4850501dc790539f758c0c211370de4f8a45ca",
+    "app/models/agent_state.py": "9e0bd43fd3562c8600d7c2199e235478d0250ad2e53d76fa570644e57f841424",
+    "app/models/base.py": "75261c72176717ea9a6744ce54e0b5135180767b541078526808f70bc740183d",
+    "app/models/conversation.py": "eb2cfdf0282ff847a05dda4834e92e7087f656a9e69f3ca0bcba23916878a07a",
+    "app/models/membership.py": "b4b5abbb8b0ed780266b63225760a7c3f6b3d77ba5bee94fee99faffe8a946d2",
+    "app/models/rag.py": "5f726daf2316d3d050fdd2de259f46812df096170e064496c06d9b714d3e2905",
+    "app/models/skill.py": "ef4f38453c9e1dd5aa8755ceadf9657d8521de5d7f60b8acfec5b1bbc3f4ae03",
+    "app/models/user.py": "ead7e19c23d096325e4e8b8a423f2a08e8fd2a934881adf180a28b426502c846",
+    "app/models/workflow.py": "1661bd706467d1700593ba648301516cc5dfabcf59a508d44e5924093487fe0b",
+    "app/rag/__init__.py": "424f0080d4bb1fae2538dceff2944cda1a432a265a796401cb7768087904b1a9",
+    "app/rag/access.py": "bd31d06c5886b89b933cee0a6c3d5f4782b608dc627f050062e7719277a4b1b4",
+    "app/rag/backend/__init__.py": "6772847ccfe026fbb0375890a6f0823dfeefc505f95ef0294ca8e1ae371aad08",
+    "app/rag/backend/base.py": "40ab9a0e3c3b545748f64ef1a57e5af2d1e5f4ed5a6197ea3c11075e96768a7a",
+    "app/rag/backend/factory.py": "a0cacce5994eac1a1be6cabab6e1433a6877d9d6d6fee6f0c27ee6ecb0b79da8",
+    "app/rag/backend/langchain_backend.py": "039fe66a6a0ea8c77d36759e2f8f67b957dea18851a7c8d3bea886ad2af18fda",
+    "app/rag/backend/llamaindex_backend.py": "dca20db2afe1fb0b212b44c8c483451e8ff80a0d8a92c1c1e6d7196af4d490a6",
+    "app/rag/backend/native.py": "4cf99a6e3573aa1e4067d0ef64bc5a7212b42a9e640c5971982b4b8ecd3c8de5",
+    "app/rag/cache.py": "c650e4dd4e359da4ff02ed8ca0a2a485b2355725d31334660fd8bd507a3d5d48",
+    "app/rag/chunking/__init__.py": "f1901906f9332f4b05fee1b35aaae327ee08e56262579f49e2afdf5d1d2dbe34",
+    "app/rag/chunking/base.py": "8af1416a10d68d4de4ec8f9974323aaee01cd2166a6bbe6323bda6f36970bcee",
+    "app/rag/chunking/factory.py": "00dd0672209ff92fd97f3b5f2fcf9decc9572c568144890ac4028fb38e0d88bb",
+    "app/rag/chunking/llm_boundaries.py": "304a4ab313b395de79376f45af77ed5fc37ad4c591cbb1595e50ac517c4e55c4",
+    "app/rag/chunking/plan.py": "a8a8e2f168f6062b848a38b55384d26a1df00cb15c8652788d9f5f2cef143cd1",
+    "app/rag/chunking/registry.py": "9a1d943a3baf0db04fdf24735348b7728c185083f1d3111bf5a34550abcf02b3",
+    "app/rag/chunking/routing.py": "83b80ef687ac95087e88174b005d01723c50c07b86497c140882155acab9f540",
+    "app/rag/chunking/strategies/__init__.py": "f6f4a42f8c778cac3d015d7813f2da0407d933bda697df30192ba1831cd2a449",
+    "app/rag/chunking/strategies/fixed_chars.py": "57c9242080047e69a228e8f2a0b235a03e018bf2da15cc1c682fcc1fdc29bdac",
+    "app/rag/chunking/strategies/format_aware.py": "51a96fdfcbefaf024eef548888099d4accf19b5e1664f1d24ff668c1b110f908",
+    "app/rag/chunking/strategies/layout_aware.py": "d37fb4c2a73fc4406ff5c1496d34e071711bf6ab93d782d1ff27ad13c43b0b7f",
+    "app/rag/chunking/strategies/paragraph.py": "69f9501c66491ebeef3941cbcaa3137fc587ebd38aef8d846fc3eee6e0c45809",
+    "app/rag/chunking/strategies/parent_child.py": "17fe8275eabf125bf1c7d4ae56cca71e6b0cf052a2c186843a89ef2b8e16385b",
+    "app/rag/chunking/strategies/recursive.py": "d259a3a1e71958c11939f4f9d3fa4276a72f89059b0e8c9a6f44dc4735937d67",
+    "app/rag/chunking/strategies/semantic.py": "e82055392cb69453136e8c1ec0aabb204ff5f47826dde923e40f4d2d1c3aea91",
+    "app/rag/chunking/strategies/sliding_window.py": "342c2727a4cf502af25eaf31b90d22906914408f367dc923cc0e35027d0b913a",
+    "app/rag/chunking/strategies/structured.py": "642e4531147cb9e103bf3f3adad206e3f74597e613d4c12c20151c05b95fec8e",
+    "app/rag/chunking/strategies/token_aware.py": "526f890ec2f4f9edde453f47a84a9f55525f2865622668ad6c4e307f844f7bc4",
+    "app/rag/chunking/structure.py": "919ccef3ebfa04254af5fbf928b565304f0a4b0ad6d5261edb08a7220815b7d6",
+    "app/rag/cleaning.py": "24ca33d07259caa0f95c0b62dfe5358dcb3c6338bfdc73f9191aff09070b9219",
+    "app/rag/confirmations.py": "8bb571e5eed7361399ccc0c8f4a3ca50b31e3b16525136dcf83820163f651a86",
+    "app/rag/context_builder.py": "bc3d729800dfc4212d795798ff7b7f10a0eac12c81e7a8f6712c24247f428fb5",
+    "app/rag/context_merge.py": "110a41fccc8a7980128525bdd12399ef316e6c323a31b58e5657be4edca57d30",
+    "app/rag/document_parsers/__init__.py": "62f135044f0f8f26b3759dbcfbaa6ead7713e41228cc729162398f4ba2163163",
+    "app/rag/document_parsers/base.py": "c39070831b876a588dc5b79d196a691bb21470d0b6d828f9cc8c9dfe509a1fec",
+    "app/rag/document_parsers/legacy_office.py": "886d6f78d2e2afed5f2cdad892be75ace8ec7a3840dfc2567f6993f15c6a8d2c",
+    "app/rag/document_parsers/libreoffice.py": "7792ff261d7837ea8807e9dbf3e4bba0563ed60a2f25cfd8fb310560918cf06a",
+    "app/rag/document_parsers/office.py": "56e5ec2bb65d3db9b22baa1c44d35d69d42d5fdca785ed591e2b4cbfb9d5bd2a",
+    "app/rag/document_parsers/pdf.py": "ee020253326219fc2515720a57e6e2e1758f6a0ae978f0ffcb72383cea3846ed",
+    "app/rag/document_parsers/registry.py": "2a33d28f088ba39570c74d706bb8c69f5af9eb4139676a508a8cb005eb1a3d6e",
+    "app/rag/document_parsers/service.py": "3aea326dba584828e57cb4eb7612d8d7a8021cd36a19d0eba67d0b3a00da78fa",
+    "app/rag/document_parsers/text.py": "cd49a404d806b1ca44e66b34a46f9401283816de446359bc01e8e7e8f16a8a87",
+    "app/rag/document_storage.py": "63355babccb655ad786f200411243c6d6aca46154bae733598eabb0e705e702b",
+    "app/rag/effective_date.py": "dbc6528520584ec213fbb7348a76d9f371408ce7bbb836a41c69260e1df00e79",
+    "app/rag/embeddings/__init__.py": "ee896b025bb9019a8df9154655a6099e7a83e24281b58b8b3d812c7a69160959",
+    "app/rag/embeddings/base.py": "695281d0c90caf049e86d4e7f3dd54c8df535d9b11a8cc2b487925e14f5c6dfc",
+    "app/rag/embeddings/factory.py": "c9c158279d5bcaa8150077d1f3f3f6d0343c1c3562afefd75af0e02e23a6838c",
+    "app/rag/embeddings/input_limits.py": "9b3cf48746f9be78e70f53a54d2dd5ae31d1d565780af50a7a8302ba8dab4891",
+    "app/rag/embeddings/mock.py": "cc7e1df760e38ddfb0ec45c9da398f7ef68a039563ca25ccfd2ae30e2f0026dc",
+    "app/rag/embeddings/openai_compatible.py": "3b112d01d06f88a03df488ffce0e2dc8aecd71b9a8c08efbb3440b159325fe93",
+    "app/rag/evidence.py": "3b929eb027a2da2fd8ca2af00827a368058f03939a4adbaf518dd9782d935cc4",
+    "app/rag/import_jobs.py": "a0f0a2e80570959339bfe77feee22ed15d2f9cd4abf7bdb85b2383dff620f686",
+    "app/rag/import_scheduler.py": "9c345cae0efa0aef6e93303580f6048adc085d368d8d86c153714afa6660f7f2",
+    "app/rag/import_trace.py": "9863d59b8df9b9142fd0732d95082120e5de014ca13017191fdefa648b01c9a4",
+    "app/rag/index_identity.py": "67a3079f24be6e2f92bd43bd36e935cc4832fd47859d0f340036d967861e449d",
+    "app/rag/index_registry.py": "b47a623ae34a8dd0486c0c8b9db468fcc9c7a6aa6f991be3aa4245b6910033ac",
+    "app/rag/ingestion.py": "0ad6ffb5e3a040dae688546cf47b086c2ea85aa629f03d81274bef1a6b0c54ff",
+    "app/rag/ocr/__init__.py": "13f88478c519681a78de44701390610a67edf374080022adb3e96bb4d605cc3b",
+    "app/rag/ocr/base.py": "d5d1aa66ba3dec74c5b39e4a7a2c51db782bf910e73f3a0c5753cf991c559219",
+    "app/rag/ocr/factory.py": "b53a762914de3a317010980549a6952ef0c0f679c7abcbd2732b34d578d237e0",
+    "app/rag/ocr/openai_vision.py": "e9862689c24bf5201320f714e89f0a7edeb4bb5154bcb5aa9f358cb0b3d2a36e",
+    "app/rag/ocr/tesseract.py": "21bc0fd1140566f145f0f61f768cfcac1ae527231e75c252781fd8f795e7d8a4",
+    "app/rag/resilience.py": "d5d4b9462b91fc0006a37d52acbc99a8fc8085344896c27693f086a350116cbc",
+    "app/rag/retention.py": "ba05583a59f0021541682622dedf8a7f3b5a82865ce9191cd11ef960de2d868c",
+    "app/rag/retrieval_guard.py": "9a000c821465bb775e30a608578bfe998d86467a15b816ce8d1e750dfc116cae",
+    "app/rag/retrieval_status.py": "a2495bdc2ae9c7906986017a33dcd45ad7c7e3385ea233994e88f9a857adbb41",
+    "app/rag/retriever.py": "7cfe56fdb43dfff799aa6a9209ca0c388aa87d98842cd48ba38cafc0d995e3dc",
+    "app/rag/section_summaries.py": "5e3fae32aca08335845add6cea7173c3ec7a94e5f76f1c927456dd481065e37b",
+    "app/rag/service.py": "61a4654a5760734af26e3ae8e2df8c9ea866a13ca3ee1489620a254fdd667337",
+    "app/rag/upload_limits.py": "bac8867f73fc7af9932ea77a750099d651ac5c01d820ff80f0ebeea9416cb457",
+    "app/rag/vectorstore/__init__.py": "94669f916fe1995d131be81f2a5fc1dc2cee1e8658f74c8bddd7a5f98301b54a",
+    "app/rag/vectorstore/base.py": "562462279c9da0a78c02b8d646f477a0890f8ce9c3bd5180e603f2f3bb4ce09d",
+    "app/rag/vectorstore/factory.py": "57499507a9a46482de1843066e032a74a8534f23c676c6f7218536b2d4fae08d",
+    "app/rag/vectorstore/local.py": "60d92c9559cb44717a4cde68de8567690945848b2e84af03a2ff78b4df4779dc",
+    "app/rag/vectorstore/milvus.py": "66bef32feca14f8e1b249e171ddb0285c80bf5de11fae20f0b4c932d2c2a9c48",
+    "app/schemas/__init__.py": "77acb83e00a753b353b2b689fbaa41accf852f47745bcb64c4423edb4f5401ff",
+    "app/schemas/admin.py": "75e922f5d49d0b84651ad12c2656a2dd0810dc26b86ac0b42492b948e1c348e9",
+    "app/schemas/auth.py": "b674a21be646da2c0fe366b8bc898037edce1fc94254eba037e621617b74af85",
+    "app/schemas/invitation.py": "c55268759553c938b34a9e6ba34f65b92c5cea45ef1b82586003bbd8bbb62319",
+    "app/schemas/quota.py": "ced78cea5541508da10fa940745e29c5ab1042572bef46b2e7aed7bd1a2dcdd5",
+    "app/schemas/tenant.py": "5c2d98005ba088b75baa1ae884e654aacced00c3e8a1530a03cba8cc69621953",
+    "app/security/__init__.py": "f7807fd22ecc88f1e923465133593b91666217f29d891a72bf6dc0d146de41cc",
+    "app/security/input_filter.py": "b8fbf29f33429375787ffce3d1f55df031bbd79b5566a50a729a752fcbe65d8c",
+    "app/security/log_redaction.py": "4a02ab6113d0081056bd1e82cdc27daa5199bb31254c2364204164177c32c738",
+    "app/security/log_sanitizer.py": "ec0c17f938b354db0d38bfa913808723ae8b9da99eaf6777a3204dc424017e8c",
+    "app/security/output_filter.py": "4ef665bb6ed15fbfe8d43c5959e87e13af91c075c9e9b1e29fdc6146dd221fde",
+    "app/security/prompt_injection.py": "175880711355b8b1bb8b0a646eabe16def90f1cf9c71071ed5191e81b5536348",
+    "app/security/rate_limiter.py": "6418efde1a7b304936fad1e9f41d0ec07f4cdcbf14d77ffbf8bc68ca8224e3eb",
+    "app/security/restricted_identifier_fence.py": "e2ddb4500b367d63c9f4ddb12732fcf7b72ca793190dfd3102604c650e94292e",
+    "app/security/types.py": "b06bf41d7d710903e2e9905d16c45dbd5ce82679c0b89f1015f010ccc2172307",
+    "app/services/__init__.py": "22a22dce4f8f50d16fcabba1074267c1fe566a7492fa4adfc22fe370f0c3b30a",
+    "app/services/admin_users.py": "937ee604b91c20a19e2fcd81676c050d8474495de0ac01959781a211e23fa28f",
+    "app/services/agent_execution_guard.py": "7da73a9cfe9e2b48b499589dbfe3f558dc023d5635579266be87c177c7c02b34",
+    "app/services/agent_state_cleanup.py": "e682eb3548d2edb7d2aaca81a585b042c8ab0eff50d528fa94a691b123e0c119",
+    "app/services/agent_state_service.py": "b5c11b2468ca782efd9917d70aa0a5b19b56da0461b00a8460c744ab9a23d25a",
+    "app/services/auth_service.py": "89b228b990dc91d5adf0027ecf76b7bee0090b05832a040c84baefb5be63a18f",
+    "app/services/cache_scope.py": "1f31bd5ceabb5719cb90da7c8c00023416af258b6c9ec848d4774d9f932ed9f8",
+    "app/services/chat_service.py": "6ec002f01defac3b3defeaa8046d5b7e61c387bded9eeeacbfcaa588dbe42b26",
+    "app/services/export_service.py": "e06af79e7912a0e7be41874c7ee962c072e9fb081a500b78f68765f91a37c495",
+    "app/services/invitations.py": "cf25ab901363290d786da57ce5a7d1a6d8d73b51e7bd4937e7492bed847ade4b",
+    "app/services/membership.py": "02f8b22401d5e47c21c87b1d504ef627484e6ad725d2e5ec624f82c80165dcc3",
+    "app/services/quota.py": "1e0f6582c2d950ba9ebf927d94bc5a2fe997d448965be887a7dc9def400fa660",
+    "app/services/skill_service.py": "4fccacc22dd5f9782193ca845a2dfdfac4888e464d20ce3f6e7111abc98b8fda",
+    "app/services/tenant_admin.py": "722214d6cf4a9089ef1788be4c12b6c985f250b9a16c5d68846d51e68f1b6b1a",
+    "app/workflow/__init__.py": "849a1aed9e04bf49b2cbb4c04061333a3bf23939c939ca9d30374a4c0ca57df0",
+    "app/workflow/bridge.py": "48d8ad7bb04ee0b4555c7d28122e424ba879f94393cd589d211323bcf43abab9",
+    "app/workflow/engine.py": "405faa2e1bf9f5546b6b5cf6421454c8b7043a552c239faec08eeb41e6e15dc2",
+    "app/workflow/scheduler.py": "5dfe789fa342beff4eeb95fdad90297981908e67a212663e162878103bf6d540",
+    "docs/ai-prompts/prompt-model-registry.json": "cb627425444ca0158ed1f1fda0377839493332fc3a756912a8ec7e15dbc625ab",
+    "evals/datasets/agent-chain-v0.1.1/cases.json": "77ff27c8c67c68afb55eed51384e20dd07171b1d047de6cde346c976f38f5ad6",
+    "evals/datasets/agent-chain-v0.1.1/index.json": "929e4114ef2f548de0e2d89e3d28f8ebb174f57caee39273c911fd3518c58251",
+    "evals/datasets/agent-chain-v0.1/cases.json": "5bfad42d3a2d765363d3489036ea1b91346c6fff49ca58d13fe9147ff974905b",
+    "evals/datasets/agent-chain-v0.1/index.json": "8cc903dbc9f406bc070bea620952396a2323e3b41a8eb44ca0a72044bc57669d",
+    "evals/datasets/rag-v0.1/_generate_cases.py": "12adaab12f1af20d90078f5273bcb0aed47b062dbc81233d71de884980c2137c",
+    "evals/datasets/rag-v0.1/cases.json": "e8ea035c2961c6a917c64d00dd3fd7e4c4ab5cf84ff03a2ff55f092126414a0c",
+    "evals/datasets/rag-v0.1/index.json": "2487cd207eeba1fe4d3b20aedd0f9068b63670dcbc3200f3ef574781ecfc1c84",
+    "pyproject.toml": "25823d1a6af782979889ad6aa4cc560ed2a1b87e28178c136f7d13a268a726a3",
+    "requirements.txt": "95266c26002672a97b2a13a3a45c7732f74996651987045f96989babf32a9a54",
+    "scripts/_gen_remaining_tasks.py": "5f058139b0cf0f26d44f9e19002741bee8ff59dfc41ea59d62884092d4d0bcea",
+    "scripts/agent_gate_check.py": "4d4dd605cb6716ddaa5bd03bba780ed397f446f3f217ec31338a791722d97674",
+    "scripts/agent_gate_probe.py": "eaff9498cb16c71c46fc87ce148d808ceaf290b8af8127338000cb0d0f37670b",
+    "scripts/generate_parse_corpus.py": "726e7b25acd4ff9d86e3082add0240f5413a0d88eecd04434a3b21833a44fb93",
+    "scripts/milvus_five_gates.py": "738203f47f13ef65efc24f5f6ece0493060661dd7ea51c7105b1d860903a51cb",
+    "scripts/milvus_switch_check.py": "d8e7d06d20f3985a9435ba2e7feba66a6cbc23390e202b485ea21c4098d13182",
+    "scripts/parse_quality_report.py": "4fa47d3e9a9956bf5c3f9cf16e26c932e3abe9c0fa57481349488360dc6f6e6d",
+    "scripts/rag_032_test_collection_lifecycle.py": "ce7f2dc72b09424db7452486072c2ecf9cc9f9d8b1f3e978481c2c7cc2a87997",
+    "scripts/rag_gate_check.py": "43fbed5e57cbecab56dc099b6822b548f65a9148b1c41f214db1baa9d13d671c",
+    "scripts/rag_hybrid_embedding_check.py": "c793a83f0e26634d4657d37daa7db0c22939825e5dc0e5aeca182ef00913a3e7",
+    "scripts/rag_hybrid_semantics_check.py": "843454708a35d6db3313f719c70d11a52864028bd8c85478c6c444ae32d35106",
+    "scripts/rebuild_embedding_index.py": "71694c24721bf48b2f2bc8df34bbd50d89bc00f2b1e36d7ebfd9c189a0597613",
+    "scripts/run_agent_chain_eval.py": "6f834be7563bd194042d1ac38c7c1407f253677bf2a8be6a34750249ef10b8c3",
+    "scripts/run_rag_baseline.py": "9edf8e5088ec4703b5f1c2006741e9d10720a7684106606f9b3488320b298007",
+    "scripts/run_rag_generation_eval.py": "6d0ad63a0984f807a7ca2c5e394f1ff370f4c9d3d9398a6b3e4a137e8eb84245",
+    "scripts/verify_sandbox_linux.py": "ad768bc416f844f86fde7e4c1f19c5da0dd81f8400b6f1023c878f7396dd68ce",
+    "tests/__init__.py": "8836a307985ef1d2d626a34e28be2cd27e0090e406cdf11a2d4d777f1ed777ae",
+    "tests/conftest.py": "15b8c3ab6efc8ec03aeb04894fd497b70228ba54ee45ac28310f8c334d6d9010",
+    "tests/eval/__init__.py": "321dc633d43bd71b65fcca2bcc78c6515eb937aa8f61c498388183f9dd585563",
+    "tests/eval/generation_budget.py": "5d5af9ea0beb6c0ad39921ab7b820d2c1060504a86108bfeb699114a7da22eda",
+    "tests/eval/generation_judge.py": "9514b79d33c0fa122c2f9a9dd75c353a7fe08cb0e110dfd32378bfe556b839ad",
+    "tests/eval/harness.py": "1902683a0786230b62e76a5c0ea847d588538bb9b6d3e01145606b22f8984b34",
+    "tests/eval/lexical_rerank.py": "54eed353f745afeabf4ba114f14c1c6efbfef455e5a96144f5df5ecc15f08d27",
+    "tests/eval/metrics.py": "efe3e9eb756ef26e13bcb7d2403172cbdddd1cc33a660cd27a697323d7cf4d2e",
+    "tests/eval/rrf_decision.py": "f4972fd902ff5e96a84092addcee6a221616ae779df5df57a8af00729236fa24",
+    "tests/eval/test_agent_chain_dataset.py": "db8119ce6de59b3575461bf8fe62dc81e234d147daa79ad430661c9d6cfad7a5",
+    "tests/eval/test_agent_chain_f3.py": "9c989c0bdc6a9933dc4d4e5baa8d41b4997457c8fa18d2d9595c9c5c503854ef",
+    "tests/eval/test_agent_ci_endpoint_capture.py": "e6553674fefc3e6b9ac49a915322a2470daa84a354ad3e3745cd4dc064613857",
+    "tests/eval/test_agent_eval_runner.py": "777432e3799ebd8da244b951d7de8165ee87e30b7f02d9cd882e916de32e849c",
+    "tests/eval/test_agent_gate.py": "4f2243590f9f11b49badde3340c640ef6edab878080e223f5979b6077ef731a5",
+    "tests/eval/test_agent_gate_entry.py": "cd6187fb59961f009b70333edc8da2ef83bf0650b8a1552bf263a6f3c120f2ec",
+    "tests/eval/test_agent_recording_tools.py": "455746523ae5795c05e4d5c834e42e6dfc9c3e93ddf221410ec4107aa380b2f6",
+    "tests/eval/test_effective_date.py": "5608e208d020ddd048ebe4b27da565099dffbd646912e3e8d45b1e146a4e0139",
+    "tests/eval/test_generation_budget.py": "9901b20cd1fecd6938aba8728e46506d6f575122a296dbcd00352ad85fced8eb",
+    "tests/eval/test_generation_eval_chain.py": "a0aa6ca17488a9f43c67eb30408bb050995558af1b09189112f565795e8a9ff8",
+    "tests/eval/test_generation_judge.py": "4e3e9eba07d8069ce0eac281b61f896f06e85f3b4e9252c75cd0c93942933bb8",
+    "tests/eval/test_lexical_rerank.py": "1fabd4119d2df5014b24fe5053b5e8684063425d7b4bc532f6acded5e95d6be1",
+    "tests/eval/test_rag006_pipeline.py": "9ed702991156aed0959a0d54c31d7c3c93ad2b39175832f900ca0a145d57cd63",
+    "tests/eval/test_rag_baseline_harness.py": "723d19155596a1561d1e04b671f5f664938176530fb5ca426bb06c77b51be3dc",
+    "tests/eval/test_rag_baseline_metrics.py": "a3ff4f4a1bc650279fa06636877a856388750d03c175f26dc7f9c9f6e3b37765",
+    "tests/eval/test_rag_dataset_v01.py": "6de9d496e333926a79cc00da22aef963dc70947a3f0935ea120ebb1b4aa4969b",
+    "tests/eval/test_rag_gate.py": "b9743c56a366be1442a62e6f057a24c0de1a43048dc09a435b434b76c8080f17",
+    "tests/eval/test_rrf_k_experiment.py": "54da4c577054a3b3ad5e724360a423ba7c88e594f0cf7c9a0818d7df8ca13a66",
+    "tests/eval/test_skill_tenant_selection.py": "7708902f3fea497bfd44afd393280e5fcad7bd814241b6af5271b05a86609aa1",
+    "tests/eval/validation.py": "3ab8cdb672a73be1a849e9ed4cc2e66736edf48ea0786cf41725dde185839e9f",
+    "tests/fixtures/echo_mcp_server.py": "7ad0f1518daca1782afeec843f683b4c08c7a058ab3d1eacde2d0ee94c8df4d6",
+    "tests/fixtures/rag_cleaning_v1.json": "0f2af4ac86ce2c8d99b867e9d3c3c16f62cc94dc9465ee1af57f575679a7fdbb",
+    "tests/quota_downgrade_probe.py": "b7e07d8d9c7e736a337a2f71e95bd099acc405b365c5cbc42b4119b4db9b3315",
+    "tests/requirements-optional.txt": "50a97a4b43ade115f08fbf6060038ca089ca007c1507cc9b593a6a8fa4f6688c",
+    "tests/test_admin_members.py": "cf6980541cb056f0c0f2d8f9108b86dfefadbb7a2ffb33a3427ab14bc16e02eb",
+    "tests/test_admin_status.py": "4404b6cc8c3457d47091d69887b940edb70adeb84d483b155ec81b3c5f910479",
+    "tests/test_admin_tenant_lifecycle.py": "f961162ba4c40e93a9690f29c5dce3f3966afac6256fd294fda50deb302b0d5e",
+    "tests/test_admin_tenants.py": "6171fec67fbd1d4dc212a710118cf9f0ac46cf0c1c9b874696b6463d0921a983",
+    "tests/test_admin_users.py": "705cf68b0cbedc985b6eb98a1764500b0184ac3e96c672587391d22898a7f8a1",
+    "tests/test_agent.py": "83e209651754aa5e5c38b045db1ee87ea03a44a92a5c92dfe29679866abb350f",
+    "tests/test_agent_chain.py": "74c806ec3f3ba804b67ef32f0359ffcd0928bb399668df6c18650a041fcd792e",
+    "tests/test_agent_runtime_recovery.py": "33897424e72391ee31cb4245bd35a0fcae5633cb3e239bf24ebc1bc0b539ea4e",
+    "tests/test_agent_state.py": "ae73472d7907288645720123bc9887b96f9690d032a0b874bda1263c62c76686",
+    "tests/test_agent_state_resume.py": "38b968c6899fea6a7b28a31660af789994ed80cd8d408ec664727f01c274a9f1",
+    "tests/test_api.py": "daa275ad6d39937e0acbb00cc8250a921de1012cd32d554f97182f78bcf02445",
+    "tests/test_audit_smoke.py": "6ff8d78bfd1e3b7bf180b9b073a8eff9b4c712d235ecac31c9449f78b75ba598",
+    "tests/test_auth_register.py": "ef9571242554683a163161bc47b2051bdf69599126fd37dabec7b4b0f507232a",
+    "tests/test_auth_revoke.py": "96e4aff4ba638c19ad1ec6f94d4c9592dc86f895b98ce3a0290dd5aa4242fa83",
+    "tests/test_chat.py": "0e114be2f69e6af5b43f589f49eba0737c37249cff48aa416c53bcee9fdae498",
+    "tests/test_chat_controls.py": "7e8803e966a7b7197c36ec93a3223985e8b29bc8d1d33aecb1ab08aa539b91b5",
+    "tests/test_chat_resume.py": "f99792526c080cb7269b330cfce175e6e1ba0dd78adc9e8bec4efe50b1363406",
+    "tests/test_chunk_auto_routing_evaluation.py": "f201844739b7d8f6f87bc67808daa5c7ab0ad4be0c8c9a725074a4fb501f0c3a",
+    "tests/test_chunk_plan_migration.py": "c39a79affd4641aaaa0a062605c0275bc37bb3ec9bea05f97ad9107c8f5f3a18",
+    "tests/test_chunk_plan_validation.py": "54516912e396edb30685e09e12044d37e891533f375641313a6fc6a6690fb361",
+    "tests/test_chunk_routing.py": "f29fa5ba115c3591e3ce49df490e51c4826797449d1905d5a14305d10407adf9",
+    "tests/test_chunk_routing_real_parser.py": "e3f7d30fde793655931ab78c8b02cfe89048e62eb4d46ddd681e9b766a584ab7",
+    "tests/test_chunk_structure_evaluation.py": "97878361a5dfe00da613bfa5c33e8572bf02cb8411606cbeaca26a552bb5a13e",
+    "tests/test_chunk_structure_integrity.py": "12e45b91d2937fd9bfe3e2144971950b442d4dd0eb35f9aa26b87af9af92fd2f",
+    "tests/test_chunking.py": "c74cbaa39fec7a62f998050fc87164bd3a07e45dd9beebdda22d732af04844cd",
+    "tests/test_cli.py": "237c1250f4ef9a7534f18dde9750b3aa825cb3ba9df89a0622214d7b926d454b",
+    "tests/test_cloud_ocr.py": "70afa0c698499af37282a22668d45ca0acff3f6a358361bcfb48a33d546015a7",
+    "tests/test_context_merge.py": "2e25f45173adc03bda9253372e81a48fb484e4d8aace6f96986f5b4e3b1cb5f4",
+    "tests/test_debug_smoke.py": "5a115c54b46d8e34b01440ad1bde62ac07a8e17a8fdcfa2418b77be230732c57",
+    "tests/test_document_parser_blocks.py": "26fd17107bd0b1ec3afaff900ee9b2dba43e0c96a20d1cd54b98868debdcb0ae",
+    "tests/test_document_parsers.py": "812e1e47318fc219751acce1873a47928d7c6a6753ff3b65d7359297920d4629",
+    "tests/test_document_storage.py": "4e62ca48c7c9a938a9e2148002678ff36b92d8dd3b486080256532a9428a094d",
+    "tests/test_embeddings.py": "2897ac701a7f6016dbad58a6c5cfeea430a8828969fd2dc3cec687935a87bc11",
+    "tests/test_empty_action_reply.py": "d664630f6375541f1c473c57ede49c9b9e9189a70b3ff1a8be8b2bd94ce97f19",
+    "tests/test_evolution_distill_smoke.py": "40bd0ecdd668f0c539df80ff4977924bd880c2643e8bbf3b8a20dfbe60251bfa",
+    "tests/test_evolution_smoke.py": "3aab67319802d1e35174d7f6f688715035fc9bb32a7b0eb62469e6bcab1e064a",
+    "tests/test_export_conversations.py": "ce7de9bc2cb5443dc6d160c92e56d9a798026075181476aaa751b1526ef26d17",
+    "tests/test_fast_route.py": "566293992fd1f777eb4a604c92367507afbac68ecfd6449421454e4bd5223d1d",
+    "tests/test_health.py": "ddd0805db4049867615615539d394f7495173923986070a1f399c8a16793d7cc",
+    "tests/test_invitations.py": "87208ad89b437b59bec188fad63d76b8fa3eee9e6592507775d453449b28c3ae",
+    "tests/test_legacy_office.py": "9d24b27303a9b0d441da9af55a11c5eb382d13c43127decef1a7caebdafe891e",
+    "tests/test_llm.py": "1a9af4c2f705511ec0a595df50ba7294715f01efe22c58a367f94369d8de3af3",
+    "tests/test_llm_route.py": "6eaefa293329dbf55e2d5e2593114a15a5885a803bb397cc0393e98d891ee298",
+    "tests/test_log_redaction.py": "c22c83aa6ca519206e01b54aa0a5d063a668089729550e1011a8804221d3dbe1",
+    "tests/test_logging.py": "38a21bdf0c6dde5df4864e4a0e12a782d4b321921a9ab3495c3cec50723c9935",
+    "tests/test_mcp.py": "b13dc6b341460a01d26fade981f8fc732c4d1e1967d8750ff4bdf442ee92d343",
+    "tests/test_memory_overflow.py": "863c63790df460c4a2a2e95e3d2e39e2226ebdcf2e92169cea763bd9755ea2be",
+    "tests/test_memory_smoke.py": "056b6701f5120bbbf791e0b9b9b6a9d80f92d844ecd67d8980c3b9324fa15eb3",
+    "tests/test_migration_reconcile.py": "40d065e7bf120533550714ae6d89d19f78a86aae4948c7366ed7ee4b79c3aedf",
+    "tests/test_ocr.py": "ed05a5417b178d5d5f41096dc1dff5258f8ce50bf3cc5c6bb780cc76a044e719",
+    "tests/test_openapi_coverage.py": "1725670727ffd8d96437bd3b80b3db98860675a1c54f8501ad5151667be281c9",
+    "tests/test_p0_regression.py": "4064a969e489af5ba60d1a243e96f762fdf5a876c07ff5d6933dbc54b2597ec0",
+    "tests/test_pagt001_integration.py": "bdb8893352d778d63259ddd549bc103e3658c1345e234cb6313bc2d5421a1dd5",
+    "tests/test_pagt001_review.py": "a1aa740b9f94632940191229eb225cd02b7c116424903a79837e37a1a34fcd84",
+    "tests/test_pagt001_tools.py": "e4f127573eaf822a51f180ffcd07e9d488ebca821e24d23a67376ee8c428fcc0",
+    "tests/test_pipeline_budget.py": "a6477dd7a480983618ecb1312f7387dc5cbe1c412c46722edb69e9d9b1c2b1f1",
+    "tests/test_plan_checkpoint_consistency.py": "de2ddfe05c32306f6cfb0624c4d6fcdbcf6daa727527d5650eab53d2ec2e54ea",
+    "tests/test_plan_entry_acceptance.py": "9725f8b20ecae395263b393dea43d0c7d01d002cc4f1d9329f60fa295a0762a3",
+    "tests/test_plan_schema.py": "302a2edfb5089c7a2aa9c12386b3560d63cda9ff22407b591c111a2ed3750f86",
+    "tests/test_plan_tool_outcomes.py": "41b76d635aa71036ccdda98ba89ab70737e6c0e85764086428447a3e54685725",
+    "tests/test_quota.py": "a04e5a964c1a52e78af67b96ed29fc73a1218e29cd1c645015c471b66d1fffc7",
+    "tests/test_rag.py": "5839d28c93e8d811d90192d155f6603f62af9797a4a2c29031a2e8078d471b19",
+    "tests/test_rag_015_milvus_switch.py": "7a8c0054794f727198b4603da4146221236cd10477f26471e5b59fb0cf50f85e",
+    "tests/test_rag_019_acceptance.py": "8ff39e0df30bb28dd3679a5b31a9321184c803183ef53914354c987c78a5b508",
+    "tests/test_rag_024_publish_atomicity.py": "4f049c2a86ec465add0021022b55568635d8a276d94c9ba302f9ff05a37f4f13",
+    "tests/test_rag_026_uploader_scope.py": "b2d9a8ed608f93b30d153839a8c9e92792f3598af8751120c596ba059a60bfe9",
+    "tests/test_rag_027_source_verification.py": "b2182145e19ca1807d638cfb27ba6a692790b60bc504610081dae243ac37d699",
+    "tests/test_rag_028_model_capability.py": "949ba1c55a02b0b7dcf66fd1ed916cc9e56c6a92313c0617f1ed735deaa2bab0",
+    "tests/test_rag_029_context_builder.py": "8ba197389c4487a8f6a1d493975459208d3bfd45674d89ac39abd38e3da0774d",
+    "tests/test_rag_029_pipeline_alignment.py": "4ae59c2096ac42c362f20885d96540c240673a37660fd5c0ed0738e56c12753f",
+    "tests/test_rag_030_dialog_parent_assembly.py": "4274812caf4073e102898102240830dd7ca60c32a0a8dfbdc4686c37383b992e",
+    "tests/test_rag_031_llm_boundaries.py": "a2aa55bcac50218276c30e646a067f6315fa9a13980d8e60d847410e0e4793a0",
+    "tests/test_rag_032_index_identity.py": "f288ba3a44fc07401844d09b3519dd4527ed2710151806a08c22938cf4d6c6d9",
+    "tests/test_rag_032_rebuild_cli.py": "e5cf9980042671a516c2fdbbbfbcd96ac1029fbc4f6397e6477286e73b42aab6",
+    "tests/test_rag_032_remote_rebuild.py": "af81a8b6f85d74bd6277349a23d1d927a63ef087a317a92d4a6b684d0ff5ca27",
+    "tests/test_rag_033_parse_quality.py": "2eb13cb8ef987c9fb8f65ea6979fa545dc65abbf8c112dfaaca7525b92beca58",
+    "tests/test_rag_036_hybrid_semantics.py": "d664036b54d308b63552acfbc8eab7b9a50992ff8ada1b57bf458c5f946153d0",
+    "tests/test_rag_037_retrieval_status.py": "25d10926dc123ebddd33fb992baf3390bd0e56f58b5372de4a54e01540cd1963",
+    "tests/test_rag_038_deadline_retry.py": "c481cbec54151698cf48bfc37f7f6cd1d89cf6e0420cfa8f9f15a555f70e76c0",
+    "tests/test_rag_039_acceptance.py": "9f7d6fb6afe1cb3e154e718fad95a5d773e0e7eef803faca625c27ca19c3751c",
+    "tests/test_rag_039_batch_recovery.py": "1588df2f9641df25f7d189c7bd9ac8e418550e6edca6b07c4a8e2f821d59c956",
+    "tests/test_rag_039_batch_recovery_acceptance.py": "1c24575cd46e3122fe7cd09e7b3a948d3688175c1e9751824264fe8c50bfa373",
+    "tests/test_rag_039_configuration.py": "e2a43566b18266d80d899205b8bcc46a72143c946e8b113127b2c1259302f799",
+    "tests/test_rag_039_deep_review_acceptance.py": "2ad613ae6fa66de5baba75cee4fb86513cfcf76bac7bb570b2b166fe326f27c1",
+    "tests/test_rag_039_deep_review_regressions.py": "7980c92f879bbcbd63cac57e16761dca8ebc19d49094bb897b9cfecb322e3299",
+    "tests/test_rag_039_import_recovery.py": "71be7e82fd4d0a9753784679ba3ab10c7ecf93a84b921934fc05bdfd8ad74b80",
+    "tests/test_rag_039_independent_review.py": "f9a97d13112ca6accd7f86c2e55211496b1cce5b961560ec48e8abd028871861",
+    "tests/test_rag_040_eval_envelope.py": "8ac1038f4ea2404f4661ec73d13952482da9f3e77364e04b287d7a5e9a0c96a7",
+    "tests/test_rag_040_section_summaries.py": "f4285c0c82c33f754f985d9410f0c45e2eff1d5011b594c16c3a2660b9b5a428",
+    "tests/test_rag_042_download_roundtrip.py": "0dc10314ba721a6f5ada07671f50973338661fde29d9489aaf313561d691bff2",
+    "tests/test_rag_access.py": "d40382ec9b5454ac662edaef0b916826ce4a72d91eabe1a52ff12f776c24c4ba",
+    "tests/test_rag_backend.py": "d8a2f740771ee20260d656b77140a0ef5c249d99c3d5d2f6c5492bc34cdc32c9",
+    "tests/test_rag_cache.py": "dde6a4eeadc3fe247085aeddecd868ae3ae6aefa63f4b6c2e830d282a32dedb9",
+    "tests/test_rag_cache_review.py": "877ecc4b75b916f922017b91c7978c87b1f899c6863a95b6c520dbb9353d5b67",
+    "tests/test_rag_chunk_embedding_limits.py": "a749565d9a1177eb1aa05250dc8fe82673bc6af76de4923da8a488d36c0ef06b",
+    "tests/test_rag_chunks.py": "d8346f5e21132906e979b1cf9a4090f24ef9daa2f2208a3942585bee72a03513",
+    "tests/test_rag_clean_compensation.py": "74e57adbb461713de126a356b416365160713304fb63f12447c694e96af97646",
+    "tests/test_rag_import_jobs.py": "06392ad83c2674adb7623155efc8092016f622025fd6f9d781a53333db8aa901",
+    "tests/test_rag_langchain_score_contract.py": "5cce46fca4694f5216fb7d9d4be3b31982ecfbd76260be9990dc0de618399d3f",
+    "tests/test_rag_log_minimization.py": "2bd5a340287e1674fdf3af117a4899dd35cc0926cb261fdf6c6ee0afd0f418f5",
+    "tests/test_rag_parent_expand_lock.py": "819c1f0cdd4cb8f750f896925581341f0937956b786d23dae89013be09d9a308",
+    "tests/test_rag_parent_mapping.py": "bf946a704993e2698ca50dbcdc8c8aef7635487a36b5f45aac7a90e39afa3219",
+    "tests/test_rag_permission_semantics.py": "57b48724227b544e09e4276a650d8daf1386954cca2bb28a5f2a5bc97d9266a3",
+    "tests/test_rag_reparse_failure_safety.py": "0f634b53250336cacc0a4a32724f725fbbbeb01e1707e5c5635196b8b15a70b0",
+    "tests/test_rag_safe_parent_expansion.py": "79265be0664ef9e68c3d7089fc967d69bc0a8564d11453cd6158923634dd692d",
+    "tests/test_rag_schema_repair.py": "119d46a0e0c24dbd481d7d989881dfa776f0ced3fc3cc1d26b1c8b9ae29d9c60",
+    "tests/test_rag_search_explanation.py": "c79c6195996d3afdd018ae1d69d9b9db760cb12e7ba35aad1567c7f16c9abef6",
+    "tests/test_rag_sources.py": "e722f13e05dae374091f2e6f1053816f2f184bba7ecf451018ea41f2b02ea5f9",
+    "tests/test_rag_threshold.py": "80031cb9a9865012b6fd2cd837628ae8f5a5b59498947bbe247e57ba66e42d79",
+    "tests/test_rag_vectorization_api.py": "bc7a54a8625731144f8231e7303c97c78e8b0da996fb706050ce52a1009d7e62",
+    "tests/test_rate_limit_retry.py": "7ff9f4f34ec6e56d3e8619159ece8e18e4e2508fe7a0bc275829e31b520cb2ed",
+    "tests/test_response_cache.py": "04f22d6be32268b3e00217599ca79c496785d2cfddf99992f71d1b1b70bacdc2",
+    "tests/test_restricted_identifier_fence.py": "a91eb0beb666450494e74112db4c3d37206d7bcc42ab7150a607312e292f8b79",
+    "tests/test_retrieval_guard.py": "2c14aa052263abfdbb342597178ee0f55003bdc43b417090af502375311c2e66",
+    "tests/test_sandbox.py": "e06a06576622c78352f93032025f39cb331b2a4f18c45aab56f5829de644e7d9",
+    "tests/test_sandbox_process_status.py": "15fb1a08f81f0b18afa1bd3006bfe83b46fe09e5b3577e3d13e319df4903c676",
+    "tests/test_security_smoke.py": "bfceceda889daf0d9454e6ffa48914b0f249dcfb37bb5855bad75f6b20c1de4e",
+    "tests/test_skill_manager_versions.py": "88d93e8d37f5186125a24e3bb7b3481b495b6a9b36015f81737a87e6a8aba7a3",
+    "tests/test_skill_selection.py": "8fcb703845620c1dc2ee2e2f43ab43078353614e582954c24c22454981362dca",
+    "tests/test_skill_semantic.py": "07af2620735e08767105822fc73b0c92f84ee48383e65ca8e70b412e35b7ba5e",
+    "tests/test_skill_semantic_counterexamples.py": "c57b026b5bd71fee757ff5cf71183ce121ee9dacbc87b146c04d200365924f16",
+    "tests/test_skill_semantic_entry.py": "e26a7c8295809f400f58bd6d25894b987052fea01fdb6080079f7dbfd328765c",
+    "tests/test_skill_smoke.py": "51abf0805f27ae452e9a8ed5eef6798df26a284748782ac15dc5640168d1f492",
+    "tests/test_skill_version_counterexamples.py": "88df10df16859a1fbc7769cae7b00c27d258894e8589a34f03a81b99135fa22c",
+    "tests/test_skill_version_entry.py": "12c3586d8e76b27ae021d4a48d252afd46052ca044cb447e65b32c09606c68b4",
+    "tests/test_skill_versioning.py": "a14a1877e0290629b213ec1043266e3fb7d312a64f8c4385835d10907dbdb4e6",
+    "tests/test_stream_session_detach.py": "5ddb75d2ba90401cd3524942914f7c8aa2a12742387a618d4f90734f20380683",
+    "tests/test_structured_plan_runtime.py": "29f47325864cf0bce39674b16f0be78f550f476d542182bdcc62750e6b44ba9f",
+    "tests/test_supervisor.py": "4fde63a05adbcdaac47a99cbda45d30c08b9bb19534606e8d0f796be356f8a0a",
+    "tests/test_switch_tenant.py": "9e10ecd24baa90d1c9c122db7b6a5eaa734f143ea199ade392e028f7f27b241a",
+    "tests/test_tool_audit.py": "5a167879942c55720fce7722998e0417c0ed19837934cd558310408050ab3cb9",
+    "tests/test_tool_contract.py": "047fd291fa53b5cc0f8456cfc68b87358ceb3f5aea2e958267aa55f704f070be",
+    "tests/test_tool_executor.py": "5431adb519d0b4ea21e9e46b7178aba4a784f49991bd9e004c9a2af7cb87ddce",
+    "tests/test_tools.py": "13a8f81f2dadc6068d5da82dacc26dbb279b7fd5a79f87dbb2a23a95e3cbeebb",
+    "tests/test_upload_limits.py": "cfca1f83f049de02cf127a704987701fef76c46158f53eea484ba049cac55595",
+    "tests/test_vectorstore_policy.py": "4812d87f5983a8b6f1121d46b627f1c5d43cca008984dd4326956d99f51378d3",
+    "tests/test_workflow.py": "baf979043587d1b22b2b180ea2c436cbc9dad096898167f7426c9889c5da7dc2"
+  },
+  "pending": [
+    "Ubuntu Backend CI on final committed SHA",
+    "human business acceptance"
+  ],
+  "not_performed": [
+    "frontend checks (no frontend/API contract changes)",
+    "real paid model or Embedding evaluation",
+    "git commit/push/merge/deploy"
+  ],
+  "rollback": "Restore this sandbox/test diff and matching source registration; no database migration or production data changes"
+}

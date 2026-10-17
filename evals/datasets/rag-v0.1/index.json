@@ -11,14 +11,31 @@
   "permission_policy": "ADR-0001 option A To-Be for tenant scope; resource ACL cases tagged acl_planned",
   "vectorstore_policy": "ADR-0002 official Local; dataset only, no baseline scores",
   "gold_status": "approved_v0.1",
-  "gold_count": 24,
+  "gold_count": 21,
   "gold_reviewer": "阿明",
   "gold_reviewed_at": "2026-09-13",
   "gold_case_ids": [
-    "rag-001", "rag-004", "rag-005", "rag-008", "rag-012", "rag-015",
-    "rag-016", "rag-017", "rag-019", "rag-020", "rag-021", "rag-022",
-    "rag-024", "rag-027", "rag-028", "rag-030", "rag-033", "rag-034",
-    "rag-035", "rag-036", "rag-039", "rag-040", "rag-041", "rag-043"
+    "rag-001",
+    "rag-004",
+    "rag-005",
+    "rag-008",
+    "rag-012",
+    "rag-015",
+    "rag-016",
+    "rag-017",
+    "rag-021",
+    "rag-022",
+    "rag-024",
+    "rag-027",
+    "rag-028",
+    "rag-030",
+    "rag-033",
+    "rag-034",
+    "rag-035",
+    "rag-036",
+    "rag-039",
+    "rag-040",
+    "rag-043"
   ],
   "case_file": "evals/datasets/rag-v0.1/cases.json",
   "schema_file": "evals/schemas/rag_case.schema.json",
@@ -51,6 +68,40 @@
     "ADR-0003 已 Accepted（选项 A）。默认 Flag 关闭；打开 RAG_EFFECTIVE_DATE_FILTER 后 rag-031 可命中 scheduled 预告。不得改写 2026-09-19 基线 JSON。",
     "AI 生成数据默认不是 Gold。",
     "未授权生产数据未进入本数据集。",
-    "Recall/MRR/nDCG 基线属于 RAG-005，本版本不猜测发布阈值。"
+    "Recall/MRR/nDCG 基线属于 RAG-005，本版本不猜测发布阈值。",
+    "RAG-034（2026-10-07）：rag-019/rag-020（无反向证据与依据说明）、rag-041（声明文档缺引文）按 docs/evaluations/rag-v0.1-审核链与分级定义.md §3 缺证据降级为 Silver，Gold 24 → 21。",
+    "RAG-034：Gold 与 tier 正交；counts.silver=17 / adversarial=27 与 gold_count=21 不构成重复计数。"
+  ],
+  "downgrade_log": [
+    {
+      "case_id": "rag-019",
+      "downgraded_at": "2026-10-07",
+      "trigger": "RAG-034 审核链与分级核对",
+      "reason": "no_answer 用例，既无 forbidden_document_ids 反向证据，也无 notes 说明语料为何不支持（口径 C 不成立）",
+      "from": "gold",
+      "to": "silver",
+      "review_decision": "KEEP_SILVER",
+      "pending": "人工补审后可重新提名 Gold；不得由 Agent 自动生成引文或代写审核结论"
+    },
+    {
+      "case_id": "rag-020",
+      "downgraded_at": "2026-10-07",
+      "trigger": "RAG-034 审核链与分级核对",
+      "reason": "no_answer 用例，既无 forbidden_document_ids 反向证据，也无 notes 说明语料为何不支持（口径 C 不成立）",
+      "from": "gold",
+      "to": "silver",
+      "review_decision": "KEEP_SILVER",
+      "pending": "人工补审后可重新提名 Gold；不得由 Agent 自动生成引文或代写审核结论"
+    },
+    {
+      "case_id": "rag-041",
+      "downgraded_at": "2026-10-07",
+      "trigger": "RAG-034 审核链与分级核对",
+      "reason": "expected_document_ids 声明 doc-escalation-current，但 expected_evidence 中无该文档引文，声明不可核验（口径 D 不成立）",
+      "from": "gold",
+      "to": "silver",
+      "review_decision": "KEEP_SILVER",
+      "pending": "人工补审后可重新提名 Gold；不得由 Agent 自动生成引文或代写审核结论"
+    }
   ]
 }

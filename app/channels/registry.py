@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from app.channels.base import AbstractChannel, ChannelType
 

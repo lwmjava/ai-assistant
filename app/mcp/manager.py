@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from app.agents.tools.base import Tool, ToolRegistry
+from app.agents.tools.base import Tool
 from app.core.config import settings
 from app.mcp.adapter import mcp_tool_to_tool
 from app.mcp.client import MCPClient
@@ -66,10 +66,10 @@ class MCPToolManager:
         return self._clients.get(server)
 
 
-_manager: "MCPToolManager | None" = None
+_manager: MCPToolManager | None = None
 
 
-async def get_mcp_manager() -> "MCPToolManager | None":
+async def get_mcp_manager() -> MCPToolManager | None:
     """返回进程级 MCP 管理器单例；未启用或无可连接服务器时返回 None。"""
     global _manager
     if not settings.MCP_ENABLED:

@@ -9,16 +9,20 @@ from sqlmodel import Session
 from app.api.deps import audit_event, get_current_user, get_db
 from app.audit.models import AuditAction
 from app.core.security import Role
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.schemas.admin import TenantUpdate
 from app.schemas.auth import UserInfo
+from app.schemas.quota import QuotaOut, QuotaUpdate
 from app.schemas.tenant import MemberCreate, TenantCreate, TenantOut
+from app.services.quota import QuotaAuditError, QuotaNotFoundError, update_tenant_quota
 from app.services.tenant_admin import (
     EmailTakenError,
+    TenantAlreadyActiveError,
     TenantInactiveError,
     TenantNameTakenError,
     TenantNotFoundError,
     UsernameTakenError,
+    activate_tenant,
     create_member,
     create_tenant,
     deactivate_tenant,
@@ -173,3 +177,79 @@ async def deactivate_tenant_route(
         details={"name": tenant.name},
     )
     return TenantOut.model_validate(tenant)
+
+
+@router.post("/{tenant_id}/activate", response_model=TenantOut)
+async def activate_tenant_route(
+    tenant_id: str,
+    request: Request,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(_require_system_admin),
+) -> TenantOut:
+    """重新启用租户。同名未停用租户已存在时不改状态。"""
+    try:
+        tenant = activate_tenant(session, tenant_id)
+    except TenantNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    except TenantAlreadyActiveError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户已启用")
+    except TenantNameTakenError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="租户名称已存在")
+    await audit_event(
+        request,
+        AuditAction.TENANT_ACTIVATE,
+        user=current_user,
+        resource_type="tenant",
+        resource_id=tenant.id,
+        details={"name": tenant.name},
+    )
+    return TenantOut.model_validate(tenant)
+
+
+def _quota_out(tenant: Tenant) -> QuotaOut:
+    return QuotaOut(
+        tenant_id=tenant.id,
+        message_limit=tenant.message_limit,
+        storage_limit_bytes=tenant.storage_limit_bytes,
+    )
+
+
+@router.get("/{tenant_id}/quota", response_model=QuotaOut)
+def get_tenant_quota(
+    tenant_id: str,
+    session: Session = Depends(get_db),
+    _: User = Depends(_require_system_admin),
+) -> QuotaOut:
+    """读取一个租户的消息条数上限和源文件字节上限。"""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    return _quota_out(tenant)
+
+
+@router.patch("/{tenant_id}/quota", response_model=QuotaOut)
+def update_tenant_quota_route(
+    tenant_id: str,
+    body: QuotaUpdate,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(_require_system_admin),
+) -> QuotaOut:
+    """修改上限。审计没有写上时，上限保持原值。"""
+    try:
+        tenant = update_tenant_quota(
+            session,
+            actor_id=current_user.id,
+            actor_tenant_id=current_user.tenant_id,
+            tenant_id=tenant_id,
+            message_limit=body.message_limit,
+            storage_limit_bytes=body.storage_limit_bytes,
+            reason=body.reason,
+        )
+    except QuotaNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="租户不存在")
+    except QuotaAuditError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="配额变更未能写入审计，上限未修改",
+        )
+    return _quota_out(tenant)

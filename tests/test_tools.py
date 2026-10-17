@@ -2,6 +2,8 @@
 
 import asyncio
 
+import pytest
+
 from app.agents.pipeline import AgentPipeline, AgentState
 from app.agents.tools.base import Tool, ToolRegistry, inspect_tool_call, parse_tool_call
 from app.agents.tools.builtin import default_tools
@@ -70,6 +72,7 @@ def test_datetime_tool() -> None:
     assert len(result) >= 8  # 至少包含日期部分
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_pipeline_invokes_tool_and_continues() -> None:
     """自定义 LLM 首次行动返回工具调用，第二次返回最终答案。"""
 
@@ -96,6 +99,7 @@ def test_pipeline_invokes_tool_and_continues() -> None:
     assert result.error is None
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_pipeline_stream_emits_tool_event() -> None:
     """流式模式下，工具调用应通过 tool 事件广播。"""
 

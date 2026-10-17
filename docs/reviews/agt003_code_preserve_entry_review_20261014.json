@@ -1,0 +1,26 @@
+{
+  "agent": "/root/confirmed_code_review",
+  "evidence": "isolated actual builders/stage capture; no real model/tool/DB/network",
+  "count": 17,
+  "checks": [
+    "_build_act-code",
+    "_build_act-rule",
+    "_build_act-ambiguity",
+    "_build_plan-code",
+    "_build_plan-rule",
+    "_build_plan-ambiguity",
+    "shared-eval",
+    "white-excluded",
+    "action-no-budget",
+    "plan-tool_budget_exhausted",
+    "plan-tool_rounds_used",
+    "no-tools-_build_plan",
+    "no-tools-_build_act",
+    "untrusted-no-authorization",
+    "actual-stage-_build_act",
+    "actual-stage-_build_plan",
+    "history-unchanged"
+  ],
+  "source_sha256": "0a637f7e8f208c3f51d752c799e4df6f29f75ca7241b89f276ce6557e012a2f0",
+  "probe_correction": "first probe incorrectly compared production metadata registry to a custom one-tool registry; corrected to identical registry; not business failure"
+}

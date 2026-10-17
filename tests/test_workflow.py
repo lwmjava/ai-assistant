@@ -12,10 +12,11 @@
 复用项目测试基建：独立 test db（conftest 已 init_db）、MockLLMProvider、依赖覆盖。
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
-from unittest.mock import AsyncMock, patch
 
 from app.api.deps import get_current_user
 from app.core.config import settings
@@ -53,7 +54,7 @@ def _clean_db():
 
 
 @pytest.fixture()
-def client():
+def client(persist_identity):
     """注入 member 身份 + Mock LLM，且不进入 lifespan（避免后台调度器干扰）。"""
     settings.WORKFLOW_ENABLED = True
     fake_user = User(
@@ -64,6 +65,7 @@ def client():
         role=Role.MEMBER.value,
         is_active=True,
     )
+    persist_identity(fake_user)
     app.dependency_overrides[get_current_user] = lambda: fake_user
     set_llm_provider_override(MockLLMProvider())
     c = TestClient(app)  # 不进入 lifespan，避免启动调度器后台任务
@@ -99,7 +101,7 @@ def test_next_run_time_raises_without_croniter(monkeypatch):
 
 # ── bridge ──────────────────────────────────
 @pytest.mark.asyncio
-async def test_bridge_executes_with_owner():
+async def test_bridge_executes_with_owner(persist_identity):
     set_llm_provider_override(MockLLMProvider())
     owner = User(
         id="b-owner",
@@ -110,6 +112,7 @@ async def test_bridge_executes_with_owner():
         is_active=True,
     )
     with Session(engine) as s:
+        persist_identity(owner)
         out = await WorkflowBridge().execute(s, owner, "hello")
         assert isinstance(out, str) and out
     set_llm_provider_override(None)
@@ -150,7 +153,7 @@ async def test_owner_inactive_suspends_workflow():
 
 # ── webhook 回调 ──────────────────────────────────
 @pytest.mark.asyncio
-async def test_webhook_called_on_success():
+async def test_webhook_called_on_success(persist_identity):
     set_llm_provider_override(MockLLMProvider())
     owner = User(
         id="wh-owner",
@@ -160,6 +163,7 @@ async def test_webhook_called_on_success():
         role=Role.MEMBER.value,
         is_active=True,
     )
+    persist_identity(owner)
     with Session(engine) as s:
         wf = Workflow(
             tenant_id="wh-tenant",
@@ -187,7 +191,7 @@ async def test_webhook_called_on_success():
 # ── API 全链路 ──────────────────────────────────
 def test_create_and_manual_run_and_history(client: TestClient) -> None:
     resp = client.post(
-        "/api/workflows",
+        "/api/v1/workflows",
         json={"name": "t", "cron_expr": "0 0 1 1 *", "prompt_template": "do something"},
     )
     assert resp.status_code == 201
@@ -196,7 +200,7 @@ def test_create_and_manual_run_and_history(client: TestClient) -> None:
     assert wf["owner_id"] == "wf-user"
     assert wf["timezone"] == settings.WORKFLOW_DEFAULT_TIMEZONE
 
-    run = client.post(f"/api/workflows/{wid}/run")
+    run = client.post(f"/api/v1/workflows/{wid}/run")
     assert run.status_code == 201
     ex = run.json()
     assert ex["status"] == "success"
@@ -204,32 +208,32 @@ def test_create_and_manual_run_and_history(client: TestClient) -> None:
     assert ex["triggered_by"] == "manual"
     assert ex["duration_ms"] is not None
 
-    hist = client.get(f"/api/workflows/{wid}/executions")
+    hist = client.get(f"/api/v1/workflows/{wid}/executions")
     assert hist.status_code == 200
     assert len(hist.json()) >= 1
 
-    client.delete(f"/api/workflows/{wid}")
+    client.delete(f"/api/v1/workflows/{wid}")
 
 
 def test_crud_and_toggle(client: TestClient) -> None:
     created = client.post(
-        "/api/workflows",
+        "/api/v1/workflows",
         json={"name": "t2", "cron_expr": "0 0 1 1 *", "prompt_template": "p"},
     )
     wid = created.json()["id"]
 
-    listing = client.get("/api/workflows")
+    listing = client.get("/api/v1/workflows")
     assert listing.status_code == 200
     assert any(x["id"] == wid for x in listing.json())
 
-    detail = client.get(f"/api/workflows/{wid}")
+    detail = client.get(f"/api/v1/workflows/{wid}")
     assert detail.status_code == 200
 
-    updated = client.put(f"/api/workflows/{wid}", json={"name": "t2-updated"})
+    updated = client.put(f"/api/v1/workflows/{wid}", json={"name": "t2-updated"})
     assert updated.status_code == 200
     assert updated.json()["name"] == "t2-updated"
 
-    toggled = client.post(f"/api/workflows/{wid}/toggle", json={"enabled": False})
+    toggled = client.post(f"/api/v1/workflows/{wid}/toggle", json={"enabled": False})
     assert toggled.status_code == 200
     assert toggled.json()["enabled"] is False
 
@@ -243,17 +247,17 @@ def test_crud_and_toggle(client: TestClient) -> None:
         is_active=True,
     )
     app.dependency_overrides[get_current_user] = lambda: admin
-    deleted = client.delete(f"/api/workflows/{wid}")
+    deleted = client.delete(f"/api/v1/workflows/{wid}")
     assert deleted.status_code == 200 and deleted.json()["deleted"] is True
 
-    missing = client.get(f"/api/workflows/{wid}")
+    missing = client.get(f"/api/v1/workflows/{wid}")
     assert missing.status_code == 404
 
 
 def test_disabled_returns_503(client: TestClient) -> None:
     settings.WORKFLOW_ENABLED = False
     resp = client.post(
-        "/api/workflows",
+        "/api/v1/workflows",
         json={"name": "x", "cron_expr": "0 0 1 1 *", "prompt_template": "p"},
     )
     assert resp.status_code == 503

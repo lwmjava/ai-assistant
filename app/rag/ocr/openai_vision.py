@@ -7,8 +7,33 @@ import base64
 import httpx
 
 from app.core.config import settings
+from app.llm.budget import ContextBudgetError, enforce_generation_budget
+from app.llm.capabilities import resolve_effective_capability
 from app.rag.ocr.base import OcrPageBlock, OcrProvider, OcrProviderError, OcrResult
 from app.rag.ocr.tesseract import RenderedPdfPage, _render_pdf_pages
+
+# 云 OCR 送的是 base64 图片，是系统里最大的单次生成 payload，
+# 却因为不走 LLMProvider 而天然绕开了护栏。这里在发请求前补上同一条不等式。
+OCR_BUDGET_MESSAGE = "云 OCR 请求超出模型已登记的上下文预算，请缩小图片或减少页数后重试。"
+
+
+def _guard_payload(base_url: str, model: str, payload: dict) -> None:
+    """发请求前核对预算。违反则抛 ``OcrProviderError``，一个字节都不外发。"""
+    if not settings.LLM_CAPABILITY_GUARD_ENABLED:
+        return
+    try:
+        enforce_generation_budget(
+            resolve_effective_capability(base_url, model),
+            payload.get("messages") or [],
+            settings.LLM_OUTPUT_RESERVE_TOKENS,
+            settings.LLM_BUDGET_SAFETY_MARGIN,
+        )
+    except ContextBudgetError as exc:
+        raise OcrProviderError(
+            OCR_BUDGET_MESSAGE,
+            error_code="ocr_budget_exceeded",
+            stderr=str(exc),
+        ) from exc
 
 
 def _build_payload(model: str, image_bytes: bytes) -> dict:
@@ -63,6 +88,7 @@ async def _post_vision_request(
 ) -> dict:
     """异步调用 OpenAI 兼容视觉接口。"""
     payload = _build_payload(model, image_bytes)
+    _guard_payload(base_url, model, payload)
     async with httpx.AsyncClient(timeout=timeout_seconds) as client:
         response = await client.post(
             f"{base_url.rstrip('/')}/chat/completions",
@@ -83,6 +109,7 @@ def _post_vision_request_sync(
 ) -> dict:
     """同步调用 OpenAI 兼容视觉接口。"""
     payload = _build_payload(model, image_bytes)
+    _guard_payload(base_url, model, payload)
     with httpx.Client(timeout=timeout_seconds) as client:
         response = client.post(
             f"{base_url.rstrip('/')}/chat/completions",

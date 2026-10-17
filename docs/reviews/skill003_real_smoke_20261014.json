@@ -1,0 +1,70 @@
+{
+  "version": "skill-semantic-match-smoke-1.0.0",
+  "evidence": "E1-real-model-synthetic-smoke-not-Gold",
+  "created_at": "2026-10-14T07:28:27.451141+00:00",
+  "requested_model": "deepseek-flash",
+  "endpoint_hash": "12b8deaccc34b32757dbb1497e029da0c2e7b26ffa86b9c926c08cb4692f4508",
+  "model_calls": 6,
+  "cache_enabled": false,
+  "retry": 0,
+  "timeout_seconds": 5,
+  "max_output_tokens": 128,
+  "dataset_hash": "595239cbd9c279cc97beaa76570b8f5eeb7a67ad52ad2d895f8da8265baa4f40",
+  "source_hashes": {
+    "app\\agents\\skills\\manager.py": "fbd20580fd1d8cab50db227fc20427b8990c5749c3841bc7fe55650cd052ccbf",
+    "app\\services\\chat_service.py": "6ec002f01defac3b3defeaa8046d5b7e61c387bded9eeeacbfcaa588dbe42b26"
+  },
+  "cases": [
+    {
+      "case_id": "semantic-001",
+      "expected": "parcel",
+      "actual": "parcel",
+      "transport_completed": true,
+      "raw_reply": "{\"name\":\"parcel\",\"confidence\":0.95}",
+      "passed": true
+    },
+    {
+      "case_id": "semantic-002",
+      "expected": "parcel",
+      "actual": "parcel",
+      "transport_completed": true,
+      "raw_reply": "{\"name\":\"parcel\",\"confidence\":0.95}",
+      "passed": true
+    },
+    {
+      "case_id": "semantic-003",
+      "expected": "code-review",
+      "actual": "code-review",
+      "transport_completed": true,
+      "raw_reply": "{\"name\":\"code-review\",\"confidence\":0.97}",
+      "passed": true
+    },
+    {
+      "case_id": "semantic-004",
+      "expected": "code-review",
+      "actual": "code-review",
+      "transport_completed": true,
+      "raw_reply": "{\"name\":\"code-review\",\"confidence\":0.95}",
+      "passed": true
+    },
+    {
+      "case_id": "semantic-005",
+      "expected": null,
+      "actual": null,
+      "transport_completed": true,
+      "raw_reply": "null",
+      "passed": true
+    },
+    {
+      "case_id": "semantic-006",
+      "expected": null,
+      "actual": null,
+      "transport_completed": true,
+      "raw_reply": "{\"name\":null,\"confidence\":0.0}",
+      "passed": true
+    }
+  ],
+  "passed": 6,
+  "total": 6,
+  "overall_pass": true
+}

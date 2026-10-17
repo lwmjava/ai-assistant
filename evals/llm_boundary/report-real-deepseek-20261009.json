@@ -1,0 +1,442 @@
+{
+  "version": "llm-boundary-real-v0.2",
+  "prompt_version": "llm-boundary-prompt-v0.1",
+  "protocol_version": "llm-boundary-protocol-v0.1",
+  "model": {
+    "provider": "deepseek-official",
+    "base_url": "https://api.deepseek.com/v1",
+    "model": "deepseek-flash",
+    "capability_version": "deepseek-flash-1m-384k-20261007",
+    "non_thinking": true,
+    "temperature": 0,
+    "max_tokens": 256
+  },
+  "model_selection_note": "无 deepseek-chat 声明，按 RAG-035 验证路径用 deepseek-flash",
+  "pricing": {
+    "rmb_per_usd": 7.2,
+    "cost_usd_stop": 0.1,
+    "cost_yuan_stop": 0.72,
+    "price_input_per_mtok_yuan": 2.0,
+    "price_output_per_mtok_yuan": 8.0,
+    "source": "DeepSeek 公开定价（高峰价）+ 7.2 RMB/USD 折算"
+  },
+  "params": {
+    "max_http_attempts": 30,
+    "max_chars_per_call": 1500,
+    "output_tokens": 256,
+    "chunk_size": 40,
+    "docs": 30
+  },
+  "provenance": "AI-authored synthetic Smoke/Adversarial samples; NOT Gold; holdout not applicable",
+  "code_sha256": {
+    "app\\rag\\chunking\\llm_boundaries.py": "304a4ab313b395de79376f45af77ed5fc37ad4c591cbb1595e50ac517c4e55c4",
+    "app\\rag\\chunking\\structure.py": "919ccef3ebfa04254af5fbf928b565304f0a4b0ad6d5261edb08a7220815b7d6",
+    "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\llm_boundary\\run_real.py": "dd2e048fd634e55fb8e90b0d34585db1398ce3e56d0aae14d54eb41106af1db6"
+  },
+  "status": "completed",
+  "rows": [
+    {
+      "doc_id": 0,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 1,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 2,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 3,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 4,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 5,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 6,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 7,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 8,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 9,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 10,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 11,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 12,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 13,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 14,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 15,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 16,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 17,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 18,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 19,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 20,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 21,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 22,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 23,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 24,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 25,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 26,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 27,
+      "llm_calls": 1,
+      "chunk_count": 4,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 28,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    },
+    {
+      "doc_id": 29,
+      "llm_calls": 1,
+      "chunk_count": 5,
+      "char_coverage_equal": true
+    }
+  ],
+  "http_attempts": 30,
+  "prompt_tokens_total": 7584,
+  "completion_tokens_total": 136,
+  "spent_yuan": 0.016256,
+  "spent_usd": 0.002258,
+  "usage_log": [
+    {
+      "request_id": "bb0dc6e1-1fac-45a7-b9f1-88aa6feb01a0",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "dbe102d8-f8aa-419c-8891-480e9e34840f",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 248,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "c7498a5d-b48e-400d-b207-68f1ebfa63cd",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "d0501a4c-a21b-446f-b291-8d81b9836795",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "5003ba81-3cad-4fd6-a3f0-2de6a369139c",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "526d8fb6-ef36-4586-91ba-e7be3b3c3841",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "ce5000e4-cab2-4988-8447-6311bc1e11df",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 248,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "e1c9a49b-7931-45ec-9720-99256b90be13",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "4f13c51a-e55d-4664-b7bf-5f6ab9d8977e",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "be7e4da8-4aa0-4dfb-8fe2-d53c3a84542c",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "01247c0c-bb3a-4c36-b983-a9863341433e",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "2feccccf-30a8-4772-94af-96a40a8f348c",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 248,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "55eb59a0-f91f-4603-931f-2643d2fe4152",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "e3284762-6fe4-46d9-9674-d5dc7537ac5c",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "21af576f-4684-4991-b85b-32fb8c121f7b",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "8fc972c4-7371-44f1-a62f-6f9c2644cd48",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "a1d9aa57-f9c1-47cb-a747-026ebc6527f5",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 248,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "367765b0-1996-4599-b916-8d509cfe9304",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "ec25cb9d-8c7a-4354-98a6-22cc7da2c522",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "0ad423cb-6eb8-4198-b1da-9014a9d57a68",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "fac7cd8e-ec91-4d8d-ab69-912f49f2b288",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "36f09874-9c28-4f6a-a070-828996577783",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 248,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "fdd89cd3-da8a-4343-b0b1-5724a0f098e4",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "affa0949-e468-46f4-ba77-394918734177",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "453ddbb1-0736-4dcf-9b28-3e9f3b4586da",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    },
+    {
+      "request_id": "1802382a-b3fe-48c1-a243-52d4de1d32e9",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "93f8b462-4021-42ac-9c39-742f45fb3176",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 248,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "bf283afb-a09b-40bf-8406-38d33ce9dce4",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 3,
+      "raw_output": "[6]"
+    },
+    {
+      "request_id": "b9c256e4-ef0b-44fb-9d91-251828d1ee31",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 5,
+      "raw_output": "[6,12]"
+    },
+    {
+      "request_id": "bb3f2923-d45d-4b09-80aa-9e4a77a811bb",
+      "response_model": "deepseek-flash",
+      "prompt_tokens": 254,
+      "completion_tokens": 6,
+      "raw_output": "[6, 12]"
+    }
+  ],
+  "boundary_accuracy": {
+    "parsed_calls": 12,
+    "hits": 12,
+    "accuracy": 1.0,
+    "note": "AI-authored 合成样本（shift=第6句），±2 句容差；非 Gold"
+  }
+}

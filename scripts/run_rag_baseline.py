@@ -12,6 +12,7 @@
 - 正式扫描要求切分策略、块大小、重叠、向量库、后端和生效日期开关与冻结基线一致。
 - 采纳规则：Recall@1 与 MRR 都严格提高，且越权案例数不增加。
 - 单次覆盖融合常数后，进程在返回前写回进入前的值。
+- 显式传入词面重排时，同一次已截断结果先记对照再重排，默认不重排。
 
 待完善
 - 冒烟扫描会写 JSON，但不写质量结论 Markdown。
@@ -23,8 +24,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import platform
 import subprocess
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -33,18 +37,29 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.core.config import settings  # noqa: E402
+from app.rag.effective_date import retrieval_window  # noqa: E402
 from app.rag.embeddings.base import EmbeddingProvider  # noqa: E402
 from app.rag.embeddings.factory import get_embedding_provider  # noqa: E402
-from app.rag.embeddings.mock import MockEmbeddingProvider  # noqa: E402
+from app.rag.embeddings.mock import MockEmbeddingProvider, tokenize  # noqa: E402
+from app.rag.vectorstore.factory import get_vector_store  # noqa: E402
+from app.rag.vectorstore.local import LocalVectorStore  # noqa: E402
 from tests.eval.harness import (  # noqa: E402
     CaseOutcome,
     build_eval_index,
     group_summaries,
     run_all_cases,
+    score_hits,
     summarize,
 )
+from tests.eval.lexical_rerank import (  # noqa: E402
+    decide_lexical_coverage,
+    rerank_by_lexical_coverage,
+)
 from tests.eval.rrf_decision import TUNING_SPLITS, choose_k  # noqa: E402
-from tests.eval.validation import INDEX_PATH, load_json  # noqa: E402
+from tests.eval.validation import INDEX_PATH, load_cases, load_json  # noqa: E402
+
+LEXICAL_DEPTH = 10
+LEXICAL_RRF_K = 60
 
 DEFAULT_DB = REPO_ROOT / "data" / "eval_rag_v01.db"
 SWEEP_DB = REPO_ROOT / "data" / "eval_rrf_k_sweep.db"
@@ -446,6 +461,246 @@ async def run_sweep(args: argparse.Namespace, provider: EmbeddingProvider) -> in
     return 0
 
 
+def machine_spec() -> dict:
+    """记录运行机器的公开规格。
+
+    作用：报告能说明数字是在哪类机器上得到的。
+    入参：无。
+    出参：不含主机名、密钥和连接串的字典。
+    """
+    return {
+        "system": platform.system(),
+        "release": platform.release(),
+        "machine": platform.machine(),
+        "python": platform.python_version(),
+        "processor": platform.processor(),
+        "cpu_count": os.cpu_count(),
+    }
+
+
+async def run_lexical(args: argparse.Namespace, provider: EmbeddingProvider) -> int:
+    """同一次建库、同一次检索上比较词面覆盖重排。
+
+    作用：对照是已截断的融合顺序，处理只重排这同一批。决策只用调参集。
+    入参：args 含 mode、db、retrieval_depth、rrf_k、rrf_sweep；provider 为真实嵌入。
+    出参：进程退出码。成功为 0。不修改检索配置。
+    """
+    if args.mode != "official":
+        raise SystemExit("词面覆盖结论只接受 --mode official。smoke 不能作为采纳证据。")
+    if args.rrf_sweep:
+        raise SystemExit("--rerank lexical 不能与 --rrf-sweep 同时使用")
+    if args.rrf_k not in (None, LEXICAL_RRF_K):
+        raise SystemExit("--rerank lexical 固定融合常数 60，不能同时改 k")
+    if args.retrieval_depth != LEXICAL_DEPTH:
+        raise SystemExit("--rerank lexical 固定检索深度 10")
+    if int(settings.RAG_HYBRID_RRF_K) != LEXICAL_RRF_K:
+        raise SystemExit(
+            f"词面覆盖实验固定 k=60，当前 RAG_HYBRID_RRF_K={settings.RAG_HYBRID_RRF_K!r}"
+        )
+    _require_frozen_index_config()
+
+    db_path = Path(args.db)
+    print(f"[1/3] 重建评测索引（一次）-> {db_path}")
+    index = await build_eval_index(db_path, provider)
+    control_outcomes: list[CaseOutcome] = []
+    treatment_outcomes: list[CaseOutcome] = []
+    try:
+        store = get_vector_store(index.session)
+        if not isinstance(store, LocalVectorStore):
+            raise SystemExit("词面覆盖实验只使用本地向量库返回的已截断结果")
+        cases = sorted(load_cases(), key=lambda item: item["case_id"])
+        print(f"[2/3] 检索并重排 {len(cases)} 条案例（深度 {LEXICAL_DEPTH}，k={LEXICAL_RRF_K}）")
+        for case in cases:
+            query = case["query"]
+            tokens = tokenize(query)
+            as_of, schedule_at = retrieval_window(query)
+            started = time.perf_counter()
+            vector = (await provider.embed([query]))[0]
+            hits = await store.hybrid_search(
+                vector,
+                tokens,
+                case["identity"]["tenant_id"],
+                LEXICAL_DEPTH,
+                LEXICAL_RRF_K,
+                as_of=as_of,
+                schedule_at=schedule_at,
+            )
+            latency_ms = (time.perf_counter() - started) * 1000.0
+            if len(hits) > LEXICAL_DEPTH:
+                raise SystemExit("hybrid_search 返回条数超过深度 10，已停止")
+            reranked = rerank_by_lexical_coverage(tokens, hits)
+            if sorted(hit.id for hit in reranked) != sorted(hit.id for hit in hits):
+                raise SystemExit("重排改变了候选集合，已停止")
+            control_outcomes.append(score_hits(case, index, hits, latency_ms=latency_ms))
+            treatment_outcomes.append(
+                score_hits(case, index, reranked, latency_ms=0.0)
+            )
+    finally:
+        index.close()
+
+    config = build_run_config(args.mode, provider, LEXICAL_DEPTH)
+    config["indexed_documents"] = len(index.db_doc_id_to_logical)
+    config["indexed_chunks"] = index.chunk_total
+    config["variable"] = "lexical_coverage"
+    config["rerank_after_truncation"] = True
+    config["candidate_pool_expanded"] = False
+    config["machine"] = machine_spec()
+    config["command"] = "python scripts/run_rag_baseline.py --mode official --rerank lexical"
+    config["working_directory"] = str(REPO_ROOT)
+    control_report = make_report(config, control_outcomes)
+    treatment_report = make_report(config, treatment_outcomes)
+    decision = decide_lexical_coverage(
+        control_report["decision_inputs"]["summary"],
+        treatment_report["decision_inputs"]["summary"],
+    )
+    dataset_index = load_json(INDEX_PATH)
+    stamp = datetime.now(UTC).strftime("%Y%m%d")
+    comparison = {
+        "experiment": "lexical-coverage",
+        "variable": "lexical_coverage",
+        "run_at": datetime.now(UTC).isoformat(),
+        "git_commit": git_commit(),
+        "command": config["command"],
+        "working_directory": config["working_directory"],
+        "dataset_id": dataset_index["dataset_id"],
+        "dataset_version": dataset_index["dataset_version"],
+        "corpus_version": dataset_index["corpus_version"],
+        "mode": args.mode,
+        "embedding_provider": config["embedding_provider"],
+        "embedding_model": config["embedding_model"],
+        "embedding_dim": config["embedding_dim"],
+        "vector_store": config["vector_store"],
+        "rrf_k": LEXICAL_RRF_K,
+        "retrieval_depth_chunks": LEXICAL_DEPTH,
+        "indexed_documents": config["indexed_documents"],
+        "indexed_chunks": config["indexed_chunks"],
+        "machine": config["machine"],
+        "decision_splits": sorted(TUNING_SPLITS),
+        "holdout_used_for_decision": False,
+        "decision": decision["decision"],
+        "reason_code": decision["reason_code"],
+        "reason": decision["reason"],
+        "adoption_rule": "Recall@1 高于对照，且 MRR 高于对照，且越权案例数不高于对照",
+        "not_production_quality_claim": True,
+        "signal_same_family_as_bm25": True,
+        "independent_reranker": "Planned",
+        "control": {
+            "order": "rrf_truncated",
+            "tuning": control_report["decision_inputs"]["summary"],
+            "holdout": control_report["decision_inputs"]["holdout_summary"],
+            "overall": control_report["overall"],
+        },
+        "treatment": {
+            "order": "lexical_coverage",
+            "tuning": treatment_report["decision_inputs"]["summary"],
+            "holdout": treatment_report["decision_inputs"]["holdout_summary"],
+            "overall": treatment_report["overall"],
+        },
+    }
+    json_path = write_json(
+        REPORT_DIR / f"rag-v0.1-lexical-coverage-{stamp}.json",
+        comparison,
+    )
+    md_path = REPO_ROOT / "docs" / "evaluations" / f"rag-v0.1-lexical-coverage-{stamp}.md"
+    md_path.write_text(render_lexical_md(comparison), encoding="utf-8")
+    print(f"[3/3] {json_path}")
+    print(f"      Markdown {md_path}")
+    print(f"      决策 {decision['decision']}")
+    print(f"      {decision['reason']}")
+    tuning_control = comparison["control"]["tuning"]
+    tuning_treatment = comparison["treatment"]["tuning"]
+    print(
+        "      调参集对照 "
+        f"Recall@1={_fmt(tuning_control['recall']['@1'])} "
+        f"MRR={_fmt(tuning_control['mrr'])} "
+        f"越权={tuning_control['safety']['violation_cases']}"
+    )
+    print(
+        "      调参集处理 "
+        f"Recall@1={_fmt(tuning_treatment['recall']['@1'])} "
+        f"MRR={_fmt(tuning_treatment['mrr'])} "
+        f"越权={tuning_treatment['safety']['violation_cases']}"
+    )
+    return 0
+
+
+def render_lexical_md(comparison: dict) -> str:
+    """把词面覆盖对照写成 Markdown。
+
+    作用：列出调参集、留出集和采纳结论，并写明这不是生产检索质量结论。
+    入参：comparison 为 run_lexical 组装的对照字典。
+    出参：完整 Markdown 文本。不含密钥和连接串。
+    """
+    control = comparison["control"]["tuning"]
+    treatment = comparison["treatment"]["tuning"]
+    holdout_control = comparison["control"]["holdout"]
+    holdout_treatment = comparison["treatment"]["holdout"]
+    machine = comparison["machine"]
+    lines = [
+        "# 词面覆盖重排对照",
+        "",
+        "> 变量：`lexical_coverage`",
+        f"> 运行时间：{comparison['run_at']}",
+        f"> 数据集：`{comparison['dataset_id']}@{comparison['dataset_version']}`",
+        f"> 语料版本：`{comparison['corpus_version']}`",
+        f"> 代码：`{comparison['git_commit']}`",
+        f"> 命令：`{comparison['command']}`",
+        f"> 工作目录：`{comparison['working_directory']}`",
+        (
+            f"> 嵌入：{comparison['embedding_provider']} / {comparison['embedding_model']} / "
+            f"{comparison['embedding_dim']} 维"
+        ),
+        f"> 向量库：{comparison['vector_store']}",
+        (
+            f"> 机器：{machine['system']} {machine['release']} {machine['machine']}，"
+            f"Python {machine['python']}，CPU {machine['cpu_count']}"
+        ),
+        "> 决策只使用 development 与 validation。holdout 仅记录，不参与判断，也不改公式。",
+        "> 重排发生在 hybrid_search 已经截断之后，深度 10，融合常数 60。没有第二次检索。",
+        "> 本轮不能作为生产检索质量结论。信号与 BM25 同源。独立 Reranker 仍是 Planned。",
+        "> 本文件不改写 `evals/reports/rag-v0.1-baseline-20260919.json`。",
+        "",
+        "## 1. 结论",
+        "",
+        comparison["reason"],
+        "",
+        f"决策：`{comparison['decision']}`。",
+        (
+            f"索引文档 {comparison['indexed_documents']} 篇，"
+            f"分块 {comparison['indexed_chunks']} 个。"
+        ),
+        "对照顺序是已截断的倒数排名融合顺序。处理顺序只按词面覆盖率重排这同一批。",
+        "",
+        "## 2. 调参 split（development + validation）",
+        "",
+        "| 顺序 | Recall@1 | MRR | 越权案例 |",
+        "|---|---|---|---|",
+        (
+            f"| 对照 | {_fmt(control['recall']['@1'])} | {_fmt(control['mrr'])} | "
+            f"{control['safety']['violation_cases']} |"
+        ),
+        (
+            f"| 词面覆盖 | {_fmt(treatment['recall']['@1'])} | {_fmt(treatment['mrr'])} | "
+            f"{treatment['safety']['violation_cases']} |"
+        ),
+        "",
+        "## 3. holdout（不参与决策）",
+        "",
+        "| 顺序 | Recall@1 | MRR | 越权案例 |",
+        "|---|---|---|---|",
+        (
+            f"| 对照 | {_fmt(holdout_control['recall']['@1'])} | {_fmt(holdout_control['mrr'])} | "
+            f"{holdout_control['safety']['violation_cases']} |"
+        ),
+        (
+            f"| 词面覆盖 | {_fmt(holdout_treatment['recall']['@1'])} | {_fmt(holdout_treatment['mrr'])} | "
+            f"{holdout_treatment['safety']['violation_cases']} |"
+        ),
+        "",
+    ]
+    return "\n".join(lines)
+
+
 async def main_async(args: argparse.Namespace) -> int:
     """按命令行选择单次评测或融合常数扫描。
 
@@ -454,6 +709,8 @@ async def main_async(args: argparse.Namespace) -> int:
     出参：进程退出码。单次路径结束时写回进入前的融合常数。
     """
     provider = resolve_embedding(args.mode)
+    if args.rerank == "lexical":
+        return await run_lexical(args, provider)
     if args.rrf_sweep:
         if args.mode != "official" and args.mode != "smoke":
             raise SystemExit("不支持的 mode")
@@ -529,6 +786,12 @@ def main() -> int:
         "--rrf-sweep",
         default=None,
         help="逗号分隔的 k 列表，必须含 60。索引只建一次，例如 60,40,80",
+    )
+    parser.add_argument(
+        "--rerank",
+        choices=("lexical",),
+        default=None,
+        help="lexical=只重排已经截断的深度 10；省略则保持现有融合顺序",
     )
     args = parser.parse_args()
     return asyncio.run(main_async(args))

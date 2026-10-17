@@ -1,0 +1,18 @@
+{
+  "command": [
+    "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+    "scripts/agent_gate_probe.py",
+    "--report",
+    "evals/reports/agent-chain-v0.1-official-confirmed-code-r1-20261014.json",
+    "--expected-model",
+    "deepseek-flash",
+    "--expected-endpoint-hash",
+    "12b8deaccc34b32757dbb1497e029da0c2e7b26ffa86b9c926c08cb4692f4508",
+    "--out-dir",
+    "evals/reports/confirmed-code-r1-probes-20261014"
+  ],
+  "exit_code": 0,
+  "stdout": "warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.\nAGENT_PROBE_PASS:route,followup,tool,arguments\n",
+  "stderr_present": false,
+  "model_calls": 0
+}

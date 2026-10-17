@@ -51,7 +51,7 @@ def _person(username: str, role: Role, tenant_name: str) -> tuple[str, str]:
 
 
 def _login(client: TestClient, username: str) -> dict:
-    resp = client.post("/api/auth/login", json={"username": username, "password": PASSWORD})
+    resp = client.post("/api/v1/auth/login", json={"username": username, "password": PASSWORD})
     assert resp.status_code == 200
     body = resp.json()
     return {"Authorization": f"Bearer {body['access_token']}"}
@@ -67,14 +67,14 @@ def test_accept_joins_tenant_without_switching_and_audits_without_code() -> None
     _admin_id, home_id = _person("root", Role.SYSTEM_ADMIN, "default")
     member_id, _member_tenant = _person("ada", Role.MEMBER, "ada-home")
     admin_headers = _login(client, "root")
-    created = client.post("/api/invitations", headers=admin_headers, json={"tenant_id": home_id})
+    created = client.post("/api/v1/invitations", headers=admin_headers, json={"tenant_id": home_id})
     assert created.status_code == 201
     code = created.json()["code"]
     assert created.json()["role"] == "member"
     assert created.json()["max_uses"] == 1
 
     ada = _login(client, "ada")
-    joined = client.post("/api/invitations/accept", headers=ada, json={"code": code})
+    joined = client.post("/api/v1/invitations/accept", headers=ada, json={"code": code})
     assert joined.status_code == 201
     assert joined.json()["tenant_id"] == home_id
     assert code not in joined.text
@@ -96,7 +96,7 @@ def test_accept_joins_tenant_without_switching_and_audits_without_code() -> None
         assert actions == {"invite_create", "invite_accept"}
         assert all(code not in str(log.details) for log in logs)
 
-    again = client.post("/api/invitations/accept", headers=ada, json={"code": code})
+    again = client.post("/api/v1/invitations/accept", headers=ada, json={"code": code})
     assert again.status_code == 409
     assert again.json()["detail"] == "已在租户中"
     with Session(engine) as session:
@@ -111,25 +111,25 @@ def test_expired_and_exhausted_codes_are_rejected() -> None:
     admin_headers = _login(client, "root")
     ada = _login(client, "ada")
 
-    expired = client.post("/api/invitations", headers=admin_headers, json={"tenant_id": home_id})
+    expired = client.post("/api/v1/invitations", headers=admin_headers, json={"tenant_id": home_id})
     expired_code = expired.json()["code"]
     with Session(engine) as session:
         row = session.exec(select(Invitation).where(Invitation.code == expired_code)).one()
         row.expires_at = datetime.now(UTC) - timedelta(days=1)
         session.add(row)
         session.commit()
-    resp = client.post("/api/invitations/accept", headers=ada, json={"code": expired_code})
+    resp = client.post("/api/v1/invitations/accept", headers=ada, json={"code": expired_code})
     assert resp.status_code == 400
     assert resp.json()["detail"] == "邀请码已过期"
 
-    used = client.post("/api/invitations", headers=admin_headers, json={"tenant_id": home_id})
+    used = client.post("/api/v1/invitations", headers=admin_headers, json={"tenant_id": home_id})
     used_code = used.json()["code"]
     with Session(engine) as session:
         row = session.exec(select(Invitation).where(Invitation.code == used_code)).one()
         row.use_count = row.max_uses
         session.add(row)
         session.commit()
-    resp = client.post("/api/invitations/accept", headers=ada, json={"code": used_code})
+    resp = client.post("/api/v1/invitations/accept", headers=ada, json={"code": used_code})
     assert resp.status_code == 409
     assert resp.json()["detail"] == "邀请码已用尽"
 
@@ -139,15 +139,15 @@ def test_member_cannot_create_and_tenant_admin_can() -> None:
     _person("ada", Role.MEMBER, "ada-home")
     _boss_id, home_id = _person("boss", Role.TENANT_ADMIN, "ada-home")
     ada = _login(client, "ada")
-    denied = client.post("/api/invitations", headers=ada, json={})
+    denied = client.post("/api/v1/invitations", headers=ada, json={})
     assert denied.status_code == 403
 
     boss = _login(client, "boss")
-    created = client.post("/api/invitations", headers=boss, json={})
+    created = client.post("/api/v1/invitations", headers=boss, json={})
     assert created.status_code == 201
     assert created.json()["tenant_id"] == home_id
 
-    listed = client.get("/api/invitations", headers=boss)
+    listed = client.get("/api/v1/invitations", headers=boss)
     assert listed.status_code == 200
     assert listed.json()[0]["code"] == created.json()["code"]
 
@@ -156,5 +156,5 @@ def test_unknown_code_is_404() -> None:
     client = _client()
     _person("ada", Role.MEMBER, "ada-home")
     ada = _login(client, "ada")
-    resp = client.post("/api/invitations/accept", headers=ada, json={"code": "missing-code"})
+    resp = client.post("/api/v1/invitations/accept", headers=ada, json={"code": "missing-code"})
     assert resp.status_code == 404

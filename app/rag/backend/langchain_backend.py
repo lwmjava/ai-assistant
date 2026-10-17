@@ -8,16 +8,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 
+from app.rag.access import ReadScope
 from app.rag.backend.base import RagBackend
 from app.rag.effective_date import retrieval_window
 from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.index_identity import EmbeddingIndexIdentity, identity_from_provider
 from app.rag.retrieval_guard import candidate_k, drop_injected_chunks
 from app.rag.vectorstore.base import ChunkResult
 from app.rag.vectorstore.base import VectorStore as ProjectVectorStore
@@ -78,17 +81,23 @@ class _ProjectVectorStoreAdapter(VectorStore):
         tokenizer: Tokenizer,
         tenant_id: str,
         rrf_k: int,
+        read_scope: ReadScope | None = None,
+        identity: EmbeddingIndexIdentity | None = None,
     ) -> None:
         self._store = store
         self._embedding = embedding
         self._tokenizer = tokenizer
         self._tenant_id = tenant_id
         self._rrf_k = rrf_k
+        self._read_scope = read_scope
+        self._identity = identity
 
     def add_texts(
         self,
-        texts: list[str],
+        texts: Iterable[str],
         metadatas: list[dict] | None = None,
+        *,
+        ids: list[str] | None = None,
         **kwargs: object,
     ) -> list[str]:
         raise NotImplementedError("写入统一走 RAGService，避免绕过主库与租户隔离")
@@ -99,8 +108,10 @@ class _ProjectVectorStoreAdapter(VectorStore):
         texts: list[str],
         embedding: Embeddings | None = None,
         metadatas: list[dict] | None = None,
+        *,
+        ids: list[str] | None = None,
         **kwargs: object,
-    ) -> VectorStore:
+    ) -> _ProjectVectorStoreAdapter:
         raise NotImplementedError("写入统一走 RAGService，避免绕过主库与租户隔离")
 
     def similarity_search(
@@ -127,6 +138,8 @@ class _ProjectVectorStoreAdapter(VectorStore):
             rrf_k=self._rrf_k,
             as_of=as_of,
             schedule_at=schedule_at,
+            read_scope=self._read_scope,
+            identity=self._identity,
         )
         return [
             (
@@ -137,6 +150,7 @@ class _ProjectVectorStoreAdapter(VectorStore):
                         "document_id": h.document_id,
                         "source": h.source,
                         "version_status": h.version_status,
+                        "similarity": h.similarity,
                     },
                 ),
                 h.score,
@@ -157,7 +171,9 @@ def _build_text_splitter(chunk_size: int, overlap: int, splitter: str):
 
     name = (splitter or "recursive").strip().lower()
     if name != "recursive":
-        logger.warning("未知 RAG_LANGCHAIN_SPLITTER=%s，使用 recursive", splitter)
+        logger.warning(
+            "rag_splitter_fallback backend=langchain effective=recursive reason=invalid_splitter"
+        )
     return RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap,
@@ -185,6 +201,13 @@ class LangChainRagBackend(RagBackend):
         self._tokenizer = tokenizer
         self._rrf_k = rrf_k
         self._splitter_name = splitter
+        self._identity: EmbeddingIndexIdentity | None = None
+
+    def _current_identity(self) -> EmbeddingIndexIdentity:
+        """当前查询 provider 的完整索引身份（惰性计算并缓存）。"""
+        if self._identity is None:
+            self._identity = identity_from_provider(self._embedding)
+        return self._identity
 
     async def split(self, text: str, *, chunk_size: int, overlap: int) -> list[str]:
         splitter = _build_text_splitter(chunk_size, overlap, self._splitter_name)
@@ -195,7 +218,12 @@ class LangChainRagBackend(RagBackend):
         return await asyncio.to_thread(_run)
 
     async def retrieve(
-        self, query: str, *, tenant_id: str, top_k: int
+        self,
+        query: str,
+        *,
+        tenant_id: str,
+        top_k: int,
+        read_scope: ReadScope | None = None,
     ) -> list[ChunkResult]:
         adapter = _ProjectVectorStoreAdapter(
             self._store,
@@ -203,11 +231,21 @@ class LangChainRagBackend(RagBackend):
             self._tokenizer,
             tenant_id,
             self._rrf_k,
+            read_scope,
+            self._current_identity(),
         )
         pairs = await adapter.asimilarity_search_with_score(query, k=candidate_k(top_k))
         results: list[ChunkResult] = []
         for doc, score in pairs:
             meta = doc.metadata or {}
+            similarity = meta.get("similarity")
+            if (
+                isinstance(similarity, bool)
+                or not isinstance(similarity, int | float)
+                or not math.isfinite(similarity)
+                or not -1 <= similarity <= 1
+            ):
+                raise ValueError("Invalid dense similarity in retrieval metadata")
             results.append(
                 ChunkResult(
                     id=str(meta.get("chunk_id") or ""),
@@ -216,6 +254,7 @@ class LangChainRagBackend(RagBackend):
                     document_id=str(meta.get("document_id") or ""),
                     score=float(score),
                     version_status=str(meta.get("version_status") or "current"),
+                    similarity=float(similarity),
                 )
             )
         return drop_injected_chunks(results, keep=top_k)

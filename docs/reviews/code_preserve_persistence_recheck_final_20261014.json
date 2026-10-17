@@ -1,0 +1,41 @@
+{
+  "executing_agent": "/root",
+  "capture_tool": "functions.exec / exec_command",
+  "date": "2026-10-14",
+  "started_at_utc": "2026-10-14T03:03:54.516727",
+  "database": "sqlite:///./data/test_ai_assistant.db",
+  "test_command": [
+    "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+    "-m",
+    "pytest",
+    "tests/test_agent_chain.py::test_chat_service_persists_code_results_for_both_routes",
+    "-q",
+    "--basetemp=data/pytest-tmp-code-preserve-persistence-final-20261014",
+    "--junitxml=docs/reviews/code_preserve_persistence_final_20261014.xml"
+  ],
+  "test_exit_code": 0,
+  "test_stdout": ".                                                                        [100%]\n============================== warnings summary ===============================\ntests/test_agent_chain.py::test_chat_service_persists_code_results_for_both_routes\n  E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\app\\agents\\tools\\sandbox\\sandbox.py:93: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead\n    ast.NameConstant,  # Python 3.7 兼容\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\docs\\reviews\\code_preserve_persistence_final_20261014.xml -\n1 passed, 1 warning in 1.77s\n",
+  "probe_command": [
+    "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+    "docs\\reviews\\agt003_persistence_recheck_20261014.py"
+  ],
+  "probe_sha256": "e7c6ce8032c0265bff96bf31b2d86c38873779a0e9718b4ca5b97a5b0fd44161",
+  "probe_exit_code": 0,
+  "probe_stdout_raw": "{\"evidence\": \"E2-isolated-test-db-new-process-new-session\", \"checks\": [{\"route\": \"YES\", \"new_session_committed_code_result\": true}, {\"route\": \"NO\", \"new_session_committed_code_result\": true}]}\n",
+  "probe_result": {
+    "evidence": "E2-isolated-test-db-new-process-new-session",
+    "checks": [
+      {
+        "route": "YES",
+        "new_session_committed_code_result": true
+      },
+      {
+        "route": "NO",
+        "new_session_committed_code_result": true
+      }
+    ]
+  },
+  "model_calls": 0,
+  "pipeline_sha256": "0a637f7e8f208c3f51d752c799e4df6f29f75ca7241b89f276ce6557e012a2f0",
+  "historical_json_not_reused": "agt003_persistence_recheck_20261014.json kept unchanged as previous manual-acceptance history"
+}

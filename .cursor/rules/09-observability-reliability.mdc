@@ -2,7 +2,11 @@
 description: Trace、审计、SLO 与故障恢复
 globs:
   - "{src,app,lib,packages}/**/{observability,telemetry,logging,tracing,reliability}/**/*"
+  - "app/{debug,audit}/**/*"
+  - "app/core/*{log,trace}*.*"
+  - "app/workflow/**/*"
   - "{ops,deploy,monitoring}/**/*"
+  - "{Dockerfile,docker-compose*.yml}"
 alwaysApply: false
 ---
 
@@ -10,10 +14,10 @@ alwaysApply: false
 
 ## MUST
 
-- 以 trace ID 关联请求、Agent Step、模型、Prompt、Tool、状态迁移、审批和业务结果。
-- 记录结构化日志、指标、错误分类、延迟、Token/成本和审计事件，并执行脱敏。
-- 为超时、有限重试、退避、熔断、取消、恢复和降级定义可观测行为。
-- 关键能力定义 SLI/SLO、告警、Runbook 与责任人。
+- 本次新增或修改的关键链路沿用现有 trace ID 和审计能力关联请求、Agent Step、模型、Prompt、Tool、状态迁移、审批和业务结果；不得把尚未持久化的 Trace 写成完整能力。
+- 对本次新增或修改的行为记录项目当前可承载的结构化日志、错误分类、延迟和审计事件，并执行脱敏；指标及 Token/成本记录按已批准专项范围补齐。
+- 本次引入超时、有限重试、退避、熔断、取消、恢复或降级时，必须同时定义可观测行为。
+- 关键能力的 SLI/SLO、告警、Runbook 与责任人按对应 `NFR`/`OPS` 任务推进；未完成前保持 `Partial` 或 `Planned`。
 
 ## SHOULD
 

@@ -6,6 +6,7 @@
 
 from abc import ABC, abstractmethod
 
+from app.rag.access import ReadScope
 from app.rag.vectorstore.base import ChunkResult
 
 
@@ -27,6 +28,15 @@ class RagBackend(ABC):
 
     @abstractmethod
     async def retrieve(
-        self, query: str, *, tenant_id: str, top_k: int
+        self,
+        query: str,
+        *,
+        tenant_id: str,
+        top_k: int,
+        read_scope: ReadScope | None = None,
     ) -> list[ChunkResult]:
-        """返回按相关度降序的分块，无结果返回空列表。"""
+        """返回按相关度降序的分块，无结果返回空列表。
+
+        ``read_scope`` 为鉴权主体的有效读范围，须在取候选时生效（检索前过滤），
+        不能先召回再丢弃，否则他人文档会占用本主体的 top-k 预算。
+        """

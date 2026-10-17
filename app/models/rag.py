@@ -15,6 +15,19 @@ from sqlmodel import Field, Relationship, SQLModel
 from app.models.base import TimestampMixin
 
 
+class IndexStatus(StrEnum):
+    """向量索引生命周期状态（ADR-0008）。
+
+    ``preparing`` 的索引正在重建，此时旧索引仍是 ``active``，读路径不受影响；
+    只有显式激活才切换，失败保留旧读路径。
+    """
+
+    PREPARING = "preparing"
+    ACTIVE = "active"
+    RETIRED = "retired"
+    FAILED = "failed"
+
+
 def _uuid() -> str:
     """生成短 UUID 主键（十六进制字符串）。"""
     return uuid.uuid4().hex
@@ -68,6 +81,7 @@ class Document(SQLModel, TimestampMixin, table=True):
     title: str
     source: str | None = Field(default=None)  # 来源文件名 / 标识
     storage_path: str | None = Field(default=None)  # 源文件相对路径（data/knowledge/...）
+    source_bytes: int | None = Field(default=None)  # 文档提交成功时写下的源文件字节数
     source_kind: str = Field(default=ImportSourceType.FILE.value, index=True)
     source_uri: str | None = Field(default=None)  # URL 等逻辑来源标识
     content_hash: str | None = Field(default=None, index=True)
@@ -81,10 +95,43 @@ class Document(SQLModel, TimestampMixin, table=True):
     expires_at: datetime | None = Field(default=None, index=True)
     import_job_id: str | None = Field(default=None, index=True)
     chunk_count: int = Field(default=0)
+    # 版本化切分计划（JSON）：策略名 + 有效参数 + 路由原因；重解析据此精确重放。
+    chunk_plan: str | None = Field(default=None)
 
     chunks: list["DocumentChunk"] = Relationship(
         back_populates="document", cascade_delete=True
     )
+    ingestion_snapshots: list["DocumentIngestionSnapshot"] = Relationship(
+        back_populates="document", cascade_delete=True
+    )
+
+
+class DocumentIngestionSnapshot(SQLModel, TimestampMixin, table=True):
+    """原始解析文本及结构快照；不通过公开 API 暴露。"""
+
+    __tablename__ = "rag_ingestion_snapshots"
+    document_id: str = Field(primary_key=True, foreign_key="rag_documents.id")
+    tenant_id: str = Field(index=True)
+    original_text: str
+    original_blocks: str
+    cleaning_report: str
+    document: Document | None = Relationship(back_populates="ingestion_snapshots")
+
+
+class VectorCleanupJob(SQLModel, TimestampMixin, table=True):
+    """到期清理意图和重试证据，文档删除后仍保留。"""
+
+    __tablename__ = "rag_vector_cleanup_jobs"
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    document_id: str = Field(index=True, unique=True)
+    vector_backend: str
+    vector_target: str = Field(default="")
+    status: str = Field(default="pending", index=True)
+    attempt_count: int = Field(default=0)
+    max_attempts: int = Field(default=3)
+    next_attempt_at: datetime | None = Field(default=None, index=True)
+    last_error_code: str | None = Field(default=None)
 
 
 class DocumentChunk(SQLModel, TimestampMixin, table=True):
@@ -108,6 +155,9 @@ class DocumentChunk(SQLModel, TimestampMixin, table=True):
     strategy: str | None = Field(default=None)
     # 章节 / 位置 / 溯源等扩展信息（JSON 字符串）。
     chunk_metadata: str | None = Field(default=None)
+    # 所属向量索引。为 None 表示身份未知的历史数据：
+    # 按 ADR-0008 不得自动认定与当前配置兼容，因此默认不参与检索。
+    index_id: str | None = Field(default=None, index=True)
 
     document: Document | None = Relationship(back_populates="chunks")
 
@@ -177,6 +227,35 @@ class ImportJobTrace(SQLModel, TimestampMixin, table=True):
     stderr: str | None = Field(default=None)
 
 
+class EmbeddingIndex(SQLModel, TimestampMixin, table=True):
+    """向量索引登记（ADR-0008）。
+
+    一个索引 = 一套「同一模型、同一维度、同一归一化与度量」的向量集合。
+    切换模型时不原地改写，而是建新索引、校验后显式激活，旧索引保留用于回退。
+    """
+
+    __tablename__ = "rag_embedding_indexes"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    name: str = Field(index=True, unique=True)
+    backend: str = Field(default="local", index=True)
+    provider: str = Field(default="")
+    model: str = Field(default="", index=True)
+    deployment: str = Field(default="")
+    dim: int = Field(default=0)
+    index_version: str = Field(default="1")
+    normalization: str = Field(default="l2")
+    metric: str = Field(default="cosine")
+    # 身份指纹：比对用，避免每次拼字符串。
+    identity_key: str = Field(default="", index=True)
+    status: str = Field(default=IndexStatus.PREPARING.value, index=True)
+    # 重建/校验结果，失败时保留证据而不是静默回退。
+    chunk_count: int = Field(default=0)
+    notes: str | None = Field(default=None)
+    activated_at: datetime | None = Field(default=None)
+    retired_at: datetime | None = Field(default=None)
+
+
 class OperationConfirmation(SQLModel, TimestampMixin, table=True):
     """跨租户敏感操作的一次性确认记录。"""
 
@@ -188,3 +267,76 @@ class OperationConfirmation(SQLModel, TimestampMixin, table=True):
     document_id: str = Field(index=True)
     action: str = Field(index=True)
     consumed_at: datetime | None = Field(default=None, index=True)
+
+
+class SectionSummaryJobStatus(StrEnum):
+    """章节摘要独立任务状态机（RAG-040）。"""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    PARTIAL = "partial"
+    FAILED = "failed"
+
+
+class SectionSummaryStatus(StrEnum):
+    """单条章节摘要状态。"""
+
+    READY = "ready"
+    FAILED = "failed"
+
+
+class SectionSummaryJob(SQLModel, TimestampMixin, table=True):
+    """一次「为某文档版本生成章节摘要」的独立状态任务（RAG-040）。
+
+    仿 ``ImportJob`` 的状态机：pending → running → success/partial/failed。
+    任务与摘要都是**派生数据**：默认关闭，不进检索向量，不替代原文块。
+    绑定源版本身份（``source_version_hash`` = ``Document.content_hash``）、切分计划
+    版本与模型/Prompt/协议版本；重解析后版本变化，旧摘要随源版本失效规则不可读。
+    """
+
+    __tablename__ = "rag_section_summary_jobs"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    document_id: str = Field(foreign_key="rag_documents.id", index=True)
+    status: str = Field(default=SectionSummaryJobStatus.PENDING.value, index=True)
+    source_version_hash: str = Field(default="", index=True)
+    chunk_plan_version: str = Field(default="")
+    model: str = Field(default="")
+    prompt_version: str = Field(default="")
+    protocol_version: str = Field(default="")
+    calls_used: int = Field(default=0)
+    max_calls: int = Field(default=8)
+    chapters_total: int = Field(default=0)
+    chapters_ready: int = Field(default=0)
+    chapters_failed: int = Field(default=0)
+    error: str | None = Field(default=None)
+    attempt_count: int = Field(default=0)
+    max_attempts: int = Field(default=3)
+
+
+class SectionSummary(SQLModel, TimestampMixin, table=True):
+    """一条绑定到源文档版本的章节摘要（派生数据，RAG-040）。
+
+    ``chunk_id`` 指向被摘要的父块（章节）；``source_chunk_ids``（JSON）记录喂入的
+    原文块 ID，供原文回查。摘要继承源文档的读授权：源版本软删 / 被替换 / 跨租户时
+    读取立即拒绝（``app.rag.section_summaries.get_readable_summary``），不自行物理删除。
+    """
+
+    __tablename__ = "rag_section_summaries"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    document_id: str = Field(foreign_key="rag_documents.id", index=True)
+    chunk_id: str = Field(foreign_key="rag_document_chunks.id", index=True)
+    source_version_hash: str = Field(default="", index=True)
+    chunk_plan_version: str = Field(default="")
+    model: str = Field(default="")
+    prompt_version: str = Field(default="")
+    protocol_version: str = Field(default="")
+    summary_text: str | None = Field(default=None)
+    # 喂入摘要的原文块 ID 列表（JSON 数组字符串），供原文回查。
+    source_chunk_ids: str | None = Field(default=None)
+    status: str = Field(default=SectionSummaryStatus.READY.value, index=True)
+    error: str | None = Field(default=None)

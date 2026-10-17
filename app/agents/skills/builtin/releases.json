@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "skills": {
+    "code_review": [
+      {
+        "version": "1.0",
+        "content_revision": "ccef490a3edcc138ca2446dffee081b220f37868ab14100491ea3bc6524a7b3e",
+        "summary": "Initial tracked release; existing prompt and trigger behavior preserved."
+      }
+    ],
+    "translator": [
+      {
+        "version": "1.0",
+        "content_revision": "e87edb2efae6cac0006afe5b27dca523b3ad34679fedc3643214368238484844",
+        "summary": "Initial tracked release; existing prompt and trigger behavior preserved."
+      }
+    ]
+  }
+}

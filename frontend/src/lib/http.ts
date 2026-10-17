@@ -1,9 +1,16 @@
 /** HTTP 客户端：统一注入鉴权头、过期前主动刷新、401 兜底重试、把后端错误归一为 ApiError。 */
 
+import { errorCode, errorMessage, terminalIdentity, ERROR_MESSAGES } from '@/lib/api-errors'
+import type { ErrorCode } from '@/lib/api-errors'
+import { rememberSessionNotice } from '@/lib/session-notice'
+import { authSessionEpoch, AuthSessionChangedError } from '@/lib/auth-session'
 import { shouldRefreshAccessToken } from '@/lib/access-token'
+import { quotaExceededMessage } from '@/lib/quota-message'
+import { rateLimitedDetail } from '@/lib/rate-limit'
 
 /** 归一化后的 API 错误：保留状态码与后端 detail / 字段级校验信息。 */
 export class ApiError extends Error {
+  readonly code: ErrorCode | undefined
   readonly status: number
   readonly detail: string
   readonly payload: unknown
@@ -19,6 +26,7 @@ export class ApiError extends Error {
   ) {
     super(detail)
     this.name = 'ApiError'
+    this.code = errorCode(payload)
     this.status = status
     this.detail = detail
     this.payload = payload
@@ -53,7 +61,7 @@ export function hideStackTrace(message: string): string {
   return message
 }
 
-const BASE = '/api'
+export const API_BASE = '/api/v1'
 const STORAGE_KEY = 'aa-auth'
 
 interface StoredAuth {
@@ -98,8 +106,8 @@ function writeTokens(tokens: StoredAuth | null) {
 }
 
 /** 会话失效回调：由 main.tsx 注入，用于清空 store 并跳转登录。 */
-let onSessionExpired: (() => void) | null = null
-export function setSessionExpiredHandler(handler: () => void) {
+let onSessionExpired: ((error: ApiError) => void) | null = null
+export function setSessionExpiredHandler(handler: (error: ApiError) => void) {
   onSessionExpired = handler
 }
 
@@ -118,24 +126,49 @@ export function setTokensRefreshedHandler(handler: (tokens: StoredAuth) => void)
 
 /** 并发 401 只触发一次刷新，其余请求共享同一个 Promise。 */
 let refreshPromise: Promise<StoredAuth | null> | null = null
+let refreshFailure: ApiError | undefined
 
 async function doRefresh(): Promise<StoredAuth | null> {
+  refreshFailure = undefined
   const tokens = readTokens()
   if (!tokens?.refresh_token) return null
+  const epoch = authSessionEpoch()
+  const assertOwner = () => {
+    const current = readTokens()
+    if (epoch !== authSessionEpoch() || current?.access_token !== tokens.access_token || current.refresh_token !== tokens.refresh_token) throw new AuthSessionChangedError()
+  }
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => { controller.abort(); reject(new Error('refresh timeout')) }, 15_000)
+  })
   try {
-    const res = await fetch(`${BASE}/auth/refresh`, {
+    const res = await Promise.race([fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: tokens.refresh_token }),
-    })
-    if (!res.ok) return null
-    const next = (await res.json()) as StoredAuth
+      signal: controller.signal,
+    }), timeout])
+    assertOwner()
+    if (!res.ok) {
+      const failure = await Promise.race([parseError(res), timeout])
+      assertOwner()
+      refreshFailure = failure
+      return null
+    }
+    const next = (await Promise.race([res.json(), timeout])) as StoredAuth
+    assertOwner()
+    if (typeof next.access_token !== 'string' || !next.access_token || typeof next.refresh_token !== 'string' || !next.refresh_token) return null
     writeTokens(next)
     // 同步回 auth store，见 setTokensRefreshedHandler 的说明
     onTokensRefreshed?.(next)
     return next
-  } catch {
+  } catch (error) {
+    assertOwner()
+    if (error instanceof AuthSessionChangedError) throw error
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -154,9 +187,16 @@ export function refreshTokens(): Promise<StoredAuth | null> {
  * 供 SSE 等调用方在「刷新令牌也失效」时使用，保证与 `request` 内部的行为一致——
  * 否则用户会卡在当前页面，看不到任何跳转。
  */
-export function notifySessionExpired() {
+export function notifySessionExpired(cause?: ApiError, epoch = authSessionEpoch()) {
+  if (epoch !== authSessionEpoch()) return new AuthSessionChangedError()
+  const source = cause ?? refreshFailure
+  const code = source?.code && terminalIdentity(source.code) ? source.code : 'session_expired'
+  const message = ERROR_MESSAGES[code]
+  const error = new ApiError(source?.status ?? 401, message, { error: { code } }, true)
+  rememberSessionNotice(code, message)
   writeTokens(null)
-  onSessionExpired?.()
+  onSessionExpired?.(error)
+  return error
 }
 
 function refreshOnce(): Promise<StoredAuth | null> {
@@ -168,10 +208,8 @@ function refreshOnce(): Promise<StoredAuth | null> {
   return refreshPromise
 }
 
-function expireSession(): never {
-  writeTokens(null)
-  onSessionExpired?.()
-  throw new ApiError(401, '登录状态已失效，请重新登录', undefined, true)
+function expireSession(cause?: ApiError): never {
+  throw notifySessionExpired(cause)
 }
 
 /** 请求前换票：过期或即将过期则先 refresh；换票失败视为调用时会话失效。 */
@@ -193,13 +231,25 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   signal?: AbortSignal
 }
 
-async function parseError(res: Response): Promise<ApiError> {
+/** 二进制响应：除 blob 外一并给出响应头，供调用方取后端给的权威文件名。 */
+export interface BlobResponse {
+  blob: Blob
+  headers: Headers
+}
+
+export async function parseError(res: Response): Promise<ApiError> {
   let detail = res.statusText || '请求失败'
   let payload: unknown
   try {
     const data = (await res.json()) as { detail?: unknown }
     payload = data
-    if (typeof data?.detail === 'string') detail = data.detail
+    const quota = quotaExceededMessage(data)
+    const limited = rateLimitedDetail(data)
+    const normalized = errorMessage(data)
+    if (normalized) detail = normalized
+    else if (quota) detail = quota
+    else if (limited) detail = limited
+    else if (typeof data?.detail === 'string') detail = data.detail
     else if (Array.isArray(data?.detail)) {
       // Pydantic 字段校验错误：[{loc, msg, type}]
       detail = data.detail
@@ -212,15 +262,19 @@ async function parseError(res: Response): Promise<ApiError> {
   } catch {
     /* 非 JSON 响应时沿用 statusText */
   }
-  return new ApiError(res.status, detail, payload)
+  return new ApiError(res.status, hideStackTrace(detail), payload)
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** 拿到已鉴权、已归一错误、且未消费 body 的响应。供需要响应头/二进制体的调用方复用。 */
+async function requestResponse(path: string, options: RequestOptions = {}): Promise<Response> {
+  const epoch = authSessionEpoch()
+  const assertOwner = () => { if (epoch !== authSessionEpoch()) throw new AuthSessionChangedError() }
   const { body, form, anonymous, _retried, headers, ...rest } = options
   const finalHeaders = new Headers(headers)
 
   if (!anonymous) {
-    const tokens = await ensureFreshAccessToken()
+    const tokens = _retried ? readTokens() : await ensureFreshAccessToken()
+    assertOwner()
     if (!tokens?.access_token) {
       expireSession()
     }
@@ -232,21 +286,33 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (!finalHeaders.has('Content-Type')) finalHeaders.set('Content-Type', 'application/json')
   }
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...rest,
     headers: finalHeaders,
     body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
   })
+  if (!anonymous) assertOwner()
 
-  if (res.status === 401 && !anonymous && !_retried) {
-    const next = await refreshOnce()
-    if (next) {
-      return request<T>(path, { ...options, _retried: true })
+  if (!res.ok) {
+    const error = await parseError(res)
+    if (!anonymous) assertOwner()
+    if ((!anonymous && terminalIdentity(error.code)) || error.code === 'tenant_suspended') expireSession(error)
+    if (res.status === 401 && !anonymous) {
+      if (!_retried) {
+        const next = await refreshOnce()
+        if (next) return requestResponse(path, { ...options, _retried: true })
+        expireSession(refreshFailure)
+      }
+      expireSession(error)
     }
-    expireSession()
+    throw error
   }
 
-  if (!res.ok) throw await parseError(res)
+  return res
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const res = await requestResponse(path, options)
 
   if (res.status === 204) return undefined as T
   const text = await res.text()
@@ -268,6 +334,11 @@ export const api = {
     request<T>(path, { ...options, method: 'PATCH', body }),
   delete: <T>(path: string, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'DELETE' }),
+  /** 二进制响应（源文件下载）。沿用同一套鉴权、401 刷新与错误归一化。 */
+  blob: async (path: string, options?: RequestOptions): Promise<BlobResponse> => {
+    const res = await requestResponse(path, { ...options, method: 'GET' })
+    return { blob: await res.blob(), headers: res.headers }
+  },
   upload: <T>(path: string, form: FormData, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'POST', form }),
   /** 供 store 直接写入刷新后的令牌。 */

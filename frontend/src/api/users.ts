@@ -9,6 +9,9 @@ export interface UserQuery {
   page: number
   page_size: number
   username?: string
+  role?: string
+  is_active?: boolean
+  tenant_id?: string
 }
 
 export const userKeys = {
@@ -20,6 +23,9 @@ export function useUsers(query: UserQuery, enabled = true) {
   params.set('page', String(query.page))
   params.set('page_size', String(query.page_size))
   if (query.username) params.set('username', query.username)
+  if (query.role) params.set('role', query.role)
+  if (query.is_active !== undefined) params.set('is_active', String(query.is_active))
+  if (query.tenant_id) params.set('tenant_id', query.tenant_id)
   return useQuery({
     queryKey: [...userKeys.all, query],
     queryFn: () => api.get<UserPage>(`/admin/users?${params.toString()}`),
@@ -43,6 +49,16 @@ export function useDisableUser() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (userId: string) => api.post<UserAdminOut>(`/admin/users/${userId}/disable`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: userKeys.all })
+    },
+  })
+}
+
+export function useEnableUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => api.post<UserAdminOut>(`/admin/users/${userId}/enable`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: userKeys.all })
     },

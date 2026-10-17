@@ -189,6 +189,8 @@ async def test_main_async_restores_rrf_k_after_single_run(
     _stub_eval_io(monkeypatch, runner)
     original = settings.RAG_HYBRID_RRF_K
     override = 40 if original != 40 else 80
+    # 手搓 Namespace 绕开了 argparse，字段必须与
+    # scripts/run_rag_baseline.py 的 main() 参数保持一致，那边加参数这里要同步。
     args = argparse.Namespace(
         mode="smoke",
         db=str(REPO_ROOT / "data" / "eval_rrf_k_restore_test.db"),
@@ -196,6 +198,7 @@ async def test_main_async_restores_rrf_k_after_single_run(
         out=None,
         rrf_k=override,
         rrf_sweep=None,
+        rerank=None,
     )
     try:
         code = await runner.main_async(args)
@@ -221,6 +224,7 @@ async def test_main_async_restores_rrf_k_when_cases_fail(
         out=None,
         rrf_k=override,
         rrf_sweep=None,
+        rerank=None,
     )
     try:
         with pytest.raises(RuntimeError, match="simulated case failure"):
@@ -247,6 +251,7 @@ async def test_run_sweep_still_restores_rrf_k(
         out=None,
         rrf_k=None,
         rrf_sweep="60,40",
+        rerank=None,
     )
     try:
         code = await runner.run_sweep(args, SimpleNamespace())

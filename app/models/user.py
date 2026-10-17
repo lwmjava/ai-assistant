@@ -21,6 +21,9 @@ class Tenant(SQLModel, TimestampMixin, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(index=True)
     is_active: bool = Field(default=True)
+    # 空值表示不限制。0 表示该维度不允许新增。
+    message_limit: int | None = Field(default=None)
+    storage_limit_bytes: int | None = Field(default=None)
 
     users: list["User"] = Relationship(back_populates="tenant")
 
@@ -40,6 +43,8 @@ class User(SQLModel, TimestampMixin, table=True):
     # refresh token 撤销计数：每次登出/改密自增，使旧 refresh token 失效。
     token_version: int = Field(default=0)
     is_active: bool = Field(default=True)
+    is_test_user: bool = Field(default=False)
+    must_change_password: bool = Field(default=False)
 
     tenant: Tenant | None = Relationship(back_populates="users")
 

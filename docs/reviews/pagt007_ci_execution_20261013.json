@@ -1,0 +1,65 @@
+{
+  "task": "PAGT-007",
+  "run_id": 38397622273,
+  "run_url": "https://github.com/lwmjava/ai-assistant/actions/runs/38397622273",
+  "commit": "7bf432820c47963bd657b39da8b3987087cc8d1c",
+  "job_id": 115296776185,
+  "job_conclusion": "failure",
+  "official_step": "success",
+  "model": "deepseek-flash",
+  "model_requests": 12,
+  "metrics": {
+    "route_accuracy": 1.0,
+    "followup_recall": 1.0,
+    "tool_selection_recall": 1.0
+  },
+  "report_sha256": "2dcf41385f92ea03c48b403c63119268992db4e059ecb356ef6ec2408d1e7c47",
+  "artifact_id": 11811959201,
+  "artifact_zip_digest": "sha256:777e9f1c73964b0da6a8139c99b5d2eff03820c3d31ef9fe8a0d5b1acecfc31a",
+  "gate_step_exit": 2,
+  "root_cause": "dependency stdout import warning captured as part of endpoint hash",
+  "same_commit_clean_hash_local_gate_exit": 0,
+  "same_commit_local_synthetic_probes_exit": 0,
+  "new_model_calls_after_ci": 0,
+  "fix_red_test": {
+    "failed": 1,
+    "exit_code": 1
+  },
+  "fix_green_tests": {
+    "passed": 2,
+    "exit_code": 0
+  },
+  "fixed_ci_run": "not authorized or executed yet",
+  "backend": {
+    "conclusion": "failure",
+    "ruff": "success",
+    "mypy": "success",
+    "pytest": {
+      "passed": 1852,
+      "failed": 1,
+      "skipped": 4,
+      "seconds": 377.9,
+      "failure": "tests/test_rag_039_acceptance.py::test_thread_event_loops_share_actual_process_concurrency_cap",
+      "error": "sqlite3.OperationalError: database is locked"
+    },
+    "rag_gate": "skipped"
+  },
+  "frontend": "success",
+  "fix_independent": {
+    "agent": "pagt007_entry_validation_v2",
+    "pytest_passed": 2,
+    "pytest_exit": 0,
+    "seconds": 3.27,
+    "actual_capture_exit": 0,
+    "stdout": "64 hex digest plus newline only",
+    "stderr": "actual fitz notice",
+    "git_bash_syntax_exit": 0,
+    "report": "docs/reviews/2026-10-13-PAGT-007-ci-fix-review.md",
+    "review_sha256": "07d7b2625599fe9237bbee672ea6df9c67a35a626c91dd653cc593428f706db7",
+    "ci_sha256": "0a4c5918b959bb5d752a717df70e970822065943e11c52a143b6a23d15e2b7fd"
+  },
+  "fixed_file_hashes": {
+    ".github/workflows/ci.yml": "0a4c5918b959bb5d752a717df70e970822065943e11c52a143b6a23d15e2b7fd",
+    "tests/eval/test_agent_ci_endpoint_capture.py": "e6553674fefc3e6b9ac49a915322a2470daa84a354ad3e3745cd4dc064613857"
+  }
+}

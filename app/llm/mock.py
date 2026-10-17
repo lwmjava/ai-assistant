@@ -3,9 +3,11 @@
 不调用真实模型，按简单规则生成可预测的回复，便于离线开发、CI 与单元测试。
 """
 
+import json
 from collections.abc import AsyncIterator
 
-from app.llm.base import ChatMessage, LLMOptions, LLMProvider
+from app.agents.prompts import SYSTEM_PLAN
+from app.llm.base import ChatMessage, LLMOptions, LLMProvider, content_text
 
 
 class MockLLMProvider(LLMProvider):
@@ -17,6 +19,15 @@ class MockLLMProvider(LLMProvider):
     async def chat(
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> str:
+        if any(
+            message.role.value == "system"
+            and content_text(message.content).split("\n\n---\n# 激活的技能指令\n", 1)[0] == SYSTEM_PLAN
+            for message in messages
+        ):
+            return json.dumps({"schema_version": 1, "steps": [{
+                "id": "answer", "description": "综合当前上下文作答", "kind": "reason",
+                "depends_on": [], "expected_output": "用户问题的回答草稿",
+            }]}, ensure_ascii=False)
         last_user = _last_user_message(messages)
         return (
             f"[mock] 已收到你的消息：{last_user}\n"
@@ -34,7 +45,7 @@ class MockLLMProvider(LLMProvider):
 def _last_user_message(messages: list[ChatMessage]) -> str:
     for message in reversed(messages):
         if message.role.value == "user":
-            return message.content
+            return content_text(message.content)
     return ""
 
 

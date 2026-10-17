@@ -1,0 +1,155 @@
+{
+  "head": "80629c4cd5ce00d59b26116c7419edce00e6a113",
+  "branch": "codex/cov-001",
+  "platform": "Windows-11-10.0.22621-SP0",
+  "interpreter": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+  "versions": {
+    "sqlmodel": "0.0.22",
+    "sqlalchemy": "2.0.36",
+    "bcrypt": "4.2.1",
+    "pydantic": "2.10.4",
+    "pydantic-settings": "2.7.0",
+    "ruff": "0.8.4",
+    "mypy": "1.14.1"
+  },
+  "red": {
+    "command": [
+      "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+      "docs/evaluations/env002_bootstrap_contract.py"
+    ],
+    "exit_code": 1,
+    "failure": "template_contains_login_password",
+    "note": "初次脚本接口KeyError修正后复现有效业务红例；未记录密码值"
+  },
+  "non_sensitive_config": "process environment cleared for Settings; no .env; isolated in-memory SQLite; runtime generated password never printed",
+  "historical_checks_before_review_fix": [
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env002_bootstrap_contract.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"version\": \"env002-v1\",\n  \"checks\": [\n    \"181_keys_actual_settings\",\n    \"source_default_empty\",\n    \"sample_password_empty\",\n    \"bootstrap_combination_0_persisted_idempotent\",\n    \"bootstrap_combination_1_persisted_idempotent\",\n    \"bootstrap_combination_2_persisted_idempotent\",\n    \"bootstrap_combination_3_persisted_idempotent\",\n    \"bootstrap_combination_4_persisted_idempotent\",\n    \"existing_member_prevents_admin_backfill_idempotent\"\n  ],\n  \"platform\": \"win32\",\n  \"python\": \"3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]\",\n  \"head\": \"80629c4cd5ce00d59b26116c7419edce00e6a113\",\n  \"sha256\": {\n    \"app/core/security.py\": \"bd7daf3c479124a38f9f96927bcfe87a7101f81d3905e5e4aa8e4bea9b1bd7f0\",\n    \"app/models/base.py\": \"faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2\",\n    \"app/models/user.py\": \"4b12e26d505014e7113dcef6211847c2756b8b557b25e37b3ed408674f3f4a77\",\n    \"app/models/membership.py\": \"d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4\",\n    \"app/services/membership.py\": \"8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f\",\n    \"app/services/auth_service.py\": \"bc22e85cf69e289c8ace0959fec11034b1239d248aec5afbdb312cd7772dc9e5\",\n    \"app/core/config.py\": \"74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432\",\n    \".env.example\": \"bb70330e1a849e71ade0151196580cf4324e025e2432ab528458a42b9c13d498\",\n    \"README.md\": \"f9c7e75835cf7ebaa678999ba6634b51b57338f9cfdfac6353aba045ff18ea1a\",\n    \"docs/evaluations/env002_bootstrap_contract.py\": \"1014cfef647ecb8eef27f961c9b4d9dccec917aa1c93bcd00f0e094be22661f6\",\n    \"docs/evaluations/env001_example_contract.py\": \"704ceae5aedc18d00da5f00dd4185efa5c1344c71ab6a60d3471f2eeeedd4771\"\n  },\n  \"result\": \"pass\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env001_example_contract.py",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"fields\": 181,\n  \"keys\": 181,\n  \"matched\": 181,\n  \"missing\": [],\n  \"extra\": [],\n  \"duplicates\": [],\n  \"unlabeled\": [],\n  \"invalid_dotenv_keys\": [],\n  \"nonempty_secret_fields\": [],\n  \"syntax_error_lines\": [],\n  \"legacy_initial_admin_password_present\": false,\n  \"legacy_password_governance\": \"ENV-002 pending; this check is not production-safety acceptance\",\n  \"source_sha256\": \"74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432\",\n  \"example_sha256\": \"bb70330e1a849e71ade0151196580cf4324e025e2432ab528458a42b9c13d498\",\n  \"passed\": true,\n  \"checks\": [\n    \"real_settings_load_181\",\n    \"unicode_default_roundtrip\",\n    \"process_override_priority\",\n    \"complete_labeled_keys\",\n    \"missing_rejected\",\n    \"extra_rejected\",\n    \"duplicate_rejected\",\n    \"unlabeled_rejected\",\n    \"nonempty_secret_rejected\",\n    \"syntax_rejected\",\n    \"nonfinite_and_invalid_numeric_rejected\",\n    \"invalid_boolean_rejected\",\n    \"private_dotenv_path_rejected_before_read\",\n    \"repeat_read_no_mutation\"\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        ".",
+        "--no-cache"
+      ],
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "mypy",
+        "app/"
+      ],
+      "exit_code": 0,
+      "stdout": "Success: no issues found in 205 source files\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env002_bootstrap_contract.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"version\": \"env002-v1\",\n  \"checks\": [\n    \"181_keys_actual_settings\",\n    \"source_default_empty\",\n    \"sample_password_empty\",\n    \"readme_partial_empty_setup_no_password_literal\",\n    \"bootstrap_combination_0_persisted_idempotent\",\n    \"bootstrap_combination_1_persisted_idempotent\",\n    \"bootstrap_combination_2_persisted_idempotent\",\n    \"bootstrap_combination_3_persisted_idempotent\",\n    \"bootstrap_combination_4_persisted_idempotent\",\n    \"existing_member_prevents_admin_backfill_idempotent\"\n  ],\n  \"platform\": \"win32\",\n  \"python\": \"3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]\",\n  \"head\": \"80629c4cd5ce00d59b26116c7419edce00e6a113\",\n  \"sha256\": {\n    \"app/core/security.py\": \"bd7daf3c479124a38f9f96927bcfe87a7101f81d3905e5e4aa8e4bea9b1bd7f0\",\n    \"app/models/base.py\": \"faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2\",\n    \"app/models/user.py\": \"4b12e26d505014e7113dcef6211847c2756b8b557b25e37b3ed408674f3f4a77\",\n    \"app/models/membership.py\": \"d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4\",\n    \"app/services/membership.py\": \"8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f\",\n    \"app/services/auth_service.py\": \"bc22e85cf69e289c8ace0959fec11034b1239d248aec5afbdb312cd7772dc9e5\",\n    \"app/core/config.py\": \"74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432\",\n    \".env.example\": \"bb70330e1a849e71ade0151196580cf4324e025e2432ab528458a42b9c13d498\",\n    \"README.md\": \"c4ac81384142d9913af244645e11be80cf61d949704f19acd4b9671cbe5385ba\",\n    \"docs/evaluations/env002_bootstrap_contract.py\": \"947dca258fbb313a7e32e153e42e04facf9d8a24eb942a7cd7713727471cdd6b\",\n    \"docs/evaluations/env001_example_contract.py\": \"704ceae5aedc18d00da5f00dd4185efa5c1344c71ab6a60d3471f2eeeedd4771\"\n  },\n  \"result\": \"pass\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env001_example_contract.py",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"fields\": 181,\n  \"keys\": 181,\n  \"matched\": 181,\n  \"missing\": [],\n  \"extra\": [],\n  \"duplicates\": [],\n  \"unlabeled\": [],\n  \"invalid_dotenv_keys\": [],\n  \"nonempty_secret_fields\": [],\n  \"syntax_error_lines\": [],\n  \"legacy_initial_admin_password_present\": false,\n  \"legacy_password_governance\": \"ENV-002 pending; this check is not production-safety acceptance\",\n  \"source_sha256\": \"74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432\",\n  \"example_sha256\": \"bb70330e1a849e71ade0151196580cf4324e025e2432ab528458a42b9c13d498\",\n  \"passed\": true,\n  \"checks\": [\n    \"real_settings_load_181\",\n    \"unicode_default_roundtrip\",\n    \"process_override_priority\",\n    \"complete_labeled_keys\",\n    \"missing_rejected\",\n    \"extra_rejected\",\n    \"duplicate_rejected\",\n    \"unlabeled_rejected\",\n    \"nonempty_secret_rejected\",\n    \"syntax_rejected\",\n    \"nonfinite_and_invalid_numeric_rejected\",\n    \"invalid_boolean_rejected\",\n    \"private_dotenv_path_rejected_before_read\",\n    \"repeat_read_no_mutation\"\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        ".",
+        "--no-cache"
+      ],
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "mypy",
+        "app/"
+      ],
+      "exit_code": 0,
+      "stdout": "Success: no issues found in 205 source files\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env002_independent_probe.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"checks\": [\n    \"three_incomplete_inputs_no_persisted_rows\",\n    \"reuse_default_tenant_real_hash_email_and_membership\",\n    \"existing_admin_no_replacement_or_duplicate\",\n    \"bootstrap_logs_no_generated_secret_or_hash\",\n    \"actual_settings_blank_template_and_process_injection\",\n    \"readme_no_literal_password_assignment\"\n  ],\n  \"result\": \"pass\",\n  \"sha256\": {\n    \"app/core/security.py\": \"bd7daf3c479124a38f9f96927bcfe87a7101f81d3905e5e4aa8e4bea9b1bd7f0\",\n    \"app/models/base.py\": \"faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2\",\n    \"app/models/user.py\": \"4b12e26d505014e7113dcef6211847c2756b8b557b25e37b3ed408674f3f4a77\",\n    \"app/models/membership.py\": \"d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4\",\n    \"app/services/membership.py\": \"8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f\",\n    \"app/services/auth_service.py\": \"bc22e85cf69e289c8ace0959fec11034b1239d248aec5afbdb312cd7772dc9e5\",\n    \"app/core/config.py\": \"74895a3dfa7ddb831fb5cd52968164da5ed87c50a4af07cff1117278353d5432\",\n    \".env.example\": \"bb70330e1a849e71ade0151196580cf4324e025e2432ab528458a42b9c13d498\",\n    \"README.md\": \"c4ac81384142d9913af244645e11be80cf61d949704f19acd4b9671cbe5385ba\",\n    \"docs/evaluations/env002_bootstrap_contract.py\": \"947dca258fbb313a7e32e153e42e04facf9d8a24eb942a7cd7713727471cdd6b\",\n    \"docs/evaluations/env001_example_contract.py\": \"704ceae5aedc18d00da5f00dd4185efa5c1344c71ab6a60d3471f2eeeedd4771\",\n    \"docs/evaluations/env002_independent_probe.py\": \"6bc3e999fb22328c037e29b4b64c10616c1e10f5fc822f2a9a7fb25d3bd69961\"\n  }\n}\n",
+      "stderr": ""
+    }
+  ],
+  "review_fix_red": {
+    "exit_code": 1,
+    "failure": "setup_documentation_missing_partial_empty_case",
+    "reviewer": "/root/env002_verify"
+  },
+  "review_probe_sha256": "6bc3e999fb22328c037e29b4b64c10616c1e10f5fc822f2a9a7fb25d3bd69961",
+  "final_review_date": "2026-10-15 Asia/Shanghai"
+}

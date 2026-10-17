@@ -17,15 +17,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.main import app
-
-
 def export_openapi(*, output_path: Path | None = None) -> Path:
     """导出 FastAPI OpenAPI 规范到指定文件。
 
     Args:
         output_path: 输出文件路径，默认为项目根目录下的 docs/swagger.json。
     """
+    from app.main import app
+
     if output_path is None:
         project_root = Path(__file__).resolve().parent.parent
         output_path = project_root / "docs" / "swagger.json"

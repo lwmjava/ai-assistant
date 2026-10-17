@@ -1,0 +1,14 @@
+{
+  "version": "structure-integrity-v0.1",
+  "provenance": "AI-authored synthetic Smoke/Adversarial; not human Gold",
+  "cases": [
+    {"id": "fenced-box", "tier": "Smoke", "text": "# 战略定位：双轨制\n\n```text\n┌────────────┐\n│ 实验 → 场 │\n│    路径    │\n└────────────┘\n```\n\n尾部说明。\n", "protected": [{"kind": "fenced_code", "text": "```text\n┌────────────┐\n│ 实验 → 场 │\n│    路径    │\n└────────────┘\n```"}]},
+    {"id": "unfenced-box", "tier": "Smoke", "text": "前言\n\n┌──────────┐\n│  主流程  │\n├──────────┤\n│  分支 A  │\n└──────────┘\n\n结束。", "protected": [{"kind": "box_diagram", "text": "┌──────────┐\n│  主流程  │\n├──────────┤\n│  分支 A  │\n└──────────┘"}]},
+    {"id": "indented-code", "tier": "Smoke", "text": "前言\n\n```python\ndef run():\n    for item in items:\n        print(item)\n\n    return True\n```\n\n后记", "protected": [{"kind": "fenced_code", "text": "```python\ndef run():\n    for item in items:\n        print(item)\n\n    return True\n```"}]},
+    {"id": "table-rows", "tier": "Smoke", "text": "表格说明\n\n| 名称 | 值 |\n| --- | --- |\n| 甲 | 123456789 |\n| 乙 | abcdefghi |\n| 丙 | xyz |\n\n结论。", "protected": [{"kind": "table_row", "text": "| 甲 | 123456789 |"}, {"kind": "table_row", "text": "| 乙 | abcdefghi |"}, {"kind": "table_row", "text": "| 丙 | xyz |"}]},
+    {"id": "repeated-identical-code", "tier": "Adversarial", "text": "  \n```\nx = 1\n```\n\n分隔\n\n```\nx = 1\n```\n  ", "protected": [{"kind": "fenced_code", "text": "```\nx = 1\n```", "occurrence": 0}, {"kind": "fenced_code", "text": "```\nx = 1\n```", "occurrence": 1}]},
+    {"id": "unclosed-fence", "tier": "Adversarial", "text": "开始\n\n```python\n    first()\n\n    second()\n", "protected": [{"kind": "fenced_code", "text": "```python\n    first()\n\n    second()\n"}]},
+    {"id": "crlf-tilde-fence", "tier": "Adversarial", "text": "序言\r\n\r\n~~~text\r\n  A  B\r\n  C  D\r\n~~~\r\n尾部", "protected": [{"kind": "fenced_code", "text": "~~~text\r\n  A  B\r\n  C  D\r\n~~~"}]},
+    {"id": "oversized-atomic-line", "tier": "Adversarial", "text": "说明\n\n```\nABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\n```\n结束", "protected": [{"kind": "fenced_code", "text": "```\nABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\n```"}], "expect_oversized_at_test_limit": 100}
+  ]
+}

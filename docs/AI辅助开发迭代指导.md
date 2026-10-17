@@ -1,12 +1,14 @@
 # ai-assistant 项目 AI 辅助开发迭代指导
 
 > 文档状态：项目推进基线  
-> 基线日期：2026-09-25  
+> 基线日期：2026-09-25；文首、第 4 节残余限制、第 5 节与第 13 节的进度于 2026-10-02 按任务契约改写  
 > 适用项目：`ai-assistant`  
 > 适用对象：个人开发者及参与规划、实现、测试、评审的 AI Coding Agent  
-> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。`GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`、`SEC-002`、`SEC-003` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。`SEC-004` 已清点，第 1、2、3、4、13、15 项未完成，80% 未达到。处理计划见 `docs/plans/plan_delivery_16_evidence.md`。B3 至 D4 其余任务已拆入 `tasks.yaml`，其余尚未实现；按企业上线标准补充的 38 张卡（`NFR`/`OPS`/`PAGT`/`PWFL`/`PRAG`/`PMCP`/`ERR`/`QA-005`）也已并入，当前共 108 条（51 done / 19 ready / 38 backlog）。下一项是 `EVD-001`。
+> 说明：本文记录当前代码事实、差距、Evaluation 数据构建方法和可直接使用的提示词。日历推进顺序以 `docs/plans/plan_delivery_2027-03-25.md` 为准。代码持续变化时，应重新核对本文与真实实现。交付排期第 1–20 项对应任务卡在 2026-10-02 均为 done。第 1–16 项于 2026-09-29 清点为 16/16，80% 达到，见 `docs/plans/record_delivery_16.md`。Milvus 五条于 2026-09-29 通过，见 `docs/plans/implementation_evd_004_index_params.md`；默认向量库仍是 local，不标 `Implemented`。第 20 项发布门禁未达到发布合格，词面覆盖重排不采纳。`tasks.yaml` 共 147 条（70 done / 0 ready / 76 backlog / 1 cancelled）。阶段 E 的企业卡不在这 20 项分母里。
 
 ## 1. 目的
+
+2026-10-06 当前 RAG 决定入口：[推进清单与用户批准](plans/plan_rag_remaining_order_20261006.md)；引用核验 ADR-0007、索引身份 ADR-0008、预算/来源/摘要 ADR-0005 第9节均为已批准设计，功能须逐卡验证。本文旧阶段数量和事实表保留其历史时点，不作为最新完成清点；当前卡状态以 tasks.yaml 为准。方向批准不等于数值门槛、真实数据重建或生产启用授权。
 
 本文解决五个问题：
 
@@ -128,6 +130,8 @@ tests/test_p0_regression.py
 tests/eval/
 ```
 
+质量门禁已接入 GitHub Actions CI（`NFR-001`，2026-10-10）：`ruff check .`、`mypy app/`、`pytest`、前端 `npm ci`、typecheck、Vitest、ESLint 与 build 串联，见 `.github/workflows/ci.yml`；前端新增 Vitest（4 个测试文件 / 37 用例）与 ESLint（9 flat config）。
+
 现有 pytest 覆盖实现和接口行为。版本化 RAG Evaluation 已有：`evals/datasets/rag-v0.1/`（44 条，其中 Gold v0.1 24 条）与 2026-09-19 检索基线。尚未覆盖真实 LLM 生成层，也没有统一的 Agent/Skill Evaluation Harness。
 
 ## 3. 已确认的文档与实现漂移
@@ -167,11 +171,11 @@ tests/eval/
 - RAG-007～RAG-010：RRF `k` 实验、BM25 全 0 不进融合、单次评测恢复融合常数、生效日期全量载入与拒工具/critique 边界文档。
 - ADR-0002（2026-09-25 修订）：正式目标为 Milvus（开发 Lite / 生产 2.4+）；默认 `RAG_VECTOR_STORE` 在第 5 节门槛通过前仍是 Local；rag-v0.1 基线继续用 Local。ADR-0003：生效日期 Flag 默认关闭。
 
-残余限制仍有效：语料仅 13 篇 / 37 分块，不得当生产检索质量；真实 LLM 生成层未测；资源 ACL 仍为 `Planned`；Milvus 闭环未证明，不得宣称生产已使用。
+残余限制仍有效：语料仅 13 篇 / 37 分块，不得当生产检索质量；真实 LLM 生成层未测；资源 ACL 仍为 `Planned`。Milvus 五条脚本已于 2026-09-29 通过，默认仍是 local，不标 `Implemented`，不得宣称生产已使用。
 
 ### 4.2 检索实验约束（非当前优先任务）
 
-当前优先是交付排期的阶段 A（评审修复阶段 2、3、4），不是继续深耕单变量检索实验。`RAG-005` 基线已冻结，若日后做检索实验，仍须遵守：
+阶段 A 至 D4 的任务卡已完成。`REL-004` 已做完一轮词面覆盖并记录不采纳。`RAG-005` 基线已冻结，若再做检索实验，仍须遵守：
 
 - 不同时更换 Embedding、Chunking 和 Reranker。
 - 不用 Mock Embedding 声称检索质量提升。
@@ -222,7 +226,7 @@ ADR-0001 明确本阶段不做资源级/受众级 ACL。同租户当前文档命
 
 ### 4.7 仍为实验：Milvus 主链闭环
 
-ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。升格必须另开 Accepted ADR，并证明：
+ADR-0002 于2026-09-25修订：正式目标为 Milvus，当前默认 Local 用于评测/回退，Milvus 仍 `Partial`。2026-09-29 五条脚本为历史证据；最新残余边界见 RAG-022 实现说明，默认切换须有当前闭环证据及显式批准。索引身份与切换按 ADR-0008，无需重做供应商选型。必须证明：
 
 ```text
 摄取 → Embedding → Milvus Upsert → Search
@@ -243,7 +247,7 @@ ADR-0002 已决定本阶段正式后端为 Local，Milvus 为实验/`Partial`。
 → 渐进 Harness 治理
 ```
 
-文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`、`SEC-002`、`SEC-003` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。`SEC-004` 已清点，第 1、2、3、4、13、15 项未完成，80% 未达到。处理计划见 `docs/plans/plan_delivery_16_evidence.md`。B3 至 D4 其余任务已拆入 `tasks.yaml`，其余尚未实现；按企业上线标准补充的 38 张卡（`NFR`/`OPS`/`PAGT`/`PWFL`/`PRAG`/`PMCP`/`ERR`/`QA-005`）也已并入，当前共 108 条（51 done / 19 ready / 38 backlog）。下一项是 `EVD-001`。
+文中阶段 0～4 是历史方法与实验约束，不得再当当前日历待办。日历推进顺序见 `docs/plans/plan_delivery_2027-03-25.md`。交付排期第 1–20 项对应任务卡在 2026-10-02 均为 done。第 1–16 项于 2026-09-29 清点为 16/16，80% 达到。Milvus 五条脚本已通过，默认向量库仍是 local。第 20 项发布门禁未达到发布合格。`tasks.yaml` 共 147 条（70 done / 0 ready / 76 backlog / 1 cancelled）。当前事实以 `AGENTS.md` 第 14 节为准。
 
 ### 阶段 0：事实与决策，预计 1～2 天
 
@@ -694,8 +698,8 @@ AI 完成后必须：
 
 `GOV-001`～`RAG-013`、`INST-001`～`INST-003` 与 `TEN-001`～`TEN-003` 已完成。B2 的三条任务都已完成。
 
-其后见 `docs/plans/plan_delivery_2027-03-25.md`：阶段 B → C（2026-12-25 的 80%）→ D（2027-03-25 的 100%）→ E 生产就绪（D4 之后，不在原交付排期内）。B3 至 D4 已拆入 `tasks.yaml`，说明见 `docs/plans/plan_remaining_delivery.md`。`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`、`SEC-002`、`SEC-003` 已完成。SEC-003 的五条门槛未通过，默认向量库仍是 local。`SEC-004` 已清点，第 1、2、3、4、13、15 项未完成。处理计划见 `docs/plans/plan_delivery_16_evidence.md`。下一项是 `EVD-001`。
+其后见 `docs/plans/plan_delivery_2027-03-25.md`。阶段 A 至 D4 的任务卡已完成。2026-12-25 的 80% 已在 2026-09-29 达到。第 17–20 项任务卡在 2026-10-02 完成，发布门禁未达到发布合格。下一阶段是 E（生产就绪），不在原交付排期内。当前事实以 `AGENTS.md` 第 14 节为准。
 
-正式向量库目标为 Milvus（ADR-0002）；默认配置在第 5 节门槛通过前仍是 Local。闭环放在 B1 与 C6。切分 / Embedding / 独立 Reranker / Query Rewrite 不排成连续数月深耕。
+正式向量库目标为 Milvus（ADR-0002）。五条脚本已于 2026-09-29 通过，默认配置仍是 Local，不标 `Implemented`。切分 / Embedding / 独立 Reranker / Query Rewrite 不排成连续数月深耕。`REL-004` 的一轮词面覆盖已记录不采纳。
 
 资源级 ACL 仍为 `Planned`。不得用 Mock 或 holdout 宣称质量提升。不得改写 2026-09-19 基线 JSON。详细任务以 `tasks.yaml` 为准。

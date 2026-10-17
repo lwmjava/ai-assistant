@@ -1,0 +1,148 @@
+{
+  "result": "pass",
+  "database": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\artifacts\\hybrid-real-f5e0197f55bd4aef8f41a121b4a08ce0\\evaluation.db",
+  "code_sha256": "05fc5e17d798a14128eeba16c4de67269c20eb78ce165d93d940d58c2500e1ab",
+  "price_source": "https://help.aliyun.com/zh/model-studio/embedding",
+  "price_verified_date": "2026-10-08",
+  "vectors": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\artifacts\\hybrid-real-f5e0197f55bd4aef8f41a121b4a08ce0\\vectors.json",
+  "reused_vectors": false,
+  "dataset_version": "hybrid-semantics-real-embedding-synthetic-v1",
+  "rrf_k": 60,
+  "embedding": {
+    "provider": "dashscope-openai-compatible",
+    "model": "text-embedding-v3",
+    "dim": 1024,
+    "deployment": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  },
+  "real_milvus": true,
+  "collection": "ai_assistant_chunks__vdc98c507991648ba9a9579c3dd249b33__453c1c6a8b51",
+  "slices": [
+    {
+      "name": "real_overlap",
+      "top_k": 3,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "cedar",
+          "score": 0.03278688524590164,
+          "similarity": 0.8917299968836581
+        },
+        {
+          "name": "harbor",
+          "score": 0.03225806451612903,
+          "similarity": 0.4623367092356608
+        },
+        {
+          "name": "alpine",
+          "score": 0.031746031746031744,
+          "similarity": 0.44184725641502004
+        }
+      ],
+      "milvus": [
+        {
+          "name": "cedar",
+          "score": 0.03278688524590164,
+          "similarity": 0.8917300701141357
+        },
+        {
+          "name": "harbor",
+          "score": 0.03225806451612903,
+          "similarity": 0.4623367190361023
+        },
+        {
+          "name": "alpine",
+          "score": 0.031746031746031744,
+          "similarity": 0.4418472945690155
+        }
+      ]
+    },
+    {
+      "name": "real_no_overlap",
+      "top_k": 3,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "cedar",
+          "score": 0.01639344262295082,
+          "similarity": 0.8917299968836581
+        },
+        {
+          "name": "harbor",
+          "score": 0.016129032258064516,
+          "similarity": 0.4623367092356608
+        },
+        {
+          "name": "alpine",
+          "score": 0.015873015873015872,
+          "similarity": 0.44184725641502004
+        }
+      ],
+      "milvus": [
+        {
+          "name": "cedar",
+          "score": 0.01639344262295082,
+          "similarity": 0.8917300701141357
+        },
+        {
+          "name": "harbor",
+          "score": 0.016129032258064516,
+          "similarity": 0.4623367190361023
+        },
+        {
+          "name": "alpine",
+          "score": 0.015873015873015872,
+          "similarity": 0.4418472945690155
+        }
+      ]
+    },
+    {
+      "name": "real_filtered",
+      "top_k": 3,
+      "dense_window": 20,
+      "local": [
+        {
+          "name": "cedar",
+          "score": 0.01639344262295082,
+          "similarity": 0.8917299968836576
+        }
+      ],
+      "milvus": [
+        {
+          "name": "cedar",
+          "score": 0.01639344262295082,
+          "similarity": 0.8917300701141357
+        }
+      ]
+    }
+  ],
+  "server_version": "2.5.11",
+  "remote_count": 9,
+  "limitations": [
+    "Small synthetic semantics slice, not an overall quality benchmark.",
+    "Fixed-vector keyword-window counterexample is reported separately.",
+    "Index switch and rebuild acceptance remains a prerequisite outside this slice."
+  ],
+  "budget": {
+    "limits": {
+      "http_attempts": 20,
+      "input_tokens": 100000,
+      "yuan": 0.1
+    },
+    "price_yuan_per_token": 5e-07,
+    "reserved_cost_upper_bound_yuan": 0.00015,
+    "known_usage_price_estimate_yuan": 2.2e-05,
+    "actual_invoice": "not_available",
+    "attempts": [
+      {
+        "attempt": 1,
+        "reserved_tokens": 300,
+        "usage_tokens": 44,
+        "status": "success",
+        "request_id": "9017b0c9-b234-9ee7-a8ea-d4b288b03491",
+        "response_model": "text-embedding-v3"
+      }
+    ]
+  },
+  "corpus_sha256": "8be974176d5988e4802aa8c818638f8d348644a9e91c3ab59cc4636e37bf42e7",
+  "provenance_note": "Added corpus fingerprint and vector manifest after validator hardening; original HTTP attempt and usage unchanged."
+}

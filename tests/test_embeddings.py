@@ -6,6 +6,7 @@ import pytest
 
 
 def _make_provider(dim: int = 1024, batch_size: int = 10):
+    from app.rag.embeddings.base import EmbeddingInputPolicy
     from app.rag.embeddings.openai_compatible import OpenAICompatibleEmbeddingProvider
 
     return OpenAICompatibleEmbeddingProvider(
@@ -14,6 +15,9 @@ def _make_provider(dim: int = 1024, batch_size: int = 10):
         model="text-embedding-v3",
         dim=dim,
         batch_size=batch_size,
+        input_policy=EmbeddingInputPolicy(
+            max_input_tokens=8192, counter=len, counting_method="synthetic-test", source="fixture",
+        ),
     )
 
 

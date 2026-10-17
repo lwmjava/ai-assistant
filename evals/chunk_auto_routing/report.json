@@ -1,0 +1,4651 @@
+{
+  "version": "auto-routing-service-v0.1",
+  "metric_version": "structure-integrity-v0.1",
+  "dataset_sha256": "83f77e0940d7be92a7d9ddb5491f44a88119a11291769d7c027a4d21ec9dce3a",
+  "code_sha256": {
+    "app\\rag\\chunking\\__init__.py": "da0be41e78893348bbd4084ca505eeca23dad4c5eb997fe17b9f21abac1fdf09",
+    "app\\rag\\chunking\\base.py": "e06c78c5038e08ea41695ce71562b3b233a117ffe2778127132daf9d083db6af",
+    "app\\rag\\chunking\\factory.py": "fa760273c858010d0595de64c56db517bd022639888ba188b45d137cd5813fe7",
+    "app\\rag\\chunking\\plan.py": "7bf2044429b4cef50e42cf0e8f19e82de3aa2d22d536c45d0c8805df04f62565",
+    "app\\rag\\chunking\\registry.py": "bd695fcb495da9be33e181fdb81e2f849b539fe8d620da451eb637e8871e66d4",
+    "app\\rag\\chunking\\routing.py": "83b80ef687ac95087e88174b005d01723c50c07b86497c140882155acab9f540",
+    "app\\rag\\chunking\\strategies\\__init__.py": "b02d94e997dd63cd0037c7d4300b689896fefd1f1000fe80e38dbfad6eb92cd4",
+    "app\\rag\\chunking\\strategies\\fixed_chars.py": "af6a378667f8897186a1457659c9a01f75c76dd3250c6668fb3580b3929f710d",
+    "app\\rag\\chunking\\strategies\\format_aware.py": "462427c9bf8d1f40a017cc1cdb1b57168750ff1edfc5523c818e71840f660552",
+    "app\\rag\\chunking\\strategies\\layout_aware.py": "c927c554807ea78a97b424b7c613e916ae5eb579c335720589ca825ebd2f9ae4",
+    "app\\rag\\chunking\\strategies\\paragraph.py": "fcfb33ae9eb63633683ff6b292a4649e84bfbd8b360bc772aec15f8356de5f53",
+    "app\\rag\\chunking\\strategies\\parent_child.py": "b5374206d6e055faf80d5714cd11e85fdf9ba785e8898936d224dce2cceba137",
+    "app\\rag\\chunking\\strategies\\recursive.py": "cfbfac0731fb8c33c93e18b617f0d9558e51dce53563cb3fcf09c4359c91e2ee",
+    "app\\rag\\chunking\\strategies\\semantic.py": "05480293370c0f1af8c5ba7153eef5b370ecde981d8b1109dd1ec4e4a476bedc",
+    "app\\rag\\chunking\\strategies\\sliding_window.py": "dd78b8798fb552f608db4fc18e564fcce78f843e0014965f2fda1930d7261fdc",
+    "app\\rag\\chunking\\strategies\\structured.py": "ae5c0ed1b7db0b5e3a50c3a67b47bd95a019ca04ffcc7e1a2f1884d15bb613eb",
+    "app\\rag\\chunking\\strategies\\token_aware.py": "8d1c55e553eef6c16c05958a7f5e93bfd086027dd007f175aa3d8ceb08f169d6",
+    "app\\rag\\chunking\\structure.py": "0a8679570e6617e5b40b1a522996d2bc8f927416f0716f65dccd929ba659f0a1",
+    "app\\rag\\service.py": "729d4212b708c0bfff83d9b3c50566ee24ea4819ab99c0b545e9ce8c253d0c23",
+    "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\chunk_auto_routing\\run.py": "3ddd0ae8caa083fa9063317268e9e00fc06ccbf8376bef41f797625c2afdd4d4",
+    "evals\\chunk_structure_integrity\\evaluate.py": "14426994ac4fce304882998a7149f96a1d4aa824c9d464e4a87b11420b0ae454",
+    "app\\rag\\document_parsers\\text.py": "9d4de114b0bb087e9b9db0f9c54aace970c96982169db93a634573c44bbd1279",
+    "app\\rag\\cleaning.py": "24ca33d07259caa0f95c0b62dfe5358dcb3c6338bfdc73f9191aff09070b9219",
+    "app\\models\\rag.py": "bb3a9fe242b740503699c35254c3de5f0a2d29686fb9d41bdd078983580ee0e6",
+    "app\\rag\\embeddings\\mock.py": "e616faa7c0839da8b68af5f188e6cab6df324f51097c694ca97b1904fbdec76b"
+  },
+  "frozen_rag021_report_sha256": "49a9bd386918a61604bfa016f539cee16ff3151e77cdbaac6c93092104e03086",
+  "params": {
+    "chunk_size": 40,
+    "chunk_overlap": 0
+  },
+  "embedding": {
+    "provider": "MockEmbeddingProvider",
+    "model": "synthetic",
+    "dimensions": 8
+  },
+  "provenance": "AI-authored Smoke/Adversarial; not Gold",
+  "scope": "Local in-memory SQLite; actual TextDocumentParser.extract on synthetic UTF-8 Markdown bytes and synthetic ParsedDocument blocks/bbox. No real Office/PDF parser, network or retrieval quality claims",
+  "comparison_limits": "RAG-021 split(text) on original source is diagnostic only for blocks/bbox. Candidate/control/replay use conservative cleaned source. Inferred spans are exact-match diagnostics, not persisted provenance. Single-block bbox tests do not prove multi-column reconstruction. Text parser cases retain authoritative parsed.text rather than stripped line-block source. Missing whitespace and broken units are retained, not rounded to success.",
+  "rows": [
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "markdown_headings",
+      "original_chars": 85,
+      "effective_chars": 85,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 85,
+      "effective_chars": 85,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 85,
+      "effective_chars": 85,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "fenced-box",
+      "tier": "Smoke",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "markdown_headings",
+      "original_chars": 85,
+      "effective_chars": 85,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 85,
+        "covered_chars": 85,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 7,
+          "max": 66,
+          "median": 12.0,
+          "sorted_chars": [
+            7,
+            12,
+            66
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 68,
+      "effective_chars": 68,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 68,
+      "effective_chars": 68,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 68,
+      "effective_chars": 68,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unfenced-box",
+      "tier": "Smoke",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 68,
+      "effective_chars": 68,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 68,
+        "covered_chars": 68,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 4,
+          "max": 60,
+          "median": 4.0,
+          "sorted_chars": [
+            4,
+            4,
+            60
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 92,
+      "effective_chars": 92,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 92,
+      "effective_chars": 92,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 92,
+      "effective_chars": 92,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "indented-code",
+      "tier": "Smoke",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 92,
+      "effective_chars": 92,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 92,
+        "covered_chars": 92,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 3,
+          "max": 85,
+          "median": 4.0,
+          "sorted_chars": [
+            3,
+            4,
+            85
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 83,
+      "effective_chars": 83,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 83,
+      "effective_chars": 83,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 83,
+      "effective_chars": 83,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "table-rows",
+      "tier": "Smoke",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 83,
+      "effective_chars": 83,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 83,
+        "covered_chars": 83,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 3,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 50,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 4,
+          "max": 43,
+          "median": 37.0,
+          "sorted_chars": [
+            4,
+            6,
+            37,
+            43,
+            43
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 38,
+      "effective_chars": 38,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 38,
+      "effective_chars": 38,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 38,
+      "effective_chars": 38,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "repeated-identical-code",
+      "tier": "Adversarial",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 38,
+      "effective_chars": 38,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 2,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 5,
+          "min": 2,
+          "max": 14,
+          "median": 5.0,
+          "sorted_chars": [
+            2,
+            3,
+            5,
+            14,
+            14
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 40,
+      "effective_chars": 40,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 40,
+      "effective_chars": 40,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 40,
+      "effective_chars": 40,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "unclosed-fence",
+      "tier": "Adversarial",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 40,
+      "effective_chars": 40,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 40,
+        "covered_chars": 40,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 2,
+          "min": 4,
+          "max": 36,
+          "median": 20.0,
+          "sorted_chars": [
+            4,
+            36
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 38,
+      "effective_chars": 32,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 38,
+      "effective_chars": 32,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 38,
+      "effective_chars": 32,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "crlf-tilde-fence",
+      "tier": "Adversarial",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 38,
+      "effective_chars": 32,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 38,
+        "covered_chars": 38,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 30,
+          "median": 6.0,
+          "sorted_chars": [
+            2,
+            6,
+            30
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 32,
+        "covered_chars": 32,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 26,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            26
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "input_mode": "text",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 139,
+      "effective_chars": 139,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "input_mode": "blocks",
+      "strategy": "format_aware",
+      "reason": "structural_blocks",
+      "original_chars": 139,
+      "effective_chars": 139,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "input_mode": "bbox",
+      "strategy": "layout_aware",
+      "reason": "bbox_layout_blocks",
+      "original_chars": 139,
+      "effective_chars": 139,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    },
+    {
+      "case_id": "oversized-atomic-line",
+      "tier": "Adversarial",
+      "input_mode": "parser",
+      "strategy": "structured",
+      "reason": "structure_units",
+      "original_chars": 139,
+      "effective_chars": 139,
+      "rag021_split_original_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "frozen_rag021_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "same_entry_control_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "candidate_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "replay_metrics": {
+        "version": "structure-integrity-v0.1",
+        "source_chars": 139,
+        "covered_chars": 139,
+        "missing_chars": 0,
+        "coverage": 1.0,
+        "out_of_order": 0,
+        "invalid_spans": 0,
+        "protected_units": 1,
+        "broken_units": 0,
+        "structure_breakage_rate": 0.0,
+        "derived_context_chars": 0,
+        "oversized_chunks": 0,
+        "length_distribution": {
+          "count": 3,
+          "min": 2,
+          "max": 133,
+          "median": 4.0,
+          "sorted_chars": [
+            2,
+            4,
+            133
+          ]
+        }
+      },
+      "plan_equal": true,
+      "replay_equal": true,
+      "inferred_source_chunks": {
+        "rag021": 0,
+        "control": 0,
+        "candidate": 0,
+        "replay": 0
+      }
+    }
+  ]
+}

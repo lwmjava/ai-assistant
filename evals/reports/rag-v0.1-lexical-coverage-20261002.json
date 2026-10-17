@@ -1,0 +1,220 @@
+{
+  "experiment": "lexical-coverage",
+  "variable": "lexical_coverage",
+  "run_at": "2026-10-02T09:07:05.597627+00:00",
+  "git_commit": "2d3e23c8fa7127ccc2d7dd10d24a40a64fe86181",
+  "command": "python scripts/run_rag_baseline.py --mode official --rerank lexical",
+  "working_directory": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+  "dataset_id": "rag-eval",
+  "dataset_version": "0.1.0",
+  "corpus_version": "0.1.0",
+  "mode": "official",
+  "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+  "embedding_model": "text-embedding-v3",
+  "embedding_dim": 1024,
+  "vector_store": "local",
+  "rrf_k": 60,
+  "retrieval_depth_chunks": 10,
+  "indexed_documents": 13,
+  "indexed_chunks": 37,
+  "machine": {
+    "system": "Windows",
+    "release": "11",
+    "machine": "AMD64",
+    "python": "3.12.0",
+    "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "cpu_count": 12
+  },
+  "decision_splits": [
+    "development",
+    "validation"
+  ],
+  "holdout_used_for_decision": false,
+  "decision": "keep",
+  "reason_code": "primary_regression",
+  "reason": "不采纳 lexical_coverage：调参集上没有同时提升 Recall@1 与 MRR 且不增加越权案例",
+  "adoption_rule": "Recall@1 高于对照，且 MRR 高于对照，且越权案例数不高于对照",
+  "not_production_quality_claim": true,
+  "signal_same_family_as_bm25": true,
+  "independent_reranker": "Planned",
+  "control": {
+    "order": "rrf_truncated",
+    "tuning": {
+      "cases": 35,
+      "scorable_cases": 28,
+      "not_scorable_cases": 7,
+      "recall": {
+        "@1": 0.7976190476190476,
+        "@5": 0.9642857142857143,
+        "@10": 0.9642857142857143
+      },
+      "mrr": 0.9285714285714286,
+      "ndcg@10": 0.9401555770424546,
+      "citation": {
+        "cases_with_evidence": 28,
+        "evidence_total": 41,
+        "evidence_hit": 38,
+        "quote_coverage": 0.926829268292683
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 10,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 339.97159999853466,
+        "p95": 374.0472999998019,
+        "max": 385.5817000003299
+      }
+    },
+    "holdout": {
+      "cases": 9,
+      "scorable_cases": 7,
+      "not_scorable_cases": 2,
+      "recall": {
+        "@1": 0.7857142857142857,
+        "@5": 1.0,
+        "@10": 1.0
+      },
+      "mrr": 0.9285714285714286,
+      "ndcg@10": 0.9472756790816368,
+      "citation": {
+        "cases_with_evidence": 7,
+        "evidence_total": 8,
+        "evidence_hit": 7,
+        "quote_coverage": 0.875
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 3,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 325.0783000003139,
+        "p95": 374.6097000002919,
+        "max": 374.6097000002919
+      }
+    },
+    "overall": {
+      "cases": 44,
+      "scorable_cases": 35,
+      "not_scorable_cases": 9,
+      "recall": {
+        "@1": 0.7952380952380952,
+        "@5": 0.9714285714285714,
+        "@10": 0.9714285714285714
+      },
+      "mrr": 0.9285714285714286,
+      "ndcg@10": 0.9415795974502911,
+      "citation": {
+        "cases_with_evidence": 35,
+        "evidence_total": 49,
+        "evidence_hit": 45,
+        "quote_coverage": 0.9183673469387755
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 13,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 338.21790000001783,
+        "p95": 374.0472999998019,
+        "max": 385.5817000003299
+      }
+    }
+  },
+  "treatment": {
+    "order": "lexical_coverage",
+    "tuning": {
+      "cases": 35,
+      "scorable_cases": 28,
+      "not_scorable_cases": 7,
+      "recall": {
+        "@1": 0.7976190476190476,
+        "@5": 0.9642857142857143,
+        "@10": 0.9642857142857143
+      },
+      "mrr": 0.9166666666666667,
+      "ndcg@10": 0.9310943471055471,
+      "citation": {
+        "cases_with_evidence": 28,
+        "evidence_total": 41,
+        "evidence_hit": 38,
+        "quote_coverage": 0.926829268292683
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 10,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      }
+    },
+    "holdout": {
+      "cases": 9,
+      "scorable_cases": 7,
+      "not_scorable_cases": 2,
+      "recall": {
+        "@1": 0.7857142857142857,
+        "@5": 1.0,
+        "@10": 1.0
+      },
+      "mrr": 0.9285714285714286,
+      "ndcg@10": 0.9297350098442152,
+      "citation": {
+        "cases_with_evidence": 7,
+        "evidence_total": 8,
+        "evidence_hit": 7,
+        "quote_coverage": 0.875
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 3,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      }
+    },
+    "overall": {
+      "cases": 44,
+      "scorable_cases": 35,
+      "not_scorable_cases": 9,
+      "recall": {
+        "@1": 0.7952380952380952,
+        "@5": 0.9714285714285714,
+        "@10": 0.9714285714285714
+      },
+      "mrr": 0.919047619047619,
+      "ndcg@10": 0.9308224796532808,
+      "citation": {
+        "cases_with_evidence": 35,
+        "evidence_total": 49,
+        "evidence_hit": 45,
+        "quote_coverage": 0.9183673469387755
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 13,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      }
+    }
+  }
+}

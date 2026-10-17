@@ -27,7 +27,9 @@ def normalize_rag_backend(name: str | None) -> str:
     """规范化后端名；未知值返回 ``native``。"""
     backend = (name or settings.RAG_BACKEND or "native").strip().lower()
     if backend not in VALID_RAG_BACKENDS:
-        logger.warning("未知 RAG 后端 %r，降级为 native", backend)
+        logger.warning(
+            "rag_backend_fallback requested=unknown effective=native reason=invalid_backend"
+        )
         return "native"
     return backend
 
@@ -58,9 +60,9 @@ def get_rag_backend(
             )
         except ImportError as exc:
             logger.warning(
-                "RAG_BACKEND=langchain 但未安装 langchain extras（%s），降级 native。"
-                "请执行 pip install \"ai-assistant[langchain]\"",
-                exc,
+                "rag_backend_fallback requested=langchain effective=native "
+                "reason=missing_dependency exception_type=%s",
+                type(exc).__name__,
             )
             name = "native"
 
@@ -77,13 +79,17 @@ def get_rag_backend(
             )
         except ImportError as exc:
             logger.warning(
-                "RAG_BACKEND=llamaindex 但未安装 llamaindex extras（%s），降级 native。"
-                "请执行 pip install \"ai-assistant[llamaindex]\"",
-                exc,
+                "rag_backend_fallback requested=llamaindex effective=native "
+                "reason=missing_dependency exception_type=%s",
+                type(exc).__name__,
             )
             name = "native"
         except Exception as exc:  # noqa: BLE001 — 适配器构造失败不应阻断主路径
-            logger.warning("RAG_BACKEND=llamaindex 初始化失败（%s），降级 native", exc)
+            logger.warning(
+                "rag_backend_fallback requested=llamaindex effective=native "
+                "reason=initialization_failed exception_type=%s",
+                type(exc).__name__,
+            )
             name = "native"
 
     return NativeRagBackend(embedding, vector_store, tokenizer=tok, rrf_k=rrf)

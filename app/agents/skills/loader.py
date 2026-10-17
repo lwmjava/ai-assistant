@@ -17,11 +17,29 @@ from app.agents.skills.base import (
     SkillTrigger,
     TriggerType,
 )
+from app.agents.skills.versioning import validate_manifest
 
 logger = logging.getLogger(__name__)
 
 # 内置技能目录（相对于 skills 包）
 _BUILTIN_DIR = Path(__file__).resolve().parent / "builtin"
+
+
+class _UniqueSafeLoader(yaml.SafeLoader):
+    """Reject ambiguous duplicate keys before constructing a manifest."""
+
+    def construct_mapping(self, node: Any, deep: bool = False) -> Any:
+        self.flatten_mapping(node)
+        seen: set[Any] = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                if key in seen:
+                    raise ValueError("skill_yaml_duplicate_key")
+                seen.add(key)
+            except TypeError:
+                raise ValueError("skill_yaml_invalid_key") from None
+        return super().construct_mapping(node, deep=deep)
 
 
 def _parse_trigger(data: dict[str, Any]) -> SkillTrigger:
@@ -31,7 +49,7 @@ def _parse_trigger(data: dict[str, Any]) -> SkillTrigger:
         type=trigger_type,
         keywords=data.get("keywords", []),
         regex=data.get("regex", ""),
-        min_confidence=float(data.get("min_confidence", 0.5)),
+        min_confidence=data.get("min_confidence", 0.5),
     )
 
 
@@ -48,39 +66,36 @@ def _parse_manifest(data: dict[str, Any], source_path: str = "") -> SkillManifes
     Raises:
         ValueError: 必填字段缺失或格式错误。
     """
-    name = data.get("name", "").strip()
-    if not name:
-        raise ValueError(f"技能清单缺少必填字段 'name'：{source_path}")
-
-    # 名称校验：仅允许小写字母、数字、下划线、连字符
-    if not re.match(r"^[a-z0-9_-]+$", name):
-        raise ValueError(
-            f"技能名称 '{name}' 不合法：仅允许小写字母、数字、下划线、连字符。"
-            f"来源：{source_path}"
-        )
+    name = data.get("name", "")
+    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_-]{1,64}", name):
+        raise ValueError("skill_invalid_name")
 
     trigger_data = data.get("trigger", {})
     if isinstance(trigger_data, dict):
         trigger = _parse_trigger(trigger_data)
     else:
-        trigger = SkillTrigger()
+        raise ValueError("skill_invalid_trigger")
 
-    return SkillManifest(
+    manifest = SkillManifest(
         name=name,
-        version=str(data.get("version", "1.0")),
-        description=str(data.get("description", "")),
+        version=data.get("version", "1.0"),
+        description=data.get("description", ""),
         mode=SkillMode(data.get("mode", "prompt_injection")),
         trigger=trigger,
-        system_prompt=str(data.get("system_prompt", "")),
-        tools=[str(t) for t in data.get("tools", [])],
-        models=[str(m) for m in data.get("models", [])],
-        enabled=bool(data.get("enabled", True)),
+        system_prompt=data.get("system_prompt", ""),
+        tools=data.get("tools", []),
+        models=data.get("models", []),
+        enabled=data.get("enabled", True),
         source_path=source_path,
     )
+    validate_manifest(manifest)
+    return manifest
 
 
 def discover_skills(
     directories: list[Path] | None = None,
+    *,
+    strict: bool = False,
 ) -> list[SkillManifest]:
     """从指定目录发现并加载所有技能清单。
 
@@ -101,13 +116,21 @@ def discover_skills(
     for directory in directories:
         dir_path = Path(directory)
         if not dir_path.is_dir():
-            logger.warning("技能目录不存在，跳过：%s", dir_path)
+            if strict:
+                raise ValueError("skill_directory_unavailable")
+            logger.warning("skill_directory_unavailable")
             continue
 
-        for yaml_file in sorted(dir_path.glob("*.yaml")):
-            _load_one(yaml_file, manifests)
-        for yml_file in sorted(dir_path.glob("*.yml")):
-            _load_one(yml_file, manifests)
+        try:
+            files = [*sorted(dir_path.glob("*.yaml")), *sorted(dir_path.glob("*.yml"))]
+            if len(files) > 256:
+                raise ValueError("skill_directory_size")
+            for skill_file in files:
+                _load_one(skill_file, manifests, strict=strict)
+        except (OSError, ValueError):
+            if strict:
+                raise ValueError("skill_directory_load_failed") from None
+            logger.error("skill_directory_load_failed")
 
     # 过滤禁用的技能
     active = [m for m in manifests.values() if m.enabled]
@@ -120,25 +143,21 @@ def discover_skills(
     return active
 
 
-def _load_one(file_path: Path, manifests: dict[str, SkillManifest]) -> None:
+def _load_one(file_path: Path, manifests: dict[str, SkillManifest], *, strict: bool = False) -> None:
     """加载单个 YAML 文件并合并到清单字典。"""
     try:
+        if file_path.stat().st_size > 131072:
+            raise ValueError("skill_file_size")
         content = file_path.read_text(encoding="utf-8")
-        data = yaml.safe_load(content)
-        if not isinstance(data, dict):
-            logger.warning("技能文件格式无效（非字典），跳过：%s", file_path)
-            return
-        manifest = _parse_manifest(data, str(file_path))
+        manifest = load_skill_from_yaml(content, str(file_path))
         if manifest.name in manifests:
-            logger.info("技能 '%s' 被覆盖：%s → %s", manifest.name, manifests[manifest.name].source_path, file_path)
+            logger.info("skill_replaced: %s", manifest.name)
         manifests[manifest.name] = manifest
-        logger.debug("已加载技能：%s（%s）", manifest.name, file_path)
-    except yaml.YAMLError as exc:
-        logger.error("技能文件 YAML 解析失败：%s — %s", file_path, exc)
-    except ValueError as exc:
-        logger.error("技能清单校验失败：%s", exc)
-    except Exception:  # noqa: BLE001 — 单个文件加载失败不应影响其他技能
-        logger.exception("加载技能文件失败：%s", file_path)
+        logger.debug("skill_loaded: %s", manifest.name)
+    except (OSError, UnicodeError, ValueError):
+        logger.error("skill_file_load_failed")
+        if strict:
+            raise ValueError("skill_file_load_failed") from None
 
 
 def load_skill_from_yaml(yaml_text: str, source: str = "<string>") -> SkillManifest:
@@ -151,7 +170,12 @@ def load_skill_from_yaml(yaml_text: str, source: str = "<string>") -> SkillManif
     Returns:
         解析后的 SkillManifest。
     """
-    data = yaml.safe_load(yaml_text)
-    if not isinstance(data, dict):
-        raise ValueError(f"YAML 内容不是有效的字典：{source}")
-    return _parse_manifest(data, source)
+    try:
+        if not isinstance(yaml_text, str) or len(yaml_text.encode("utf-8")) > 131072:
+            raise ValueError("skill_yaml_size")
+        data = yaml.load(yaml_text, Loader=_UniqueSafeLoader)
+        if not isinstance(data, dict):
+            raise ValueError("skill_yaml_mapping_required")
+        return _parse_manifest(data, source)
+    except (yaml.YAMLError, ValueError, TypeError, UnicodeError, RecursionError):
+        raise ValueError("skill_yaml_invalid") from None

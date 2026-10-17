@@ -9,7 +9,7 @@
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.core.config import settings
 from app.evolution.distiller import Distiller
@@ -54,7 +54,7 @@ async def _tick() -> None:
     """检查是否应该触发蒸馏，是则执行。"""
     global _last_distill_time
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # 检查是否在允许的时间窗口内
     if not _is_in_time_window(now):

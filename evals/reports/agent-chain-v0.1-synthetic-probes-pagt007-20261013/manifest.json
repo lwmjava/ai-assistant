@@ -1,0 +1,30 @@
+{
+  "evidence": "synthetic-controlled-faults-mechanism-only-not-model-quality",
+  "source_model": "deepseek-flash",
+  "results": [
+    {
+      "probe": "route",
+      "exit_code": 1,
+      "target_metric": "route_accuracy",
+      "reason_codes": [
+        "AGENT_GATE_METRIC:route_accuracy"
+      ]
+    },
+    {
+      "probe": "followup",
+      "exit_code": 1,
+      "target_metric": "followup_recall",
+      "reason_codes": [
+        "AGENT_GATE_METRIC:followup_recall"
+      ]
+    },
+    {
+      "probe": "tool",
+      "exit_code": 1,
+      "target_metric": "tool_selection_recall",
+      "reason_codes": [
+        "AGENT_GATE_METRIC:tool_selection_recall"
+      ]
+    }
+  ]
+}

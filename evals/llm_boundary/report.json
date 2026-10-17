@@ -1,0 +1,206 @@
+{
+  "version": "llm-boundary-eval-v0.1",
+  "prompt_version": "llm-boundary-prompt-v0.1",
+  "protocol_version": "llm-boundary-protocol-v0.1",
+  "embedding": {
+    "provider": "none",
+    "note": "切分评测不调 Embedding"
+  },
+  "model": {
+    "provider": "synthetic-scripted",
+    "real_calls": 0
+  },
+  "params": {
+    "chunk_size": 40,
+    "max_calls": 3,
+    "max_chars_per_call": 10000
+  },
+  "provenance": "AI-authored Smoke/Adversarial; synthetic provider; NOT Gold; no real model calls",
+  "real_quality_cost_report": "未验证（无真实调用/费用授权）：真实单变量质量与成本需另获授权后由本骨架产出",
+  "code_sha256": {
+    "app\\rag\\chunking\\llm_boundaries.py": "304a4ab313b395de79376f45af77ed5fc37ad4c591cbb1595e50ac517c4e55c4",
+    "app\\rag\\chunking\\structure.py": "919ccef3ebfa04254af5fbf928b565304f0a4b0ad6d5261edb08a7220815b7d6",
+    "app\\rag\\chunking\\base.py": "1b4a806c51cb44df1469cc409ac6af3a6dec420f64f12dc11f56ab94f7b5386e",
+    "app\\rag\\chunking\\plan.py": "a8a8e2f168f6062b848a38b55384d26a1df00cb15c8652788d9f5f2cef143cd1",
+    "app\\rag\\service.py": "678f19bcc9080a9343b3d173c61dab794ba02ed99a6b2cad15d8350afe5aee9e",
+    "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\evals\\llm_boundary\\run.py": "590bee8682f9cde87a14c09b3ebc695b61a04426afa38c82e62c1d38debbe221"
+  },
+  "rows": [
+    {
+      "case_id": "two_topics",
+      "scenario": "clean",
+      "metrics": {
+        "chunk_count": 3,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 2,
+      "degraded_reasons": []
+    },
+    {
+      "case_id": "two_topics",
+      "scenario": "empty",
+      "metrics": {
+        "chunk_count": 6,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 5,
+      "degraded_reasons": [
+        "no_boundaries"
+      ]
+    },
+    {
+      "case_id": "two_topics",
+      "scenario": "bad_json",
+      "metrics": {
+        "chunk_count": 6,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 5,
+      "degraded_reasons": [
+        "bad_json_or_non_integer"
+      ]
+    },
+    {
+      "case_id": "two_topics",
+      "scenario": "injection",
+      "metrics": {
+        "chunk_count": 6,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 5,
+      "degraded_reasons": [
+        "bad_json_or_non_integer"
+      ]
+    },
+    {
+      "case_id": "two_topics",
+      "scenario": "out_of_range",
+      "metrics": {
+        "chunk_count": 6,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 5,
+      "degraded_reasons": [
+        "bad_json_or_non_integer"
+      ]
+    },
+    {
+      "case_id": "two_topics",
+      "scenario": "timeout",
+      "metrics": {
+        "chunk_count": 6,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 5,
+      "degraded_reasons": [
+        "provider_timeout"
+      ]
+    },
+    {
+      "case_id": "long_paragraph",
+      "scenario": "clean",
+      "metrics": {
+        "chunk_count": 3,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 2,
+      "degraded_reasons": []
+    },
+    {
+      "case_id": "long_paragraph",
+      "scenario": "empty",
+      "metrics": {
+        "chunk_count": 9,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 8,
+      "degraded_reasons": [
+        "no_boundaries"
+      ]
+    },
+    {
+      "case_id": "long_paragraph",
+      "scenario": "bad_json",
+      "metrics": {
+        "chunk_count": 9,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 8,
+      "degraded_reasons": [
+        "bad_json_or_non_integer"
+      ]
+    },
+    {
+      "case_id": "long_paragraph",
+      "scenario": "injection",
+      "metrics": {
+        "chunk_count": 9,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 8,
+      "degraded_reasons": [
+        "bad_json_or_non_integer"
+      ]
+    },
+    {
+      "case_id": "long_paragraph",
+      "scenario": "out_of_range",
+      "metrics": {
+        "chunk_count": 9,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 8,
+      "degraded_reasons": [
+        "bad_json_or_non_integer"
+      ]
+    },
+    {
+      "case_id": "long_paragraph",
+      "scenario": "timeout",
+      "metrics": {
+        "chunk_count": 9,
+        "char_coverage_equal": true,
+        "ordered": true,
+        "within_bounds": true
+      },
+      "llm_calls": 1,
+      "llm_boundary_chunks": 8,
+      "degraded_reasons": [
+        "provider_timeout"
+      ]
+    }
+  ]
+}

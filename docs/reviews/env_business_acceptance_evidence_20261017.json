@@ -1,0 +1,125 @@
+{
+  "date": "2026-10-17 Asia/Shanghai",
+  "baseline_sha": "7cdfb29ae7aa42b103af7856211be89984e658c7",
+  "candidate": "HEAD plus SHA256 input manifest (uncommitted)",
+  "branch": "codex/platform-batch-20261015",
+  "platform": "Windows-11-10.0.22621-SP0",
+  "python": "3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]",
+  "executable": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+  "dependencies": {
+    "pydantic": "2.10.4",
+    "pydantic-settings": "2.7.0",
+    "sqlmodel": "0.0.22",
+    "sqlalchemy": "2.0.36",
+    "bcrypt": "4.2.1",
+    "python-dotenv": "1.0.1",
+    "ruff": "0.8.4",
+    "mypy": "1.14.1",
+    "pyyaml": "6.0.3"
+  },
+  "configuration": "Subprocess env allowlist: SystemRoot/WinDir/PATH/TEMP/TMP, UTF8; Settings env cleared, _env_file .env.example only; AST source functions; SQLite in-memory; random secrets never printed; business matrix socket connections denied",
+  "commands": [
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env001_example_contract.py",
+        "--self-test"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"fields\": 189,\n  \"keys\": 189,\n  \"matched\": 189,\n  \"missing\": [],\n  \"extra\": [],\n  \"duplicates\": [],\n  \"unlabeled\": [],\n  \"invalid_dotenv_keys\": [],\n  \"nonempty_secret_fields\": [],\n  \"syntax_error_lines\": [],\n  \"legacy_initial_admin_password_present\": false,\n  \"legacy_password_governance\": \"All example passwords must be empty; not production-safety acceptance\",\n  \"source_sha256\": \"37cfdcb42fc84b636f7841231d5f700eca2e1911865c4add9d030e50136d51a4\",\n  \"example_sha256\": \"f4dfd5bd9b73a5d6ca5894e409f9740c140a8dbadf016ec4524b2930fc25c731\",\n  \"passed\": true,\n  \"checks\": [\n    \"real_settings_load_all_source_fields\",\n    \"unicode_default_roundtrip\",\n    \"process_override_priority\",\n    \"complete_labeled_keys\",\n    \"missing_rejected\",\n    \"extra_rejected\",\n    \"duplicate_rejected\",\n    \"unlabeled_rejected\",\n    \"nonempty_secret_rejected\",\n    \"syntax_rejected\",\n    \"all_example_passwords_rejected_when_nonempty\",\n    \"nonfinite_and_invalid_numeric_rejected\",\n    \"invalid_boolean_rejected\",\n    \"private_dotenv_path_rejected_before_read\",\n    \"repeat_read_no_mutation\"\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env002_bootstrap_contract.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"version\": \"env002-v2\",\n  \"checks\": [\n    \"all_source_keys_actual_settings\",\n    \"source_default_empty\",\n    \"sample_password_empty\",\n    \"readme_partial_empty_setup_no_password_literal\",\n    \"bootstrap_combination_0_persisted_idempotent\",\n    \"bootstrap_combination_1_persisted_idempotent\",\n    \"bootstrap_combination_2_persisted_idempotent\",\n    \"bootstrap_combination_3_persisted_idempotent\",\n    \"bootstrap_combination_4_persisted_idempotent\",\n    \"existing_member_prevents_admin_backfill_idempotent\",\n    \"triple_missing_wrong_username_and_short_password_rejected_without_rows\",\n    \"triple_accounts_roles_flags_memberships_real_bcrypt_and_idempotency\"\n  ],\n  \"platform\": \"win32\",\n  \"python\": \"3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]\",\n  \"sha256\": {\n    \"app/core/security.py\": \"2b8609a0036107cf2a39d9f144ed562af3c42890b2b0aa401b5be0bfba22caac\",\n    \"app/models/base.py\": \"faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2\",\n    \"app/models/user.py\": \"051fa532f3bbf55475db679341935a9756a333ae871c2e156868d2e212da0a2c\",\n    \"app/models/membership.py\": \"d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4\",\n    \"app/services/membership.py\": \"8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f\",\n    \"app/services/auth_service.py\": \"82c693d415619645aaefe47dd2f7a69487fe2b6ca9444b95eccfc11fe1812826\",\n    \"app/core/config.py\": \"37cfdcb42fc84b636f7841231d5f700eca2e1911865c4add9d030e50136d51a4\",\n    \".env.example\": \"f4dfd5bd9b73a5d6ca5894e409f9740c140a8dbadf016ec4524b2930fc25c731\",\n    \"README.md\": \"9b7e3f97cb698a105ca5ac01319fac49f2d4ccc0a36a1de526e3600c67278b43\",\n    \"docs/evaluations/env002_bootstrap_contract.py\": \"1829636289715f55b14791e3259ed78a519512b3d4a813ec0980af1d546d4cc9\",\n    \"docs/evaluations/env001_example_contract.py\": \"f121c823d5b573ddb74720ec5a6cb1ba00dd9ad0fadcdd4d67fa19cb4b0820bf\"\n  },\n  \"result\": \"pass\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "docs/evaluations/env002_independent_probe.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"checks\": [\n    \"three_incomplete_inputs_no_persisted_rows\",\n    \"reuse_default_tenant_real_hash_email_and_membership\",\n    \"existing_admin_no_replacement_or_duplicate\",\n    \"bootstrap_logs_no_generated_secret_or_hash\",\n    \"actual_settings_blank_template_and_process_injection\",\n    \"readme_no_literal_password_assignment\"\n  ],\n  \"result\": \"pass\",\n  \"sha256\": {\n    \"app/core/security.py\": \"2b8609a0036107cf2a39d9f144ed562af3c42890b2b0aa401b5be0bfba22caac\",\n    \"app/models/base.py\": \"faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2\",\n    \"app/models/user.py\": \"051fa532f3bbf55475db679341935a9756a333ae871c2e156868d2e212da0a2c\",\n    \"app/models/membership.py\": \"d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4\",\n    \"app/services/membership.py\": \"8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f\",\n    \"app/services/auth_service.py\": \"82c693d415619645aaefe47dd2f7a69487fe2b6ca9444b95eccfc11fe1812826\",\n    \"app/core/config.py\": \"37cfdcb42fc84b636f7841231d5f700eca2e1911865c4add9d030e50136d51a4\",\n    \".env.example\": \"f4dfd5bd9b73a5d6ca5894e409f9740c140a8dbadf016ec4524b2930fc25c731\",\n    \"README.md\": \"9b7e3f97cb698a105ca5ac01319fac49f2d4ccc0a36a1de526e3600c67278b43\",\n    \"docs/evaluations/env002_bootstrap_contract.py\": \"1829636289715f55b14791e3259ed78a519512b3d4a813ec0980af1d546d4cc9\",\n    \"docs/evaluations/env001_example_contract.py\": \"f121c823d5b573ddb74720ec5a6cb1ba00dd9ad0fadcdd4d67fa19cb4b0820bf\",\n    \"docs/evaluations/env002_independent_probe.py\": \"8aef765d45f7b707fb7b34b910234f93d2d8582c05d5102e1a1f9c8bbf735ea0\"\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-c",
+        "\nimport ast, io, json, logging, secrets, socket, sys, types\nfrom pathlib import Path\nfrom unittest.mock import patch\nsys.path.insert(0, str(Path.cwd() / 'docs/evaluations'))\nfrom dotenv import dotenv_values\nfrom env001_example_contract import EXAMPLE, isolated_settings, load_example, source_fields\nfrom env002_bootstrap_contract import source_namespace\nfrom sqlmodel import Session, SQLModel, col, create_engine, select\nchecks=[]\n_, fields=source_fields()\nvalues=dotenv_values(EXAMPLE, interpolate=False)\nassert set(values)==set(fields) and len(fields)==len(values)\nchecks.append('deployer_all_source_fields_have_exactly_one_example_key')\npassword_keys=['INITIAL_ADMIN_PASSWORD','INITIAL_SYSTEM_PASSWORD','INITIAL_CULTURE_PASSWORD']\ncls=isolated_settings()\nwith patch.dict('os.environ',{},clear=True):\n    defaults=cls(_env_file=None)\n    loaded=load_example(EXAMPLE)\nassert all(getattr(defaults,k)==getattr(loaded,k)==values[k]=='' for k in password_keys)\nchecks.append('deployer_example_and_source_have_no_login_password_for_any_builtin_account')\nns,_=source_namespace()\nuser, tenant, membership=[ns[k] for k in ('User','Tenant','Membership')]\nstream=io.StringIO(); handler=logging.StreamHandler(stream); logger=ns['logger']\nlogger.disabled=False; logger.setLevel(logging.INFO); logger.addHandler(handler)\nroles={'admin':('system_admin',False,'member'),'system':('tenant_admin',False,'tenant_admin'),'culture':('member',True,'member')}\nall_secrets=[]; all_hashes=[]\nwith patch.object(socket.socket,'connect',side_effect=AssertionError('network_forbidden')):\n    for bits in range(16):\n        passwords={name:secrets.token_urlsafe(24) if bits & (1<<i) else '' for i,name in enumerate(('admin','system','culture'))}\n        all_secrets.extend(p for p in passwords.values() if p)\n        username='admin' if bits & 8 else ''\n        ns['settings']=types.SimpleNamespace(INITIAL_ADMIN_USERNAME=username,INITIAL_ADMIN_EMAIL='',\n            INITIAL_ADMIN_PASSWORD=passwords['admin'],INITIAL_SYSTEM_PASSWORD=passwords['system'],INITIAL_CULTURE_PASSWORD=passwords['culture'])\n        triple=bool(passwords['system'] or passwords['culture'])\n        reject=triple and not (username and all(passwords.values()))\n        engine=create_engine('sqlite://')\n        SQLModel.metadata.create_all(engine)\n        with Session(engine) as session:\n            try:\n                ns['ensure_initial_admin'](session)\n            except ValueError:\n                assert reject\n            else:\n                assert not reject\n            rows=session.exec(select(user)).all()\n            count=3 if triple and not reject else (1 if not triple and username and passwords['admin'] else 0)\n            assert len(rows)==count\n            assert len(session.exec(select(membership)).all())==count\n            assert len(session.exec(select(tenant)).all())==bool(count)\n            for row in rows:\n                role,is_test,member_role=roles[row.username]\n                assert (row.role,row.is_test_user,row.must_change_password)==(role,is_test,True)\n                assert ns['verify_password'](passwords[row.username],row.hashed_password)\n                binding=session.exec(select(membership).where(col(membership.user_id)==row.id)).one()\n                assert binding.tenant_id==row.tenant_id and binding.role==member_role\n                all_hashes.append(row.hashed_password)\n            snapshot={row.id:row.hashed_password for row in rows}\n            if not reject:\n                ns['ensure_initial_admin'](session)\n                assert {row.id:row.hashed_password for row in session.exec(select(user)).all()}==snapshot\n        engine.dispose()\nassert all(secret not in stream.getvalue() for secret in all_secrets+all_hashes)\nlogger.removeHandler(handler)\nchecks.extend(['all_16_username_and_three_password_presence_combinations_match_documented_behavior',\n               'missing_triple_inputs_leave_no_user_tenant_or_membership_rows',\n               'single_and_triple_accounts_have_expected_roles_flags_memberships_and_real_bcrypt',\n               'repeated_bootstrap_preserves_ids_and_hashes',\n               'bootstrap_logs_exclude_generated_secrets_and_password_hashes',\n               'business_acceptance_network_connections_forbidden'])\nprint(json.dumps({'checks':checks,'result':'pass','presence_combinations':16,'field_count':len(fields)},ensure_ascii=False))\n"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"checks\": [\"deployer_all_source_fields_have_exactly_one_example_key\", \"deployer_example_and_source_have_no_login_password_for_any_builtin_account\", \"all_16_username_and_three_password_presence_combinations_match_documented_behavior\", \"missing_triple_inputs_leave_no_user_tenant_or_membership_rows\", \"single_and_triple_accounts_have_expected_roles_flags_memberships_and_real_bcrypt\", \"repeated_bootstrap_preserves_ids_and_hashes\", \"bootstrap_logs_exclude_generated_secrets_and_password_hashes\", \"business_acceptance_network_connections_forbidden\"], \"result\": \"pass\", \"presence_combinations\": 16, \"field_count\": 189}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        ".",
+        "--no-cache"
+      ],
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+        "-m",
+        "mypy",
+        "app/"
+      ],
+      "exit_code": 0,
+      "stdout": "Success: no issues found in 211 source files\n",
+      "stderr": ""
+    }
+  ],
+  "sha256": {
+    ".env.example": "f4dfd5bd9b73a5d6ca5894e409f9740c140a8dbadf016ec4524b2930fc25c731",
+    "README.md": "9b7e3f97cb698a105ca5ac01319fac49f2d4ccc0a36a1de526e3600c67278b43",
+    "docs/evaluations/env001_example_contract.py": "f121c823d5b573ddb74720ec5a6cb1ba00dd9ad0fadcdd4d67fa19cb4b0820bf",
+    "docs/evaluations/env002_bootstrap_contract.py": "1829636289715f55b14791e3259ed78a519512b3d4a813ec0980af1d546d4cc9",
+    "docs/evaluations/env002_independent_probe.py": "8aef765d45f7b707fb7b34b910234f93d2d8582c05d5102e1a1f9c8bbf735ea0",
+    "pyproject.toml": "2873378e1d2dd888554e12754247184b760ee1550eae658ef122c535088135c1",
+    "requirements.txt": "4ea9c39ab423e1433e5d706fe55788a7920154add423e90942ce2cc686b82d5c",
+    "app/core/config.py": "37cfdcb42fc84b636f7841231d5f700eca2e1911865c4add9d030e50136d51a4",
+    "app/core/security.py": "2b8609a0036107cf2a39d9f144ed562af3c42890b2b0aa401b5be0bfba22caac",
+    "app/models/base.py": "faacf79cb4a173806f8cf7c1c4b0cc4a73bd8051aed7fe866e86a27527f12ab2",
+    "app/models/user.py": "051fa532f3bbf55475db679341935a9756a333ae871c2e156868d2e212da0a2c",
+    "app/models/membership.py": "d68455b4f8e04f6edf28ebf64604f9e0fd622d5416d05661dcd1d06f5d43aea4",
+    "app/services/membership.py": "8b212999749b0b190dc42af98807a26aa339aae0b2114c569d9fb1131794428f",
+    "app/services/auth_service.py": "82c693d415619645aaefe47dd2f7a69487fe2b6ca9444b95eccfc11fe1812826"
+  },
+  "business_acceptance": "passed; explicitly delegated by user in this turn",
+  "unrelated_changes": [
+    "tests/test_rag_039_acceptance.py",
+    "docs/plans/plan_qa005_batch_order_fix_20261017.md"
+  ],
+  "not_run": [
+    "full application pytest",
+    "frontend checks",
+    "Linux / remote CI",
+    "production startup or deployed-account password change"
+  ],
+  "supplemental_checks": [
+    "HEAD_vs_candidate_all_example_configuration_values_unchanged",
+    "README_current189_snapshot_and_no_quoted_builtin_password_assignments"
+  ],
+  "result": "pass",
+  "gate_applicability": {
+    "ruff_mypy_and_related_regression": "required and passed",
+    "full_application_pytest": "not triggered: no common application path or runtime configuration value changes",
+    "frontend": "not applicable: no frontend or API contract changes",
+    "Linux_and_Ubuntu_CI": "not triggered: no process/signal/path/platform behavior change",
+    "merge_required_checks": "not applicable: no merge/push/deployment performed",
+    "basis": "AGENTS.md section10; independent reviewer and meta-review concur"
+  }
+}

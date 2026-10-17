@@ -10,9 +10,9 @@ alwaysApply: false
 
 ## MUST
 
-- 保持 `Agent -> Skill -> Tool -> Service -> Repository -> Data Store` 依赖方向。
-- 由 Harness 管理上下文、显式状态、权限、执行、恢复、观测和评估。
-- 架构边界变化同步 ADR、迁移/回滚方案和架构测试。
+- 新增或修改代码不得扩大当前分层差距，并朝 `API/Channel -> Agent Harness -> Agent Runtime -> Skill -> Tool Executor -> Service -> Repository -> Data Store` 目标依赖方向渐进收敛。
+- 复用现有 `ChatService`、`AgentPipeline` 和受控执行入口承担已有 Harness 职责；独立 Harness、Tool Executor、State Manager 或 Repository 未经批准不得为形式合规一次性引入。
+- 改变 Harness、状态、RAG、MCP、HITL 或其他架构边界时，先同步 ADR、迁移/回滚方案和架构测试。
 
 ## SHOULD
 
@@ -22,7 +22,7 @@ alwaysApply: false
 ## NEVER
 
 - 让 Agent、Prompt、Skill 或 MCP Server 直连数据库。
-- 为单个需求创建绕过权限、Executor 或 Repository 的快捷通道。
+- 为单个需求创建绕过现有权限、Service 或受控执行入口的快捷通道。
 
 ## 验证证据
 

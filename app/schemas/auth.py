@@ -35,6 +35,14 @@ class RefreshRequest(BaseModel):
     }
 
 
+class ChangePasswordRequest(BaseModel):
+    """当前用户验证原口令后设置新口令。"""
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+    model_config = {"extra": "forbid"}
+
+
 class Token(BaseModel):
     """令牌响应。"""
 
@@ -101,5 +109,7 @@ class UserInfo(BaseModel):
     email: str | None = None
     role: Role
     is_active: bool
+    is_test_user: bool = False
+    must_change_password: bool = False
 
     model_config = {"from_attributes": True}

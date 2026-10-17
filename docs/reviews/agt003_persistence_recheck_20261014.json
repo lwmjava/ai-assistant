@@ -1,0 +1,12 @@
+{
+  "executing_agent": "/root/accept_agt007",
+  "exit_code": 0,
+  "evidence": "E2-isolated-test-db-new-process-new-session",
+  "checks": [
+    {"route": "YES", "new_session_committed_code_result": true},
+    {"route": "NO", "new_session_committed_code_result": true}
+  ],
+  "timestamp_filter": "Message.created_at >= ACCEPTANCE_STARTED_AT captured before the current 239-test run",
+  "command": "python docs/reviews/agt003_persistence_recheck_20261014.py",
+  "source": "Actual exec output 52bc07, 2026-10-14; copied verbatim checks without re-running shared DB"
+}

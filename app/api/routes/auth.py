@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlmodel import Session
 
 from app.api.deps import audit_event, get_current_user, get_db
+from app.api.errors import PublicHTTPError, error_responses
 from app.audit.models import AuditAction
 from app.core.security import (
     Role,
@@ -19,6 +20,7 @@ from app.core.security import (
 )
 from app.models.user import Tenant, User
 from app.schemas.auth import (
+    ChangePasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
@@ -31,10 +33,14 @@ from app.schemas.invitation import MembershipOut, SwitchTenantRequest
 from app.services.auth_service import (
     DefaultTenantInactiveError,
     EmailTakenError,
+    InvalidCurrentPasswordError,
+    PasswordUnchangedError,
     SetupClosedError,
+    UserDisabledError,
     UsernameTakenError,
     UserNotFoundError,
     authenticate,
+    change_password,
     register_member,
     revoke_refresh_tokens,
     setup_system_admin,
@@ -48,6 +54,35 @@ from app.services.membership import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/change-password", response_model=Token)
+async def change_password_route(
+    body: ChangePasswordRequest,
+    request: Request,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Token:
+    """核对原口令后修改密码，清除首次改密限制并换发双令牌。"""
+    if session.get(User, current_user.id) is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="需要真实用户登录")
+    try:
+        user = change_password(
+            session, current_user,
+            current_password=body.current_password, new_password=body.new_password,
+        )
+    except (InvalidCurrentPasswordError, PasswordUnchangedError) as exc:
+        await audit_event(request, AuditAction.USER_PASSWORD_RESET, user=current_user,
+                          resource_type="user", resource_id=current_user.id,
+                          details={"success": False})
+        detail = (
+            "当前密码错误或凭据已变更" if isinstance(exc, InvalidCurrentPasswordError)
+            else "新密码不能与当前密码相同"
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+    await audit_event(request, AuditAction.USER_PASSWORD_RESET, user=user,
+                      resource_type="user", resource_id=user.id, details={"success": True})
+    return _issue_token(user)
 
 
 def _issue_token(user: User) -> Token:
@@ -68,12 +103,17 @@ def _require_system_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, responses=error_responses("user_disabled", "tenant_suspended"))
 async def login(
     body: LoginRequest, request: Request, session: Session = Depends(get_db)
 ) -> Token:
     """用户名密码登录，返回 access + refresh 双令牌。"""
-    user = authenticate(session, body.username, body.password)
+    try:
+        user = authenticate(session, body.username, body.password, report_disabled=True)
+    except UserDisabledError:
+        await audit_event(request, AuditAction.USER_LOGIN,
+                          details={"username": body.username, "success": False, "reason": "user_inactive"})
+        raise PublicHTTPError(403, "user_disabled", detail="用户已被禁用，请联系管理员") from None
     if user is None:
         await audit_event(
             request,
@@ -85,6 +125,11 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
         )
+    tenant = session.get(Tenant, user.tenant_id)
+    if user.role_enum is not Role.SYSTEM_ADMIN and (tenant is None or not tenant.is_active):
+        await audit_event(request, AuditAction.USER_LOGIN, user=user,
+                          details={"success": False, "reason": "tenant_inactive"})
+        raise PublicHTTPError(403, "tenant_suspended", detail="租户已停用")
     await audit_event(
         request,
         AuditAction.USER_LOGIN,
@@ -96,7 +141,8 @@ async def login(
     return _issue_token(user)
 
 
-@router.post("/refresh", response_model=Token)
+@router.post("/refresh", response_model=Token, responses=error_responses(
+    "session_expired", "token_revoked", "user_disabled", "tenant_suspended"))
 async def refresh(
     body: RefreshRequest, request: Request, session: Session = Depends(get_db)
 ) -> Token:
@@ -110,7 +156,7 @@ async def refresh(
             user=None,
             details={"success": False, "reason": "invalid"},
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh_token 无效或已过期")
+        raise PublicHTTPError(401, "session_expired", detail="refresh_token 无效或已过期")
     if payload.get("type") != "refresh":
         await audit_event(
             request,
@@ -118,7 +164,7 @@ async def refresh(
             user=None,
             details={"success": False, "reason": "invalid"},
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="需要 refresh_token")
+        raise PublicHTTPError(401, "session_expired", detail="需要 refresh_token")
 
     user_id = payload.get("sub")
     user = session.get(User, user_id) if user_id else None
@@ -129,7 +175,9 @@ async def refresh(
             user=user,
             details={"success": False, "reason": "user_inactive"},
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用")
+        raise PublicHTTPError(403 if user is not None else 401,
+                              "user_disabled" if user is not None else "session_expired",
+                              detail="用户不存在或已禁用")
 
     tenant = session.get(Tenant, user.tenant_id)
     if user.role_enum is not Role.SYSTEM_ADMIN and (tenant is None or not tenant.is_active):
@@ -139,7 +187,7 @@ async def refresh(
             user=user,
             details={"success": False, "reason": "tenant_inactive"},
         )
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="租户已停用")
+        raise PublicHTTPError(403, "tenant_suspended", detail="租户已停用")
 
     # 用最新 token_version 复核撤销状态。
     try:
@@ -151,7 +199,7 @@ async def refresh(
             user=user,
             details={"success": False, "reason": "stale_version"},
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        raise PublicHTTPError(401, "token_revoked", detail="Refresh Token 已被撤销，请重新登录") from e
 
     await audit_event(
         request,

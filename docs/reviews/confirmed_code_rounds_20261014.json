@@ -1,0 +1,23 @@
+{
+  "max_rounds": 3,
+  "round_definition": "One post-fix official evaluation, up to 12 logical model calls; prior unfixed baseline is historical, not a repair round",
+  "rounds": [
+    {
+      "round": 1,
+      "status": "passed",
+      "report": "evals/reports/agent-chain-v0.1-official-confirmed-code-r1-20261014.json",
+      "official_exit_code": 0,
+      "gate_exit_code": 0,
+      "metrics": {
+        "route_accuracy": 1.0,
+        "followup_recall": 1.0,
+        "tool_selection_recall": 1.0,
+        "tool_call_validity_recall": 1.0
+      },
+      "logical_model_calls": 12
+    }
+  ],
+  "new_ci_runs": 0,
+  "new_git_publish": false,
+  "stop_reason": "First repair round passes all four original quality thresholds; no additional model rounds authorized by necessity"
+}

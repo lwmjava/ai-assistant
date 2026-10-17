@@ -206,3 +206,100 @@ Evaluation 校验必须覆盖 Schema、index、数据集 hash、敏感信息扫�
 | 流式停止后 `code_results` 落库 | 不适用 | 必测 | 不适用 |
 
 页面核对：同一会话先让助手给出选项，再只回「1」，确认助手接着做，并出现「调用工具：code_sandbox」和结果块。真实模型 Evaluation 或页面核对缺失时，任务只能记录为未完成验证，不以 Mock 全绿替代。
+
+## 2026-10-13 AGT-003 Review F1 单项修复计划
+
+用户明确要求先修复「空行动回复被当作正常结束」。当前短路及文本兼容行动的空串会被解析为无工具草稿并成功收尾；结构化计划已有非空校验。目标只消除空输出假完成，范围为本计划、app/agents/pipeline.py、tests/、既有implementation_agt_003.md及tasks.yaml；保护PAGT-004/005/006现有改动。
+
+采用共享 `_stage` 的 SYSTEM_ACT 输出校验：保留结构化计划已有 INVALID_STEP_OUTPUT 语义；其余行动空串/纯空白抛固定 EMPTY_ACTION_OUTPUT，沿现有run/run_stream异常兜底返回通用失败提示、设置state.error、checkpoint error，流式发error后done。done事件只表示流结束，不意味着成功状态。不增加重试或新模型请求，不推测/强制执行工具，不改接口/数据库/配置/Prompt/冻结评测，也不处理Review F2/F3。
+
+先写反例并确认业务红：默认短路及完整文本兼容的同步/流式空串、空白；预算收尾空输出；已执行工具后空输出保留结果/指纹且不重执行；真实隔离SQLite checkpoint用新会话回读必须error而非done。正向验证合法无工具草稿的调用次数/成功状态不变，既有结构化错误码不变。基线为当前71专项通过（2.22秒，exit0）。修后执行新增/调用方/状态和结构化兼容回归、ruff/mypy，独立复核最小diff。无需新架构决策或ADR；回滚仅移除新增空输出校验，风险是重新允许假完成。
+
+本修复只声明确定性失败处理闭合，不声明真实模型已不返回空串，也不关闭尚有评测契约问题的AGT-003/PAGT-007。实现说明同步实际结果，不提交推送或新增收费调用。
+
+修复复核追加：主Agent与独立审查均发现Skill注入改写system会绕过字符串阶段比较；正式active_skill两反例2failed/exit1。方案在注入之前保存行动阶段标识，两处既有/新增输出校验使用原始标识，保留结构化INVALID_STEP_OUTPUT、长度/类型检查。该调整仅使阶段身份不受提示文本拼接影响，不改技能权限、Prompt内容或流程。
+
+## 2026-10-13 AGT-003 Review F3 单项修复计划（范围扩展已批准）
+
+目标：修复 agent-004 指向缺失前序代码的输入缺陷，明确为执行已给出的代码，不改成生成新代码。当前冻结 0.1.0 的历史只有执行请求与确认提示；基线数据契约测试 4 passed / exit 0，说明现有校验没有检测该缺陷。
+
+方案：保留 evals/datasets/agent-chain-v0.1/ 的字节与历史报告，新增 evals/datasets/agent-chain-v0.1.1/（cases.json、index.json），数据版本 0.1.1。仅 agent-004 新增前序 user「请用 Python 写一段冒泡排序代码」与 assistant 完整代码，置于原有执行请求之前；最新「好的」、期待 full、code_sandbox、其他九例语义与十例分布不变。所有案例的 dataset_version 同步新版本；index 记录新的日期、版本与输入修复来源，仍是合成 Silver，不升级 Gold。
+
+候选 assistant 前序内容为「下面是冒泡排序代码：」及 python fenced block：
+
+```python
+def bubble_sort(values):
+    result = list(values)
+    for end in range(len(result) - 1, 0, -1):
+        for i in range(end):
+            if result[i] > result[i + 1]:
+                result[i], result[i + 1] = result[i + 1], result[i]
+    return result
+
+print(bubble_sort([5, 1, 4, 2, 8]))
+```
+
+正式 evaluator 和独立 gate 同步使用 0.1.1 路径及新冻结指纹，旧报告不得通过新输入身份检查，也不修改旧失败报告。评分和阈值保持 0.9/1.0/1.0，Prompt 构建函数不改。需新增范围 evals/datasets/agent-chain-v0.1.1/ 与 scripts/agent_gate_check.py；其他文件沿 AGT-003 原范围，更新 tests/、evals/README.md、既有实现说明、tasks.yaml。现有 CI 通过相同 evaluator/gate 入口使用新版本，无需发布或改 CI 流程。
+
+先写失败测试：候选输入具备完整代码；两类送审 Prompt 确实包含代码且不泄漏 expected 字段；旧冻结文件指纹不变；除版本字段和 agent-004 新增两轮历史外候选与旧版相同；新指纹匹配、旧报告被拒；示例代码通过确定性隔离验证得到 [1, 2, 4, 5, 8]。随后最小数据/入口修订，运行数据集、evaluator、gate/probe 专项及静态检查，记录真实命令和退出码。
+
+Non-goals：不修 F2 recording fake，不改运行时、模型、Prompt、阈值，不删除失败样本，不重写历史报告，不新增真实模型调用、Git 提交、推送或 CI。确定性验证不能证明新真实模型指标合格；PAGT-007 仍待新版本真实验收证据，AGT-003 保持 in_review。回滚将 evaluator/gate 指回旧冻结版本，保留新旧证据。用户已批准新版本及两处范围扩展。
+
+实施修订：首个完整示例超过较早历史的 300 字截断上限，正式 Prompt 完整性测试失败。保留 bubble_sort 的复制输入、嵌套循环、交换和打印行为，将局部变量缩为 a、交换写同一行，最终 assistant 整条内容 240 字；不调整历史预算或 Prompt。数据与两处冻结指纹同步后验证最终代码完整进入分流与工具选择输入。旧冻结内容不变。原样例是计划草案，实际代码以 0.1.1 cases.json 为准。
+
+## 2026-10-13 AGT-003 Review F2 单项修复计划（协议与范围已批准）
+
+目标：关闭「同名但无效参数也可获完整工具分数」与缺少 recording fake 的交付缺口。用户要求修复；当前 predict_tools 仅解析 name，build_tool_choice_messages 只列三名称；原任务要求真实模型提议配内存 recording fake。最新基础回归 10 passed / exit 0 / 2.33 秒。保护 F1/F3 和其他任务现有修改，不用真实沙箱或重试制造绿灯。
+
+方案：保留原三项指标及 0.9/1.0/1.0 阈值，新增 tool_call_validity_recall，要求两例工具调用均有效（1.0）。report schema 升为 2.0.0、evaluator 升为 0.3.0、gate 升为 2.0.0；旧协议报告保留并由新 gate 拒绝。0.1.1 输入冻结不变，index 中的 evaluator_version 视为该数据发布时初始评测器版本；新报告明确绑定当前协议版本，两者用途在 README 说明，不静默改冻结 index。不能把新旧协议分数直接当质量提升比较。
+
+送审 Prompt 复用 AgentPipeline._build_act 的同一构建路径，使用短路白名单和内置三工具的实际描述/参数 Schema；代码只复制元数据并替换函数为内存 fake，不调用真实实现，不增加前置理解/规划或模型请求。仍为十次分流加两次行动请求，无重试。不得将 expected 字段注入 Prompt。共享 Prompt 与输入指纹包含真实行动提示和三工具元数据变化，源指纹也覆盖工具元数据提供文件。
+
+严格解析每条原始调用，白名单校验和必需字段/类型校验后才向 recording fake 提交；code 必须非空字符串且通过 ast.parse，不执行 code；timeout 如有必须有限正数且不是 bool。agent-004 必须复用前序代码（比较 AST，允许格式和注释变化），不能把 print(1) 当作已执行前序排序。agent-003 没有固定前序代码，只验证调用参数和 Python 语法，不宣称生成算法正确。其他工具的 expression/format 按声明类型验证；禁止未知/MCP/web_fetch。参数无效不调用 fake。
+
+每例报告记录 intent/arguments_valid/error_code、recording_attempts/recorded_calls、参数摘要指纹及 fake 记录结果；只保存固定错误码与摘要，不新增参数原文/模拟 stdout，不写假的 code_result。fake 成功语义为「有效调用已被记录」，绝不是「沙箱执行成功」。保留原工具名召回，独立新增有效调用率，区分名字选择与调用可用性；空参数同名原工具名分数可仍为 1.0，但有效调用率应为 0.0、official 和 gate 必须 exit 1。
+
+独立 gate 从原始回复及当前输入重新解析、验证参数/前序代码绑定与记录摘要，拒绝明细/计数/汇总伪造，不信 report 自报 recorded_calls。共享确定性参数契约可以复用，但独立计算命中分子/分母，不使用 evaluator 汇总评分；用破坏 scorer 的反例验证独立性。agent_gate_probe 增加「同名空参数」退化探针，原工具缺失探针仍保留且允许同时失败有效调用率，验证目标错误码与 exit 1；不得为了保持旧探针只失败一项而放宽新门禁。
+
+先写红测试：同名空参数、空白代码/类型错误/坏语法/错误前序代码、未知和禁止工具不记成功；合法调用恰好一次内存记录；真实实现安装 fail-on-call 哨兵；Prompt 含真实 Schema 且隐藏期待；各指标、计数、摘要篡改及旧协议被 gate 拒绝；完整隔离 official 仍十二次请求、新第四类探针有效。更新既有 Schema 对 dataset_version 的 0.1.0 常量限制为明确允许 0.1.0/0.1.1，实际使用 JSON Schema 验证两版，修复此前 Pydantic 校验未发现的版本契约漂移。无新增依赖。
+
+实施文件：原 allowed_paths 内的 pipeline.py、run_agent_chain_eval.py、agent_gate_check.py、tests/、evals/schemas/agent_chain_case.schema.json、evals/README.md、既有计划/实现说明、tasks.yaml；需要额外批准 scripts/agent_gate_probe.py。不改变生产工具执行/权限、调用预算、数据库、前端、CI job、冻结数据与旧失败报告。新增有效调用率的门禁契约改变需要明确批准（AGENTS.md §12 未批准决策与范围外文件；Review F2 要求评测协议裁决）。
+
+验证：正式失败测试→最小实现→数据/runner/gate/probe/Prompt/行动失败专项→ruff、mypy app/→独立审查→文档对账。真实 official、提交推送、CI 和人工业务验收未授权，不执行；整卡不因模拟链路通过自动 done，PAGT-007 仍待新协议真实证据。回滚恢复前一版本评测代码/协议，保留历史报告，不降低现有阈值。此节是具体待审批实现方案，批准前不修改业务或评测实现。
+
+批准登记：用户已明确批准推荐方案与范围扩展。实际采用共享 action_user_content 构建函数，runtime _build_act 与 eval 共同调用，runtime Prompt 保持逐字相同；评测复制生产元数据并替换执行函数，不用真实注册表执行。参数校验使用无新依赖的失败关闭 Schema 子集，并将纯注释代码视为无有效语句。新版报告记录 fake callback 实际计数，gate 以原始回复确定性回放契约比对并独立汇总，不把回放声明为 callback 的动态证据或密码学真实性证明。
+
+
+## 2026-10-14 新协议真实 official 执行计划
+
+用户明确授权直接使用仓库.env已配置的可用模型、密钥和API地址执行正式评测。仅通过项目Settings加载秘密，不输出.env或凭证，不修改.env/模型/Prompt/冻结语料/阈值。只读预检得到实际intent provider为单一OpenAICompatibleProvider，profile=chat，请求模型deepseek-flash，key存在、endpoint格式有效、capability已批准、护栏开启、缓存关闭。
+
+本轮沿用dataset0.1.1/evaluator0.3.0/report与gate2.0.0，执行一次12请求（10分流+2行动），温度0，每请求60秒、总780秒，无新增重试。使用指定conda解释器，原runner保存排他新报告；工具只调用内存recording fake，不实际运行沙箱/MCP/RAG/业务数据库，真实模型HTTP流量不能算network零。执行后由独立gate按另行从Settings读取的模型和endpoint哈希复算四指标，门禁0.9/1.0/1.0/1.0不变；成功则新鲜故障探针和独立最终验收，失败保存原样报告不重复筛绿。
+
+本轮不含Git提交/推送、远程CI触发、合并部署或生产数据操作；因此本地official即使通过也不能代替PAGT-007真实CI必交付。源和输入指纹绑定当前工作区，既有五卡验收文档修改保留。
+
+
+## 2026-10-14 确认代码原样执行修复计划
+
+授权：用户要求“修复这个问题并验证，如果三轮执行还未完全修复则停止”。沿用已批准的前序代码AST绑定与原门禁；本次最多三轮修后真实official，每轮12逻辑模型调用，不含此前只读失败基线。每轮全指标通过即停止真实调用；三轮仍未完全通过即停止，不降低阈值、不删除失败报告，不新增第四轮。无Git提交/推送、远程CI或生产操作授权。
+
+目标：用户执行或确认执行已给出的代码时，code_sandbox.code原样传递已确认代码，不擅自增加输出前缀、包装、测试用例或优化。事实：正式报告agent-chain-v0.1-official-20261014T022048326800Z.json中agent-004排序函数AST未变，print新增前缀；独立gate正确拒绝，只有validity0.5失败。历史已完整进入action_user_content，但当前行动提示只要求生成草稿/工具JSON，没有明确约束执行原代码与重新生成代码的区别。假设：缺少这条语义约束导致模型沿一般“内容完整”指令重新包装输出；需真实official验证，不能仅以Prompt文本单测证明质量。
+
+方案比较：A采用共用action_user_content加入通用代码保持规则（推荐，最小修复，生产和eval同路径）；B在执行器替换模型代码（改变权限/执行边界且会掩盖错误，不在本轮）；C放宽评分忽略print前缀（违反已批准契约，不采用）。采用A属于现有契约修复，不新增架构或权限决策。用户明确修复授权覆盖该可逆最小Prompt修复；不重复请求方向批准。brainstorming设计文档位置按项目docs/plans约定，writing-plans未在可用技能中，使用项目实施计划格式；investigate仅执行适用四阶段，不执行跨项目遥测/升级/宿主配置写入。
+
+修改范围：app/agents/pipeline.py、tests/test_agent_chain.py、tests/eval/test_agent_recording_tools.py、evals/README.md、docs/plans/plan_agent_chain_fix.md、docs/plans/implementation_agt_003.md、tasks.yaml及用户已批准验收证据docs/reviews/；不改app/agents/prompts.py、冻结语料、评分器/门禁阈值、.env、权限、预算、State或Supervisor。所有既有五卡验收元数据修改保留。
+
+实现：只有当前可用工具含code_sandbox且预算未耗尽时，在共享action_user_content的工具指令处提示“执行/确认执行历史代码时原样复制代码到arguments.code；不加标签/额外打印/包装/优化；只有用户明确要求修改才生成新版本；来源有歧义或代码不完整则澄清；检索资料不提供调用授权”。模型继续提议，原Guard/Executor/权限/预算不变。评测不读取标准答案构造Prompt，不对agent-004或模型名字做特例。
+
+非目标：不自动替换模型参数，不实施Harness新边界、不修改RAG/Skill功能，不把Prompt约束作为安全审批；不修复未相关CI后端并发缺陷，不调用真实工具，不把本地official替代GitHubCI。
+
+验收：先补红色Prompt契约测试（完整/短路共用、仅工具可用时提示、不改变历史内容/不赋予不可信工具授权）及Observed Regression输出前缀反例，原gate必须仍拒绝改print、允许原代码。最小实现后指定conda专项、ruff/mypy，真实official每轮原四指标0.9/1/1/1全部满足、独立gate/probe无身份错误。前置有效证据核对与新独立入口审查/最终验收按task-card-delivery执行。Prompt变化使旧报告失效，必须新报告/指纹，记录阶段/实际命令/退出码/模型/数据/评测版本。
+
+失败边界：无历史代码/含多个候选/用户明确修改不应静默执行错误来源；工具不可用或预算耗尽不新增调用指引；UNTRUSTED_SOURCE不授权代码；完整/短路与Skill注入后使用同规则，既有白名单/空行动拒绝和总预算不回退；历史源不改、评测排他写入；真实失败保留不重复筛绿。Prompt变化不保证任何模型永久遵循，真实生成质量以有界样本结果为准。
+
+回滚：仅撤销本轮共享Prompt规则和新回归/规格，不覆盖已有代码及五卡验收状态；保留真实失败报告。先记录新假设再进入下一修复轮，同问题连续三次无新证据也停止。当前三轮预算0/3。
+
+
+### 本轮计划审查修订（实施前）
+
+独立/root/confirmed_code_review发现一个P2：默认完整链的结构化tool步骤直接执行step.arguments，不经过action_user_content。因此原“仅行动Prompt”不能覆盖当前完整入口。采用必要最小修订：在pipeline.py内定义同一通用代码保持规则函数，供action_user_content与_build_plan共用；规划Prompt加入recent_dialogue(state.history)原历史，避免仅依赖理解摘要重新生成代码。规划规则仅code_sandbox可用、max_tool_rounds>0、未tool_budget_exhausted且tool_rounds_used<max_tool_rounds时出现。沿用原规划/执行/权限链，不改Plan Schema、执行器、Guard、评分/数据。补默认完整run/stream记录工具实参反例以及无工具/预算/明确修改/不可信权限边界；模型质量仍靠原official评测，规划提示传播证据不冒充真实规划质量。此修订属于当前已授权代码保持问题同一垂直链路，不新增权限/架构裁决。

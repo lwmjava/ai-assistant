@@ -16,13 +16,14 @@ export const tenantKeys = {
   list: () => [...tenantKeys.all, 'list'] as const,
 }
 
-export function useTenants(includeInactive = false) {
+export function useTenants(includeInactive = false, enabled = true) {
   return useQuery({
     queryKey: [...tenantKeys.list(), includeInactive],
     queryFn: () =>
       api.get<TenantOut[]>(
         includeInactive ? '/admin/tenants?include_inactive=true' : '/admin/tenants',
       ),
+    enabled,
   })
 }
 
@@ -54,6 +55,53 @@ export function useDeactivateTenant() {
       api.post<TenantOut>(`/admin/tenants/${tenantId}/deactivate`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: tenantKeys.all })
+    },
+  })
+}
+
+export function useActivateTenant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (tenantId: string) =>
+      api.post<TenantOut>(`/admin/tenants/${tenantId}/activate`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: tenantKeys.all })
+    },
+  })
+}
+
+export interface QuotaOut {
+  tenant_id: string
+  message_limit: number | null
+  storage_limit_bytes: number | null
+}
+
+export interface QuotaUpdateBody {
+  tenantId: string
+  message_limit: number | null
+  storage_limit_bytes: number | null
+  reason: string
+}
+
+export function useTenantQuota(tenantId: string | null) {
+  return useQuery({
+    queryKey: [...tenantKeys.all, 'quota', tenantId],
+    queryFn: () => api.get<QuotaOut>(`/admin/tenants/${tenantId}/quota`),
+    enabled: Boolean(tenantId),
+  })
+}
+
+export function useUpdateTenantQuota() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: QuotaUpdateBody) =>
+      api.patch<QuotaOut>(`/admin/tenants/${body.tenantId}/quota`, {
+        message_limit: body.message_limit,
+        storage_limit_bytes: body.storage_limit_bytes,
+        reason: body.reason,
+      }),
+    onSuccess: (_data, body) => {
+      void qc.invalidateQueries({ queryKey: [...tenantKeys.all, 'quota', body.tenantId] })
     },
   })
 }

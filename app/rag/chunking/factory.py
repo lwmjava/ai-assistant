@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-import re
-
 from app.core.config import settings
 from app.rag.chunking.base import ChunkingStrategy
 from app.rag.chunking.registry import ChunkingRegistry
+from app.rag.chunking.routing import (
+    RoutingDecision,
+    route,
+    signals_from_parsed,
+    signals_from_text,
+)
 from app.rag.chunking.strategies.fixed_chars import FixedCharsChunkingStrategy
 from app.rag.chunking.strategies.format_aware import FormatAwareChunkingStrategy
 from app.rag.chunking.strategies.layout_aware import LayoutAwareChunkingStrategy
@@ -18,29 +22,51 @@ from app.rag.chunking.strategies.sliding_window import SlidingWindowChunkingStra
 from app.rag.chunking.strategies.structured import StructuredChunkingStrategy
 from app.rag.chunking.strategies.token_aware import TokenAwareChunkingStrategy
 
-_HEADING_RE = re.compile(r"^#{1,6}\s+", re.MULTILINE)
-_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 
-
-def _auto_route(text: str) -> str:
-    """按文档特征选择策略。"""
-    if _HEADING_RE.search(text):
-        return "structured"
-    if len(_CJK_RE.findall(text)) / max(1, len(text)) < 0.3:
-        return "token_aware"
-    if len((text or "").strip()) > settings.RAG_CHUNK_SIZE * 2:
-        return "recursive"
-    return "paragraph"
+def _long_threshold() -> int:
+    return max(1, settings.RAG_CHUNK_SIZE * 2)
 
 
 def resolve_strategy_name(text: str, strategy: str | None) -> str:
-    """解析最终策略名：请求级 > 配置级 > auto 路由。"""
+    """解析最终策略名：请求级 > 配置级 > auto 路由。向后兼容旧签名。"""
+    return resolve_strategy_with_decision(text, strategy).strategy
+
+
+def resolve_strategy_with_decision(
+    text: str,
+    strategy: str | None,
+    *,
+    parsed=None,
+    configured_default: str | None = None,
+) -> RoutingDecision:
+    """返回策略名与可解释决策；parsed 存在时聚合 blocks/bbox 信号。
+
+    优先级：显式请求（非 auto）> 配置级或请求级 auto 路由 > 配置默认。
+    """
+    configured: str = configured_default or str(getattr(settings, "RAG_CHUNK_STRATEGY", "structured"))
+    signals = signals_from_parsed(parsed) if parsed is not None else signals_from_text(text)
+
+    # 显式指定的非 auto 策略直接命中。
     if strategy and strategy != "auto":
-        return strategy
-    configured = getattr(settings, "RAG_CHUNK_STRATEGY", "structured")
-    if strategy == "auto" or configured == "auto":
-        return _auto_route(text)
-    return configured
+        return RoutingDecision(
+            strategy=strategy,
+            reason="request_override",
+            signals=signals,
+        )
+    # 配置为 auto 或请求为 auto 时跑路由决策表。
+    if configured == "auto" or strategy == "auto":
+        return route(
+            signals,
+            requested=strategy,
+            configured_default=configured,
+            long_threshold_chars=_long_threshold(),
+        )
+    # 否则使用配置默认策略。
+    return RoutingDecision(
+        strategy=configured,
+        reason="configured_default",
+        signals=signals,
+    )
 
 
 def build_registry() -> ChunkingRegistry:

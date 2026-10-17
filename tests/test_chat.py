@@ -1,7 +1,7 @@
 """对话接口集成测试。
 
-通过依赖覆盖注入 Mock 提供商与合成用户，验证 /api/chat 非流式、
-/api/chat/stream 流式、会话列表 / 详情 / 删除等端到端行为，不依赖真实大模型。
+通过依赖覆盖注入 Mock 提供商与合成用户，验证 /api/v1/chat 非流式、
+/api/v1/chat/stream 流式、会话列表 / 详情 / 删除等端到端行为，不依赖真实大模型。
 """
 
 import asyncio
@@ -23,7 +23,7 @@ from app.services.chat_service import ChatService
 
 
 @pytest.fixture()
-def client():
+def client(persist_identity):
     fake_user = User(
         id="test-user",
         tenant_id="test-tenant",
@@ -33,6 +33,7 @@ def client():
         token_version=0,
         is_active=True,
     )
+    persist_identity(fake_user)
     app.dependency_overrides[get_current_user] = lambda: fake_user
     set_llm_provider_override(MockLLMProvider())
     with TestClient(app) as c:
@@ -42,7 +43,7 @@ def client():
 
 
 def test_chat_returns_reply(client: TestClient) -> None:
-    resp = client.post("/api/chat", json={"message": "你好"})
+    resp = client.post("/api/v1/chat", json={"message": "你好"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["reply"]
@@ -50,23 +51,23 @@ def test_chat_returns_reply(client: TestClient) -> None:
 
 
 def test_empty_message_rejected(client: TestClient) -> None:
-    resp = client.post("/api/chat", json={"message": "   "})
+    resp = client.post("/api/v1/chat", json={"message": "   "})
     assert resp.status_code == 400
 
 
 def test_conversation_lifecycle(client: TestClient) -> None:
-    created = client.post("/api/chat", json={"message": "测试会话生命周期"})
+    created = client.post("/api/v1/chat", json={"message": "测试会话生命周期"})
     cid = created.json()["conversation_id"]
 
-    listing = client.get("/api/chat/conversations")
+    listing = client.get("/api/v1/chat/conversations")
     assert listing.status_code == 200
     assert any(c["id"] == cid for c in listing.json())
 
-    detail = client.get(f"/api/chat/conversations/{cid}")
+    detail = client.get(f"/api/v1/chat/conversations/{cid}")
     assert detail.status_code == 200
     assert detail.json()["messages"]
 
-    deleted = client.delete(f"/api/chat/conversations/{cid}")
+    deleted = client.delete(f"/api/v1/chat/conversations/{cid}")
     assert deleted.status_code == 200
     assert deleted.json()["deleted"] is True
 
@@ -81,7 +82,7 @@ def test_chat_with_rag_enabled_completes(client: TestClient, monkeypatch) -> Non
     set_embedding_override(MockEmbeddingProvider(dim=64))
     try:
         ingest = client.post(
-            "/api/rag/documents/ingest",
+            "/api/v1/rag/documents/ingest",
             json={
                 "text": "北风演示标准套餐月费为 199 元。",
                 "title": "计费",
@@ -89,7 +90,7 @@ def test_chat_with_rag_enabled_completes(client: TestClient, monkeypatch) -> Non
             },
         )
         assert ingest.status_code == 200
-        resp = client.post("/api/chat", json={"message": "标准套餐月费是多少"})
+        resp = client.post("/api/v1/chat", json={"message": "标准套餐月费是多少"})
         assert resp.status_code == 200
         assert resp.json()["reply"]
     finally:
@@ -105,7 +106,7 @@ def test_chat_reply_includes_source_filename(client: TestClient, monkeypatch) ->
     set_embedding_override(MockEmbeddingProvider(dim=64))
     try:
         ingest = client.post(
-            "/api/rag/documents/ingest",
+            "/api/v1/rag/documents/ingest",
             json={
                 "text": "来源演示文件写明标准套餐月费为 199 元。",
                 "title": "计费说明",
@@ -114,7 +115,7 @@ def test_chat_reply_includes_source_filename(client: TestClient, monkeypatch) ->
         )
         assert ingest.status_code == 200
         resp = client.post(
-            "/api/chat", json={"message": "来源演示文件写明标准套餐月费为多少"}
+            "/api/v1/chat", json={"message": "来源演示文件写明标准套餐月费为多少"}
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -123,7 +124,7 @@ def test_chat_reply_includes_source_filename(client: TestClient, monkeypatch) ->
         assert matched[0]["page"] is None
         assert matched[0]["section"] is None
 
-        detail = client.get(f"/api/chat/conversations/{body['conversation_id']}")
+        detail = client.get(f"/api/v1/chat/conversations/{body['conversation_id']}")
         assert detail.status_code == 200
         assistant = [item for item in detail.json()["messages"] if item["role"] == "assistant"]
         assert any(item["filename"] == "billing.txt" for item in assistant[-1]["sources"])
@@ -137,7 +138,7 @@ def test_chat_sources_empty_when_retrieval_disabled(client: TestClient, monkeypa
     from app.core.config import settings
 
     monkeypatch.setattr(settings, "RAG_ENABLED", False)
-    resp = client.post("/api/chat", json={"message": "没有检索时不要带来源"})
+    resp = client.post("/api/v1/chat", json={"message": "没有检索时不要带来源"})
     assert resp.status_code == 200
     assert resp.json()["sources"] == []
 
@@ -151,7 +152,7 @@ def test_chat_stream_includes_sources_event(client: TestClient, monkeypatch) -> 
     set_embedding_override(MockEmbeddingProvider(dim=64))
     try:
         ingest = client.post(
-            "/api/rag/documents/ingest",
+            "/api/v1/rag/documents/ingest",
             json={
                 "text": "流式来源文件写明夜间套餐月费为 59 元。",
                 "title": "夜间套餐",
@@ -160,21 +161,64 @@ def test_chat_stream_includes_sources_event(client: TestClient, monkeypatch) -> 
         )
         assert ingest.status_code == 200
         with client.stream(
-            "POST", "/api/chat/stream", json={"message": "流式来源文件里的夜间套餐月费是多少"}
+            "POST", "/api/v1/chat/stream", json={"message": "流式来源文件里的夜间套餐月费是多少"}
         ) as resp:
             assert resp.status_code == 200
             body = "".join(resp.iter_text())
-        assert '"type": "sources"' in body
+        assert "event: citations" in body
+        assert any(name == "citations" and payload["sources"] for name, payload in _sse_rows(body))
         assert "night.txt" in body
     finally:
         set_embedding_override(None)
 
 
+def test_chat_stream_reports_unexpected_failure(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.routes import chat as chat_route
+
+    async def _boom(*_args, **_kwargs):
+        raise RuntimeError("SECRET_DB_PATH")
+        yield None
+
+    monkeypatch.setattr(chat_route._service, "chat_stream", _boom)
+    with client.stream("POST", "/api/v1/chat/stream", json={"message": "流式测试"}) as resp:
+        assert resp.status_code == 200
+        body = "".join(resp.iter_text())
+    assert "运行失败，请稍后重试" in body
+    assert any(name == "error" for name, _ in _sse_rows(body))
+    assert any(name == "run.finished" and payload["status"] == "failed" for name, payload in _sse_rows(body))
+    assert "SECRET_DB_PATH" not in body
+
+
 def test_chat_stream_returns_sse(client: TestClient) -> None:
-    with client.stream("POST", "/api/chat/stream", json={"message": "流式测试"}) as resp:
+    with client.stream("POST", "/api/v1/chat/stream", json={"message": "流式测试"}) as resp:
         assert resp.status_code == 200
         body = "".join(resp.iter_text())
     assert "data" in body
+
+
+def test_chat_stream_midstream_failure_closes_generator(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.agents.pipeline import AgentEvent
+    from app.api.routes import chat as chat_route
+
+    closed = []
+
+    async def failing_stream(*args, **kwargs):
+        try:
+            yield AgentEvent("token", "first")
+            raise RuntimeError("PRIVATE_MIDSTREAM_DETAILS")
+        finally:
+            closed.append(True)
+
+    monkeypatch.setattr(chat_route._service, "chat_stream", failing_stream)
+    with client.stream("POST", "/api/v1/chat/stream", json={"message": "流式测试"}) as response:
+        assert response.status_code == 200
+        body = "".join(response.iter_text())
+    assert "first" in body
+    assert "运行失败，请稍后重试" in body
+    assert any(name == "error" for name, _ in _sse_rows(body))
+    assert any(name == "run.finished" and payload["status"] == "failed" for name, payload in _sse_rows(body))
+    assert "PRIVATE_MIDSTREAM_DETAILS" not in body
+    assert closed == [True]
 
 
 _PATH_SENTINEL = r"C:\Users\secret-host\note.txt"
@@ -206,30 +250,30 @@ class _CodeResultLLM:
         yield "计算结果是 1。"
 
 
-def _code_result_rows(body: str) -> list[dict]:
-    rows: list[dict] = []
-    for line in body.splitlines():
-        if not line.startswith("data:"):
-            continue
-        raw = line[5:].strip()
-        if not raw:
-            continue
-        payload = json.loads(raw)
-        if payload.get("type") == "code_result":
-            rows.append(payload["data"])
+def _sse_rows(body: str) -> list[tuple[str, dict]]:
+    rows = []
+    for frame in body.replace("\r\n", "\n").split("\n\n"):
+        fields = dict(line.split(":", 1) for line in frame.splitlines() if ":" in line)
+        if "event" in fields and "data" in fields:
+            rows.append((fields["event"].strip(), json.loads(fields["data"].strip())))
     return rows
 
 
+def _code_result_rows(body: str) -> list[dict]:
+    return [payload for name, payload in _sse_rows(body) if name == "code_result"]
+
+
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_code_result_persists_on_complete(client: TestClient) -> None:
     """一次性对话的响应和会话详情都带上标准输出，且没有宿主机路径。"""
     set_llm_provider_override(_CodeResultLLM())
-    resp = client.post("/api/chat", json={"message": "请运行这段代码"})
+    resp = client.post("/api/v1/chat", json={"message": "请运行这段代码"})
     assert resp.status_code == 200
     body = resp.json()
     assert _PATH_SENTINEL not in resp.text
     assert body["code_results"][0]["status"] == "ok"
     assert body["code_results"][0]["stdout"].strip() == "1"
-    detail = client.get(f"/api/chat/conversations/{body['conversation_id']}")
+    detail = client.get(f"/api/v1/chat/conversations/{body['conversation_id']}")
     assert detail.status_code == 200
     assistant = [item for item in detail.json()["messages"] if item["role"] == "assistant"]
     assert assistant[-1]["code_results"][0]["stdout"].strip() == "1"
@@ -237,30 +281,26 @@ def test_code_result_persists_on_complete(client: TestClient) -> None:
     assert _PATH_SENTINEL not in detail.text
 
 
+@pytest.mark.usefixtures("legacy_plan_mode")
 def test_code_result_persists_on_stream(client: TestClient) -> None:
     """流式事件和刷新后的消息都有同一次标准输出。"""
     set_llm_provider_override(_CodeResultLLM())
-    with client.stream("POST", "/api/chat/stream", json={"message": "请运行这段代码"}) as resp:
+    with client.stream("POST", "/api/v1/chat/stream", json={"message": "请运行这段代码"}) as resp:
         assert resp.status_code == 200
         raw = "".join(resp.iter_text())
     assert _PATH_SENTINEL not in raw
     results = _code_result_rows(raw)
     assert results[0]["status"] == "ok"
     assert results[0]["stdout"].strip() == "1"
-    conversation_id = ""
-    for line in raw.splitlines():
-        if not line.startswith("data:"):
-            continue
-        payload = json.loads(line[5:].strip())
-        if payload.get("type") == "conversation":
-            conversation_id = payload["data"]
-    detail = client.get(f"/api/chat/conversations/{conversation_id}")
+    conversation_id = next(payload["conversation_id"] for name, payload in _sse_rows(raw) if name == "conversation")
+    detail = client.get(f"/api/v1/chat/conversations/{conversation_id}")
     assistant = [item for item in detail.json()["messages"] if item["role"] == "assistant"]
     assert assistant[-1]["code_results"][0]["stdout"].strip() == "1"
 
 
 @pytest.mark.asyncio
-async def test_code_result_persists_when_stopped(client: TestClient) -> None:
+@pytest.mark.usefixtures("legacy_plan_mode")
+async def test_code_result_persists_when_stopped(client: TestClient, persist_identity) -> None:
     """生成在最终回复前停下时，已经跑完的代码结果仍写在停止消息上。"""
 
     class _Blocking(_CodeResultLLM):
@@ -278,6 +318,7 @@ async def test_code_result_persists_when_stopped(client: TestClient) -> None:
         token_version=0,
         is_active=True,
     )
+    persist_identity(user)
     service = ChatService()
     conversation_id = ""
     with Session(engine) as session:

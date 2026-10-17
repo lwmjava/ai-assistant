@@ -1,0 +1,40 @@
+{
+  "vendor": "qwen",
+  "model": "qwen-plus",
+  "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "status": "passed",
+  "credential_source": "DASHSCOPE_API_KEY",
+  "requests": [
+    {
+      "vendor": "qwen",
+      "request_model": "qwen-plus",
+      "stream": false,
+      "request_bytes": 862,
+      "max_output_tokens": 128,
+      "conservative_cost_bound_cny": 0.09984,
+      "http_status": 200,
+      "response_model": "qwen-plus",
+      "usage": {
+        "total_tokens": 163,
+        "completion_tokens": 1,
+        "prompt_tokens": 162
+      }
+    },
+    {
+      "vendor": "qwen",
+      "request_model": "qwen-plus",
+      "stream": true,
+      "request_bytes": 437,
+      "max_output_tokens": 128,
+      "conservative_cost_bound_cny": 0.09984,
+      "http_status": 200,
+      "response_model": "qwen-plus"
+    }
+  ],
+  "isolation": "new synthetic SQLite; original ChatService/factory; simple route; MockEmbedding only",
+  "persisted_assistant": true,
+  "persisted_user": true,
+  "reply_contains_hello": true,
+  "reply_length": 8,
+  "reply_sha256": "510340ada2dd43de1323c5e974878bdd5035745232ee63e6fd4bef643b43576d"
+}

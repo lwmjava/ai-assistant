@@ -7300,7 +7300,8 @@ tasks:
 
   - id: "LLM-001"
     title: "模型按 P0-8 任务类型配置"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-17"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7346,7 +7347,10 @@ tasks:
         - "pytest -k \"llm or factory or profile\""
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮离线专项通过；历史仅千问一家真实文本证据，第二家真实切换未验，全量/最终CI未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      final_acceptance_20261017: "当前代码上千问 qwen-plus 与 DeepSeek deepseek-flash 各两次真实 HTTP 200，助手消息按被选模型保存且回复含你好。未知任务、熔断兜底和阶段复用 chat 由离线用例及 d531155 全量 2530 通过/3 跳过覆盖。同 SHA Ubuntu Backend/Frontend/Agent official 均 success。独立审查 docs/reviews/2026-10-17-llm-001-independent-acceptance.md 同意改为 done。流式请求无 usage，不证明检索质量或可发布。详见 docs/plans/closure_llm001_20261017.md。"
       plan: "docs/plans/plan_llm_001_20261015.md"
+      implementation: "docs/plans/implementation_llm_001_20261015.md"
+      closure: "docs/plans/closure_llm001_20261017.md"
       owner: "个人开发者"
       nightly:
         eligible: false

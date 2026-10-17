@@ -31,3 +31,9 @@ D:\DepTooL\anaconda3\envs\ai-assistant\python.exe -m pytest tests/test_llm_task_
 用户明确允许使用 `.env` 中的千问密钥后，按 plan_llm_live_probe_20261016.md 执行有界真实合成对话：qwen-plus 五次 HTTP 200，供应商 usage 共 938 输入/230 输出 tokens，正常回复从新 Session 确认持久化，退出 0。详见 ../reviews/2026-10-16-llm-qwen-live.md；没有改写 .env，普通 pytest 与 CLI init 仍隔离。前文“不读取/不外发”描述的是此前离线实施阶段，不覆盖后续这项明确授权的验收。
 
 这只证明千问一家，第二家真实切换仍未验证，不能按两个模型或两个配置档冒充两个提供商。CHAT-007 随后的类型扩展也影响共享 LLM 输入，最终有效性以批次 R2 全量和 platform_batch_final_inputs_20261016.json 为准，不能单独沿用 120 项阶段记录关闭新版本。
+
+## 2026-10-17 两家实机
+
+同一脚本在当前代码上各跑一家，每家最多两次真实请求，退出码都是 0。千问走 `https://dashscope.aliyuncs.com/compatible-mode/v1` 的 `qwen-plus`；DeepSeek 走 `https://api.deepseek.com` 的 `deepseek-flash`。两家都返回 HTTP 200，新会话保存用户消息和状态为 complete 的助手消息，模型标识与被选模型一致，回复含「你好」。流式请求没有留下 usage，DeepSeek 流式记录也没有返回模型；持久化模型标识仍是被选模型。Mock Embedding 只隔离空库检索，不证明检索质量。
+
+机器记录见 `docs/reviews/llm001_qwen_live_20261017.json` 与 `docs/reviews/llm001_deepseek_live_20261017.json`。关闭说明见 `docs/plans/closure_llm001_20261017.md`。上文 10 月 16 日「第二家未验证」只描述当时，不覆盖这次补跑。

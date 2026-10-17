@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import time
 from types import SimpleNamespace
 
@@ -44,6 +45,31 @@ def token(text):
 
 async def finish(run):
     await asyncio.wait_for(asyncio.shield(run.task), timeout=2)
+
+
+async def test_producer_failure_logs_exception_type_without_message(run_context, caplog):
+    context = run_context
+    secret = "sk-secret-token-should-not-be-logged"
+    private = "用户原文不应出现在日志"
+
+    async def producer(_session, _user):
+        raise RuntimeError(f"{secret} {private}")
+        yield token("unused")
+
+    with caplog.at_level(logging.ERROR, logger="app.services.active_runs"):
+        run = context.manager.create(context.user, context.engine, producer)
+        await finish(run)
+
+    assert run.status == "failed"
+    error = next(event for _number, event, _size in run.events if event["event"] == "error")
+    assert json.loads(error["data"])["message"] == "运行失败，请稍后重试"
+    diagnostic = [record for record in caplog.records if record.name == "app.services.active_runs"]
+    assert len(diagnostic) == 1
+    message = diagnostic[0].getMessage()
+    assert message == f"active_run_failed run_id={run.run_id} exception_type=RuntimeError"
+    assert diagnostic[0].exc_info is None
+    assert secret not in message
+    assert private not in message
 
 
 async def test_disconnect_and_replay_do_not_restart_or_cancel_producer(run_context):

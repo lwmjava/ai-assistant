@@ -53,6 +53,126 @@ risk_policy:
   L3: "退款、删除、合同、财务、权限提升或不可逆敏感操作；必须人工审批"
 
 tasks:
+  - id: "V1C-001"
+    title: "1.0收尾：按执行路径准备知识库检索依赖"
+    status: "backlog"
+    priority: "P1"
+    depends_on: ["RAG-044"]
+    scope:
+      deliverables: ["按需创建Embedding、VectorStore与检索后端", "非检索请求依赖故障隔离回归"]
+      non_goals: ["不重建真实索引", "不改变默认知识库读域或绕过身份校验"]
+    acceptance:
+      - "已确定不检索的路径不创建检索依赖；普通问答和工具请求不因无关检索依赖故障失败。"
+      - "实际检索保留索引、租户、来源与不可用状态契约。"
+    risk: {level: "L1", side_effect: "执行时序变化，实施前明确兼容与回滚"}
+    execution:
+      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
+      progress: "仅登记Planned；实现方案、allowed_paths与必要ADR须在开工前明确。"
+
+  - id: "V1C-002"
+    title: "1.0收尾：统一各对话路径的工具执行入口"
+    status: "backlog"
+    priority: "P1"
+    depends_on: ["PAGT-006", "RAG-044"]
+    scope:
+      deliverables: ["默认管线与工具短路径复用受控执行器", "跨路径工具契约一致性测试"]
+      non_goals: ["不扩大工具权限", "不将接线统一等同于MCP治理完成"]
+    acceptance:
+      - "同一工具在已支持路径中的身份、参数、超时、有限重试、预算与审计规则一致。"
+      - "撤权、取消、重复调用、非法参数与执行失败有拒绝或终态证据。"
+    risk: {level: "L2", side_effect: "工具执行边界变化，先核对或补充批准ADR"}
+    execution:
+      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
+      progress: "仅登记Planned；实现方案、allowed_paths与必要ADR须在开工前明确。"
+
+  - id: "V1C-003"
+    title: "1.0收尾：补齐技能在不同编排路径中的生效接线"
+    status: "backlog"
+    priority: "P1"
+    depends_on: ["SKILL-003", "PAGT-005", "V1C-002"]
+    scope:
+      deliverables: ["技能Prompt与工具模式接线", "匹配、注入与实际执行的状态和版本证据"]
+      non_goals: ["不做技能市场或自动淘汰", "技能绑定不授予额外权限"]
+    acceptance:
+      - "默认管线、短路径与Supervisor明确支持矩阵；已支持路径实际使用授权技能上下文。"
+      - "工具模式的绑定列表被消费；未注册或无权限工具有明确结果，不以显示技能名冒充执行成功。"
+      - "私有技能隔离、版本变化、撤权及不可信围栏回归通过。"
+    risk: {level: "L2", side_effect: "技能与运行时接线变化，先核对或补充批准ADR"}
+    execution:
+      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
+      progress: "仅登记Planned；实现方案、allowed_paths与必要ADR须在开工前明确。"
+
+  - id: "V1C-004"
+    title: "1.0收尾：补齐Supervisor任务的受控工具执行能力"
+    status: "backlog"
+    priority: "P1"
+    depends_on: ["SUP-001", "V1C-002", "V1C-003"]
+    scope:
+      deliverables: ["Supervisor工具请求的执行或显式受控委派", "真实执行结果驱动的子任务摘要"]
+      non_goals: ["不另造工具执行器", "不开放任意并行或高风险自动执行"]
+    acceptance:
+      - "需要工具的多轮任务实际经过统一执行器或已批准委派路径，不以纯模型调研冒充外部执行。"
+      - "工具未调用、拒绝、失败、超时和成功可区分；总预算、取消和审计有效。"
+    risk: {level: "L2", side_effect: "Supervisor执行边界变化，实施前完成ADR裁决"}
+    execution:
+      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
+      progress: "仅登记Planned；具体节点或委派方案未裁决。"
+
+  - id: "V1C-005"
+    title: "1.0收尾：支持知识库与工具组合任务"
+    status: "backlog"
+    priority: "P1"
+    depends_on: ["V1C-001", "V1C-002", "V1C-003", "V1C-004"]
+    scope:
+      deliverables: ["有界的检索与工具顺序组合", "资料依据、计算结果和失败状态分别可追踪"]
+      non_goals: ["不重写Agent框架", "不默认用联网替代私有知识库", "不自动提高权限"]
+    acceptance:
+      - "根据知识库报销标准计算差旅金额等合成案例实际完成检索、参数提取、工具执行与来源回答。"
+      - "同时命中工具与知识库意图时不静默丢失必要步骤；缺依据、工具失败和越权有明确行为。"
+    risk: {level: "L2", side_effect: "路由与规划行为变化，实施前完成ADR及有界Evaluation方案"}
+    execution:
+      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
+      progress: "仅登记Planned；不预先批准新的执行架构或生产启用。"
+
+  - id: "V1C-006"
+    title: "1.0收尾：测量并优化技能匹配与意图分流开销"
+    status: "backlog"
+    priority: "P2"
+    depends_on: ["SKILL-003", "PAGT-007", "V1C-005"]
+    scope:
+      deliverables: ["分阶段延迟与模型调用次数基线", "单变量优化与质量回归结论"]
+      non_goals: ["不为减少调用降低鉴权或安全检查", "不预先决定合并模型决策或开启缓存"]
+    acceptance:
+      - "记录技能匹配、路由、检索、工具和回答阶段耗时、模型用途、调用次数及测评版本。"
+      - "按基线选择一项优化，比较首响应延迟与路由、技能、工具正确性；无收益则记录不采纳。"
+      - "真实模型与Mock结果分开记录；取消、缓存、预算和重试回归不退化。"
+    risk: {level: "L1", side_effect: "先测量后决策；实际付费调用另按已批准预算执行"}
+    execution:
+      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
+      progress: "仅登记Planned；P2为实现优先级，仍属于用户要求的1.0收尾清单，不自动移出范围。"
+
+  - id: "RAG-044"
+    title: "修复索引不可用时对话初始化失败"
+    status: "in_review"
+    priority: "P0"
+    depends_on: ["RAG-030", "RAG-032", "RAG-037"]
+    scope:
+      allowed_paths: ["app/rag/service.py", "tests/test_rag_index_init.py", "docs/plans/plan_rag_index_init_fix_20261016.md", "docs/plans/implementation_rag_index_init_fix_20261016.md", "tasks.yaml"]
+      non_goals: ["不修改实际知识库或索引登记", "不改检索身份保护、模型、排名或配置"]
+      deliverables: ["延迟索引解析", "隔离数据库回归用例与验证记录"]
+    acceptance:
+      - "历史分块缺少索引时检索器构建成功，实际检索 unavailable 且无资料泄漏。"
+      - "空库与有效索引父块展开回归通过，Ruff、mypy及全量pytest证据绑定最终版本。"
+    risk:
+      level: "L1"
+      side_effect: "仅代码修复，不操作真实知识库"
+      rollback: "恢复本任务代码变更，无数据回滚。"
+    evaluation:
+      cases: ["合成历史分块缺索引的 unavailable 链路", "空库 no_hit", "有效索引父块展开与隔离回归"]
+    execution:
+      plan: "docs/plans/plan_rag_index_init_fix_20261016.md"
+      progress: "初始化修复与合成回归已落地；专项120通过、Ruff/mypy通过。全量2529通过/1失败/3跳过，导入批次失败项复跑不稳定，未关闭。实际历史索引未修复；详见 docs/plans/implementation_rag_index_init_fix_20261016.md。"
+
   - id: "GOV-002"
     title: "补齐任务关闭与提交前回归规则"
     status: "done"
@@ -6138,6 +6258,7 @@ tasks:
       commands:
         - "docker compose -f docker-compose.prod.yml config"
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；静态契约exit0；Docker daemon不可连接，实际容器启动/健康/未就绪及Linux/最终CI未验证。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       plan: "docs/plans/plan_nfr_003_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -6447,6 +6568,7 @@ tasks:
         - "pytest tests/test_chat.py tests/test_chat_controls.py -q"
         - "pytest tests/test_p0_regression.py tests/test_rag.py tests/test_workflow.py -q"
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；当前版本全量2529通过/1失败/3跳过，不能关闭；须修复或隔离批次终态失败并重跑最终全量及CI。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       ci_regression_followup:
         date: "2026-10-14"
         plan: "docs/plans/plan_qa_005_ci_regression_20261014.md"
@@ -6572,6 +6694,7 @@ tasks:
         - "pytest --cov=app --cov-report=term-missing"
         - "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/cov001-cli-boundary-cases-v1.py"
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；前置QA-005未关闭；87.20%为旧候选测量，当前输入变化后需重新绑定覆盖率证据。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       owner: "个人开发者"
       plan: "docs/plans/plan_cov_001_20261014.md"
       implementation: "docs/plans/implementation_cov_001_20261014.md"
@@ -6631,6 +6754,7 @@ tasks:
       commands:
         - "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/evaluations/env001_example_contract.py --self-test"
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；实际189字段，self-test仍断言181而失败；system/culture口令两项未标注，当前核对passed=false。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       owner: "个人开发者"
       plan: "docs/plans/plan_env_001_20261014.md"
       implementation: "docs/plans/implementation_env_001_20261014.md"
@@ -6697,6 +6821,7 @@ tasks:
     progress: "2026-10-14起实施：示例管理员密码留空，README删除可执行固定密码并说明任一输入为空跳过。实际Settings红例exit1后最终10项SQLite/bcrypt隔离入口验收exit0，181字段14项回归exit0，ruff/mypy exit0；源码默认与引导逻辑未改。计划、实现说明与关闭对账分别见docs/plans/plan_env_002_20261014.md、implementation_env_002_20261014.md、closure_env_002_20261014.md。COV-001/ENV-001既有改动保留，未Git提交或推送。"
     pending: "2026-10-15最终/root/env002_final独立技术审核通过（docs/reviews/2026-10-15-ENV-002-最终人工审核第1轮.md），实跑10/6/14项exit0、12输入指纹匹配，无剩余P1/P2；候选清单docs/reviews/env002_candidate_manifest_20261015.json。前置ENV-001及本卡用户业务验收未委托，保持in_review。真实生产启动、已部署账号改密和Git历史清理不在本卡范围，未验证。"
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；bootstrap核对因ENV-001失败；独立probe缺INITIAL_SYSTEM_PASSWORD，不能沿用历史10/6/14通过。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6763,6 +6888,7 @@ tasks:
       commands:
         - "pytest -k \"admin or password or setup\""
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；本轮隔离账号/改密专项通过；最终全量仍失败，当前候选页面/平台/CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       plan: "docs/plans/plan_platform_batch_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -6813,6 +6939,7 @@ tasks:
       commands:
         - "pytest -k \"init or jwt\""
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；本轮专项通过但Windows文件权限/链接/竞争相关3跳过；Linux和最终Ubuntu CI未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       plan: "docs/plans/plan_cli_002_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -6917,6 +7044,7 @@ tasks:
       commands:
         - "pytest -k \"openapi or api\""
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；本轮版本/OpenAPI专项通过；最终全量仍失败，当前候选前端/页面/CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       plan: "docs/plans/plan_api_001_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -6972,6 +7100,7 @@ tasks:
       commands:
         - "pytest -k \"stream or sse\""
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；本轮流式生命周期专项通过；最终全量仍失败，当前候选页面断网/前端及最终CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       plan: "docs/plans/plan_sse_001_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -7198,6 +7327,7 @@ tasks:
       commands:
         - "pytest -k \"llm or factory or profile\""
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；本轮离线专项通过；历史仅千问一家真实文本证据，第二家真实切换未验，全量/最终CI未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       plan: "docs/plans/plan_llm_001_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -7260,6 +7390,7 @@ tasks:
       commands:
         - "pytest -k \"attach or upload or chat\""
     execution:
+      closure_review_20261016: "用户本轮已委托Agent代行验收；本轮附件专项通过；真实视觉、旧Office/真实xls及Linux/最终CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       plan: "docs/plans/plan_chat_007_20261015.md"
       owner: "个人开发者"
       nightly:

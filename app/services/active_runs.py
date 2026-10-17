@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import time
 import uuid
 from collections import deque
@@ -16,6 +17,8 @@ from app.core.config import settings
 from app.core.security import Role
 from app.models.conversation import Conversation, Message
 from app.models.user import Tenant, User
+
+logger = logging.getLogger(__name__)
 
 MAX_EVENTS = 1000
 MAX_EVENT_BYTES = 8 * 1024 * 1024
@@ -256,6 +259,12 @@ class ActiveRunManager:
             if not run.ready.is_set():
                 run.initial_error = exc.with_traceback(None)
             run.status = "failed"
+            # 只留类型。异常原文和堆栈可能带用户输入、查询或密钥。
+            logger.error(
+                "active_run_failed run_id=%s exception_type=%s",
+                run.run_id,
+                type(exc).__name__,
+            )
             self.emit(run, "error", {"message": "运行失败，请稍后重试"})
         finally:
             try:
@@ -280,8 +289,13 @@ class ActiveRunManager:
                         run.assistant_message_id = assistant.id
                         if assistant.status == "failed":
                             run.status = "failed"
-            except BaseException:
+            except BaseException as exc:
                 run.status = "failed"
+                logger.error(
+                    "active_run_result_read_failed run_id=%s exception_type=%s",
+                    run.run_id,
+                    type(exc).__name__,
+                )
             finally:
                 session.close()
                 heartbeat.cancel()

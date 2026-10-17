@@ -6512,7 +6512,8 @@ tasks:
   
   - id: "QA-005"
     title: "既有测试失败修复：以开工时重跑清单为准"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-17"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -6570,6 +6571,7 @@ tasks:
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；当前版本全量2529通过/1失败/3跳过，不能关闭；须修复或隔离批次终态失败并重跑最终全量及CI。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       batch_order_fix_20261017: "用户批准修复批次终态测试排序；固定三个任务created_at，原断言不变。同时间戳/乱序ID故障注入旧测失败、修复通过；专项18通过，全量2530通过/3跳过/0失败(exit0)，Ruff/mypy通过，586输入无漂移。见 docs/plans/implementation_qa005_batch_order_fix_20261017.md；新提交Ubuntu CI未取得，保持in_review。"
+      final_closure_20261017: "最终技术提交ea7b288cefa44895b3825e4fd20bd5bbe8772546：Ubuntu Backend/Frontend/Agent official全通过，pytest2510通过/4跳过/0失败，三个Windows缺证CLI用例在Linux全部通过；排序故障修复前失败/修复后通过，独立复核及用户代验授权齐全。CI https://github.com/lwmjava/ai-assistant/actions/runs/38994748750 。本次仅更新关闭记录，不改变验证输入，沿用该技术提交证据；历史待验记录保留为当时事实，当前关闭结论以此为准。覆盖率不属于本卡。详见 docs/plans/closure_qa005_20261017.md。"
       ci_regression_followup:
         date: "2026-10-14"
         plan: "docs/plans/plan_qa_005_ci_regression_20261014.md"

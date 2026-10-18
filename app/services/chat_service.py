@@ -34,6 +34,7 @@ from app.memory.base import ConversationMemory
 from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
 from app.models.user import Tenant, User
+from app.rag.access import read_scope_for
 from app.rag.service import RAGService, sources_from_hits
 from app.services.agent_execution_guard import (
     ResumeRejectedError,
@@ -52,6 +53,7 @@ from app.services.chat_attachments import (
     restore_attachments,
     serialize_attachments,
 )
+from app.services.chat_retrieval import ChatRetriever
 from app.services.quota import accept_user_message
 
 if TYPE_CHECKING:
@@ -270,13 +272,27 @@ class ChatService:
             )
 
     def _build_retriever(self, session: Session, user: User):
-        """按配置构建检索钩子（未开启 RAG 时返回 None）。"""
+        """同步固定读域/主体，依赖构造延至本请求真正检索时。"""
         if not settings.RAG_ENABLED:
             return None
-        # 带上鉴权主体，使 uploader 模式的有效读范围贯穿对话检索，
-        # 而不是只按租户召回后再丢弃。
-        rag = RAGService(session, user.tenant_id, reader=user)
-        return rag.make_retriever()
+        tenant_id = user.tenant_id
+        read_scope = read_scope_for(user)
+        if read_scope is not None:
+            read_scope.assert_subject_tenant(tenant_id)
+        # 不持有可被刷新/修改的 ORM 身份快照，也不复制密码或关系对象。
+        reader = User(
+            id=user.id, tenant_id=tenant_id, username=user.username, hashed_password="",
+            role=user.role, token_version=user.token_version, is_active=user.is_active,
+            must_change_password=user.must_change_password,
+        )
+
+        def create():
+            rag = RAGService(session, tenant_id, reader=reader)
+            # scope 在同步边界已核验；不能因构造延迟重新解释运行中变动的读域。
+            rag._read_scope = read_scope
+            return rag.make_retriever()
+
+        return ChatRetriever(create)
 
     async def _build_tools(self) -> ToolRegistry:
         """构建工具注册表：内置工具 +（启用时）MCP 服务器工具。

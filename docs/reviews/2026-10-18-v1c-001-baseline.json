@@ -1,0 +1,68 @@
+{
+  "task": "V1C-001",
+  "stage": "baseline; proposed plan; no implementation",
+  "baseline_sha": "f350e94b3829a0d48f9a0cfce467c01bae5dd662",
+  "branch": "codex/v1c-001-lazy-retrieval",
+  "platform": "Windows-11-10.0.22621-SP0",
+  "interpreter": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+  "python": "3.12.0",
+  "versions": {
+    "pytest": "8.4.2",
+    "ruff": "0.8.4",
+    "mypy": "1.14.1",
+    "sqlmodel": "0.0.22",
+    "pydantic": "2.10.4",
+    "fastapi": "0.115.6",
+    "langgraph": "1.0.10"
+  },
+  "commands": [
+    {
+      "command": "python -m ruff check . --no-cache",
+      "exit": 0,
+      "log": "data/v1c001-baseline/ruff.txt"
+    },
+    {
+      "command": "python -m mypy app/",
+      "exit": 0,
+      "sources": 212,
+      "log": "data/v1c001-baseline/mypy.txt"
+    },
+    {
+      "command": "python -m pytest tests/test_rag_index_init.py tests/test_fast_route.py tests/test_rag_037_retrieval_status.py tests/test_rag_030_dialog_parent_assembly.py --basetemp data/pytest-tmp/v1c001-baseline -q --tb=short",
+      "exit": 0,
+      "passed": 60,
+      "warnings": 1,
+      "seconds": 9.8,
+      "log": "data/v1c001-baseline/related.txt"
+    }
+  ],
+  "input_sha256": {
+    "app/services/chat_service.py": "b89ffdd069e13f187924588d1c0d57f194da57e4b0593eb2bbcf38dc79d30398",
+    "app/rag/service.py": "df1bf2f720eec05613cc604a09c0022c5a054fbecd2bd222e02948a37c1628e6",
+    "app/rag/retriever.py": "7cfe56fdb43dfff799aa6a9209ca0c388aa87d98842cd48ba38cafc0d995e3dc",
+    "app/agents/pipeline.py": "8892691f75d763b54aeafbaca7c0bb0f08c23bc2b99b8ba5879e67389a151eca",
+    "app/agents/fast_path.py": "43c6db88660cf36669f76b00b47e726acb9197e96418bb223d7a7f7972f9d05d",
+    "app/agents/supervisor.py": "56546a19813249b19f5f0f62082ca2242c2601b789e42d6f75ff62a4e7e004a6",
+    "tests/test_rag_index_init.py": "d20af9928c7be76d09d67d5ecf6c2f3920bc8eda955e2697e92c1b5cb6bb62fa",
+    "tests/test_fast_route.py": "bd88d3886c3a98f0c0c07af941bdc1e0857a03d38564cdcba9b7b34a1605b2b4",
+    "tests/test_rag_037_retrieval_status.py": "25d10926dc123ebddd33fb992baf3390bd0e56f58b5372de4a54e01540cd1963",
+    "tests/test_rag_030_dialog_parent_assembly.py": "4274812caf4073e102898102240830dd7ca60c32a0a8dfbdc4686c37383b992e"
+  },
+  "logs_sha256": {
+    "data/v1c001-baseline/ruff.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/v1c001-baseline/mypy.txt": "c50f9ea1d2c0e1b76e16436379e6f2251cfc2db1a603474e586d6114f633643b",
+    "data/v1c001-baseline/related.txt": "b8afa43806c6276d01329efae55f5458cfcf546c1c375c0e017d641140ea04f5"
+  },
+  "pending": [
+    "user approval of ADR-0013 and exact allowed_paths",
+    "red tests and implementation",
+    "final full validation and independent reviews",
+    "final commit CI and user business acceptance"
+  ],
+  "config": {
+    "PYTHONUTF8": "1",
+    "PYTHONIOENCODING": "utf-8",
+    "pytest_db": "isolated test database via conftest; fresh basetemp",
+    "network": "test external network blocked; no paid model calls"
+  }
+}

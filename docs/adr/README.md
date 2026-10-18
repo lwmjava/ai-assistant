@@ -36,6 +36,10 @@ ADR-0012：[SSE ActiveRun 生命周期与断线回放](0012-sse-active-run-lifec
 
 [ADR-0009：单实例导入抢占、恢复与发布凭据](0009-single-instance-import-recovery.md)，2026-10-10，Accepted（已批准单实例 RAG-039 范围内的技术细化）。不授权生产操作或迁移，验收以单卡证据为准。
 
+## 对话检索依赖生命周期
+
+ADR-0013：[对话检索依赖按使用时机创建](0013-chat-retrieval-dependency-lifecycle.md)，Accepted，2026-10-18；用户批准按 V1C-001 实施计划和具体范围推进。对话层请求内惰性依赖，不改变既有默认检索策略或知识库读域；实现与验收以本卡证据为准。
+
 ## 格式
 
 每份 ADR 至少包含：背景、事实、选项、决定、后果、迁移、验证和回滚。模板见 `docs/governance/agent-harness-engineering.md` §17。

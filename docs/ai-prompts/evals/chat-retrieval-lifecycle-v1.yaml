@@ -1,0 +1,27 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored deterministic integration cases, synthetic LLM/Embedding; not Gold or quality evidence"
+execution: "pytest tests/test_chat_retrieval_lifecycle.py tests/test_chat_retrieval_lifecycle_review.py"
+cases:
+  - id: nonretrieval_dependencies
+    expected: "Service chat and stream: self preflight direct, fast simple and fast calculator do not call any Embedding/VectorStore/backend constructor, even when each constructor would fail. Replies persist with no invented sources."
+  - id: required_dependency_failure
+    expected: "Self full, fast RAG and real Supervisor defer construction until retrieval; each constructor fault produces unavailable disclosure and empty persisted sources, without private exception text."
+  - id: metadata_and_request_lifetime
+    expected: "Reading metadata and writing last_selected do not construct dependencies; repeated retrieval reuses one successful construction. Failed construction is attempted once per request; a new request is independent."
+  - id: original_auth_scope
+    expected: "Subject/tenant/read scope validation precedes dependency construction; real local retrieval retains tenant/uploader filtering and controlled parent sources. No new authorization policy is inferred."
+  - id: source_budget
+    expected: "Only selected evidence becomes persisted sources; budget-excluded parent content never appears in model input or citations."
+  - id: cancellation
+    expected: "CancelledError propagates; cancellation cannot be disguised as unavailable or retain stale source evidence."
+  - id: optional_supervisor
+    expected: "Existing fallback when the optional Supervisor import is unavailable still allows direct preflight without constructing retrieval dependencies."
+  - id: cache_compatibility
+    expected: "With retrieval cache enabled, existing authorization/index scope validation remains active; no cross-request identity or source state is shared."
+  - id: existing_retrieval_states
+    expected: "Empty result, low score, index unavailability and valid results preserve distinct existing outcomes, filtering, index identity and disclosure rules."
+  - id: resume_and_regenerate
+    expected: "A saved direct-path checkpoint resumes without recreating unused retrieval dependencies or adding another user message; direct regeneration preserves the original reply and appends a distinct new round."
+  - id: numeric_compatibility
+    expected: "NaN/Infinity/extreme/zero synthetic backend similarities yield the same results and status through the lazy hook as the existing eager retriever; no algorithm or quality improvement is claimed."

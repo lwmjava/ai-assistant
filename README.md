@@ -859,6 +859,8 @@ mypy app/
 
 ### 知识库检索结果关系
 
+对话中的 Embedding、VectorStore 和检索后端只在实际进入检索时创建。默认管线的 preflight 短路、LangGraph 普通问答和工具短路径不会因这些未使用依赖的构造故障而失败；默认完整管线、知识库短路径和 Supervisor 的检索策略保持原样。实际检索依赖初始化失败时，回答明确提示检索不可用且没有资料来源，不冒充“查过了、没有命中”。每轮请求独立持有检索状态，取消原样传播；此行为不改变知识库权限、索引身份、上下文预算或摄取/管理接口的依赖创建方式。
+
 `POST /api/v1/rag/search` 保留原有响应字段，并提供 `chunk_id`、`parent_id`、`chunk_kind`（`parent` / `child` / `unknown`）、`retrieval_origin`（`hit` / `parent_expansion`）和 `expanded_from_chunk_id`。未知块类型不推断为父块；直接命中的父块标为 `hit`。
 
 知识库页面显示命中子块、命中父块或扩展父块及其 ID 关系。`top_k` 是检索命中上限，父块展开后可能增加；扩展父块继承触发子块的融合分数，不是独立重新评分。结果仍按块 ID 去重，文本相同的不同块可能同时出现。

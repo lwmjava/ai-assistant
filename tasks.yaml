@@ -55,10 +55,26 @@ risk_policy:
 tasks:
   - id: "V1C-001"
     title: "1.0收尾：按执行路径准备知识库检索依赖"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     depends_on: ["RAG-044"]
     scope:
+      allowed_paths:
+        - "app/services/chat_service.py"
+        - "app/services/chat_retrieval.py"
+        - "tests/test_chat_retrieval_lifecycle.py"
+        - "tests/test_chat_retrieval_lifecycle_review.py"
+        - "tests/test_rag.py"
+        - "tests/test_fast_route.py"
+        - "tests/test_rag_index_init.py"
+        - "docs/plans/"
+        - "docs/reviews/"
+        - "docs/adr/0013-chat-retrieval-dependency-lifecycle.md"
+        - "docs/adr/README.md"
+        - "docs/ai-prompts/evals/chat-retrieval-lifecycle-v1.yaml"
+        - "README.md"
+        - "tasks.yaml"
+      forbidden_paths: [".env", "生产数据"]
       deliverables: ["按需创建Embedding、VectorStore与检索后端", "非检索请求依赖故障隔离回归"]
       non_goals: ["不重建真实索引", "不改变默认知识库读域或绕过身份校验"]
     acceptance:
@@ -67,7 +83,9 @@ tasks:
     risk: {level: "L1", side_effect: "执行时序变化，实施前明确兼容与回滚"}
     execution:
       plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
-      progress: "仅登记Planned；实现方案、allowed_paths与必要ADR须在开工前明确。"
+      implementation_plan: "docs/plans/plan_v1c_001_20261018.md"
+      preflight_review: "docs/reviews/2026-10-18-v1c-001-engineering.md"
+      progress: "2026-10-18用户明确回复按实施计划开始实现，批准计划及其allowed_paths和ADR-0013请求内惰性Retriever决定。分支codex/v1c-001-lazy-retrieval；前置当前输入复核、Ruff/mypy及60项专项基线通过，独立工程准入通过。实现及独立工程/入口审查已通过；最终专项85 passed，全量pytest2664 passed/3 skipped，Ruff/mypy退出0，514项输入摘要绑定。实现说明docs/plans/implementation_v1c_001_20261018.md，关闭对账docs/reviews/2026-10-18-v1c-001-acceptance.md。独立最终审核通过（docs/reviews/2026-10-18-v1c-001-final-audit.md），另实跑17项通过，无待修复P1/P2。用户已明确确认普通问答、计算工具、知识库问答及隔离故障处理行为，V1C-001用户业务验收通过。未验证：最终提交Ubuntu CI；保持in_review。不含提交/推送、生产或付费模型授权。"
 
   - id: "V1C-002"
     title: "1.0收尾：统一各对话路径的工具执行入口"

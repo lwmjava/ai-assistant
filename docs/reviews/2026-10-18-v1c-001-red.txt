@@ -1,0 +1,781 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.                                        [100%]
+================================== FAILURES ===================================
+_ test_nonretrieval_service_never_builds_dependencies[self_direct-False-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[self_direct-False-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[self_direct-False-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[self_direct-True-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[self_direct-True-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[self_direct-True-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_simple-False-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_simple-False-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_simple-False-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_simple-True-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_simple-True-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_simple-True-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_tools-False-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_tools-False-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_tools-False-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_tools-True-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_tools-True-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_nonretrieval_service_never_builds_dependencies[fast_tools-True-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:106: in test_nonretrieval_service_never_builds_dependencies
+    answer, events = await invoke(engine, actor, model, "算一下 1+1" if model.tool else "你好", streaming)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:102: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[self_full-False-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[self_full-False-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[self_full-False-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[self_full-True-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[self_full-True-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[self_full-True-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-False-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-False-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-False-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:83: in invoke
+    conv, _reply = await service.chat(session, actor, message)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:134: in wrapped
+    return await method(self, session, user, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:42: in wrapped
+    return await method(*args, **kwargs, _execution_claims=claims)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:515: in chat
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-True-get_embedding_provider] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-True-get_vector_store] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:262: in __init__
+    self._vector_store = vector_store or get_vector_store(session)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_ test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-True-get_rag_backend] _
+tests\test_chat_retrieval_lifecycle.py:130: in test_needed_dependency_failure_is_disclosed_and_persisted
+    answer, _events = await invoke(engine, actor, LifecycleModel(full=True), "根据知识库回答年假", streaming)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:77: in invoke
+    events = [event async for event in service.chat_stream(session, actor, message)]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\cache_scope.py:156: in wrapped
+    event = await anext(iterator)
+            ^^^^^^^^^^^^^^^^^^^^^
+app\services\agent_execution_guard.py:54: in wrapped
+    async for event in iterator:
+app\services\chat_service.py:614: in chat_stream
+    retriever = self._build_retriever(session, user)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:265: in __init__
+    self._backend = backend or get_rag_backend(
+tests\test_chat_retrieval_lifecycle.py:127: in broken
+    raise RuntimeError("private-dependency-detail")
+E   RuntimeError: private-dependency-detail
+_______ test_metadata_does_not_initialize_and_success_is_request_local ________
+tests\test_chat_retrieval_lifecycle.py:151: in test_metadata_does_not_initialize_and_success_is_request_local
+    assert calls == []
+E   AssertionError: assert ['embedding'] == []
+E     
+E     Left contains one more item: 'embedding'
+E     Use -v to get more diff
+________ test_failed_factory_is_bounded_and_does_not_log_private_text _________
+tests\test_chat_retrieval_lifecycle.py:172: in test_failed_factory_is_bounded_and_does_not_log_private_text
+    hook = ChatService(LifecycleModel())._build_retriever(session, actor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\services\chat_service.py:278: in _build_retriever
+    rag = RAGService(session, user.tenant_id, reader=user)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\rag\service.py:261: in __init__
+    self._embedding = embedding_provider or get_embedding_provider()
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_chat_retrieval_lifecycle.py:168: in broken
+    raise RuntimeError("private-lazy-secret-marker")
+E   RuntimeError: private-lazy-secret-marker
+=========================== short test summary info ===========================
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[self_direct-False-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[self_direct-False-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[self_direct-False-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[self_direct-True-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[self_direct-True-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[self_direct-True-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_simple-False-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_simple-False-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_simple-False-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_simple-True-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_simple-True-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_simple-True-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_tools-False-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_tools-False-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_tools-False-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_tools-True-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_tools-True-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_nonretrieval_service_never_builds_dependencies[fast_tools-True-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[self_full-False-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[self_full-False-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[self_full-False-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[self_full-True-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[self_full-True-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[self_full-True-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-False-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-False-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-False-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-True-get_embedding_provider]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-True-get_vector_store]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_needed_dependency_failure_is_disclosed_and_persisted[fast_rag-True-get_rag_backend]
+FAILED tests/test_chat_retrieval_lifecycle.py::test_metadata_does_not_initialize_and_success_is_request_local
+FAILED tests/test_chat_retrieval_lifecycle.py::test_failed_factory_is_bounded_and_does_not_log_private_text
+32 failed, 1 passed in 17.07s

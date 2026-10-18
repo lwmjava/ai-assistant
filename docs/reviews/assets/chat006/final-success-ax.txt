@@ -1,0 +1,14 @@
+Browser tab: 1, Title: "ai-assistant 控制台", URL: "http://127.0.0.1:18806/chat".
+The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 62-63, 66
+~			65 text 最终版本重新生成验收
++			66 text 2026/10/18 05:40 · 消息 866f21070fc94761b344203c91a220b2
++			67 text 【提示】知识库中没有检索到相关资料，以下回答基于模型自身知识，不是知识库结论。
++			68 text 隔离合成回复第 4 次：已通过真实对话管线生成并持久化，不代表模型质量。
++			69 button 重新生成
++			70 text 保留原问答，作为新一轮请求重新生成；原附件一并使用，并正常计入配额。
++			71 text mock-model · 2026/10/18 05:40 · 消息 a167958328504910ab598dd1b4d2cce4
+~			47 button Description: 添加附件, Help: 图片、文档或源码，每文件不超过 1 MB
+~			48 button Description: 发送模式：一次性。等待完整结果后一次返回，会带回会话 ID；等待期间看不到中间过程。点击切换, Help: 等待完整结果后一次返回，会带回会话 ID；等待期间看不到中间过程
+~			49 button 发送消息
+The focused UI element is 1 AXWebArea ai-assistant 控制台, URL: 127.0.0.1:18806/chat

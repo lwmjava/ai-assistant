@@ -66,6 +66,14 @@ export function sendMessage(body: ChatRequest, signal?: AbortSignal) {
   return api.post<ChatResponse>('/chat', body, { signal })
 }
 
+/** 用服务端保存的原始问题与附件追加新一轮问答，不覆盖旧消息。 */
+export function regenerateMessage(conversationId: string, messageId: string, signal?: AbortSignal) {
+  return api.post<ChatResponse>(
+    `/chat/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/regenerate`,
+    undefined, { signal },
+  )
+}
+
 /** Agent 可用工具清单（内置 + MCP，需 agents:read）。 */
 export function useChatTools(enabled = true) {
   return useQuery({

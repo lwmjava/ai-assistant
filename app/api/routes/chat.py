@@ -332,6 +332,44 @@ async def chat(
 
 
 @router.post(
+    "/conversations/{conversation_id}/messages/{message_id}/regenerate", response_model=ChatResponse,
+    responses={**error_responses("model_unavailable", "rate_limited", "quota_exceeded"),
+               400: {"description": "原消息附件不可用"}, 403: {"description": "无写权限或身份已变更"},
+               404: {"description": "会话或消息不存在或无权访问"},
+               409: {"description": "目标不再是最后助手消息或会话正在执行"}},
+)
+async def regenerate_message(
+    conversation_id: str, message_id: str,
+    current_user: User = Depends(require_permission("conversations", "write")),
+    session: Session = Depends(get_db),
+) -> ChatResponse | JSONResponse:
+    """保留原回复，使用原问题和附件创建一轮独立的新回复。"""
+    try:
+        conv, reply = await _service.regenerate(session, current_user, conversation_id, message_id)
+    except ResumeRejectedError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except AttachmentValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except QuotaExceededError as exc:
+        return public_response(429, "quota_exceeded", legacy=exc.as_dict())
+    except SecurityRejectedError as exc:
+        if exc.status_code == 429:
+            seconds = exc.retry_after_seconds
+            return public_response(429, "rate_limited", retry_after=seconds,
+                                   legacy={"code": "rate_limited", "retry_after_seconds": seconds},
+                                   headers={"Retry-After": str(seconds)} if seconds is not None else {})
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.warning("重新生成失败 error_type=%s", type(exc).__name__)
+        raise PublicHTTPError(502, "model_unavailable") from None
+    return ChatResponse(
+        conversation_id=conv.id, message_id=session.info.get("agent_message_id"), reply=reply,
+        model=getattr(_service.llm, "model", None), sources=_latest_assistant_sources(conv),
+        code_results=_latest_assistant_code_results(conv), skill_names=_latest_assistant_skill_names(conv),
+    )
+
+
+@router.post(
     "/stream",
     response_class=EventSourceResponse,
     responses={

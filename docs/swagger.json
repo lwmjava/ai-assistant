@@ -698,6 +698,129 @@
         ]
       }
     },
+    "/api/v1/chat/conversations/{conversation_id}/messages/{message_id}/regenerate": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Regenerate Message",
+        "description": "保留原回复，使用原问题和附件创建一轮独立的新回复。",
+        "operationId": "regenerate_message_api_v1_chat_conversations__conversation_id__messages__message_id__regenerate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "model_unavailable: 模型服务暂不可用，请联系管理员检查模型配置。",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "model_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "model_unavailable",
+                        "message": "模型服务暂不可用，请联系管理员检查模型配置",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: 请求过于频繁，请稍后重试。quota_exceeded: 本租户配额已用尽，请联系租户管理员。",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": {
+                        "code": "rate_limited",
+                        "message": "请求过于频繁，请稍后重试",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  },
+                  "quota_exceeded": {
+                    "value": {
+                      "error": {
+                        "code": "quota_exceeded",
+                        "message": "本租户配额已用尽，请联系租户管理员",
+                        "request_id": "request-correlation-id",
+                        "retry_after": null
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "原消息附件不可用"
+          },
+          "403": {
+            "description": "无写权限或身份已变更"
+          },
+          "404": {
+            "description": "会话或消息不存在或无权访问"
+          },
+          "409": {
+            "description": "目标不再是最后助手消息或会话正在执行"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/chat/stream": {
       "post": {
         "tags": [

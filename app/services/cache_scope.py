@@ -127,6 +127,9 @@ class AuthorizedCacheScope:
 def cached_chat_scope(method: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(method)
     async def wrapped(self: Any, session: Session, user: User, *args: Any, **kwargs: Any) -> Any:
+        if kwargs.get("_fresh_response"):
+            with bind_cache_scope(lambda: None):
+                return await method(self, session, user, *args, **kwargs)
         if not settings.LLM_RESPONSE_CACHE_ENABLED:
             return await method(self, session, user, *args, **kwargs)
         scope = AuthorizedCacheScope(session, user, user.tenant_id)

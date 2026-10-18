@@ -7271,7 +7271,7 @@ tasks:
 
   - id: "CHAT-006"
     title: "助手消息重新生成"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on: []
@@ -7289,6 +7289,8 @@ tasks:
         - "frontend/src/"
         - "tests/"
         - "tasks.yaml"
+        - "docs/"
+        - "README.md"
       forbidden_paths:
         - ".env"
       deliverables:
@@ -7308,6 +7310,10 @@ tasks:
       commands:
         - "pytest -k \"regenerat or chat\""
     execution:
+      plan: "docs/plans/plan_chat_006_20261018.md"
+      implementation: "docs/plans/implementation_chat_006_20261018.md"
+      evidence: "docs/reviews/2026-10-18-chat-006-evidence.json"
+      progress: "已实现追加新轮次重新生成、失败保留旧回复、身份复核和页面持久化；独立入口反例及前端P2修复复核通过。用户批准docs/及README.md范围。未验证：用户人工业务验收；最终提交Ubuntu CI（未推送）。保持in_review，不声明完成或可发布。"
       owner: "个人开发者"
       nightly:
         eligible: false

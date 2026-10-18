@@ -1,0 +1,23 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored deterministic integration scenarios; not Gold or model-quality evidence"
+execution: "pytest tests/test_chat_regeneration.py tests/test_chat_regeneration_review.py"
+cases:
+  - id: append_reply
+    expected: "Latest assistant target appends a fresh user/request and assistant; original IDs/content remain after fresh-session read."
+  - id: provider_failure
+    expected: "Failure is public-safe, no false successful assistant, original reply/checkpoint unchanged."
+  - id: identity_tenant
+    expected: "Viewer, other owner and cross-tenant attempts denied; post-generation revoke/tenant suspension cannot persist success."
+  - id: source_binding
+    expected: "Non-tail, foreign, orphan and extreme identifier targets cannot start a generation."
+  - id: quota_budget
+    expected: "Normal new-request quota applies; exhausted quota rejects before provider or message mutation."
+  - id: concurrency
+    expected: "Regenerate, normal chat and stream share process-local exclusion; stale duplicate conflicts and failure releases lock."
+  - id: attachments
+    expected: "Restore original attachments and reapply current security/capability/budget checks; no KB ingestion."
+  - id: runtime_cache
+    expected: "Fresh message/checkpoint identity, original checkpoint retained, LLM response cache bypassed."
+  - id: page_lifecycle
+    expected: "Busy controls, old bubbles, failure feedback, refresh persistence, draft retention and conversation switching verified separately in browser evidence."

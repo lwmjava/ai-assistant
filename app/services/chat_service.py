@@ -33,7 +33,7 @@ from app.llm.vision import validate_image_inputs
 from app.memory.base import ConversationMemory
 from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.rag.service import RAGService, sources_from_hits
 from app.services.agent_execution_guard import (
     ResumeRejectedError,
@@ -87,6 +87,10 @@ class ModelUnavailableError(RuntimeError):
 
     def __init__(self) -> None:
         super().__init__(str(safe_error_metadata({"code": "model_unavailable"})["message"]))
+
+
+class RegenerationFailedError(RuntimeError):
+    """重新生成未产出完整回复，保留旧助手消息。"""
 
 
 def sanitize_history_text(text: str) -> str:
@@ -173,6 +177,64 @@ class ChatService:
         return conv.user_id == user.id and conv.tenant_id == user.tenant_id
 
     # ── 对话执行 ──────────────────────────────────
+    def _assert_regeneration_authority(self, session: Session, user: User) -> None:
+        from app.core.security import check_permission
+
+        if not settings.AUTH_ENABLED and user.id == user.tenant_id == "__auth_disabled__":
+            return
+        expected = session.info.get("regeneration_identity", (user.id, user.tenant_id, user.role, user.token_version))
+        with Session(session.get_bind()) as fresh:
+            current = fresh.get(User, user.id)
+            tenant = fresh.get(Tenant, user.tenant_id)
+            if (current is None or not current.is_active or current.must_change_password
+                    or (current.id, current.tenant_id, current.role, current.token_version) != expected
+                    or tenant is None or not tenant.is_active
+                    or not check_permission(current.role, "conversations", "write")):
+                raise ResumeRejectedError("身份或租户状态已变更，请重新登录后再试", 403)
+            conversation_id = session.info.get("regeneration_conversation")
+            if conversation_id:
+                conv = fresh.get(Conversation, conversation_id)
+                if conv is None or not self._can_access(conv, current):
+                    raise ResumeRejectedError("会话不存在或无权访问", 404)
+
+    async def regenerate(
+        self, session: Session, user: User, conversation_id: str, message_id: str,
+    ) -> tuple[Conversation, str]:
+        """保留原问答，将尾部助手对应的原问题作为独立新轮次执行。"""
+        if len(conversation_id) > 128 or len(message_id) > 128:
+            raise ResumeRejectedError("会话或消息不存在或无权访问", 404)
+        self._assert_regeneration_authority(session, user)
+        conv = self.get_conversation(session, user, conversation_id)
+        if conv is None:
+            raise ResumeRejectedError("会话或消息不存在或无权访问", 404)
+        claims: list[tuple[int, str, str, str]] = []
+        claim_execution(session, user.tenant_id, conversation_id, "__conversation_write__", claims)
+        try:
+            rows = list(session.exec(select(Message).where(col(Message.conversation_id) == conversation_id)
+                                     .order_by(col(Message.created_at), col(Message.id))).all())
+            target = next((row for row in rows if row.id == message_id), None)
+            if target is None:
+                raise ResumeRejectedError("会话或消息不存在或无权访问", 404)
+            if target.role != "assistant" or not rows or rows[-1].id != message_id:
+                raise ResumeRejectedError("只能重新生成当前会话最后一条助手消息，请刷新会话", 409)
+            original = next((row for row in reversed(rows[:-1]) if row.role == "user"), None)
+            if original is None:
+                raise ResumeRejectedError("没有可重新生成的原始问题", 409)
+            prepared = self.prepare_chat_attachments(
+                session, user, original.content, None, None, None,
+                _restored=restore_attachments(original.attachments),
+            )
+            session.info["regeneration_conversation"] = conversation_id
+            session.info["regeneration_identity"] = (user.id, user.tenant_id, user.role, user.token_version)
+            return await self.chat(session, user, original.content, conversation_id,
+                                   attachments_prepared=prepared, _fresh_response=True)
+        finally:
+            from app.services.agent_execution_guard import release_executions
+
+            session.info.pop("regeneration_conversation", None)
+            session.info.pop("regeneration_identity", None)
+            release_executions(claims)
+
     def _history_messages(self, conv: Conversation) -> list[ChatMessage]:
         """从会话中提取历史消息（最近 N 轮）。
 
@@ -342,6 +404,8 @@ class ChatService:
     ) -> tuple[Conversation, str]:
         """Authorize recovery before reusing a message; new requests use the quota path."""
         session.info.pop("agent_resume_snapshot", None)
+        if conversation_id and session.info.get("regeneration_conversation") != conversation_id:
+            claim_execution(session, user.tenant_id, conversation_id, "__conversation_write__", claims)
         conv: Conversation | None
         if resume_message_id is None:
             if attachments is None:
@@ -377,9 +441,12 @@ class ChatService:
     def prepare_chat_attachments(
         self, session: Session, user: User, message: str, conversation_id: str | None,
         resume_message_id: str | None, attachments: list[AttachmentInput] | None,
+        *, _restored: list[PreparedAttachment] | None = None,
     ) -> list[PreparedAttachment]:
         """在任何消息写入或模型调用前完成附件批校验及视觉能力预检。"""
-        if resume_message_id is not None:
+        if _restored is not None:
+            prepared = _restored
+        elif resume_message_id is not None:
             if attachments:
                 raise AttachmentValidationError("续跑必须使用原消息附件，不能提交新附件替换")
             conv = session.get(Conversation, conversation_id) if conversation_id else None
@@ -423,6 +490,7 @@ class ChatService:
         *, resume_message_id: str | None = None,
         attachments: list[AttachmentInput] | None = None,
         attachments_prepared: list[PreparedAttachment] | None = None,
+        _fresh_response: bool = False,
         _execution_claims: list[tuple[int, str, str, str]] | None = None,
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
@@ -466,6 +534,8 @@ class ChatService:
                 # 7. 执行
                 result = await pipeline.run(state)
         except ContextBudgetError:
+            if _fresh_response:
+                raise RegenerationFailedError() from None
             # 预算超限不是故障：给固定提示并把这次回复照常落库，不抛给路由。
             result = state
             result.answer = BUDGET_EXCEEDED_REPLY
@@ -473,6 +543,10 @@ class ChatService:
         self._collect_trace(trace)
         # 9. 安全治理：输出过滤
         self._apply_output_security(result.answer, sec_ctx)
+        if _fresh_response:
+            self._assert_regeneration_authority(session, user)
+            if result.error or result.error_code or not result.answer.strip():
+                raise RegenerationFailedError()
         # 10. 回复在生成结束后写入。用户消息已在生成前写入。
         sources = self._reply_sources(session, retriever)
         self._persist_assistant(

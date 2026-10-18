@@ -248,6 +248,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 运行 | `POST` | `/api/v1/runs/{run_id}/cancel` | 显式取消本人运行，返回确认后的状态 |
 | 对话 | `GET` | `/api/v1/chat/conversations` | 会话列表 |
 | 对话 | `GET` | `/api/v1/chat/conversations/{conversation_id}` | 会话详情。助手消息含 `code_results`，刷新后仍在 |
+| 对话 | `POST` | `/api/v1/chat/conversations/{conversation_id}/messages/{message_id}/regenerate` | 使用最后助手对应的原问题和附件创建新一轮回复，保留原问答 |
 | 对话 | `PATCH` | `/api/v1/chat/conversations/{conversation_id}` | 重命名会话（请求体只有 `title`） |
 | 对话 | `DELETE` | `/api/v1/chat/conversations/{conversation_id}` | 删除会话 |
 | 对话 | `GET` | `/api/v1/chat/tools` | 可用工具列表 |
@@ -270,6 +271,8 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 租户 | `POST` | `/api/v1/admin/tenants/{tenant_id}/users` | 在指定未停用租户下创建成员；角色固定为 member（仅系统管理员） |
 
 > 启动后访问 `http://127.0.0.1:8000/docs` 查看交互式 Swagger API 文档。导出文件为 `docs/swagger.json`。
+
+对话页可对最后一条助手消息点击“重新生成”。需要会话写权限；接口不接受客户端替换问题或附件，使用服务端保存的原输入，按当前安全规则和配额追加新一轮问答。原问答保留，新回复以消息 ID 和时间区分，不产生对话分支。失败时原回复仍在，本次新用户消息可能保留；页面刷新实际记录并显示错误。停止等待不保证撤销服务端执行。过期目标或本进程内并发写入返回 409；模型生成失败返回脱敏 502。多进程互斥不在此能力范围。
 
 命名失败使用 `{ "error": { "code", "message", "retry_after", "request_id" } }`。`request_id` 与响应头 `X-Request-ID` 相同，页面不展示。八种编码是：
 

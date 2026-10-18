@@ -22,6 +22,7 @@ import {
 import { downloadTenantConversations } from '@/api/export'
 import { useChatStream } from '@/hooks/useChatStream'
 import { useChatAttachments } from '@/hooks/useChatAttachments'
+import { useRegenerate } from '@/hooks/useRegenerate'
 import { api, ApiError, hideStackTrace } from '@/lib/http'
 import { isQuotaNotice } from '@/lib/quota-message'
 import { isRateLimitNotice, retryAfterSeconds } from '@/lib/rate-limit'
@@ -171,7 +172,28 @@ export default function ChatPage() {
     return () => window.clearInterval(timer)
   }, [retryLeft])
 
-  const busy = snapshot.streaming || snapshot.cancelling || awaiting
+  const regeneration = useRegenerate({
+    conversationId: activeId,
+    refresh: async (id) => {
+      await qc.invalidateQueries({ queryKey: conversationKeys.all })
+      await qc.fetchQuery({ queryKey: conversationKeys.detail(id),
+        queryFn: () => api.get<ConversationDetail>(`/chat/conversations/${id}`) })
+    },
+    onSuccess: () => { toast.success('已追加新一轮回复，原问答已保留') },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        const seconds = retryAfterSeconds(err.payload)
+        if (seconds !== undefined) applyRetry(seconds)
+      }
+      const message = err instanceof ApiError ? hideStackTrace(err.detail) : '重新生成失败，请稍后重试'
+      setSendNotice(message)
+      if (isQuotaNotice(message)) toast.warning('已达配额上限', message)
+      else if (isRateLimitNotice(message)) toast.warning('发送过于频繁', message)
+      else toast.error('重新生成失败', message)
+    },
+    onAbort: () => { setOnceInterrupted(true); setLoadReplyNote(null) },
+  })
+  const busy = snapshot.streaming || snapshot.cancelling || awaiting || regeneration.regenerating
   const sendLocked = retryLeft != null && retryLeft > 0
   const cannotSend = Boolean(role) && !can(role, 'conversations', 'write')
   const canExport = role === 'tenant_admin' || role === 'system_admin'
@@ -246,7 +268,7 @@ export default function ChatPage() {
 
   const handleSend = useCallback(async () => {
     const text = input.trim()
-    if ((!text && !attachments.length) || attachments.some((item) => item.status !== 'ready') || busy || cannotSend || sendLocked) return
+    if ((!text && !attachments.length) || attachments.some((item) => item.status !== 'ready') || busy || regeneration.isRunning() || cannotSend || sendLocked) return
     const revision = ++sendRevisionRef.current
     const selected = attachments.map((item) => ({ name: item.name, content_base64: item.content_base64 ?? '' }))
     const sentIds = new Set(attachments.map((item) => item.id))
@@ -350,11 +372,24 @@ export default function ChatPage() {
     cannotSend,
     sendLocked,
     applyRetry,
+    regeneration,
   ])
+
+  const handleRegenerate = useCallback((messageId: string) => {
+    if (busy || cannotSend || sendLocked || regeneration.isRunning()) return
+    const last = serverMessages[serverMessages.length - 1]
+    if (!activeId || last?.role !== 'assistant' || last.id !== messageId) return
+    setSendNotice(null)
+    setOnceInterrupted(false)
+    setLoadReplyNote(null)
+    reset()
+    void regeneration.run(messageId)
+  }, [activeId, busy, cannotSend, sendLocked, serverMessages, regeneration, reset])
 
   /** 流式等待显式取消确认，再刷新对应回复；一次性仅停止等待。 */
   const handleStop = useCallback(() => {
     cancelAttachmentReads()
+    if (regeneration.isRunning()) { regeneration.cancel(); return }
     if (snapshot.streaming) {
       const revision = sendRevisionRef.current
       void (async () => {
@@ -374,7 +409,7 @@ export default function ChatPage() {
       return
     }
     if (awaiting) onceAbortRef.current?.abort()
-  }, [snapshot.streaming, awaiting, stop, refreshAfterStream, qc, reset, cancelAttachmentReads])
+  }, [snapshot.streaming, awaiting, stop, refreshAfterStream, qc, reset, cancelAttachmentReads, regeneration])
 
   const loadFullReply = useCallback(async () => {
     let id = activeIdRef.current
@@ -449,6 +484,7 @@ export default function ChatPage() {
 
   const handleNew = useCallback(() => {
     handleStop()
+    regeneration.reset()
     sendRevisionRef.current++
     reset()
     setPending([])
@@ -459,7 +495,7 @@ export default function ChatPage() {
     setEditingTitle(false)
     setOnceInterrupted(false)
     setLoadReplyNote(null)
-  }, [handleStop, reset, clearAttachments])
+  }, [handleStop, reset, clearAttachments, regeneration])
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -668,7 +704,9 @@ export default function ChatPage() {
               onRetry={() => void handleSend()}
               subtasks={snapshot.subtasks}
               streaming={snapshot.streaming && !liveAlreadyStored}
-              awaiting={awaiting}
+              awaiting={awaiting || regeneration.regenerating}
+              onRegenerate={!cannotSend && activeId ? handleRegenerate : undefined}
+              regenerateDisabled={busy || sendLocked}
               streamError={liveAlreadyStored ? null : snapshot.error}
               stopped={snapshot.stoppedByUser && !liveAlreadyStored}
               interrupted={showInterrupted}
@@ -705,7 +743,7 @@ export default function ChatPage() {
               onFiles={addAttachments}
               onRemoveAttachment={removeAttachment}
               streaming={snapshot.streaming}
-              busy={awaiting || snapshot.cancelling}
+              busy={awaiting || snapshot.cancelling || regeneration.regenerating}
               mode={mode}
               onModeChange={handleModeChange}
               disabled={cannotSend}

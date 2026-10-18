@@ -43,6 +43,8 @@ export interface MessageListProps {
    * 没有阶段信息可展示，只渲染等待指示，避免把空的阶段骨架误显示为进度。
    */
   awaiting?: boolean
+  onRegenerate?: (messageId: string) => void
+  regenerateDisabled?: boolean
   className?: string
 }
 
@@ -113,7 +115,7 @@ function Bubble({
             children
           )}
         </div>
-        {meta && <p className="px-1 text-xs text-text-faint">{meta}</p>}
+        {meta && <p className="break-all px-1 text-xs text-text-faint">{meta}</p>}
       </div>
     </div>
   )
@@ -219,6 +221,8 @@ export function MessageList({
   streaming,
   streamError,
   awaiting = false,
+  onRegenerate,
+  regenerateDisabled = false,
   stopped = false,
   interrupted = false,
   interruptTitle = '连接中断',
@@ -235,8 +239,8 @@ export function MessageList({
 
   return (
     <div className={cn('scroll-y space-y-5 px-1 py-4', className)}>
-      {messages.map((m) => (
-        <Bubble key={m.id} role={m.role} meta={m.model ?? formatDateTime(m.created_at)}>
+      {messages.map((m, index) => (
+        <Bubble key={m.id} role={m.role} meta={[m.model, formatDateTime(m.created_at), `消息 ${m.id}`].filter(Boolean).join(' · ')}>
           {m.role === 'assistant' ? (
             <>
               {m.content ? (
@@ -251,6 +255,14 @@ export function MessageList({
               )}
               <SourceNotes sources={m.sources} />
               <CodeResults results={m.code_results} />
+              {index === messages.length - 1 && onRegenerate && (
+                <div className="mt-3 space-y-1 border-t border-border/60 pt-2">
+                  <button type="button" disabled={regenerateDisabled || streaming || awaiting || cancelling}
+                    onClick={() => onRegenerate(m.id)}
+                    className="min-h-touch rounded-lg border border-border px-3 py-1.5 text-sm text-text hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50">重新生成</button>
+                  <p className="text-xs text-text-faint">保留原问答，作为新一轮请求重新生成；原附件一并使用，并正常计入配额。</p>
+                </div>
+              )}
             </>
           ) : (
             <div>

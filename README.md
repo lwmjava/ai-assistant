@@ -337,6 +337,28 @@ ai-assistant admin create-superuser --username admin
 
 ### 2. 启动
 
+在仓库根目录安装 `pip install -e .` 后，可使用 Docker Compose v2 管理指定部署：
+
+```bash
+ai-assistant start --project-name assistant-local --env-file /secure/assistant.prod.env
+ai-assistant status --project-name assistant-local --env-file /secure/assistant.prod.env
+ai-assistant logs --project-name assistant-local --env-file /secure/assistant.prod.env --tail 100
+ai-assistant stop --project-name assistant-local --env-file /secure/assistant.prod.env
+```
+
+四条命令都必须显式指定项目名与配置文件。默认使用当前目录的 `docker-compose.prod.yml`；
+其他位置使用 `--compose-file /path/to/compose.yml`。相对路径按当前目录解析，Compose 的项目目录固定为编排文件所在目录。
+配置要求见 [生产编排说明](docs/workflows/production-compose.md)。这组命令管理 Compose 容器，开发时仍可直接运行下面的 Uvicorn。
+未安装控制台脚本时使用 `python -m app.cli`，例如 `python -m app.cli status --project-name assistant-local --env-file /secure/assistant.prod.env`。
+
+`start` 等待容器运行或健康，重复执行复用同一项目；`stop` 只停止容器，保留容器和数据卷；
+`status` 包括已停止容器，返回的是 Compose 查询结果，并非应用就绪验收；`logs` 默认每容器最近 100 行，不持续跟随。
+`--timeout` 是客户端最长等待秒数，默认 300；停止操作给容器 30 秒退出。
+超时或中断返回 124/130，容器端操作可能继续，应使用同样的项目与配置执行 `status`，不能假定已回滚。
+Docker 缺失、文件不可读和操作失败会给出可读解法。失败时不回显底层输出，防止插值后的凭据泄露。
+状态和日志会遮蔽配置/进程环境中的已知敏感值及含凭据标记的整行，但这不能替代应用端日志脱敏，未知且无标记的敏感数据仍需在源头治理。
+宿主变量保留 Compose 的常规覆盖优先级；`COMPOSE_*` 隐式选择被清除，避免作用到未指定的编排或 profile。
+
 ```bash
 uvicorn app.main:app --reload
 ```
@@ -379,7 +401,7 @@ npm run dev
 
 ### Docker 一键部署
 
-复制 `.env.example` 为 `.env`，填入随机 `JWT_SECRET_KEY` 和一个 `LLM_API_KEY`。这两项留空时，`docker compose config` 无法展开，编排不会用仓库里的占位口令代替。不要把 `.env` 提交进仓库。
+复制 `.env.example` 为 `.env`，填入独立随机 `POSTGRES_PASSWORD`、随机 `JWT_SECRET_KEY` 和一个 `LLM_API_KEY`，并将 `CORS_ORIGINS` 设置为实际允许的前端来源。这四项缺失或为空时，`docker compose config` 无法展开；编排不回退固定数据库口令或通配来源。开发编排的口令直接进入数据库连接串，应使用 URL 安全字符组成的随机值；特殊字符口令使用生产编排的独立已编码 `DATABASE_URL`。生产来源应为实际 HTTPS 地址，不要把 `.env` 提交进仓库。
 
 ```bash
 docker compose up -d --build

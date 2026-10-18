@@ -1,4 +1,4 @@
-"""命令行入口：初始化配置、迁移数据库和创建系统管理员。"""
+"""命令行入口：配置、数据库、管理员与部署生命周期。"""
 
 import argparse
 import logging
@@ -80,7 +80,7 @@ def _create_superuser(username: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """解析初始化、迁移和账号命令，返回进程退出码。"""
+    """解析管理命令，返回进程退出码。"""
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s %(name)s %(message)s",
@@ -100,11 +100,17 @@ def main(argv: list[str] | None = None) -> int:
     create = admin_sub.add_parser("create-superuser", help="创建系统管理员")
     create.add_argument("--username", required=True, help="用户名")
 
+    from app.cli_lifecycle import add_commands, execute
+
+    add_commands(sub)
+
     args = parser.parse_args(argv)
     if args.command == "init":
         return _initialize(args.env_file)
     if args.command == "migrate":
         return _migrate(args.yes)
+    if args.command in {"start", "stop", "status", "logs"}:
+        return execute(args)
     return _create_superuser(args.username)
 
 

@@ -1,8 +1,14 @@
 # 单实例生产编排
 
-此编排提供一个应用进程、PostgreSQL 和持久卷。默认向量库为 `local`，只启动 app/db；Milvus 为显式覆盖，仍为 `Partial`，不因配置存在成为生产验收通过。当前宿主没有可用 Docker Engine，实际构建、启动、健康探针、数据持久化和 Linux 运行尚未验证。
+此编排提供一个应用进程、PostgreSQL 和持久卷。默认向量库为 `local`，只启动 app/db；Milvus 为显式覆盖，仍为 `Partial`，不因配置存在成为生产验收通过。2026-10-17 的隔离启动证据见 `docs/reviews/2026-10-17-nfr-003-runtime.md`。数据持久化复读、可选 Milvus 实际启动和备份恢复仍未演练。
 
 ## 部署前配置
+
+开发与生产编排均要求显式提供非空的 `POSTGRES_PASSWORD`、`JWT_SECRET_KEY` 和 `CORS_ORIGINS`，不再回退固定数据库口令或通配来源。
+`.env.example` 的来源仅供本地开发，生产应替换为实际 HTTPS 来源。
+执行 `python deploy/check_compose_defaults.py` 可只读核对两份编排的必填声明；它不检查密钥强度、不展开配置，也不能替代实际启动验收。
+显式填写 `*` 仍会被 Compose 当作普通输入，本检查器只保证没有通配默认值；部署时必须按下表填写真实来源。
+开发编排直接将数据库口令拼入连接串，只应用 URL 安全字符组成的随机口令；含特殊字符时使用生产编排的独立、已编码 `DATABASE_URL`。
 
 在仓库根目录执行下述命令。使用仓库外、权限受限的新配置文件，命令始终显式 `--env-file`，不要依赖工作区 `.env`。本次开发不创建真实部署凭据、不构建或启动生产服务。
 
@@ -29,7 +35,7 @@ docker compose --env-file /secure/assistant.prod.env -p assistant-stage -f docke
 docker compose --env-file /secure/assistant.prod.env -p assistant-stage -f docker-compose.prod.yml ps
 ```
 
-`config --quiet` 仅证明参数与 YAML 可展开，不证明服务启动，也不会输出展开后的密钥。不要发布普通 `config` 输出。`up --wait` 需要 Docker Engine 与镜像下载许可；启动完成后从实际部署客户端验证登录、首次改密和业务操作。当前没有一键启动通过或五分钟上手达标的运行证据。
+`config --quiet` 仅证明参数与 YAML 可展开，不证明服务启动，也不会输出展开后的密钥。不要发布普通 `config` 输出。`up --wait` 需要 Docker Engine 与镜像下载许可；启动完成后从实际部署客户端验证登录、首次改密和业务操作。隔离项目的启动、健康和依赖未就绪结果以验收记录为准，不能用配置展开代替。
 
 ## 可选 Milvus
 

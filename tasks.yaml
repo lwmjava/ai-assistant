@@ -6210,7 +6210,8 @@ tasks:
 
   - id: "NFR-003"
     title: "生产部署编排与健康检查"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-17"
     priority: "P2"
     target_date: ""
     depends_on: []
@@ -6261,6 +6262,7 @@ tasks:
         - "docker compose -f docker-compose.prod.yml config"
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；静态契约exit0；Docker daemon不可连接，实际容器启动/健康/未就绪及Linux/最终CI未验证。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      runtime_20261017: "隔离项目只启动 app/db，13.5 秒内两者健康；探针 HTTP 200 且 status=ok、向量库 local。停掉数据库后应用变为 unhealthy。未启动 Milvus，未使用工作区 .env，未删除卷。证据：docs/reviews/2026-10-17-nfr-003-runtime.md。"
       plan: "docs/plans/plan_nfr_003_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -6853,7 +6855,8 @@ tasks:
 
   - id: "INST-004"
     title: "内置账号 admin/system/culture 与首次改密"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-10-17"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -6911,6 +6914,7 @@ tasks:
         - "pytest -k \"admin or password or setup\""
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮隔离账号/改密专项通过；最终全量仍失败，当前候选页面/平台/CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      page_20261017: "隔离空库由环境变量引导三账号。真实页面逐个登录，改密前对话与知识库被拦回改密页，对话接口 403；改密后进入对话，刷新仍在，旧刷新令牌 401。库内角色、测试标记、空邮箱和 bcrypt 与页面一致。证据：docs/reviews/2026-10-17-inst-004-page.md。"
       plan: "docs/plans/plan_platform_batch_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -6974,7 +6978,7 @@ tasks:
 
   - id: "NFR-012"
     title: "Compose 口令与跨域默认收紧"
-    status: "blocked"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -6994,6 +6998,7 @@ tasks:
         - ".env.example"
         - "docs/"
         - "tasks.yaml"
+        - "README.md"
       forbidden_paths:
         - ".env"
         - "生产密钥"
@@ -7013,9 +7018,12 @@ tasks:
       cases:
         - "检查生产编排默认值"
       commands:
-        - "rg -n \"CORS_ORIGINS|POSTGRES_PASSWORD\" docker-compose*.yml"
+        - "python deploy/check_compose_defaults.py --verify-compose"
     execution:
-      acceptance_record: "NFR-003 实际容器启动与健康验收尚未通过，不能作为已完成前置。"
+      acceptance_record: "NFR-003 隔离启动前置已于2026-10-17通过。本卡已收紧开发编排数据库口令和跨域默认值，生产编排原有必填约束保持；两文件14项真实Compose合成配置检查通过，独立配置审查通过，最终全量2553passed/3skipped、exit0，Ruff/mypy均0。README范围已于2026-10-18获用户批准并同步修正，最终提交Ubuntu CI待齐，保持in_review。"
+      plan: "docs/plans/plan_cli_compose_batch_20261017.md"
+      implementation: "docs/plans/implementation_nfr_012_20261017.md"
+      review: "docs/reviews/2026-10-17-nfr-012-review.md"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -7422,6 +7430,7 @@ tasks:
         - "pytest -k \"attach or upload or chat\""
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮附件专项通过；真实视觉、旧Office/真实xls及Linux/最终CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      closure_review_20261017: "三项缺口已有分开证据：千问 qwen3-vl-plus 看见合成图 BLUE-7；Windows LibreOffice 抽出 doc/xls/ppt 标记；当前隔离页面完成选择、拒绝、粘贴事件、发送和刷新，知识库仍为 0。产品视觉护栏未改，Linux 转换未跑。状态保留 in_review。证据：docs/reviews/2026-10-17-chat-007-gaps.md。"
       plan: "docs/plans/plan_chat_007_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -8147,7 +8156,7 @@ tasks:
 
   - id: "CLI-003"
     title: "CLI：start / stop / status / logs"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8169,6 +8178,7 @@ tasks:
         - "pyproject.toml"
         - "docs/"
         - "tasks.yaml"
+        - "tests/test_cli_lifecycle.py"
       forbidden_paths:
         - ".env"
         - "生产数据"
@@ -8189,8 +8199,12 @@ tasks:
       cases:
         - "启停各一次并读 status/logs"
       commands:
-        - "python -m ai_assistant --help"
+        - "python -m app.cli --help"
     execution:
+      plan: "docs/plans/plan_cli_compose_batch_20261017.md"
+      implementation: "docs/plans/implementation_cli_003_20261017.md"
+      review: "docs/reviews/2026-10-17-cli-003-review.md"
+      progress_20261017: "用户批准精确追加生命周期测试路径。四命令复用显式Compose项目；专项23通过，真实隔离容器启停/日志/重复调用通过，Linux子进程替身六链通过。独立审查发现的两种插值脱敏反例已修复并复核关闭。最终全量2553passed/3skipped、exit0（547.51秒），Ruff无缓存及mypy均0；最终提交Ubuntu CI未运行，保持in_review。"
       owner: "个人开发者"
       nightly:
         eligible: false

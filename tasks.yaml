@@ -89,10 +89,20 @@ tasks:
 
   - id: "V1C-002"
     title: "1.0收尾：统一各对话路径的工具执行入口"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     depends_on: ["PAGT-006", "RAG-044"]
     scope:
+      allowed_paths:
+        - "app/agents/fast_path.py"
+        - "app/agents/pipeline.py"
+        - "app/services/chat_service.py"
+        - "tests/test_tool_path_contract.py"
+        - "docs/ai-prompts/evals/tool-path-contract-v1.yaml"
+        - "docs/adr/0010-agent-runtime-state-boundary.md"
+        - "docs/plans/"
+        - "docs/reviews/"
+        - "tasks.yaml"
       deliverables: ["默认管线与工具短路径复用受控执行器", "跨路径工具契约一致性测试"]
       non_goals: ["不扩大工具权限", "不将接线统一等同于MCP治理完成"]
     acceptance:
@@ -100,8 +110,8 @@ tasks:
       - "撤权、取消、重复调用、非法参数与执行失败有拒绝或终态证据。"
     risk: {level: "L2", side_effect: "工具执行边界变化，先核对或补充批准ADR"}
     execution:
-      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
-      progress: "仅登记Planned；实现方案、allowed_paths与必要ADR须在开工前明确。"
+      plan: "docs/plans/plan_v1c_002_20261018.md"
+      progress: "短路径与未注入管线已复用既有 ToolExecutor。契约测试 40 项通过；全量 pytest 2704 passed / 3 skipped，Ruff 与 mypy 退出码 0。独立入口审查与人工审核均无未修复 P1/P2。实现说明 docs/plans/implementation_v1c_002_20261018.md。人工审核 docs/reviews/2026-10-18-v1c-002-manual-review-1.md。未验证：最终提交的 Ubuntu CI；用户尚未确认业务验收。保持 in_review。不含提交或推送。"
 
   - id: "V1C-003"
     title: "1.0收尾：补齐技能在不同编排路径中的生效接线"

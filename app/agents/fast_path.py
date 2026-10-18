@@ -19,6 +19,7 @@ from app.agents.pipeline import (
 )
 from app.agents.route import ChatRoute, RouteKind
 from app.agents.tools.base import ToolRegistry
+from app.agents.tools.executor import ToolExecutor
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text, user_message_content
 from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
@@ -143,6 +144,8 @@ async def _iter_fast_path_events(
     """按已决定的短路径产出事件，并把最终文本写进 state.answer。"""
     if route.kind is RouteKind.TOOLS and route.tool_names:
         pipeline = AgentPipeline(llm, options, retriever=None, tools=tools)
+        if tools is not None:
+            pipeline.executor = ToolExecutor(tools)
         pipeline.max_tool_rounds = _TOOL_ROUND_CAP
         pipeline.skill_prompt_injection = skill_prompt
         policy = ExecutionPolicy(allowed_tool_names=route.tool_names)

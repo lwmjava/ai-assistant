@@ -1,0 +1,25 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored deterministic path cases, synthetic tools and scripted LLM; not Gold or retrieval-quality evidence"
+execution: "pytest tests/test_tool_path_contract.py"
+cases:
+  - id: shared_executor
+    expected: "Tool short path, explicitly wired pipeline, and unwired pipeline each call ToolExecutor once per logical call."
+  - id: limited_retry
+    expected: "Idempotent connection failure retries exactly max_retries plus one and writes one audit. Non-idempotent failure does not retry."
+  - id: timeout
+    expected: "Zero retries time out once. Idempotent timeout retries once more and remains timeout, with one audit."
+  - id: invalid_arguments
+    expected: "Strict schema failure does not call the function and audits invalid_arguments."
+  - id: identity_tenant
+    expected: "Missing user, missing tenant, and forged identity arguments are denied with zero function calls."
+  - id: revocation
+    expected: "A role change in a new session is observed on the next call and denies execution."
+  - id: duplicate_and_budget
+    expected: "The same fingerprint does not execute twice. Both supported paths stop at two rounds."
+  - id: cancellation
+    expected: "CancelledError propagates and no success audit is written."
+  - id: non_finite
+    expected: "Calculator overflow stays an error terminal state on every path."
+  - id: allowed_names
+    expected: "A tool outside the path allow-list is not executed."

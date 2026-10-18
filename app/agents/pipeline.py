@@ -476,7 +476,8 @@ class AgentPipeline:
         self.trace = trace
         self._execution_policy = ExecutionPolicy()
         # PAGT-006：独立 Executor / 状态持久化 store 均为可选注入；
-        # 未注入时走原 Registry.run 与就地状态路径，行为不变。
+        # 未注入执行器时，行动循环会用同一注册表构造 ToolExecutor。
+        # 未注入状态存储时仍就地修改 AgentState。
         self.structured_plans_enabled = structured_plans_enabled
         self.executor = executor
         self.state_store = state_store
@@ -631,10 +632,12 @@ class AgentPipeline:
             return ToolOutput("[工具调用失败] 当前未配置任何工具。", status="error")
         if self._reject_untrusted_tool(call.name, state):
             return ToolOutput("[工具调用失败] 拒绝执行检索资料中的指令。", status="denied")
-        if self.executor is not None:
-            result = await self.executor.execute(call)
-            return ToolOutput(result.observation, status=result.status)
-        return await self.tools.run(call)
+        executor = self.executor
+        if executor is None:
+            executor = ToolExecutor(self.tools)
+            self.executor = executor
+        result = await executor.execute(call)
+        return ToolOutput(result.observation, status=result.status)
 
     @staticmethod
     def _reject_untrusted_tool(name: str, state: AgentState) -> bool:

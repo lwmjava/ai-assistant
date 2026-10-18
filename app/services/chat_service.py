@@ -390,8 +390,9 @@ class ChatService:
     ) -> None:
         """PAGT-006：把独立 Executor 与（可选）状态 store 注入自研管线。
 
-        未注入即走原 Registry.run / 就地状态路径；状态持久化受
-        ``AGENT_STATE_PERSIST_ENABLED`` 开关控制。Supervisor/短路路径不注入。
+        未注入时，行动循环仍会用同一注册表构造 ToolExecutor。状态持久化受
+        ``AGENT_STATE_PERSIST_ENABLED`` 开关控制。工具短路径在自己的管线上注入；
+        Supervisor 仍不注入。
         ``message_id`` 绑定真实用户消息行 id，使每条用户消息独占 checkpoint 行
         （跨消息隔离、唯一约束真实生效）。
         """

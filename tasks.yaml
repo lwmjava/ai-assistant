@@ -153,7 +153,7 @@ tasks:
 
   - id: "RAG-044"
     title: "修复索引不可用时对话初始化失败"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     depends_on: ["RAG-030", "RAG-032", "RAG-037"]
     scope:
@@ -171,7 +171,7 @@ tasks:
       cases: ["合成历史分块缺索引的 unavailable 链路", "空库 no_hit", "有效索引父块展开与隔离回归"]
     execution:
       plan: "docs/plans/plan_rag_index_init_fix_20261016.md"
-      progress: "初始化修复与合成回归已落地；专项120通过、Ruff/mypy通过。全量2529通过/1失败/3跳过，导入批次失败项复跑不稳定，未关闭。实际历史索引未修复；详见 docs/plans/implementation_rag_index_init_fix_20261016.md。"
+      progress: "初始化修复与合成回归已落地。2026-10-18 临时库页面：知识库问题出现不可用提示且未泄露历史正文；计算器请求完成并返回 6918.4。文档 1、分块 1、索引 0。现有知识库未改。CI run 39122233048 在 673787f 上三项 success。证据：docs/reviews/2026-10-18-rag-044-page.md。"
 
   - id: "GOV-002"
     title: "补齐任务关闭与提交前回归规则"
@@ -6978,7 +6978,7 @@ tasks:
 
   - id: "NFR-012"
     title: "Compose 口令与跨域默认收紧"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -7021,6 +7021,7 @@ tasks:
         - "python deploy/check_compose_defaults.py --verify-compose"
     execution:
       acceptance_record: "NFR-003 隔离启动前置已于2026-10-17通过。本卡已收紧开发编排数据库口令和跨域默认值，生产编排原有必填约束保持；两文件14项真实Compose合成配置检查通过，独立配置审查通过，最终全量2553passed/3skipped、exit0，Ruff/mypy均0。README范围已于2026-10-18获用户批准并同步修正，最终提交Ubuntu CI待齐，保持in_review。"
+      final_acceptance_20261018: "最终业务提交673787f9b792b10542d004449cad99166415b7d9的真实Compose14项矩阵重验通过，静态契约及失败反例均退出0；4项配置输入匹配原独立审查，最新510项输入和15份回归日志匹配。同SHA的Ubuntu Backend、Frontend、Agent official baseline均success（run 39122233048），前置及文档整改已齐，关闭为done。未启动容器，不代表凭据轮换或生产发布。报告：docs/reviews/2026-10-18-nfr-012-close.md。"
       plan: "docs/plans/plan_cli_compose_batch_20261017.md"
       implementation: "docs/plans/implementation_nfr_012_20261017.md"
       review: "docs/reviews/2026-10-17-nfr-012-review.md"
@@ -7090,7 +7091,7 @@ tasks:
 
   - id: "SSE-001"
     title: "SSE 事件协议对齐 §5.1.4"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7136,6 +7137,7 @@ tasks:
         - "pytest -k \"stream or sse\""
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮流式生命周期专项通过；最终全量仍失败，当前候选页面断网/前端及最终CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
+      final_acceptance_20261018: "按用户委托验收最终业务提交673787f9b792b10542d004449cad99166415b7d9：页面传输故障后Last-Event-ID GET续流且原问题仅一次POST，完整/停止回复刷新持久化通过；专项51 passed，退出0；已有全量和前端四门510项输入指纹完全匹配。该SHA的Ubuntu Backend、Frontend、Agent official baseline均success，run 39122233048。单进程范围验收通过，改为done；不代表生产发布或知识库检索故障已修。证据：docs/reviews/2026-10-18-sse-001-acceptance.md。"
       plan: "docs/plans/plan_sse_001_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -7271,7 +7273,7 @@ tasks:
 
   - id: "CHAT-006"
     title: "助手消息重新生成"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on: []
@@ -7313,7 +7315,8 @@ tasks:
       plan: "docs/plans/plan_chat_006_20261018.md"
       implementation: "docs/plans/implementation_chat_006_20261018.md"
       evidence: "docs/reviews/2026-10-18-chat-006-evidence.json"
-      progress: "已实现追加新轮次重新生成、失败保留旧回复、身份复核和页面持久化；独立入口反例及前端P2修复复核通过。用户批准docs/及README.md范围。未验证：用户人工业务验收；最终提交Ubuntu CI（未推送）。保持in_review，不声明完成或可发布。"
+      progress: "追加新轮次重新生成、失败保留旧回复、身份复核和页面持久化已通过；独立入口反例及前端P2修复复核通过，用户对最终提交673787f明确人工验收通过。同提交Ubuntu Backend、Frontend、Agent official baseline均success（run 39122233048）。本次专项26 passed、退出0；原510项输入、15份日志和10项产物指纹全部匹配。验收齐全，关闭为done；不代表生产发布。"
+      final_acceptance_20261018: "docs/reviews/2026-10-18-chat-006-close.md"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -7383,7 +7386,7 @@ tasks:
 
   - id: "CHAT-007"
     title: "会话附件：粘贴图片与上传文件"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7437,6 +7440,7 @@ tasks:
     execution:
       closure_review_20261016: "用户本轮已委托Agent代行验收；本轮附件专项通过；真实视觉、旧Office/真实xls及Linux/最终CI证据未齐。 状态保留in_review。证据：docs/reviews/2026-10-16-十一卡独立验收关闭审查.md。"
       closure_review_20261017: "三项缺口已有分开证据：千问 qwen3-vl-plus 看见合成图 BLUE-7；Windows LibreOffice 抽出 doc/xls/ppt 标记；当前隔离页面完成选择、拒绝、粘贴事件、发送和刷新，知识库仍为 0。产品视觉护栏未改，Linux 转换未跑。状态保留 in_review。证据：docs/reviews/2026-10-17-chat-007-gaps.md。"
+      closure_review_20261018: "用户确认人工验收通过。GitHub CI run 39122233048 在 673787f 上 Backend、Frontend、Agent official baseline 均为 success。Ubuntu pytest 未执行 soffice，旧格式转换证据仍为 Windows。用户确认关闭。证据：docs/reviews/2026-10-18-chat-007-close.md。"
       plan: "docs/plans/plan_chat_007_20261015.md"
       owner: "个人开发者"
       nightly:
@@ -8162,7 +8166,7 @@ tasks:
 
   - id: "CLI-003"
     title: "CLI：start / stop / status / logs"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8211,6 +8215,7 @@ tasks:
       implementation: "docs/plans/implementation_cli_003_20261017.md"
       review: "docs/reviews/2026-10-17-cli-003-review.md"
       progress_20261017: "用户批准精确追加生命周期测试路径。四命令复用显式Compose项目；专项23通过，真实隔离容器启停/日志/重复调用通过，Linux子进程替身六链通过。独立审查发现的两种插值脱敏反例已修复并复核关闭。最终全量2553passed/3skipped、exit0（547.51秒），Ruff无缓存及mypy均0；最终提交Ubuntu CI未运行，保持in_review。"
+      final_acceptance_20261018: "最终业务提交673787f9b792b10542d004449cad99166415b7d9：生命周期专项重验23 passed，旧CLI回归22 passed/3 skipped，均退出0；五项CLI源码/测试/验收脚本指纹匹配，原真实Docker八次操作及Linux子进程六路径可沿用。最新510项输入和15份回归日志匹配；同SHA的Ubuntu Backend、Frontend、Agent official baseline均success（run 39122233048），相关CLI文件在Linux CI均实际通过。原卡验收齐全，关闭为done。报告：docs/reviews/2026-10-18-cli-003-close.md。未操作生产服务或数据。"
       owner: "个人开发者"
       nightly:
         eligible: false

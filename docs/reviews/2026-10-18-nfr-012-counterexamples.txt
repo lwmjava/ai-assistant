@@ -1,0 +1,29 @@
+import contextlib
+import importlib.util
+import io
+import pathlib
+import subprocess
+import tempfile
+from unittest.mock import patch
+
+root = pathlib.Path.cwd()
+spec = importlib.util.spec_from_file_location('compose_defaults_acceptance', root / 'deploy/check_compose_defaults.py')
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert not module.check(root)
+with tempfile.TemporaryDirectory() as temporary:
+    target = pathlib.Path(temporary)
+    for name in ('docker-compose.yml', 'docker-compose.prod.yml'):
+        (target / name).write_text((root / name).read_text(encoding='utf-8'), encoding='utf-8')
+    path = target / 'docker-compose.yml'
+    path.write_text(path.read_text(encoding='utf-8').replace('${CORS_ORIGINS:?必须显式提供允许的前端来源}', '${CORS_ORIGINS:-*}'), encoding='utf-8')
+    assert module.check(target), 'unsafe default must be rejected'
+for error in (FileNotFoundError(), subprocess.TimeoutExpired('docker', 30)):
+    output = io.StringIO()
+    with patch.object(module.subprocess, 'run', side_effect=error), contextlib.redirect_stdout(output):
+        assert module.verify_compose(root) == 1
+output = io.StringIO()
+with patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess('docker', 1, '', 'synthetic-sensitive-marker')), contextlib.redirect_stdout(output):
+    assert module.verify_compose(root) == 1
+assert 'synthetic-sensitive-marker' not in output.getvalue()
+print('PASS: unsafe fallback; missing Docker; timeout; nonzero failure; stderr redaction')

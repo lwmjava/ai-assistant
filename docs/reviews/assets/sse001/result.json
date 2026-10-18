@@ -1,0 +1,71 @@
+{
+  "replayPosts": 1,
+  "replay": [
+    {
+      "method": "GET",
+      "path": "/api/v1/runs/d745976f38cb4248afd2834103be127e/events",
+      "cursor": "d745976f38cb4248afd2834103be127e:14",
+      "at": 1792324847118
+    }
+  ],
+  "cancellationPosts": 1,
+  "errors": [],
+  "history": {
+    "id": "c021fe48eec84f619166f5cb1571b1d9",
+    "tenant_id": "ui-fixture-tenant",
+    "user_id": "ui-fixture-user",
+    "title": "UI_REPLAY_PROBE 请验证流式恢复",
+    "created_at": "2026-10-18T12:00:46.904223",
+    "updated_at": "2026-10-18T12:00:46.904223",
+    "messages": [
+      {
+        "id": "2dcd6b9dac254650b5bef5b86aae8d17",
+        "role": "user",
+        "content": "UI_REPLAY_PROBE 请验证流式恢复",
+        "attachments": [],
+        "model": null,
+        "created_at": "2026-10-18T12:00:46.907285",
+        "sources": [],
+        "code_results": [],
+        "skill_names": [],
+        "status": "complete"
+      },
+      {
+        "id": "03701d2e4aa4450a8aabcd20dd924ebc",
+        "role": "assistant",
+        "content": "【提示】知识库中没有检索到相关资料，以下回答基于模型自身知识，不是知识库结论。\n\n隔离界面验证回复：流式事件到达页面，使用模拟模型验证协议，不代表真实模型质量。",
+        "attachments": [],
+        "model": "mock-model",
+        "created_at": "2026-10-18T12:01:18.506276",
+        "sources": [],
+        "code_results": [],
+        "skill_names": [],
+        "status": "complete"
+      },
+      {
+        "id": "ba8f3285adf8498586236e96e115f793",
+        "role": "user",
+        "content": "CANCEL_PROBE 验证停止后保存部分正文",
+        "attachments": [],
+        "model": null,
+        "created_at": "2026-10-18T12:01:21.243909",
+        "sources": [],
+        "code_results": [],
+        "skill_names": [],
+        "status": "complete"
+      },
+      {
+        "id": "0cfb425e43f04465a62b9292c27c9e4a",
+        "role": "assistant",
+        "content": "【提示】知识库中没有检索到相关资料，以下回答基于模型自身知识，不是知识库结论。\n\n隔离界面验",
+        "attachments": [],
+        "model": "mock-model",
+        "created_at": "2026-10-18T12:01:25.805480",
+        "sources": [],
+        "code_results": [],
+        "skill_names": [],
+        "status": "stopped"
+      }
+    ]
+  }
+}

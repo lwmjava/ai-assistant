@@ -1,0 +1,44 @@
+{
+  "project": "cli-smoke-ffd0d380af40",
+  "steps": [
+    {
+      "command": "start",
+      "exit_code": 0
+    },
+    {
+      "command": "status",
+      "exit_code": 0
+    },
+    {
+      "command": "status",
+      "exit_code": 0
+    },
+    {
+      "command": "logs",
+      "exit_code": 0
+    },
+    {
+      "command": "start",
+      "exit_code": 0
+    },
+    {
+      "command": "stop",
+      "exit_code": 0
+    },
+    {
+      "command": "status",
+      "exit_code": 0
+    },
+    {
+      "command": "stop",
+      "exit_code": 0
+    }
+  ],
+  "model_calls": 0,
+  "volumes": 0,
+  "repeat_start_same_container": true,
+  "repeat_stop_ok": true,
+  "result": "passed",
+  "cleanup_exit": 0,
+  "cleanup_scope": "random synthetic project only; no volume deletion"
+}

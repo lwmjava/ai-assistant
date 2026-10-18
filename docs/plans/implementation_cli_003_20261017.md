@@ -2,6 +2,8 @@
 
 日期：2026-10-17。任务 CLI-003，计划见 plan_cli_compose_batch_20261017.md。当前为 in_review，不声明已通过最终提交 Ubuntu CI 或整个批次完成。
 
+当前结论（2026-10-18）：最终验收已补齐，CLI-003 为 done；正文过程记录保留历史时点，当前证据见文末补记。
+
 ## 实际功能与失败行为
 
 拥有宿主 Docker 访问权限的操作者可通过 ai-assistant start/stop/status/logs 管理显式项目。四命令强制 --project-name、--env-file，--compose-file 默认当前目录 docker-compose.prod.yml；不会为缺失部署参数选择隐式项目。该本机运维入口不使用应用用户/租户身份，不替代 Docker 的宿主权限。
@@ -38,3 +40,7 @@ Windows，D:\DepTooL\anaconda3\envs\ai-assistant\python.exe，Python3.12.0；pyt
 ## 未做、风险和回滚
 
 未推送、合并、部署、付费模型调用、真实.env修改、生产卷删除。未新增Kubernetes或本机PID管理。前端源码和HTTP契约不变，前端四门不适用。最终提交Ubuntu CI未运行，因此不能关闭。回滚仅恢复本卡代码和README，不停止既有服务或改数据。
+
+## 最终关闭补记
+
+2026-10-18 按用户要求复核最终业务提交 `673787f9b792b10542d004449cad99166415b7d9`：本轮生命周期专项 23 passed，原 CLI 回归 22 passed / 3 skipped，均退出 0；帮助入口与文件不可读拒绝行为符合预期。五项 CLI 源码/测试/验收脚本指纹未变，原真实 Docker 八次操作及清理、Linux 子进程六路径证据仍适用，本次没有重跑容器。最新 510 项业务输入及 15 份回归日志完全匹配；同提交 Ubuntu Backend、Frontend、Agent official baseline 均 success（run 39122233048），Linux CI 中生命周期 23 项与原 CLI 25 项均实际通过。原卡证据齐全，关闭为 done，详见 [最终验收报告](../reviews/2026-10-18-cli-003-close.md)。不代表生产部署或合并授权。

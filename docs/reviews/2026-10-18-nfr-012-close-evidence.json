@@ -1,0 +1,194 @@
+{
+  "task": "NFR-012",
+  "date": "2026-10-18",
+  "candidate_sha": "673787f9b792b10542d004449cad99166415b7d9",
+  "status": "done",
+  "platform": "Windows; Python 3.12.0; Docker CLI 28.5.1; Compose v2.40.0-desktop.1",
+  "interpreter": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+  "commands": [
+    {
+      "command": "python deploy/check_compose_defaults.py --verify-compose",
+      "exit": 0
+    },
+    {
+      "command": "python scripts/check_production_compose.py",
+      "exit": 0
+    },
+    {
+      "command": "python docs/reviews/2026-10-18-nfr-012-counterexamples.txt",
+      "exit": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "matrix": {
+    "checks": [
+      {
+        "file": "docker-compose.yml",
+        "field": null,
+        "case": "valid",
+        "compose_exit": 0,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.yml",
+        "field": "POSTGRES_PASSWORD",
+        "case": "missing",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.yml",
+        "field": "POSTGRES_PASSWORD",
+        "case": "empty",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.yml",
+        "field": "JWT_SECRET_KEY",
+        "case": "missing",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.yml",
+        "field": "JWT_SECRET_KEY",
+        "case": "empty",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.yml",
+        "field": "CORS_ORIGINS",
+        "case": "missing",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.yml",
+        "field": "CORS_ORIGINS",
+        "case": "empty",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.prod.yml",
+        "field": null,
+        "case": "valid",
+        "compose_exit": 0,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.prod.yml",
+        "field": "POSTGRES_PASSWORD",
+        "case": "missing",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.prod.yml",
+        "field": "POSTGRES_PASSWORD",
+        "case": "empty",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.prod.yml",
+        "field": "JWT_SECRET_KEY",
+        "case": "missing",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.prod.yml",
+        "field": "JWT_SECRET_KEY",
+        "case": "empty",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.prod.yml",
+        "field": "CORS_ORIGINS",
+        "case": "missing",
+        "compose_exit": 1,
+        "passed": true
+      },
+      {
+        "file": "docker-compose.prod.yml",
+        "field": "CORS_ORIGINS",
+        "case": "empty",
+        "compose_exit": 1,
+        "passed": true
+      }
+    ],
+    "started_containers": 0,
+    "result": "passed"
+  },
+  "fingerprints": {
+    "config_matched": 4,
+    "old_inputs": 439,
+    "changed_old_inputs_not_reused": [
+      "app/api/routes/chat.py",
+      "app/services/cache_scope.py",
+      "app/services/chat_service.py"
+    ],
+    "latest_inputs_matched": 510,
+    "latest_logs_matched": 15
+  },
+  "linux_static": {
+    "source": "2026-10-17-cli-compose-evidence.json:checks.linux_compose_static",
+    "exit": 0,
+    "config_unchanged": true,
+    "rerun": false
+  },
+  "linux_environment_probe": {
+    "wsl": "E_ACCESSDENIED",
+    "docker_engine": "default and desktop Linux pipes unavailable"
+  },
+  "ci_run": 39122233048,
+  "ci_jobs": [
+    {
+      "name": "Agent official baseline",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991876"
+    },
+    {
+      "name": "Frontend (typecheck / vitest / eslint / build)",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991912"
+    },
+    {
+      "name": "Backend (ruff / mypy / pytest)",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991962"
+    }
+  ],
+  "artifact_sha256": {
+    "docker-compose.yml": "66b5f65cd36943b0a1652442b28e6a98edb38af9be44e1b7819c26ce47c5c86b",
+    "docker-compose.prod.yml": "084d0dc3cd6ff0f9b2b8641d828377132688a7162b128deb270fbcd74b6791de",
+    ".env.example": "1720dd18f7aca224c32afa16f4ee4ac2e9e20da19b62bf54386bf3feac4d0620",
+    "deploy/check_compose_defaults.py": "af7d9fac4edeade268059bc827c5a470b57c421bdecfbe7cdde993c3a7508726",
+    "docs/reviews/2026-10-18-nfr-012-close.md": "d565b64d2f4812f45b6dd8f436688b32da91cf279a8968760c483809790e13fe",
+    "docs/reviews/2026-10-18-nfr-012-compose-check.txt": "eaf5235a726df22472c47bae2fd3036012c770b7115becc34ccb145d976011b3",
+    "docs/reviews/2026-10-18-nfr-012-counterexamples.txt": "167e01b1be9105e92f0a3992304491a43ebc4fe3f35ada42d6a29106f60d85ee",
+    "docs/plans/plan_nfr_012_acceptance_20261018.md": "eb0037cc6d04889bb41d075b15b14dee356bdc81d0b708b25de94a69230e5129",
+    "docs/plans/implementation_nfr_012_20261017.md": "4cdce1e46415153325811e0657f419d53a712e674a5fb62d88330e57b5dd45fd",
+    "docs/product/项目产品需求方案.md": "33c1c0515230eb395c30870d7ddad73ee77535603e9b5d382ef1ebabf1affe41",
+    "docs/workflows/production-compose.md": "028693c030a0c2556a6a34c007c5262ed17a9c7b78c459b58ee8456697fa44d3",
+    "README.md": "db4b6686f81a9ea88a8e5bed50a4a1dfdd57888f70525ab4aed27a01965ca38f"
+  },
+  "yaml_links_and_fingerprints": "passed",
+  "limits": [
+    "no credential rotation",
+    "no deployment",
+    "no secret-strength check",
+    "no rejection guarantee for explicit wildcard"
+  ],
+  "serialization_note": "New evidence text files normalized from CRLF to LF before commit; artifact hashes refreshed. Business/test/config inputs and original regression logs unchanged."
+}

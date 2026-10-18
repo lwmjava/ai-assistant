@@ -1,0 +1,63 @@
+{
+  "task": "CHAT-006",
+  "date": "2026-10-18",
+  "candidate_sha": "673787f9b792b10542d004449cad99166415b7d9",
+  "status": "done",
+  "inherited_evidence": "docs/reviews/2026-10-18-chat-006-evidence.json",
+  "verified_hash_counts": {
+    "input_sha256": 510,
+    "reports_sha256": 15,
+    "artifacts_sha256": 10
+  },
+  "mismatches": [],
+  "checks": {
+    "pytest": {
+      "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest tests/test_chat_regeneration.py tests/test_chat_regeneration_review.py --basetemp data/pytest-tmp/chat006-acceptance-20261018 -q --tb=short",
+      "exit_code": 0,
+      "passed": 26,
+      "warnings": 1,
+      "seconds": 5.96
+    },
+    "yaml_references_fingerprints": {
+      "exit_code": 0
+    },
+    "git_diff_check": {
+      "exit_code": 0
+    }
+  },
+  "ci_run": 39122233048,
+  "ci_jobs": [
+    {
+      "id": 117659991876,
+      "name": "Agent official baseline",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991876"
+    },
+    {
+      "id": 117659991912,
+      "name": "Frontend (typecheck / vitest / eslint / build)",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991912"
+    },
+    {
+      "id": 117659991962,
+      "name": "Backend (ruff / mypy / pytest)",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991962"
+    }
+  ],
+  "artifacts_sha256": {
+    "docs/reviews/2026-10-18-chat-006-close.md": "3819d3426b8c9d9e71dd3fc55b0e5fd179a5c3b2edfe6594f2d56dbb607bf017",
+    "docs/reviews/2026-10-18-chat-006-recheck.txt": "a1acd4e894c4ec3282e078d72d9d6aba49cac0dd15fa09d41556ae37395d605c",
+    "docs/reviews/2026-10-18-chat-006-ubuntu-excerpt.txt": "fa822b34e2041f4e02e83323a36add86fe463df04e0170f10f9f85bdc882219d",
+    "docs/reviews/2026-10-18-chat-006-human-acceptance.md": "3a04f428bd487e2cb8d92797a5949344ac7f61dccf8e90041081a55097d4e205",
+    "docs/plans/plan_chat_006_acceptance_20261018.md": "af9493ddacc44c7eb880c86ab6640499f0e2557f414c80f879370f541de64979",
+    "docs/plans/implementation_chat_006_20261018.md": "6cfe9d63e1457f83b9f69b4732a34945f72392f7c0cc2c569d36ebbc3c57914d"
+  },
+  "page_evidence": "reused and hash-verified; not rerun this turn",
+  "scope": "documentation and acceptance only; no business inputs changed",
+  "serialization_note": "New evidence text files normalized from CRLF to LF before commit; artifact hashes refreshed. Business/test/config inputs and original regression logs unchanged."
+}

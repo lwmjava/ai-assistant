@@ -1,0 +1,170 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/setup-status",
+    "cursor": "",
+    "at": 1792324846294
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "cursor": "",
+    "at": 1792324846614
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "cursor": "",
+    "at": 1792324846652
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/memberships",
+    "cursor": "",
+    "at": 1792324846711
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "cursor": "",
+    "at": 1792324846711
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations",
+    "cursor": "",
+    "at": 1792324846849
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/chat/stream",
+    "cursor": "",
+    "at": 1792324846906
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations/c021fe48eec84f619166f5cb1571b1d9",
+    "cursor": "",
+    "at": 1792324847040
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/runs/d745976f38cb4248afd2834103be127e/events",
+    "cursor": "d745976f38cb4248afd2834103be127e:14",
+    "at": 1792324847118
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "cursor": "",
+    "at": 1792324876859
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations",
+    "cursor": "",
+    "at": 1792324879195
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations/c021fe48eec84f619166f5cb1571b1d9",
+    "cursor": "",
+    "at": 1792324879195
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations/c021fe48eec84f619166f5cb1571b1d9",
+    "cursor": "",
+    "at": 1792324879221
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "cursor": "",
+    "at": 1792324880616
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/memberships",
+    "cursor": "",
+    "at": 1792324880664
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "cursor": "",
+    "at": 1792324880664
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations",
+    "cursor": "",
+    "at": 1792324880700
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations/c021fe48eec84f619166f5cb1571b1d9",
+    "cursor": "",
+    "at": 1792324881002
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/chat/stream",
+    "cursor": "",
+    "at": 1792324881232
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/runs/42593690-979d-4979-8310-52ce09328de4/cancel",
+    "cursor": "",
+    "at": 1792324885787
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations",
+    "cursor": "",
+    "at": 1792324886437
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations/c021fe48eec84f619166f5cb1571b1d9",
+    "cursor": "",
+    "at": 1792324886437
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations/c021fe48eec84f619166f5cb1571b1d9",
+    "cursor": "",
+    "at": 1792324886466
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "cursor": "",
+    "at": 1792324886507
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/memberships",
+    "cursor": "",
+    "at": 1792324886603
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "cursor": "",
+    "at": 1792324886603
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations",
+    "cursor": "",
+    "at": 1792324886641
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/chat/conversations/c021fe48eec84f619166f5cb1571b1d9",
+    "cursor": "",
+    "at": 1792324887087
+  }
+]

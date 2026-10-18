@@ -1,0 +1,97 @@
+{
+  "task": "CLI-003",
+  "date": "2026-10-18",
+  "candidate_sha": "673787f9b792b10542d004449cad99166415b7d9",
+  "status": "done",
+  "platform": "Windows; Python 3.12.0; pytest 8.4.2",
+  "interpreter": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe",
+  "commands": [
+    {
+      "command": "python -m app.cli --help",
+      "exit": 0
+    },
+    {
+      "command": "python -m pytest tests/test_cli_lifecycle.py --basetemp data/pytest-tmp/cli003-acceptance-20261018 -q --tb=short",
+      "exit": 0,
+      "passed": 23,
+      "seconds": 2.54
+    },
+    {
+      "command": "python -m pytest tests/test_cli.py tests/test_cli_init.py tests/test_cli_init_review.py --basetemp data/pytest-tmp/cli003-existing-acceptance-20261018 -q --tb=short",
+      "exit": 0,
+      "passed": 22,
+      "skipped": 3,
+      "seconds": 62.02
+    },
+    {
+      "command": "python -m app.cli status --project-name cli-acceptance-no-execution --compose-file data/cli003-no-such-compose.yml --env-file data/cli003-no-such-config.env",
+      "exit": 1,
+      "expected": 1
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "fingerprints": {
+    "cli_matched": 5,
+    "latest_inputs_matched": 510,
+    "latest_logs_matched": 15
+  },
+  "real_docker": {
+    "source": "data/cli-smoke-ffd0d380af40/report.json",
+    "operations": 8,
+    "cleanup_exit": 0,
+    "rerun": false
+  },
+  "linux_smoke": {
+    "source": "docs/reviews/2026-10-17-cli-compose-evidence.json:checks.linux_cli_synthetic_executable",
+    "exit": 0,
+    "paths": 6,
+    "rerun": false,
+    "docker": "synthetic executable"
+  },
+  "ci_run": 39122233048,
+  "ci_jobs": [
+    {
+      "name": "Agent official baseline",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991876"
+    },
+    {
+      "name": "Frontend (typecheck / vitest / eslint / build)",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991912"
+    },
+    {
+      "name": "Backend (ruff / mypy / pytest)",
+      "head_sha": "673787f9b792b10542d004449cad99166415b7d9",
+      "conclusion": "success",
+      "html_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39122233048/job/117659991962"
+    }
+  ],
+  "artifacts_sha256": {
+    "app/cli.py": "c523969639b29129d7c42603ad5717dc22fa91d953258706b88f9be0510a6314",
+    "app/cli_lifecycle.py": "270dd9f081ac88109f005e6fe13d24d2a2e4b78a13bda9e8b7148741c8c49577",
+    "tests/test_cli_lifecycle.py": "71f3f02feb42ad5d05382afc3453ba1e968d406498f98ea867b8e27dd8ea83aa",
+    "scripts/verify_cli_lifecycle.py": "c3dc043b72621bafab326eaf96206b934397fa0cd7bebde407f0811c4a4c008e",
+    "scripts/verify_cli_lifecycle_linux.py": "8636920e641cf219f6f45a7e3f42e67cb778ea15329a8c6a8bf7ca49ba4b5125",
+    "README.md": "db4b6686f81a9ea88a8e5bed50a4a1dfdd57888f70525ab4aed27a01965ca38f",
+    "docs/reviews/2026-10-18-cli-003-close.md": "050606ac3da0340ccb14500e1e02b6939604cc88370db25a5f7bbf80d355acb2",
+    "docs/reviews/2026-10-18-cli-003-lifecycle-recheck.txt": "f56bacd04cc88a87b0cc40a8fadb3d3a167dcc69388610a83dad087a861b60c5",
+    "docs/reviews/2026-10-18-cli-003-existing-recheck.txt": "61e86de57280d9fde677a1909dd2a61032ae6c5fc4b56abe7789c72d572c4aca",
+    "docs/reviews/2026-10-18-cli-003-docker-report.json": "fe940ec8c0d2c229eb8aa92f1f084f283aaa76785628f29339aeb667b49fd422",
+    "docs/reviews/2026-10-18-cli-003-ubuntu-excerpt.txt": "fe141965be9e16f53477195a45a0f9c8da18ad38e332e4fcdeeee95d37068ace",
+    "docs/plans/plan_cli_003_acceptance_20261018.md": "80e88112c3406a1ca0fbcf9215364a389c7e039662f30842f14292c7d8fe6726",
+    "docs/plans/implementation_cli_003_20261017.md": "06dc046e291ce18a5fcfc35607345b7a3fb2f09f91f667ebb08fbd8cc423dfe3"
+  },
+  "yaml_links_and_fingerprints": "passed",
+  "limits": [
+    "no real Docker operations this turn",
+    "no production deployment",
+    "no branch protection verification"
+  ],
+  "serialization_note": "New evidence text files normalized from CRLF to LF before commit; artifact hashes refreshed. Business/test/config inputs and original regression logs unchanged."
+}

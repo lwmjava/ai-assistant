@@ -11,6 +11,75 @@ from app.agents import pipeline
 from scripts import run_agent_chain_eval as runner
 
 
+def test_runtime_and_official_share_explicit_tool_wire_protocol():
+    """The system instruction must name the complete protocol, not just its opening tag."""
+    from app.agents.prompts import SYSTEM_ACT
+
+    class CaptureModel:
+        async def chat(self, messages, options):
+            self.messages = messages
+            return "No tool needed."
+
+    model = CaptureModel()
+    agent = pipeline.AgentPipeline(model, tools=pipeline.selection_tool_registry())
+    state = pipeline.AgentState(user_input="Compute a result.")
+    asyncio.run(agent._run_action_once(state))
+    official = pipeline.build_tool_choice_messages([], state.user_input)
+    assert model.messages[0].content == official[0].content == SYSTEM_ACT
+    assert '<tool_call>{"name":"工具名","arguments":{}}</tool_call>' in SYSTEM_ACT
+    assert "合法 JSON" in SYSTEM_ACT and "DSML" in SYSTEM_ACT
+    assert "禁止" in SYSTEM_ACT and "</tool_call>" in SYSTEM_ACT
+
+
+@pytest.mark.parametrize("private_protocol", [True, False])
+def test_official_tool_protocol_failure_stays_failed_without_retry(
+    isolated_real_transport, monkeypatch, tmp_path, private_protocol,
+):
+    """Replay the observed wire-format failure through the full official entry, offline."""
+    from scripts import agent_gate_check as gate
+
+    provider, _ = isolated_real_transport
+    arguments = {"code": "print(2 + 3)"}
+    if private_protocol:
+        raw = (
+            '<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name="code_sandbox">\n'
+            '<｜｜DSML｜｜ parameter name="arguments" string="false">'
+            + json.dumps(arguments)
+            + '</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>'
+        )
+    else:
+        raw = '<tool_call>' + json.dumps({"name": "code_sandbox", "arguments": arguments}) + '</tool_call>'
+    calls = []
+    tool_requests = 0
+
+    async def reply(self, messages, options):
+        nonlocal tool_requests
+        calls.append(messages)
+        if messages[0].content == pipeline.SYSTEM_ACT:
+            tool_requests += 1
+            if tool_requests == 1:
+                return raw
+        return await runner.SmokeIntentModel().chat(messages, options)
+
+    monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
+    target = tmp_path / "protocol-replay.json"
+    assert asyncio.run(runner.run("official", tmp_path, target)) == int(private_protocol)
+    report = json.loads(target.read_text(encoding="utf-8"))
+    assert len(calls) == report["model_requests"] == 12
+    assert report["empty_response_retries"] == 0
+    assert tool_requests == 2
+    row = next(row for row in report["cases"] if row["tool_reply"] == raw)
+    assert row["tool_record"]["recorded_calls"] == int(not private_protocol)
+    assert row["tool_record"]["error_code"] == ("no_tool_call" if private_protocol else "")
+    expected_recall = 0.5 if private_protocol else 1.0
+    assert report["tool_selection_recall"] == expected_recall
+    assert report["tool_call_validity_recall"] == expected_recall
+    failed = gate.check_report(report, provider.model, report["endpoint_hash"])
+    assert ("tool_selection_recall" in failed) == private_protocol
+    assert ("tool_call_validity_recall" in failed) == private_protocol
+    assert all(value == 0 for value in report["side_effects"].values())
+
+
 @pytest.mark.parametrize("empty", ["", " \n", None])
 def test_empty_response_recovers_once_with_identical_input(isolated_real_transport, monkeypatch, tmp_path, empty):
     from scripts import agent_gate_check as gate

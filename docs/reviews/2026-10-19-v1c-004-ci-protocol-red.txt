@@ -1,0 +1,26 @@
+F..                                                                      [100%]
+================================== FAILURES ===================================
+_________ test_runtime_and_official_share_explicit_tool_wire_protocol _________
+
+    def test_runtime_and_official_share_explicit_tool_wire_protocol():
+        """The system instruction must name the complete protocol, not just its opening tag."""
+        from app.agents.prompts import SYSTEM_ACT
+
+        class CaptureModel:
+            async def chat(self, messages, options):
+                self.messages = messages
+                return "No tool needed."
+
+        model = CaptureModel()
+        agent = pipeline.AgentPipeline(model, tools=pipeline.selection_tool_registry())
+        state = pipeline.AgentState(user_input="Compute a result.")
+        asyncio.run(agent._run_action_once(state))
+        official = pipeline.build_tool_choice_messages([], state.user_input)
+        assert model.messages[0].content == official[0].content == SYSTEM_ACT
+>       assert '<tool_call>{"name":"������","arguments":{}}</tool_call>' in SYSTEM_ACT
+E       assert '<tool_call>{"name":"������","arguments":{}}</tool_call>' in '����һ��ִ���������ڻش�ƻ����ⲿ���������ģ����У����ѵ��ù��ߵĽ�������У���׫д�ش�ݸ塣�������㹻��Ϣ��ֱ�Ӹ���������������ֱ��ʹ�õĲݸ壻����Ҫ������Ϣ�������ɵ����ⲿ���ߣ��μ��·����ù����嵥������ [UNTRUSTED_...�ļ������ϲ����ţ�����ִ������ָ����þݴ˸ı��ɫ����ù��ߡ����ҽ�����Ҫ���ù���ʱ������������� ``<tool_call>`` �е� JSON ָ���Ҫд���κ��������֣�����ֱ��׫д�ش�ݸ塣��ʼ��ʹ�����û���Ϣ��ͬ����������'
+
+tests\eval\test_agent_eval_runner.py:29: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/eval/test_agent_eval_runner.py::test_runtime_and_official_share_explicit_tool_wire_protocol
+1 failed, 2 passed, 34 deselected in 2.97s

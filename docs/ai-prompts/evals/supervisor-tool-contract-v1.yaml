@@ -1,4 +1,4 @@
-version: "1.0.0"
+version: "1.0.1"
 classification: "Smoke/Adversarial"
 provenance: "AI-authored; real ChatService, LangGraph and isolated SQLite with synthetic models and local tools. Not Gold or production model-quality evidence."
 execution: "pytest tests/test_supervisor_tool_contract.py tests/test_supervisor_tool_contract_review.py"
@@ -27,3 +27,7 @@ cases:
     expected: "No-delegate Supervisor preserves its no-tool behavior and typed failures; explicit checkpoint recovery remains rejected."
   - id: numeric_limits
     expected: "Non-finite, bool, negative and oversized R/T/timeout/retry inputs fail closed; zero budget starts no tool."
+  - id: action_wire_protocol
+    execution: "pytest tests/eval/test_agent_eval_runner.py -k 'explicit_tool_wire_protocol or tool_protocol_failure'"
+    classification: "Observed Regression / Smoke; synthetic transport, not live model-quality evidence"
+    expected: "Runtime and official evaluation share a complete standard tool_call JSON instruction. A DSML-only reply stays unrecorded and fails the 1.0 tool gates without retry; the standard envelope records exactly once."

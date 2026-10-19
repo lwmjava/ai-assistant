@@ -1,0 +1,15 @@
+....F                                                                    [100%]
+================================== FAILURES ===================================
+________ test_database_revocation_after_visible_call_has_denial_audit _________
+tests\test_chat_combined_tools.py:296: in test_database_revocation_after_visible_call_has_denial_audit
+    assert len(audit) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:55:17.487240+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "e82e4409185448dfa930f2f6dc382b89", "tenant_id": "6e03acd4896a405d9e0b84f7952e6a92"}
+{"ts": "2026-10-19T14:55:17.495758+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "e82e4409185448dfa930f2f6dc382b89", "tenant_id": "6e03acd4896a405d9e0b84f7952e6a92"}
+{"ts": "2026-10-19T14:55:17.498755+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "e82e4409185448dfa930f2f6dc382b89", "tenant_id": "6e03acd4896a405d9e0b84f7952e6a92"}
+{"ts": "2026-10-19T14:55:17.538756+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=1", "trace_id": "", "user_id": "e82e4409185448dfa930f2f6dc382b89", "tenant_id": "6e03acd4896a405d9e0b84f7952e6a92"}
+=========================== short test summary info ===========================
+FAILED tests/test_chat_combined_tools.py::test_database_revocation_after_visible_call_has_denial_audit
+1 failed, 4 passed, 18 deselected in 4.82s

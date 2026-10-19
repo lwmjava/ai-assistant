@@ -1,0 +1,325 @@
+FFFFFFFFFF                                                               [100%]
+================================== FAILURES ===================================
+_ test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u6bcf\u665a300\u5143\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unsup...58, 23, 649581), username='746ba7d7e0ae4e3f86f83e0fbc7d3150', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס��ÿ��300Ԫ��'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ��300Ԫ��", "ס��ÿ��300Ԫ��", "ס��ÿСʱ300Ԫ��", "ס�޸�300Ԫ��",
+        "ס��300Ԫ�����/����",
+    ])
+    async def test_unsupported_original_qualifier_cannot_be_trimmed_to_total(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000002620C10BFE0>, [{'expression': '300'}], <function harness.<locals>.events at 0x000002620C14DF80>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u6bcf\u6708300\u5143\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unsup...58, 25, 929668), username='3ebdb3594ae0432db0ea608704d14f8c', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס��ÿ��300Ԫ��'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ��300Ԫ��", "ס��ÿ��300Ԫ��", "ס��ÿСʱ300Ԫ��", "ס�޸�300Ԫ��",
+        "ס��300Ԫ�����/����",
+    ])
+    async def test_unsupported_original_qualifier_cannot_be_trimmed_to_total(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000002620C14A8A0>, [{'expression': '300'}], <function harness.<locals>.events at 0x000002627FC2E5C0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u6bcf\u5c0f\u65f6300\u5143\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unsup...58, 26, 258421), username='dc9e9b0952b7412aae4d3ff85b4f5ae0', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס��ÿСʱ300Ԫ��'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ��300Ԫ��", "ס��ÿ��300Ԫ��", "ס��ÿСʱ300Ԫ��", "ס�޸�300Ԫ��",
+        "ס��300Ԫ�����/����",
+    ])
+    async def test_unsupported_original_qualifier_cannot_be_trimmed_to_total(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000002620DC91490>, [{'expression': '300'}], <function harness.<locals>.events at 0x000002620DC2B6A0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u8d1f300\u5143\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unsup...58, 26, 564053), username='4e2d598732c84d8f9e0ca0748969ff8b', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס�޸�300Ԫ��'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ��300Ԫ��", "ס��ÿ��300Ԫ��", "ס��ÿСʱ300Ԫ��", "ס�޸�300Ԫ��",
+        "ס��300Ԫ�����/����",
+    ])
+    async def test_unsupported_original_qualifier_cannot_be_trimmed_to_total(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000002620DCB9A90>, [{'expression': '300'}], <function harness.<locals>.events at 0x000002620DCC8900>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf300\u5143\u4eba\u6c11\u5e01/\u665a\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unsup...58, 26, 925217), username='8522fc6ef5ce4ff1ad7acce8b9174ead', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס��300Ԫ�����/����'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ��300Ԫ��", "ס��ÿ��300Ԫ��", "ס��ÿСʱ300Ԫ��", "ס�޸�300Ԫ��",
+        "ס��300Ԫ�����/����",
+    ])
+    async def test_unsupported_original_qualifier_cannot_be_trimmed_to_total(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000002620DDEA780>, [{'expression': '300'}], <function harness.<locals>.events at 0x000002620DCCBD80>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_conflicting_policy_rate_synonyms_still_require_clarification[\u4f4f\u5bbf\u6bcf\u4eba\u6bcf\u5929400\u5143] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_confl...58, 27, 262658), username='659f992c6e4d428883fb313c0c12bca4', hashed_password='', token_version=0, is_test_user=False))
+second = 'ס��ÿ��ÿ��400Ԫ'
+
+    @pytest.mark.parametrize("second", ["ס��ÿ��ÿ��400Ԫ", "ס�� ÿ��ÿ�� 400Ԫ"])
+    async def test_conflicting_policy_rate_synonyms_still_require_clarification(isolated, second):
+        rule = f"ס��ÿ��ÿ��300Ԫ��{second}��"
+        payload = extraction()
+        payload["facts"] = [fact("hotel", rule, "ÿ��ÿ��300Ԫ", 300, "CNY/person/day"),
+                            *payload["facts"][2:]]
+        payload["expression"] = "hotel * persons * days"
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:454: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...ject at 0x000002620DDE86B0>, [{'expression': '((300*1)*3)'}], <function harness.<locals>.events at 0x000002620DCC1D00>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression...((300*1)*3)'}] == []
+E         
+E         Left contains one more item: {'expression': '((300*1)*3)'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_conflicting_policy_rate_synonyms_still_require_clarification[\u4f4f\u5bbf \u6bcf\u4eba\u6bcf\u65e5 400\u5143] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_confl...58, 27, 554177), username='d2284514ca8b424c92173573a77a7248', hashed_password='', token_version=0, is_test_user=False))
+second = 'ס�� ÿ��ÿ�� 400Ԫ'
+
+    @pytest.mark.parametrize("second", ["ס��ÿ��ÿ��400Ԫ", "ס�� ÿ��ÿ�� 400Ԫ"])
+    async def test_conflicting_policy_rate_synonyms_still_require_clarification(isolated, second):
+        rule = f"ס��ÿ��ÿ��300Ԫ��{second}��"
+        payload = extraction()
+        payload["facts"] = [fact("hotel", rule, "ÿ��ÿ��300Ԫ", 300, "CNY/person/day"),
+                            *payload["facts"][2:]]
+        payload["expression"] = "hotel * persons * days"
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:454: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...ject at 0x000002620DC1F1D0>, [{'expression': '((300*1)*3)'}], <function harness.<locals>.events at 0x000002620DE3DE40>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression...((300*1)*3)'}] == []
+E         
+E         Left contains one more item: {'expression': '((300*1)*3)'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_unit_cannot_be_validated_after_reordering_numeric_token[\u5143300-CNY] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unit_...58, 27, 908384), username='21ef997697094406b1e5a26d9aefa618', hashed_password='', token_version=0, is_test_user=False))
+quote = 'Ԫ300', unit = 'CNY'
+
+    @pytest.mark.parametrize("quote,unit", [
+        ("Ԫ300", "CNY"), ("��1", "person"), ("ÿ��Ԫ300", "CNY/person"),
+    ])
+    async def test_unit_cannot_be_validated_after_reordering_numeric_token(isolated, quote, unit):
+        number = 1 if quote == "��1" else 300
+        rule = quote + "������300Ԫ/�ˡ�"
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, quote, number, unit)], "expression": "fee"}
+        if unit == "person":
+            payload["facts"].append(fact("rate", rule, "300Ԫ/��", 300, "CNY/person"))
+            payload["expression"] = "fee * rate"
+        elif unit == "CNY/person":
+            payload["facts"].append(fact("people", USER, "1��", 1, "person", "user"))
+            payload["expression"] = "fee * people"
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:473: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000002620DE8E930>, [{'expression': '300'}], <function harness.<locals>.events at 0x000002620DE3FEC0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_unit_cannot_be_validated_after_reordering_numeric_token[\u4eba1-person] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unit_...58, 28, 233928), username='1b7a2184cd2644a88e7373d776df4205', hashed_password='', token_version=0, is_test_user=False))
+quote = '��1', unit = 'person'
+
+    @pytest.mark.parametrize("quote,unit", [
+        ("Ԫ300", "CNY"), ("��1", "person"), ("ÿ��Ԫ300", "CNY/person"),
+    ])
+    async def test_unit_cannot_be_validated_after_reordering_numeric_token(isolated, quote, unit):
+        number = 1 if quote == "��1" else 300
+        rule = quote + "������300Ԫ/�ˡ�"
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, quote, number, unit)], "expression": "fee"}
+        if unit == "person":
+            payload["facts"].append(fact("rate", rule, "300Ԫ/��", 300, "CNY/person"))
+            payload["expression"] = "fee * rate"
+        elif unit == "CNY/person":
+            payload["facts"].append(fact("people", USER, "1��", 1, "person", "user"))
+            payload["expression"] = "fee * people"
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:473: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...r object at 0x000002620DEBB9E0>, [{'expression': '(1*300)'}], <function harness.<locals>.events at 0x000002620DE7EFC0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '(1*300)'}] == []
+E         
+E         Left contains one more item: {'expression': '(1*300)'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_unit_cannot_be_validated_after_reordering_numeric_token[\u6bcf\u4eba\u5143300-CNY/person] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-red\test_unit_...58, 28, 627896), username='54148325a6d946179fc2c9c20727ad9b', hashed_password='', token_version=0, is_test_user=False))
+quote = 'ÿ��Ԫ300', unit = 'CNY/person'
+
+    @pytest.mark.parametrize("quote,unit", [
+        ("Ԫ300", "CNY"), ("��1", "person"), ("ÿ��Ԫ300", "CNY/person"),
+    ])
+    async def test_unit_cannot_be_validated_after_reordering_numeric_token(isolated, quote, unit):
+        number = 1 if quote == "��1" else 300
+        rule = quote + "������300Ԫ/�ˡ�"
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, quote, number, unit)], "expression": "fee"}
+        if unit == "person":
+            payload["facts"].append(fact("rate", rule, "300Ԫ/��", 300, "CNY/person"))
+            payload["expression"] = "fee * rate"
+        elif unit == "CNY/person":
+            payload["facts"].append(fact("people", USER, "1��", 1, "person", "user"))
+            payload["expression"] = "fee * people"
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:473: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...r object at 0x000002620DE6B470>, [{'expression': '(300*1)'}], <function harness.<locals>.events at 0x000002620DCC9BC0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '(300*1)'}] == []
+E         
+E         Left contains one more item: {'expression': '(300*1)'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_combined_tool_contract.py::test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u6bcf\u665a300\u5143\u3002]
+FAILED tests/test_combined_tool_contract.py::test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u6bcf\u6708300\u5143\u3002]
+FAILED tests/test_combined_tool_contract.py::test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u6bcf\u5c0f\u65f6300\u5143\u3002]
+FAILED tests/test_combined_tool_contract.py::test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf\u8d1f300\u5143\u3002]
+FAILED tests/test_combined_tool_contract.py::test_unsupported_original_qualifier_cannot_be_trimmed_to_total[\u4f4f\u5bbf300\u5143\u4eba\u6c11\u5e01/\u665a\u3002]
+FAILED tests/test_combined_tool_contract.py::test_conflicting_policy_rate_synonyms_still_require_clarification[\u4f4f\u5bbf\u6bcf\u4eba\u6bcf\u5929400\u5143]
+FAILED tests/test_combined_tool_contract.py::test_conflicting_policy_rate_synonyms_still_require_clarification[\u4f4f\u5bbf \u6bcf\u4eba\u6bcf\u65e5 400\u5143]
+FAILED tests/test_combined_tool_contract.py::test_unit_cannot_be_validated_after_reordering_numeric_token[\u5143300-CNY]
+FAILED tests/test_combined_tool_contract.py::test_unit_cannot_be_validated_after_reordering_numeric_token[\u4eba1-person]
+FAILED tests/test_combined_tool_contract.py::test_unit_cannot_be_validated_after_reordering_numeric_token[\u6bcf\u4eba\u5143300-CNY/person]
+10 failed, 90 deselected in 6.38s

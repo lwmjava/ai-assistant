@@ -1,0 +1,51 @@
+FFFF.................................................................... [ 59%]
+..................................................                       [100%]
+================================== FAILURES ===================================
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-self] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +  and   1 = len([[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "0e7b785e8210457bbad31a5d2607a110", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]])
+E    +    where [[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "0e7b785e8210457bbad31a5d2607a110", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000002989CE837D0>.calls
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-langgraph] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +  and   1 = len([[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "6dac65253c4940578b16eb37501a6676", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]])
+E    +    where [[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "6dac65253c4940578b16eb37501a6676", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000002989E6F1340>.calls
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:52:49.194795+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "96f4ddd177694cf185fa6c4b85ac0414", "tenant_id": "81da5a9c7aca4f11936764e5b9e2aa03"}
+{"ts": "2026-10-19T14:52:49.194795+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "96f4ddd177694cf185fa6c4b85ac0414", "tenant_id": "81da5a9c7aca4f11936764e5b9e2aa03"}
+{"ts": "2026-10-19T14:52:49.210469+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "96f4ddd177694cf185fa6c4b85ac0414", "tenant_id": "81da5a9c7aca4f11936764e5b9e2aa03"}
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-self] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +  and   1 = len([[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "291a8d7787514bb286737462f2569a20", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]])
+E    +    where [[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "291a8d7787514bb286737462f2569a20", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000002989EB22150>.calls
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:52:49.749928+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "e4fcb2f277a84d99a4b0dc93ae944312", "tenant_id": "fe03e6590a1c4b248ecb29342a894d2e"}
+{"ts": "2026-10-19T14:52:49.851117+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "e4fcb2f277a84d99a4b0dc93ae944312", "tenant_id": "fe03e6590a1c4b248ecb29342a894d2e"}
+{"ts": "2026-10-19T14:52:49.851117+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "e4fcb2f277a84d99a4b0dc93ae944312", "tenant_id": "fe03e6590a1c4b248ecb29342a894d2e"}
+{"ts": "2026-10-19T14:52:49.898415+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=1", "trace_id": "", "user_id": "e4fcb2f277a84d99a4b0dc93ae944312", "tenant_id": "fe03e6590a1c4b248ecb29342a894d2e"}
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-langgraph] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +  and   1 = len([[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "89de8cc494a443b1ac13d8ad1b481de1", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]])
+E    +    where [[ChatMessage(role=<ChatRole.SYSTEM: 'system'>, content='你是有界资料数值提取器，不是回答器。只输出一个严格JSON对象，不输出Markdown。根字段仅schema_versio...金额，1人3天", "chunks": [{"id": "89de8cc494a443b1ac13d8ad1b481de1", "content": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"}]}')]] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000002989EAC39E0>.calls
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:52:50.339179+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "4730d7f9b0b2457eb187c0f798911c6f", "tenant_id": "2dae48f8b5104f5e8dccd21265220fe3"}
+{"ts": "2026-10-19T14:52:50.355275+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "4730d7f9b0b2457eb187c0f798911c6f", "tenant_id": "2dae48f8b5104f5e8dccd21265220fe3"}
+{"ts": "2026-10-19T14:52:50.355275+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "4730d7f9b0b2457eb187c0f798911c6f", "tenant_id": "2dae48f8b5104f5e8dccd21265220fe3"}
+{"ts": "2026-10-19T14:52:50.433891+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=1", "trace_id": "", "user_id": "4730d7f9b0b2457eb187c0f798911c6f", "tenant_id": "2dae48f8b5104f5e8dccd21265220fe3"}
+=========================== short test summary info ===========================
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-self]
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-langgraph]
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-self]
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-langgraph]
+4 failed, 118 passed in 50.20s

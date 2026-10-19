@@ -1,0 +1,180 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+[
+  {
+    "orchestration": "self",
+    "stream": false,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "依据本轮知识库资料，计算器实际执行成功。\n核验事实：300 元/人/天；80 元/人/天；2 人；4 天。\n计算金额：3040.00 元。\n来源：[资料 1] \"business-policy\"。",
+    "status": "complete",
+    "actual_tools": [
+      [
+        "calculator",
+        "ok"
+      ]
+    ],
+    "sources_count": 1,
+    "audit_rows": 1,
+    "expected": "3040.00",
+    "result": "passed"
+  },
+  {
+    "orchestration": "self",
+    "stream": true,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "依据本轮知识库资料，计算器实际执行成功。\n核验事实：300 元/人/天；80 元/人/天；2 人；4 天。\n计算金额：3040.00 元。\n来源：[资料 1] \"business-policy\"。",
+    "status": "complete",
+    "actual_tools": [
+      [
+        "calculator",
+        "ok"
+      ]
+    ],
+    "sources_count": 1,
+    "audit_rows": 1,
+    "expected": "3040.00",
+    "result": "passed"
+  },
+  {
+    "orchestration": "langgraph",
+    "stream": false,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "依据本轮知识库资料，计算器实际执行成功。\n核验事实：300 元/人/天；80 元/人/天；2 人；4 天。\n计算金额：3040.00 元。\n来源：[资料 1] \"business-policy\"。",
+    "status": "complete",
+    "actual_tools": [
+      [
+        "calculator",
+        "ok"
+      ]
+    ],
+    "sources_count": 1,
+    "audit_rows": 1,
+    "expected": "3040.00",
+    "result": "passed"
+  },
+  {
+    "orchestration": "langgraph",
+    "stream": true,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "依据本轮知识库资料，计算器实际执行成功。\n核验事实：300 元/人/天；80 元/人/天；2 人；4 天。\n计算金额：3040.00 元。\n来源：[资料 1] \"business-policy\"。",
+    "status": "complete",
+    "actual_tools": [
+      [
+        "calculator",
+        "ok"
+      ]
+    ],
+    "sources_count": 1,
+    "audit_rows": 1,
+    "expected": "3040.00",
+    "result": "passed"
+  },
+  {
+    "orchestration": "self",
+    "stream": false,
+    "policy": "知识库差旅报销金额计算标准：住宿每晚300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  },
+  {
+    "orchestration": "self",
+    "stream": true,
+    "policy": "知识库差旅报销金额计算标准：住宿每晚300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  },
+  {
+    "orchestration": "langgraph",
+    "stream": false,
+    "policy": "知识库差旅报销金额计算标准：住宿每晚300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  },
+  {
+    "orchestration": "langgraph",
+    "stream": true,
+    "policy": "知识库差旅报销金额计算标准：住宿每晚300元；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  },
+  {
+    "orchestration": "self",
+    "stream": false,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元，税后含税；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  },
+  {
+    "orchestration": "self",
+    "stream": true,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元，税后含税；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  },
+  {
+    "orchestration": "langgraph",
+    "stream": false,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元，税后含税；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  },
+  {
+    "orchestration": "langgraph",
+    "stream": true,
+    "policy": "知识库差旅报销金额计算标准：住宿每人每日300元，税后含税；餐补每人每日80元。",
+    "question": "根据知识库报销标准计算差旅金额，2人4天",
+    "answer": "【工具未调用】资料、参数、单位或实际结果无法通过核验，请补充明确的人数、天数与适用标准，本次未给出计算金额。",
+    "status": "failed",
+    "actual_tools": [],
+    "sources_count": 1,
+    "audit_rows": 0,
+    "expected": "zero execution; no successful amount",
+    "result": "passed"
+  }
+]
+BUSINESS_PROBES: 12 passed

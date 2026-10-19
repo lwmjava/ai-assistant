@@ -1,0 +1,76 @@
+tests\test_chat_combined_tools.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+   |
+ 1 |   """Real ChatService, isolated SQL retrieval/index and calculator; synthetic model, not quality evidence."""
+ 2 |   
+ 3 | / import base64
+ 4 | | import json
+ 5 | | import uuid
+ 6 | | from datetime import timedelta
+ 7 | | from decimal import Decimal
+ 8 | | 
+ 9 | | import pytest
+10 | | from sqlmodel import Session, SQLModel, col, create_engine, select
+11 | | 
+12 | | import app.rag.service as rag_module
+13 | | from app.agents.tools.builtin import calculator
+14 | | from app.agents.tools.executor import ToolExecutor
+15 | | from app.audit.models import AuditLog
+16 | | from app.core import log_context
+17 | | from app.core.config import settings
+18 | | from app.llm.mock import MockLLMProvider
+19 | | from app.models.conversation import Message
+20 | | from app.models.user import Tenant, User
+21 | | from app.rag.embeddings.mock import MockEmbeddingProvider
+22 | | from app.rag.service import RAGService
+23 | | from app.services.agent_execution_guard import ResumeRejectedError
+24 | | from app.services.chat_service import ChatService, RegenerationFailedError
+25 | | from app.services.chat_attachments import AttachmentInput
+26 | | 
+27 | | POLICY = "知识库差旅报销金额计算标准：住宿每人每日300元；餐补每人每日80元。"
+   | |_^ I001
+28 |   QUESTION = "根据知识库报销标准计算差旅金额，1人3天"
+   |
+   = help: Organize imports
+
+tests\test_combined_tool_contract.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+   |
+ 1 |   """Independent bounded composition adversaries; synthetic evidence, real calculator."""
+ 2 |   
+ 3 | / import asyncio
+ 4 | | import copy
+ 5 | | import json
+ 6 | | import re
+ 7 | | from dataclasses import replace
+ 8 | | from decimal import Decimal
+ 9 | | from uuid import uuid4
+10 | | 
+11 | | import pytest
+12 | | from sqlmodel import Session, SQLModel, create_engine, select
+13 | | 
+14 | | from app.agents.combined_tools import iter_combined_tools, validate_extraction
+15 | | from app.agents.pipeline import AgentState
+16 | | from app.agents.route import ChatRoute, RouteKind
+17 | | from app.agents.skills.base import SkillContext, SkillMode, SkillRuntime
+18 | | from app.agents.tools.base import ToolRegistry
+19 | | from app.agents.tools.builtin import calculator, default_tools
+20 | | from app.agents.tools.contract import RiskLevel
+21 | | from app.agents.tools.outcome import ToolOutput
+22 | | from app.audit.models import AuditLog
+23 | | from app.core import log_context
+24 | | from app.core.config import settings
+25 | | from app.llm.base import LLMOptions
+26 | | from app.llm.mock import MockLLMProvider
+27 | | from app.models.user import Tenant, User
+28 | | from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
+29 | | from app.rag.retriever import format_context
+30 | | from app.rag.vectorstore.base import ChunkResult
+31 | | 
+32 | | 
+33 | | USER = "按知识库报销标准计算费用：1人，3天。"
+   | |_^ I001
+34 |   RULE = "住宿每人每日300元；餐补每人每日80元。"
+   |
+   = help: Organize imports
+
+Found 2 errors.
+[*] 2 fixable with the `--fix` option.

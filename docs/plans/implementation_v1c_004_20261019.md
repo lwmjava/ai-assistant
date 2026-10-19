@@ -82,3 +82,8 @@ Final independent technical audit passed: /root/v1c004_final_audit ran184 tests 
 ## User-delegated business acceptance result
 
 2026-10-19: new independent Agent /root/v1c004_business_acceptance passed the explicitly delegated business acceptance. It independently read original requirements and real user-result assertions, ran178 tests (59.80s,exit0,one existing warning), and verified all526 frozen input hashes before and after. Report: [business acceptance](../reviews/2026-10-19-v1c-004-business-acceptance.md). This covers real execution, not-called/failure disclosure, permission/skill boundaries, shared budgets, cancellation and audit using E2 isolated real code and local tools with synthetic models. No production model-quality claim. The only remaining delivery gate is CI for the final candidate commit. Status stays in_review; no commit/push/deployment is authorized or performed. Earlier pending business acceptance statements describe the prior state. Only documentation changed after verification.
+
+
+## 最终关闭补记（2026-10-19）
+
+用户已明确要求关闭V1C-004。最终业务提交9cbe94fffe269cde9d93c00fb6d1f6d25fd01264的CI run39268207253，Backend/Frontend/Agent official baseline全部success，官方四项指标均1.0，Prompt指纹与本地一致；本轮新独立审核120 passed/37.64秒/exit0，526项当前输入匹配。任务现为done；前文未提交/未推送/待CI语句保留为历史记录，不代表当前关闭状态。完整对账见docs/reviews/2026-10-19-v1c-004-closure.md及ci-protocol-evidence.json。本轮仅修改文档与任务状态，没有改变已验证执行输入，没有合并或部署。

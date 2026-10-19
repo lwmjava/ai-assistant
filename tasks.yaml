@@ -55,7 +55,7 @@ risk_policy:
 tasks:
   - id: "V1C-001"
     title: "1.0收尾：按执行路径准备知识库检索依赖"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     depends_on: ["RAG-044"]
     scope:
@@ -85,11 +85,11 @@ tasks:
       plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
       implementation_plan: "docs/plans/plan_v1c_001_20261018.md"
       preflight_review: "docs/reviews/2026-10-18-v1c-001-engineering.md"
-      progress: "2026-10-18用户明确回复按实施计划开始实现，批准计划及其allowed_paths和ADR-0013请求内惰性Retriever决定。分支codex/v1c-001-lazy-retrieval；前置当前输入复核、Ruff/mypy及60项专项基线通过，独立工程准入通过。实现及独立工程/入口审查已通过；最终专项85 passed，全量pytest2664 passed/3 skipped，Ruff/mypy退出0，514项输入摘要绑定。实现说明docs/plans/implementation_v1c_001_20261018.md，关闭对账docs/reviews/2026-10-18-v1c-001-acceptance.md。独立最终审核通过（docs/reviews/2026-10-18-v1c-001-final-audit.md），另实跑17项通过，无待修复P1/P2。用户已明确确认普通问答、计算工具、知识库问答及隔离故障处理行为，V1C-001用户业务验收通过。未验证：最终提交Ubuntu CI；保持in_review。不含提交/推送、生产或付费模型授权。"
+      progress: "2026-10-18用户明确回复按实施计划开始实现，批准计划及其allowed_paths和ADR-0013请求内惰性Retriever决定。分支codex/v1c-001-lazy-retrieval；前置当前输入复核、Ruff/mypy及60项专项基线通过，独立工程准入通过。实现及独立工程/入口审查已通过；最终专项85 passed，全量pytest2664 passed/3 skipped，Ruff/mypy退出0，514项输入摘要绑定。实现说明docs/plans/implementation_v1c_001_20261018.md，关闭对账docs/reviews/2026-10-18-v1c-001-acceptance.md。独立最终审核通过（docs/reviews/2026-10-18-v1c-001-final-audit.md），另实跑17项通过，无待修复P1/P2。用户已明确确认普通问答、计算工具、知识库问答及隔离故障处理行为，V1C-001用户业务验收通过。未验证：最终提交Ubuntu CI；保持in_review。不含提交/推送、生产或付费模型授权。 2026-10-19前置准入补记：保留既有明确业务接受与独立审核；后续公共输入已按当前最终HEAD9cbe94f重新复核，非沿用旧输入不变声明。主Agent241项回归/77.76秒/exit0，新独立复核通过，526当前输入与2885全量/静态通过；同SHA CI run39268207253三项success，补齐原仅缺CI。关闭对账docs/reviews/2026-10-19-v1c-005-dependency-admission.md；done，无新增业务实现或发布。"
 
   - id: "V1C-002"
     title: "1.0收尾：统一各对话路径的工具执行入口"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     depends_on: ["PAGT-006", "RAG-044"]
     scope:
@@ -111,7 +111,7 @@ tasks:
     risk: {level: "L2", side_effect: "工具执行边界变化，先核对或补充批准ADR"}
     execution:
       plan: "docs/plans/plan_v1c_002_20261018.md"
-      progress: "短路径与未注入管线已复用既有 ToolExecutor。契约测试 40 项通过；全量 pytest 2704 passed / 3 skipped，Ruff 与 mypy 退出码 0。独立入口审查与人工审核均无未修复 P1/P2。实现说明 docs/plans/implementation_v1c_002_20261018.md。人工审核 docs/reviews/2026-10-18-v1c-002-manual-review-1.md。2026-10-19按用户请求复核提交603122b4818c8d621d073052aa68ffb3f9403786：本轮专项及前置57 passed，无筛选全量2704 passed/3 skipped/3 warnings（595.52秒），Ruff无缓存及mypy退出0，516项输入摘要匹配；验收记录docs/reviews/2026-10-19-v1c-002-acceptance.md。GitHub该SHA工作流查询0条、提交状态为空。用户随后明确授权Agent代行业务接受；重新执行两路径工具契约40 passed（3.20秒），确认执行、拒绝、失败、取消及重复/预算行为符合批准契约，受托业务接受通过。未验证：最终提交的Ubuntu CI；保持in_review。用户随后明确授权提交并推送本轮验收记录到当前GitHub分支；不合并或部署。"
+      progress: "短路径与未注入管线已复用既有 ToolExecutor。契约测试 40 项通过；全量 pytest 2704 passed / 3 skipped，Ruff 与 mypy 退出码 0。独立入口审查与人工审核均无未修复 P1/P2。实现说明 docs/plans/implementation_v1c_002_20261018.md。人工审核 docs/reviews/2026-10-18-v1c-002-manual-review-1.md。2026-10-19按用户请求复核提交603122b4818c8d621d073052aa68ffb3f9403786：本轮专项及前置57 passed，无筛选全量2704 passed/3 skipped/3 warnings（595.52秒），Ruff无缓存及mypy退出0，516项输入摘要匹配；验收记录docs/reviews/2026-10-19-v1c-002-acceptance.md。GitHub该SHA工作流查询0条、提交状态为空。用户随后明确授权Agent代行业务接受；重新执行两路径工具契约40 passed（3.20秒），确认执行、拒绝、失败、取消及重复/预算行为符合批准契约，受托业务接受通过。未验证：最终提交的Ubuntu CI；保持in_review。用户随后明确授权提交并推送本轮验收记录到当前GitHub分支；不合并或部署。 2026-10-19前置准入补记：保留既有明确业务接受与独立审核；后续公共输入已按当前最终HEAD9cbe94f重新复核，非沿用旧输入不变声明。主Agent241项回归/77.76秒/exit0，新独立复核通过，526当前输入与2885全量/静态通过；同SHA CI run39268207253三项success，补齐原仅缺CI。关闭对账docs/reviews/2026-10-19-v1c-005-dependency-admission.md；done，无新增业务实现或发布。"
 
   - id: "V1C-003"
     title: "1.0收尾：补齐技能在不同编排路径中的生效接线"
@@ -156,7 +156,7 @@ tasks:
 
   - id: "V1C-004"
     title: "1.0收尾：补齐Supervisor任务的受控工具执行能力"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     depends_on: ["SUP-001", "V1C-002", "V1C-003"]
     scope:
@@ -198,14 +198,38 @@ tasks:
     risk: {level: "L2", side_effect: "Supervisor执行边界变化，实施前完成ADR裁决"}
     execution:
       plan: "docs/plans/plan_v1c_004_20261019.md"
-      progress: "2026-10-19 approved plan/allowed_paths/ADR-0015; Supervisor research delegates to existing action loop/ToolExecutor, with shared budget, per-attempt authority checks, actual-result summary and stream cleanup. Cursor handoff preserved; reported prior full 2881 passed/1 failed retained as history. User explicitly added tests/test_rag_028_model_capability.py only for budget suffix/not_called assertions; approved file 44 passed. Current related 286 passed (76.99s); independent final4 49 passed (20.86s), Ruff/mypy exit 0 (216 files). 526 final inputs frozen; Final unfiltered pytest passed: 2882 passed/3 skipped/3 warnings,688.05s,exit0; frozen526 inputs unchanged. Implementation: docs/plans/implementation_v1c_004_20261019.md; evidence/acceptance/independent reviews in docs/reviews/2026-10-19-v1c-004-*. No done claim; Fresh independent final audit passed:184 tests,50.89s,exit0,no remaining in-scope P1/P2; report docs/reviews/2026-10-19-v1c-004-人工审核-第1轮.md. User explicitly delegated independent business acceptance; passed by /root/v1c004_business_acceptance:178 tests,59.80s,exit0,526 input hashes matched; report docs/reviews/2026-10-19-v1c-004-business-acceptance.md. Final candidate 47dbf69 CI run39239816644: Backend and Frontend passed, Agent official baseline failed (tool_selection_recall=0.5, tool_call_validity_recall=0.5; agent-003 emitted DSML instead of the accepted tool_call envelope). Investigation: docs/reviews/2026-10-19-v1c-004-ci-investigation.md; repair plan: docs/plans/plan_v1c_004_ci_protocol_20261019.md. Offline evaluator regressions:67 passed,8.75s,exit0; live official gate still failed; keep in_review. User approved the two additional prompt/eval paths and a local commit for this repair; push/merge/live paid evaluation not authorized. Repair candidate: shared SYSTEM_ACT now specifies the complete standard JSON envelope and prohibits private DSML output; parser/gates/dataset unchanged. Protocol Evaluation 1.0.1; red1fail2pass; related309pass/188.63s; full2885pass3skip3warnings/860.30s/exit0; Ruff no-cache and mypy216 exit0;526 inputs matched. Independent ci_protocol_review found no P1/P2. Evidence: docs/reviews/2026-10-19-v1c-004-ci-protocol-evidence.json. Local candidate is ready for the user-authorized commit; final-SHA live CI still pending; keep in_review."
+      progress: "2026-10-19 approved plan/allowed_paths/ADR-0015; Supervisor research delegates to existing action loop/ToolExecutor, with shared budget, per-attempt authority checks, actual-result summary and stream cleanup. Cursor handoff preserved; reported prior full 2881 passed/1 failed retained as history. User explicitly added tests/test_rag_028_model_capability.py only for budget suffix/not_called assertions; approved file 44 passed. Current related 286 passed (76.99s); independent final4 49 passed (20.86s), Ruff/mypy exit 0 (216 files). 526 final inputs frozen; Final unfiltered pytest passed: 2882 passed/3 skipped/3 warnings,688.05s,exit0; frozen526 inputs unchanged. Implementation: docs/plans/implementation_v1c_004_20261019.md; evidence/acceptance/independent reviews in docs/reviews/2026-10-19-v1c-004-*. No done claim; Fresh independent final audit passed:184 tests,50.89s,exit0,no remaining in-scope P1/P2; report docs/reviews/2026-10-19-v1c-004-人工审核-第1轮.md. User explicitly delegated independent business acceptance; passed by /root/v1c004_business_acceptance:178 tests,59.80s,exit0,526 input hashes matched; report docs/reviews/2026-10-19-v1c-004-business-acceptance.md. Final candidate 47dbf69 CI run39239816644: Backend and Frontend passed, Agent official baseline failed (tool_selection_recall=0.5, tool_call_validity_recall=0.5; agent-003 emitted DSML instead of the accepted tool_call envelope). Investigation: docs/reviews/2026-10-19-v1c-004-ci-investigation.md; repair plan: docs/plans/plan_v1c_004_ci_protocol_20261019.md. Offline evaluator regressions:67 passed,8.75s,exit0; live official gate still failed; keep in_review. User approved the two additional prompt/eval paths and a local commit for this repair; push/merge/live paid evaluation not authorized. Repair candidate: shared SYSTEM_ACT now specifies the complete standard JSON envelope and prohibits private DSML output; parser/gates/dataset unchanged. Protocol Evaluation 1.0.1; red1fail2pass; related309pass/188.63s; full2885pass3skip3warnings/860.30s/exit0; Ruff no-cache and mypy216 exit0;526 inputs matched. Independent ci_protocol_review found no P1/P2. Evidence: docs/reviews/2026-10-19-v1c-004-ci-protocol-evidence.json. Closed by explicit user request after final SHA9cbe94fffe269cde9d93c00fb6d1f6d25fd01264 CI run39268207253: Backend job118113255222, Frontend job118113255622, Agent official baseline job118113255474 all success; official four metrics1.0 and prompt_hash matched. Fresh independent final audit /root/v1c004_close_recheck:120 passed/37.64s/exit0,526 current inputs and29 archived logs matched. Report docs/reviews/2026-10-19-v1c-004-closure.md. Earlier pending-CI statements are historical; done. Closure changes only documentation, no execution inputs."
 
   - id: "V1C-005"
     title: "1.0收尾：支持知识库与工具组合任务"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     depends_on: ["V1C-001", "V1C-002", "V1C-003", "V1C-004"]
     scope:
+      allowed_paths:
+        - "app/services/chat_service.py"
+        - "app/services/supervisor_tools.py"
+        - "app/services/combined_tools.py"
+        - "app/agents/combined_tools.py"
+        - "app/agents/route.py"
+        - "app/agents/prompts.py"
+        - "app/agents/pipeline.py"
+        - "tests/test_chat_combined_tools.py"
+        - "tests/test_combined_tool_contract.py"
+        - "tests/test_fast_route.py"
+        - "tests/test_chat_retrieval_lifecycle.py"
+        - "tests/test_tool_path_contract.py"
+        - "tests/test_skill_path_contract.py"
+        - "tests/test_supervisor_tool_contract.py"
+        - "tests/test_supervisor_tool_contract_review.py"
+        - "docs/ai-prompts/evals/combined-tool-contract-v1.yaml"
+        - "docs/adr/0016-bounded-knowledge-tool-composition.md"
+        - "docs/adr/README.md"
+        - "docs/plans/"
+        - "docs/reviews/"
+        - "docs/product/as-is-capability-matrix.md"
+        - "README.md"
+        - "tasks.yaml"
       deliverables: ["有界的检索与工具顺序组合", "资料依据、计算结果和失败状态分别可追踪"]
       non_goals: ["不重写Agent框架", "不默认用联网替代私有知识库", "不自动提高权限"]
     acceptance:
@@ -213,8 +237,8 @@ tasks:
       - "同时命中工具与知识库意图时不静默丢失必要步骤；缺依据、工具失败和越权有明确行为。"
     risk: {level: "L2", side_effect: "路由与规划行为变化，实施前完成ADR及有界Evaluation方案"}
     execution:
-      plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
-      progress: "仅登记Planned；不预先批准新的执行架构或生产启用。"
+      plan: "docs/plans/plan_v1c_005_20261019.md"
+      progress: "2026-10-19按用户批准计划/允许路径/ADR-0016实现calculator-only知识库组合：当前选块与用户参数核验、现有Executor真实执行、固定金额/来源模板、权限技能与取消/缓存/重新生成边界。独立工程三P2已真实红复现并修复；独立反例126通过，最终无筛选pytest3043 passed/3 skipped/3既有warnings，800.71秒，exit0；Ruff全库no-cache与mypy218文件exit0；531最终输入一致。新独立final_audit实际154 passed/75.18秒/exit0，另3条真实分隔符探针，无未修复P1/P2。实现说明docs/plans/implementation_v1c_005_20261019.md；证据/验收/人工审核见docs/reviews/2026-10-19-v1c-005-*。E2合成提取/Mock64维只证链路，真实模型质量未验证。2026-10-20用户明确委托新独立Agent业务接受，/root/v1c005_business_acceptance已通过：154项/64.15秒/exit0，另12条真实Service业务探针全通过（四入口2人4天3040.00和复杂政策受控拒绝），531输入及17原日志指纹一致；报告docs/reviews/2026-10-20-v1c-005-business-acceptance.md。E2隔离范围，未验证真实模型质量；最终候选尚未提交，GitHub Backend/Frontend/Agent official baseline未验证，旧SHA CI仅基线，故in_review不得done。未提交/推送/合并/部署。"
 
   - id: "V1C-006"
     title: "1.0收尾：测量并优化技能匹配与意图分流开销"

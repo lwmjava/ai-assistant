@@ -1,0 +1,66 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Traceback (most recent call last):
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\docs\reviews\2026-10-20-v1c-005-business-acceptance-probes.py", line 74, in main
+    results.append(await scenario(root,len(results),orch,stream,policy,success))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\docs\reviews\2026-10-20-v1c-005-business-acceptance-probes.py", line 36, in scenario
+    offline=conf._offline_network.__wrapped__(patch);next(offline)
+                                                     ^^^^^^^^^^^^^
+TypeError: 'NoneType' object is not an iterator
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\shutil.py", line 634, in _rmtree_unsafe
+    os.unlink(fullname)
+PermissionError: [WinError 32] 另一个程序正在使用此文件，进程无法访问。: 'E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\v1c005-business-4ch1wegq\\0\\composition.db'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\tempfile.py", line 891, in onexc
+    _os.unlink(path)
+PermissionError: [WinError 32] 另一个程序正在使用此文件，进程无法访问。: 'E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\v1c005-business-4ch1wegq\\0\\composition.db'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\docs\reviews\2026-10-20-v1c-005-business-acceptance-probes.py", line 77, in <module>
+    asyncio.run(main())
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\asyncio\base_events.py", line 664, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\docs\reviews\2026-10-20-v1c-005-business-acceptance-probes.py", line 68, in main
+    with tempfile.TemporaryDirectory(prefix='v1c005-business-',dir='data/pytest-tmp') as name:
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\tempfile.py", line 919, in __exit__
+    self.cleanup()
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\tempfile.py", line 923, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\tempfile.py", line 903, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\shutil.py", line 796, in rmtree
+    return _rmtree_unsafe(path, onexc)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\shutil.py", line 631, in _rmtree_unsafe
+    _rmtree_unsafe(fullname, onexc)
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\shutil.py", line 636, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\tempfile.py", line 894, in onexc
+    cls._rmtree(path, ignore_errors=ignore_errors)
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\tempfile.py", line 903, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\shutil.py", line 796, in rmtree
+    return _rmtree_unsafe(path, onexc)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\shutil.py", line 612, in _rmtree_unsafe
+    onexc(os.scandir, path, err)
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\shutil.py", line 609, in _rmtree_unsafe
+    with os.scandir(path) as scandir_it:
+         ^^^^^^^^^^^^^^^^
+NotADirectoryError: [WinError 267] 目录名称无效。: 'E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\pytest-tmp\\v1c005-business-4ch1wegq\\0\\composition.db'

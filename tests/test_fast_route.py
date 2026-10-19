@@ -99,10 +99,25 @@ def test_explicit_marks_open_one_path() -> None:
     assert route_message("计算机有哪些部件").kind is RouteKind.SIMPLE
 
 
-def test_tool_mark_wins_over_knowledge_and_multi() -> None:
+def test_tool_and_knowledge_intents_are_preserved_together() -> None:
     route = route_message("先调研知识库，再帮我算一下 1+1")
-    assert route.kind is RouteKind.TOOLS
+    assert route.kind.value == "combined"
     assert route.tool_names == frozenset({"calculator"})
+
+
+@pytest.mark.parametrize("message,tools", [
+    ("根据知识库计算差旅金额，1人3天", {"calculator"}),
+    ("按报销标准计算差旅金额，1人3天", {"calculator"}),
+    ("根据文档运行这段代码", {"code_sandbox"}),
+])
+def test_explicit_combination_cannot_fall_back_to_one_intent(message, tools):
+    route = route_message(message)
+    assert route.kind.value == "combined"
+    assert route.tool_names == frozenset(tools)
+
+
+def test_knowledge_about_computers_does_not_authorize_calculation():
+    assert route_message("根据文档介绍计算机的组成").kind is RouteKind.RAG
 
 
 def test_knowledge_mark_wins_over_multi() -> None:

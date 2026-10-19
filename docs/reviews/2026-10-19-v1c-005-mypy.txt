@@ -1,0 +1,3 @@
+app\services\combined_tools.py:41: error: "AsyncIterator[AgentEvent]" has no attribute "aclose"  [attr-defined]
+app\services\chat_service.py:595: error: "AsyncIterator[AgentEvent]" has no attribute "aclose"  [attr-defined]
+Found 2 errors in 2 files (checked 218 source files)

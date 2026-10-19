@@ -28,3 +28,8 @@
 纯后端提示/离线测试变化，没有前后端 API 契约或前端源码变更，本地前端检查不适用。没有修改进程、信号或平台分支；最终 Ubuntu CI 仍待复验。没有生产配置或数据迁移；回滚时撤销本次提示/测试/Evaluation 变更即可恢复此前文本协议说明，不涉及数据库回滚。
 
 全量的 3 条跳过来自 CLI 文件系统平台验证：当前 Windows 未授予符号链接能力、POSIX 0600 权限语义、替换打开文件的身份保护；不是本轮新增跳过。Linux 相关结果以最终提交的 Ubuntu Backend CI 为准，本轮未将这些项目声明为通过。
+
+
+## 最终关闭补记（2026-10-19）
+
+用户已明确要求关闭V1C-004。最终业务提交9cbe94fffe269cde9d93c00fb6d1f6d25fd01264的CI run39268207253，Backend/Frontend/Agent official baseline全部success，官方四项指标均1.0，Prompt指纹与本地一致；本轮新独立审核120 passed/37.64秒/exit0，526项当前输入匹配。任务现为done；前文未提交/未推送/待CI语句保留为历史记录，不代表当前关闭状态。完整对账见docs/reviews/2026-10-19-v1c-004-closure.md及ci-protocol-evidence.json。本轮仅修改文档与任务状态，没有改变已验证执行输入，没有合并或部署。

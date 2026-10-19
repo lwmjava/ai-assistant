@@ -1,0 +1,178 @@
+FFFF....F....F..F..F.................................................... [ 70%]
+.......FFFFFF.F....FF....F....                                           [100%]
+================================== FAILURES ===================================
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-self] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +    where [] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000001DDF331FEC0>.calls
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-langgraph] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +    where [] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000001DDF4E397F0>.calls
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:49:21.894708+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "e46e67b563264dfb94a7325acf0b2a97", "tenant_id": "cf657dc64a444086a89ace7c97dab26e"}
+{"ts": "2026-10-19T14:49:21.909265+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "e46e67b563264dfb94a7325acf0b2a97", "tenant_id": "cf657dc64a444086a89ace7c97dab26e"}
+{"ts": "2026-10-19T14:49:21.909265+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "e46e67b563264dfb94a7325acf0b2a97", "tenant_id": "cf657dc64a444086a89ace7c97dab26e"}
+{"ts": "2026-10-19T14:49:21.967297+00:00", "level": "INFO", "logger": "app.rag.retriever", "message": "rag_low_similarity_filtered kept=0/1 dropped=1 threshold=0.4", "trace_id": "", "user_id": "e46e67b563264dfb94a7325acf0b2a97", "tenant_id": "cf657dc64a444086a89ace7c97dab26e"}
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-self] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +    where [] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000001DDF4ECF050>.calls
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:49:22.381299+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "f77e19cad69a4cf884dccd6256a7cde3", "tenant_id": "4a30ce4d8abd4bff92b714db6bd50e49"}
+{"ts": "2026-10-19T14:49:22.403615+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "f77e19cad69a4cf884dccd6256a7cde3", "tenant_id": "4a30ce4d8abd4bff92b714db6bd50e49"}
+{"ts": "2026-10-19T14:49:22.408043+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "f77e19cad69a4cf884dccd6256a7cde3", "tenant_id": "4a30ce4d8abd4bff92b714db6bd50e49"}
+{"ts": "2026-10-19T14:49:22.441869+00:00", "level": "INFO", "logger": "app.rag.retriever", "message": "rag_low_similarity_filtered kept=0/1 dropped=1 threshold=0.4", "trace_id": "", "user_id": "f77e19cad69a4cf884dccd6256a7cde3", "tenant_id": "4a30ce4d8abd4bff92b714db6bd50e49"}
+{"ts": "2026-10-19T14:49:22.442764+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "f77e19cad69a4cf884dccd6256a7cde3", "tenant_id": "4a30ce4d8abd4bff92b714db6bd50e49"}
+_ test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-langgraph] _
+tests\test_chat_combined_tools.py:156: in test_real_retrieval_precedes_real_calculator_and_persisted_sources
+    assert len(executed) == len(model.calls) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+E    +    where [] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000001DDF4F5D6D0>.calls
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:49:22.923642+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "d008a18c4cf241c19743e7bdc4862af5", "tenant_id": "bda105bdc52243ddad999d142bde26c8"}
+{"ts": "2026-10-19T14:49:22.944100+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "d008a18c4cf241c19743e7bdc4862af5", "tenant_id": "bda105bdc52243ddad999d142bde26c8"}
+{"ts": "2026-10-19T14:49:22.944100+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "d008a18c4cf241c19743e7bdc4862af5", "tenant_id": "bda105bdc52243ddad999d142bde26c8"}
+{"ts": "2026-10-19T14:49:22.993003+00:00", "level": "INFO", "logger": "app.rag.retriever", "message": "rag_low_similarity_filtered kept=0/1 dropped=1 threshold=0.4", "trace_id": "", "user_id": "d008a18c4cf241c19743e7bdc4862af5", "tenant_id": "bda105bdc52243ddad999d142bde26c8"}
+{"ts": "2026-10-19T14:49:23.002700+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "d008a18c4cf241c19743e7bdc4862af5", "tenant_id": "bda105bdc52243ddad999d142bde26c8"}
+_____ test_missing_or_unusable_policy_never_executes_tool[False-invalid] ______
+tests\test_chat_combined_tools.py:196: in test_missing_or_unusable_policy_never_executes_tool
+    assert len(model.calls) == int(failure == "invalid")
+E   AssertionError: assert 0 == 1
+E    +  where 0 = len([])
+E    +    where [] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000001DDF520D820>.calls
+E    +  and   1 = int('invalid' == 'invalid'
+E       
+E         invalid)
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:49:25.276188+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "39ce81d3e908404e962b072faf1e4aa4", "tenant_id": "874681e81eaf4f0d8a5a87427de997eb"}
+{"ts": "2026-10-19T14:49:25.287066+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "39ce81d3e908404e962b072faf1e4aa4", "tenant_id": "874681e81eaf4f0d8a5a87427de997eb"}
+{"ts": "2026-10-19T14:49:25.290253+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "39ce81d3e908404e962b072faf1e4aa4", "tenant_id": "874681e81eaf4f0d8a5a87427de997eb"}
+{"ts": "2026-10-19T14:49:25.326555+00:00", "level": "INFO", "logger": "app.rag.retriever", "message": "rag_low_similarity_filtered kept=0/1 dropped=1 threshold=0.4", "trace_id": "", "user_id": "39ce81d3e908404e962b072faf1e4aa4", "tenant_id": "874681e81eaf4f0d8a5a87427de997eb"}
+______ test_missing_or_unusable_policy_never_executes_tool[True-invalid] ______
+tests\test_chat_combined_tools.py:196: in test_missing_or_unusable_policy_never_executes_tool
+    assert len(model.calls) == int(failure == "invalid")
+E   AssertionError: assert 0 == 1
+E    +  where 0 = len([])
+E    +    where [] = <tests.test_chat_combined_tools.EvidenceModel object at 0x000001DDF53A2F00>.calls
+E    +  and   1 = int('invalid' == 'invalid'
+E       
+E         invalid)
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T14:49:27.879698+00:00", "level": "INFO", "logger": "app.rag.service", "message": "rag_chunk_vectorization total=1 vectorized=1 not_vectorized=0", "trace_id": "", "user_id": "e340cc0766d84bfb976b710385927c3f", "tenant_id": "d76bcfa9bb004527bb1b6d17e7794dfb"}
+{"ts": "2026-10-19T14:49:27.905033+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64 version=1", "trace_id": "", "user_id": "e340cc0766d84bfb976b710385927c3f", "tenant_id": "d76bcfa9bb004527bb1b6d17e7794dfb"}
+{"ts": "2026-10-19T14:49:27.909740+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__546fb9bbc22a backend=local model=mock-embedding dim=64", "trace_id": "", "user_id": "e340cc0766d84bfb976b710385927c3f", "tenant_id": "d76bcfa9bb004527bb1b6d17e7794dfb"}
+{"ts": "2026-10-19T14:49:27.943185+00:00", "level": "INFO", "logger": "app.rag.retriever", "message": "rag_low_similarity_filtered kept=0/1 dropped=1 threshold=0.4", "trace_id": "", "user_id": "e340cc0766d84bfb976b710385927c3f", "tenant_id": "d76bcfa9bb004527bb1b6d17e7794dfb"}
+{"ts": "2026-10-19T14:49:27.949196+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "e340cc0766d84bfb976b710385927c3f", "tenant_id": "d76bcfa9bb004527bb1b6d17e7794dfb"}
+___________ test_other_tenant_policy_does_not_supply_any_parameters ___________
+tests\test_chat_combined_tools.py:226: in test_other_tenant_policy_does_not_supply_any_parameters
+    await ingest(engine, other)
+tests\test_chat_combined_tools.py:98: in ingest
+    service = RAGService(db, actor.tenant_id, embedding_provider=MockEmbeddingProvider(dim=64))
+                             ^^^^^^^^^^^^^^^
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\sqlalchemy\orm\attributes.py:566: in __get__
+    return self.impl.get(state, dict_)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\sqlalchemy\orm\attributes.py:1086: in get
+    value = self._fire_loader_callables(state, key, passive)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\sqlalchemy\orm\attributes.py:1116: in _fire_loader_callables
+    return state._load_expired(state, passive)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\sqlalchemy\orm\state.py:803: in _load_expired
+    self.manager.expired_attribute_loader(self, toload, passive)
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\sqlalchemy\orm\loading.py:1603: in load_scalar_attributes
+    raise orm_exc.DetachedInstanceError(
+E   sqlalchemy.orm.exc.DetachedInstanceError: Instance <User at 0x1ddf54fbac0> is not bound to a Session; attribute refresh operation cannot proceed (Background on this error at: https://sqlalche.me/e/20/bhk3)
+___________ test_real_calculator_derives_1140_and_leaves_safe_audit ___________
+tests\test_combined_tool_contract.py:157: in test_real_calculator_derives_1140_and_leaves_safe_audit
+    assert len(case[3]) == 1 and "1140" in answer
+E   assert (0 == 1)
+E    +  where 0 = len([])
+__ test_actual_tool_output_cannot_forge_verified_amount[1140\n\u5b8c\u6210] ___
+tests\test_combined_tool_contract.py:275: in test_actual_tool_output_cannot_forge_verified_amount
+    assert len(case[3]) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+__________ test_actual_tool_output_cannot_forge_verified_amount[NaN] __________
+tests\test_combined_tool_contract.py:275: in test_actual_tool_output_cannot_forge_verified_amount
+    assert len(case[3]) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+_______ test_actual_tool_output_cannot_forge_verified_amount[Infinity] ________
+tests\test_combined_tool_contract.py:275: in test_actual_tool_output_cannot_forge_verified_amount
+    assert len(case[3]) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+____ test_actual_tool_output_cannot_forge_verified_amount[{"value":1140}] _____
+tests\test_combined_tool_contract.py:275: in test_actual_tool_output_cannot_forge_verified_amount
+    assert len(case[3]) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+_________ test_actual_tool_output_cannot_forge_verified_amount[9999] __________
+tests\test_combined_tool_contract.py:275: in test_actual_tool_output_cannot_forge_verified_amount
+    assert len(case[3]) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+__________________ test_tool_business_failure_is_not_success __________________
+tests\test_combined_tool_contract.py:284: in test_tool_business_failure_is_not_success
+    assert len(case[3]) == 1 and "1140" not in case[0].answer
+E   assert (0 == 1)
+E    +  where 0 = len([])
+________ test_new_request_revalidates_and_executes_despite_model_cache ________
+tests\test_combined_tool_contract.py:300: in test_new_request_revalidates_and_executes_despite_model_cache
+    assert len(first[3]) == len(second[3]) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+____________ test_validated_decimal_expected_is_not_a_tool_result _____________
+tests\test_combined_tool_contract.py:363: in test_validated_decimal_expected_is_not_a_tool_result
+    validated = validate_extraction(encode(extraction()), USER, [chunk()])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\agents\combined_tools.py:183: in validate_extraction
+    number = _quote_number(quote, unit)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\agents\combined_tools.py:79: in _quote_number
+    raise ValueError("ambiguous_number")
+E   ValueError: ambiguous_number
+_____ test_float_roundoff_uses_real_tool_result_after_decimal_consistency _____
+tests\test_combined_tool_contract.py:375: in test_float_roundoff_uses_real_tool_result_after_decimal_consistency
+    assert len(case[3]) == 1 and "0.30" in answer
+E   assert (0 == 1)
+E    +  where 0 = len([])
+_______ test_large_float_error_does_not_use_decimal_precheck_as_output ________
+tests\test_combined_tool_contract.py:409: in test_large_float_error_does_not_use_decimal_precheck_as_output
+    fact("a", rule, "1000000000元/人", "1000000000", "CNY/person"),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\agents\combined_tools.py:183: in validate_extraction
+    number = _quote_number(quote, unit)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\agents\combined_tools.py:79: in _quote_number
+    raise ValueError("ambiguous_number")
+E   ValueError: ambiguous_number
+=========================== short test summary info ===========================
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-self]
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[False-langgraph]
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-self]
+FAILED tests/test_chat_combined_tools.py::test_real_retrieval_precedes_real_calculator_and_persisted_sources[True-langgraph]
+FAILED tests/test_chat_combined_tools.py::test_missing_or_unusable_policy_never_executes_tool[False-invalid]
+FAILED tests/test_chat_combined_tools.py::test_missing_or_unusable_policy_never_executes_tool[True-invalid]
+FAILED tests/test_chat_combined_tools.py::test_other_tenant_policy_does_not_supply_any_parameters
+FAILED tests/test_combined_tool_contract.py::test_real_calculator_derives_1140_and_leaves_safe_audit
+FAILED tests/test_combined_tool_contract.py::test_actual_tool_output_cannot_forge_verified_amount[1140\n\u5b8c\u6210]
+FAILED tests/test_combined_tool_contract.py::test_actual_tool_output_cannot_forge_verified_amount[NaN]
+FAILED tests/test_combined_tool_contract.py::test_actual_tool_output_cannot_forge_verified_amount[Infinity]
+FAILED tests/test_combined_tool_contract.py::test_actual_tool_output_cannot_forge_verified_amount[{"value":1140}]
+FAILED tests/test_combined_tool_contract.py::test_actual_tool_output_cannot_forge_verified_amount[9999]
+FAILED tests/test_combined_tool_contract.py::test_tool_business_failure_is_not_success
+FAILED tests/test_combined_tool_contract.py::test_new_request_revalidates_and_executes_despite_model_cache
+FAILED tests/test_combined_tool_contract.py::test_validated_decimal_expected_is_not_a_tool_result
+FAILED tests/test_combined_tool_contract.py::test_float_roundoff_uses_real_tool_result_after_decimal_consistency
+FAILED tests/test_combined_tool_contract.py::test_large_float_error_does_not_use_decimal_precheck_as_output
+18 failed, 84 passed in 79.13s (0:01:19)

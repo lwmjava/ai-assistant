@@ -1,0 +1,76 @@
+"""Independent delegated business probes; isolated synthetic providers, real service/tools."""
+import asyncio, hashlib, importlib.util, json, sys, tempfile
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()))
+import pytest
+
+def load(name,path):
+    spec=importlib.util.spec_from_file_location(name,path)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
+conf=load('business_conftest','tests/conftest.py')
+t=load('business_service','tests/test_chat_combined_tools.py')
+from app.services.chat_service import ChatService
+from app.core.config import settings
+from app.agents.tools.executor import ToolExecutor
+from app.rag.service import RAGService
+from app.rag.embeddings.mock import MockEmbeddingProvider
+from sqlmodel import Session
+QUESTION='根据知识库报销标准计算差旅金额，2人4天'
+class BusinessModel(t.EvidenceModel):
+    async def chat(self,messages,options=None):
+        self.calls.append(messages)
+        assert self.retriever.last_selected
+        hit=self.retriever.last_selected[0]
+        facts=[]
+        for name,quote,value,unit in [('hotel','每人每日300元',300,'CNY/person/day'),('meal','每人每日80元',80,'CNY/person/day')]:
+            if quote not in hit.content: quote=str(value)+'元'
+            start=hit.content.index(quote)
+            facts.append(dict(id=name,source='chunk',chunk_id=hit.id,start=start,end=start+len(quote),quote=quote,value=value,unit=unit))
+        for name,quote,value,unit in [('people','2人',2,'person'),('days','4天',4,'day')]:
+            start=QUESTION.index(quote)
+            facts.append(dict(id=name,source='user',chunk_id=None,start=start,end=start+len(quote),quote=quote,value=value,unit=unit))
+        return json.dumps(dict(schema_version=1,facts=facts,expression='(hotel+meal)*people*days'),ensure_ascii=False)
+async def scenario(root,index,orch,stream,policy,success):
+    directory=root/str(index);directory.mkdir()
+    patch=pytest.MonkeyPatch();fixture=t.composition.__wrapped__(directory,patch);engine,actor=next(fixture)
+    conf._offline_network.__wrapped__(patch)
+    executed=[]
+    try:
+        patch.setattr(settings,'AGENT_ORCHESTRATION',orch)
+        with Session(engine) as db:
+            doc=await RAGService(db,actor.tenant_id,embedding_provider=MockEmbeddingProvider(dim=64)).ingest_text(policy,'business-policy','business-policy',actor.id)
+        model=BusinessModel();service=ChatService(model);build=service._build_retriever
+        def capture(db,user):
+            model.retriever=build(db,user);return model.retriever
+        patch.setattr(service,'_build_retriever',capture)
+        execute=ToolExecutor.execute
+        async def record(executor,call):
+            output=await execute(executor,call);executed.append((call.name,output.status));return output
+        patch.setattr(ToolExecutor,'execute',record)
+        answer,events,audit,messages=await t.invoke(engine,actor,service,stream,question=QUESTION)
+        sources=json.loads(answer.sources or '[]')
+        if success:
+            assert '3040.00' in answer.content and len(executed)==1 and executed[0]==('calculator','ok')
+            assert sources and all(s['document_id']==doc.id for s in sources)
+            assert len(t.allowed_tools(audit))==1 and answer.status=='complete'
+        else:
+            assert not executed and not t.allowed_tools(audit) and '3040.00' not in answer.content
+            assert answer.status=='failed'
+        return dict(orchestration=orch,stream=stream,policy=policy,question=QUESTION,answer=answer.content,status=answer.status,actual_tools=executed,sources_count=len(sources),audit_rows=len(audit),expected='3040.00' if success else 'zero execution; no successful amount',result='passed')
+    finally:
+        try:next(fixture)
+        except StopIteration:pass
+        patch.undo()
+async def main():
+    results=[]
+    with tempfile.TemporaryDirectory(prefix='v1c005-business-',dir='data/pytest-tmp') as name:
+        root=Path(name)
+        policies=[(t.POLICY,True),('知识库差旅报销金额计算标准：住宿每晚300元；餐补每人每日80元。',False),('知识库差旅报销金额计算标准：住宿每人每日300元，税后含税；餐补每人每日80元。',False)]
+        for policy,success in policies:
+            for orch in ['self','langgraph']:
+                for stream in [False,True]:
+                    results.append(await scenario(root,len(results),orch,stream,policy,success))
+    print(json.dumps(results,ensure_ascii=False,indent=2))
+    print('BUSINESS_PROBES: 12 passed')
+asyncio.run(main())
+

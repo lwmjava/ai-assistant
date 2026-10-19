@@ -60,6 +60,7 @@ from app.services.chat_skills import (
     restore_skill_context,
     validate_resume_skill_binding,
 )
+from app.services.combined_tools import combined_events
 from app.services.quota import accept_user_message
 
 if TYPE_CHECKING:
@@ -577,9 +578,23 @@ class ChatService:
         # 5. 调试追踪
         trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
-        fast = None if resume_message_id or prepared else self._fast_route(safe_message)
+        combination = route_message(safe_message)
+        combined = resume_message_id is None and combination.kind is RouteKind.COMBINED
+        fast = None if combined or resume_message_id or prepared else self._fast_route(safe_message)
         try:
-            if fast is not None:
+            if combined:
+                combined_iterator = combined_events(
+                    session, user, self.llm, self._options, state, combination, retriever, tools, skill_runtime,
+                    trace=trace,
+                )
+                try:
+                    async for event in combined_iterator:
+                        if event.type == "error":
+                            state.error_code = str(safe_error_metadata(event.metadata)["code"])
+                finally:
+                    await combined_iterator.aclose()
+                result = state
+            elif fast is not None:
                 async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime):
                     if _event.type == "error":
                         state.error_code = str(safe_error_metadata(_event.metadata)["code"])
@@ -619,7 +634,7 @@ class ChatService:
             result.answer,
             self._model_name(),
             sources,
-            status="failed" if result.error_code == "model_unavailable" else "complete",
+            status="failed" if result.error_code == "model_unavailable" or (combined and result.error) else "complete",
             code_results=result.code_results,
             skill_names=_skill_name_list(skill_ctx),
         )
@@ -687,15 +702,18 @@ class ChatService:
             skill_runtime = make_skill_runtime(session, user, skill_ctx, tools)
         except SkillBindingRejected as exc:
             raise ResumeRejectedError(str(exc)) from None
-        fast = None if resume_message_id or prepared else self._fast_route(safe_message)
-        pipeline = (None if fast is not None else
+        combination = route_message(safe_message)
+        combined = resume_message_id is None and combination.kind is RouteKind.COMBINED
+        combined_trace = self._create_trace() if combined else None
+        fast = None if combined or resume_message_id or prepared else self._fast_route(safe_message)
+        pipeline = (None if fast is not None or combined else
                     self._build_pipeline(retriever, tools, skill_ctx, skill_runtime=skill_runtime))
         if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
             raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
             self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
-        else:
+        elif pipeline is not None:
             self._wire_supervisor_tools(session, user, pipeline)
         # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。
         conversation_id = conv.id
@@ -706,9 +724,14 @@ class ChatService:
         sources: list[dict] = []
         assistant_saved = False
         stopped = False
-        events = None
+        events: AsyncIterator[AgentEvent] | None = None
         try:
-            if fast is not None:
+            if combined:
+                events = combined_events(
+                    session, user, self.llm, self._options, state, combination, retriever, tools, skill_runtime,
+                    trace=combined_trace,
+                )
+            elif fast is not None:
                 events = self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime)
             else:
                 assert pipeline is not None
@@ -762,6 +785,7 @@ class ChatService:
                              metadata=safe_error_metadata({"code": "context_budget_exceeded"}))
             yield AgentEvent("done", BUDGET_EXCEEDED_REPLY)
         finally:
+            self._collect_trace(combined_trace)
             if events is not None:
                 close_events = getattr(events, "aclose", None)
                 if close_events is not None:

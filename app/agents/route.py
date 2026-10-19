@@ -10,6 +10,7 @@
   「没有可用的检索结果」降级回答；反过来漏判则是回答失去依据。
 """
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -39,6 +40,8 @@ _RAG_MARKS = (
     "制度里",
 )
 _MULTI_MARKS = ("先调研", "分步调研", "多轮")
+_POLICY_MARKS = ("报销标准", "差旅标准", "企业标准")
+_POLICY_CALCULATION = re.compile(r"(?:计算|核算)[^。\n]{0,20}(?:金额|费用|报销|合计|总计|差旅)")
 
 
 class RouteKind(str, Enum):
@@ -48,6 +51,7 @@ class RouteKind(str, Enum):
     TOOLS = "tools"
     RAG = "rag"
     MULTI = "multi"
+    COMBINED = "combined"
 
 
 @dataclass(frozen=True)
@@ -59,7 +63,7 @@ class ChatRoute:
 
 
 def route_message(text: str) -> ChatRoute:
-    """根据明确说法选择路径。同时命中时，工具优先于知识库，知识库优先于多轮。"""
+    """显式知识依据与动作同时出现时保留两者，其余保持原单一路由。"""
     raw = text or ""
     tool_names: set[str] = set()
     if any(mark in raw for mark in _CALCULATOR_MARKS):
@@ -68,9 +72,14 @@ def route_message(text: str) -> ChatRoute:
         tool_names.add("code_sandbox")
     if any(mark in raw for mark in _TIME_MARKS):
         tool_names.add("get_current_datetime")
+    knowledge = any(mark in raw for mark in (*_RAG_MARKS, *_POLICY_MARKS))
+    if knowledge and _POLICY_CALCULATION.search(raw):
+        tool_names.add("calculator")
+    if knowledge and tool_names:
+        return ChatRoute(kind=RouteKind.COMBINED, tool_names=frozenset(tool_names))
     if tool_names:
         return ChatRoute(kind=RouteKind.TOOLS, tool_names=frozenset(tool_names))
-    if any(mark in raw for mark in _RAG_MARKS):
+    if knowledge:
         return ChatRoute(kind=RouteKind.RAG)
     if any(mark in raw for mark in _MULTI_MARKS):
         return ChatRoute(kind=RouteKind.MULTI)

@@ -557,9 +557,7 @@
     "workflow_query": "https://api.github.com/repos/lwmjava/ai-assistant/actions/runs?head_sha=603122b4818c8d621d073052aa68ffb3f9403786&per_page=30",
     "note": "Queried all-event Actions API as well as PR-only wrapper; no runs for candidate returned. No push authorized."
   },
-  "pending": [
-    "candidate Ubuntu CI"
-  ],
+  "pending": [],
   "provenance": "Synthetic tools and scripted LLM, real ToolExecutor and isolated SQLite audit; not production model/quality evidence.",
   "dependency_versions": {
     "pytest": "8.4.2",
@@ -597,5 +595,32 @@
     "passed": 40,
     "seconds": 3.2,
     "report": "docs/reviews/2026-10-19-v1c-002-acceptance.md"
+  },
+  "current_head_closure": {
+    "sha": "9cbe94fffe269cde9d93c00fb6d1f6d25fd01264",
+    "result": "done",
+    "historical_changed_inputs": [
+      "app/agents/fast_path.py",
+      "app/agents/pipeline.py",
+      "app/agents/plan_runtime.py",
+      "app/agents/prompts.py",
+      "app/agents/skills/base.py",
+      "app/agents/skills/manager.py",
+      "app/agents/state.py",
+      "app/agents/supervisor.py",
+      "app/agents/tools/executor.py",
+      "app/services/chat_service.py",
+      "tests/eval/test_agent_eval_runner.py",
+      "tests/test_chat_retrieval_lifecycle.py",
+      "tests/test_rag_028_model_capability.py",
+      "tests/test_supervisor.py",
+      "tests/test_tool_path_contract.py"
+    ],
+    "current_input_manifest": "docs/reviews/2026-10-19-v1c-005-baseline.json",
+    "independent_recheck": "/root/v1c004_close_recheck",
+    "ci_run": "https://github.com/lwmjava/ai-assistant/actions/runs/39268207253",
+    "ci_jobs": "Backend/Frontend/Agent official baseline all success",
+    "report": "docs/reviews/2026-10-19-v1c-005-dependency-admission.md",
+    "scope": "documentation-only closure of historical missing-CI gate; original accepted business contract unchanged"
   }
 }

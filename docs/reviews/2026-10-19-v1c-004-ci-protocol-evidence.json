@@ -619,11 +619,9 @@
       "sha256": "f83a1499d76a9e3b58278525cb3f6b618da45316de1bb1576416487c8c16f3ca"
     }
   },
-  "pending": [
-    "Final local commit has not been pushed; final-SHA Backend/Frontend/live Agent official CI remains unverified."
-  ],
+  "pending": [],
   "frontend": "not applicable locally: no frontend source, API/schema or frontend build contract changed",
-  "status": "Local checks passed; user-authorized local candidate commit; task in_review, final live CI pending",
+  "status": "done; final SHA CI passed, fresh independent final audit passed, user explicitly authorized closure",
   "prompt_hash": [
     "3f5be919458ffbfc083c367d3819c3b9e8237f12d0706c69ed6f74e9edb90477"
   ],
@@ -661,5 +659,49 @@
       "sha256": "83872ebc0afa8cf1d263975da0d2fdf96d9b06e805422573f180ca93e0596687"
     }
   },
-  "evidence_class": "E2 isolated real evaluator/runtime code and SQLite with synthetic model transport; not live model-quality or production readiness evidence"
+  "evidence_class": "E2 isolated real evaluator/runtime code and SQLite with synthetic model transport; not live model-quality or production readiness evidence",
+  "final_ci": {
+    "sha": "9cbe94fffe269cde9d93c00fb6d1f6d25fd01264",
+    "run_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39268207253",
+    "jobs": [
+      {
+        "id": 118113255222,
+        "name": "Backend (ruff / mypy / pytest)",
+        "conclusion": "success",
+        "url": "https://github.com/lwmjava/ai-assistant/actions/runs/39268207253/job/118113255222"
+      },
+      {
+        "id": 118113255474,
+        "name": "Agent official baseline",
+        "conclusion": "success",
+        "url": "https://github.com/lwmjava/ai-assistant/actions/runs/39268207253/job/118113255474"
+      },
+      {
+        "id": 118113255622,
+        "name": "Frontend (typecheck / vitest / eslint / build)",
+        "conclusion": "success",
+        "url": "https://github.com/lwmjava/ai-assistant/actions/runs/39268207253/job/118113255622"
+      }
+    ],
+    "official_report": "docs/reviews/2026-10-19-v1c-004-final-official.json",
+    "official_report_sha256": "4eb35d24a89f346c96a1348b7ab5ecbe77da2323e9e3449b46f33cd16ed4526c",
+    "prompt_hash": "3f5be919458ffbfc083c367d3819c3b9e8237f12d0706c69ed6f74e9edb90477",
+    "metrics": {
+      "route_accuracy": 1.0,
+      "followup_recall": 1.0,
+      "tool_selection_recall": 1.0,
+      "tool_call_validity_recall": 1.0
+    }
+  },
+  "closure": {
+    "authorization": "User explicitly requested closure of V1C-004 in this turn",
+    "result": "done",
+    "sha": "9cbe94fffe269cde9d93c00fb6d1f6d25fd01264",
+    "fresh_independent_audit": "/root/v1c004_close_recheck",
+    "audit_tests": 120,
+    "audit_seconds": 37.64,
+    "audit_exit": 0,
+    "inputs_matched": 526,
+    "note": "Earlier pending-CI entries are historical. Only closure documentation changed after validated commit; no business/test/config/evaluation input changes."
+  }
 }

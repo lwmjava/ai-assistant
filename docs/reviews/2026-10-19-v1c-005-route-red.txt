@@ -1,0 +1,73 @@
+FFFF.                                                                    [100%]
+================================== FAILURES ===================================
+___________ test_tool_and_knowledge_intents_are_preserved_together ____________
+
+    def test_tool_and_knowledge_intents_are_preserved_together() -> None:
+        route = route_message("先调研知识库，再帮我算一下 1+1")
+>       assert route.kind.value == "combined"
+E       AssertionError: assert 'tools' == 'combined'
+E         
+E         - combined
+E         + tools
+
+tests\test_fast_route.py:104: AssertionError
+_ test_explicit_combination_cannot_fall_back_to_one_intent[\u6839\u636e\u77e5\u8bc6\u5e93\u8ba1\u7b97\u5dee\u65c5\u91d1\u989d\uff0c1\u4eba3\u5929-tools0] _
+
+message = '根据知识库计算差旅金额，1人3天', tools = {'calculator'}
+
+    @pytest.mark.parametrize("message,tools", [
+        ("根据知识库计算差旅金额，1人3天", {"calculator"}),
+        ("按报销标准计算差旅金额，1人3天", {"calculator"}),
+        ("根据文档运行这段代码", {"code_sandbox"}),
+    ])
+    def test_explicit_combination_cannot_fall_back_to_one_intent(message, tools):
+        route = route_message(message)
+>       assert route.kind.value == "combined"
+E       AssertionError: assert 'rag' == 'combined'
+E         
+E         - combined
+E         + rag
+
+tests\test_fast_route.py:115: AssertionError
+_ test_explicit_combination_cannot_fall_back_to_one_intent[\u6309\u62a5\u9500\u6807\u51c6\u8ba1\u7b97\u5dee\u65c5\u91d1\u989d\uff0c1\u4eba3\u5929-tools1] _
+
+message = '按报销标准计算差旅金额，1人3天', tools = {'calculator'}
+
+    @pytest.mark.parametrize("message,tools", [
+        ("根据知识库计算差旅金额，1人3天", {"calculator"}),
+        ("按报销标准计算差旅金额，1人3天", {"calculator"}),
+        ("根据文档运行这段代码", {"code_sandbox"}),
+    ])
+    def test_explicit_combination_cannot_fall_back_to_one_intent(message, tools):
+        route = route_message(message)
+>       assert route.kind.value == "combined"
+E       AssertionError: assert 'simple' == 'combined'
+E         
+E         - combined
+E         + simple
+
+tests\test_fast_route.py:115: AssertionError
+_ test_explicit_combination_cannot_fall_back_to_one_intent[\u6839\u636e\u6587\u6863\u8fd0\u884c\u8fd9\u6bb5\u4ee3\u7801-tools2] _
+
+message = '根据文档运行这段代码', tools = {'code_sandbox'}
+
+    @pytest.mark.parametrize("message,tools", [
+        ("根据知识库计算差旅金额，1人3天", {"calculator"}),
+        ("按报销标准计算差旅金额，1人3天", {"calculator"}),
+        ("根据文档运行这段代码", {"code_sandbox"}),
+    ])
+    def test_explicit_combination_cannot_fall_back_to_one_intent(message, tools):
+        route = route_message(message)
+>       assert route.kind.value == "combined"
+E       AssertionError: assert 'tools' == 'combined'
+E         
+E         - combined
+E         + tools
+
+tests\test_fast_route.py:115: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_fast_route.py::test_tool_and_knowledge_intents_are_preserved_together
+FAILED tests/test_fast_route.py::test_explicit_combination_cannot_fall_back_to_one_intent[\u6839\u636e\u77e5\u8bc6\u5e93\u8ba1\u7b97\u5dee\u65c5\u91d1\u989d\uff0c1\u4eba3\u5929-tools0]
+FAILED tests/test_fast_route.py::test_explicit_combination_cannot_fall_back_to_one_intent[\u6309\u62a5\u9500\u6807\u51c6\u8ba1\u7b97\u5dee\u65c5\u91d1\u989d\uff0c1\u4eba3\u5929-tools1]
+FAILED tests/test_fast_route.py::test_explicit_combination_cannot_fall_back_to_one_intent[\u6839\u636e\u6587\u6863\u8fd0\u884c\u8fd9\u6bb5\u4ee3\u7801-tools2]
+4 failed, 1 passed, 8 deselected in 2.62s

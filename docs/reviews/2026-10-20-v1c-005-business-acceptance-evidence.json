@@ -1,0 +1,49 @@
+{
+  "head": "9cbe94fffe269cde9d93c00fb6d1f6d25fd01264",
+  "branch": "codex/v1c-001-lazy-retrieval",
+  "python": "3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.22621-SP0",
+  "evidence_sha256": "be4903e9f358522f3b3b9d7bb860237b7d758d224fd3e85b1264365f0835055a",
+  "input_sha256": {
+    "count": 531,
+    "mismatches": []
+  },
+  "report_sha256": {
+    "count": 17,
+    "mismatches": []
+  },
+  "post_input_check": {
+    "count": 531,
+    "mismatches": []
+  },
+  "runs": [
+    {
+      "command": "python -m pytest tests/test_chat_combined_tools.py tests/test_combined_tool_contract.py -q --basetemp=data/pytest-tmp/v1c005-business-acceptance",
+      "exit_code": 0,
+      "passed": 154,
+      "skipped": 0,
+      "warnings": 1,
+      "seconds": 64.15
+    },
+    {
+      "command": "python docs/reviews/2026-10-20-v1c-005-business-acceptance-probe-script.txt",
+      "exit_code": 0,
+      "passed": 12,
+      "level": "E2",
+      "success_cases": 4,
+      "rejection_cases": 8
+    },
+    {
+      "command": "initial probe harness",
+      "exit_code": 1,
+      "classification": "验收脚本把无yield fixture误当生成器，业务动作前失败；后续移除错误next，产品输入无改动"
+    }
+  ],
+  "artifact_sha256": {
+    "docs/reviews/2026-10-20-v1c-005-business-acceptance-probe-harness-failure.txt": "3f8feaef287eb930e3ae6df6ffe665b9f17dc233bb0df486410decdcc7caec56",
+    "docs/reviews/2026-10-20-v1c-005-business-acceptance-probe-script.txt": "99f6af0551c7651bc55bde282cf289ed2464c6d22778fa0dca79760229d9d160",
+    "docs/reviews/2026-10-20-v1c-005-business-acceptance-probes.txt": "4c501d37ece02f9bf8c8a1da26dcf4dc6ba897d7d17014694fd18cecf0ed9d41",
+    "docs/reviews/2026-10-20-v1c-005-business-acceptance-pytest.txt": "a0b26012ce7d2c848927c253dc288c573302e5abcc4b1c813a254ed2f9652e3c"
+  },
+  "decision": "Delegated business acceptance PASS for approved E2 calculator-only scope; final SHA CI remains unverified; in_review"
+}

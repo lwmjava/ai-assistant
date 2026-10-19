@@ -1,0 +1,119 @@
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+_ test_colon_cannot_erase_original_rate_qualifier[\u4f4f\u5bbf\u6bcf\u665a\uff1a300\u5143\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-colon-red\test... 4, 22, 424144), username='0059d8cdbb254cb39a9361fd1276b10d', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס��ÿ����300Ԫ��'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ����300Ԫ��", "ס��ÿСʱ��300Ԫ��", "ס��ÿ��ÿ�գ�300Ԫ��",
+    ])
+    async def test_colon_cannot_erase_original_rate_qualifier(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:453: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000001BBFBB8D520>, [{'expression': '300'}], <function harness.<locals>.events at 0x000001BBE23A62A0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_colon_cannot_erase_original_rate_qualifier[\u4f4f\u5bbf\u6bcf\u5c0f\u65f6\uff1a300\u5143\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-colon-red\test... 4, 24, 126842), username='9c8625d8ca704af4a8910b3a8002688b', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס��ÿСʱ��300Ԫ��'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ����300Ԫ��", "ס��ÿСʱ��300Ԫ��", "ס��ÿ��ÿ�գ�300Ԫ��",
+    ])
+    async def test_colon_cannot_erase_original_rate_qualifier(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:453: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000001BBE23AB710>, [{'expression': '300'}], <function harness.<locals>.events at 0x000001BBFB8FECA0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+_ test_colon_cannot_erase_original_rate_qualifier[\u4f4f\u5bbf\u6bcf\u4eba\u6bcf\u65e5\uff1a300\u5143\u3002] _
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-colon-red\test... 4, 24, 424492), username='334a2d658ff84aa597ba50ffc0754a07', hashed_password='', token_version=0, is_test_user=False))
+rule = 'ס��ÿ��ÿ�գ�300Ԫ��'
+
+    @pytest.mark.parametrize("rule", [
+        "ס��ÿ����300Ԫ��", "ס��ÿСʱ��300Ԫ��", "ס��ÿ��ÿ�գ�300Ԫ��",
+    ])
+    async def test_colon_cannot_erase_original_rate_qualifier(isolated, rule):
+        payload = {"schema_version": 1,
+            "facts": [fact("fee", rule, "300Ԫ", 300, "CNY")], "expression": "fee"}
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:453: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...iever object at 0x000001BBFD94D070>, [{'expression': '300'}], <function harness.<locals>.events at 0x000001BBFD8A0680>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression': '300'}] == []
+E         
+E         Left contains one more item: {'expression': '300'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+______________ test_colon_cannot_erase_conflicting_policy_labels ______________
+
+isolated = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\v1c005-engineering-colon-red\test... 4, 24, 730156), username='099205b4171e44af990c3ae4ffcbe04a', hashed_password='', token_version=0, is_test_user=False))
+
+    async def test_colon_cannot_erase_conflicting_policy_labels(isolated):
+        rule = "ס�ޣ�ÿ��ÿ��300Ԫ��ס�ޣ�ÿ��ÿ��400Ԫ��"
+        payload = extraction()
+        payload["facts"] = [fact("hotel", rule, "ÿ��ÿ��300Ԫ", 300, "CNY/person/day"),
+                            *payload["facts"][2:]]
+        payload["expression"] = "hotel * persons * days"
+        case = harness(isolated, ExtractionModel(encode(payload)), EvidenceRetriever([chunk(rule)]))
+        await collect(case)
+>       assert_no_success(case)
+
+tests\test_combined_tool_contract.py:464: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+case = (AgentState(user_input='��֪ʶ�ⱨ����׼������ã�1�ˣ�3�졣', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names':...ject at 0x000001BBFD7F1730>, [{'expression': '((300*1)*3)'}], <function harness.<locals>.events at 0x000001BBFDA3CEA0>)
+
+    def assert_no_success(case):
+>       assert case[3] == []
+E       AssertionError: assert [{'expression...((300*1)*3)'}] == []
+E         
+E         Left contains one more item: {'expression': '((300*1)*3)'}
+E         Use -v to get more diff
+
+tests\test_combined_tool_contract.py:149: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_combined_tool_contract.py::test_colon_cannot_erase_original_rate_qualifier[\u4f4f\u5bbf\u6bcf\u665a\uff1a300\u5143\u3002]
+FAILED tests/test_combined_tool_contract.py::test_colon_cannot_erase_original_rate_qualifier[\u4f4f\u5bbf\u6bcf\u5c0f\u65f6\uff1a300\u5143\u3002]
+FAILED tests/test_combined_tool_contract.py::test_colon_cannot_erase_original_rate_qualifier[\u4f4f\u5bbf\u6bcf\u4eba\u6bcf\u65e5\uff1a300\u5143\u3002]
+FAILED tests/test_combined_tool_contract.py::test_colon_cannot_erase_conflicting_policy_labels
+4 failed, 100 deselected in 3.82s

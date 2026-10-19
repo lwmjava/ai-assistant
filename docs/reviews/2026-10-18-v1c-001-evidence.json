@@ -564,9 +564,7 @@
       "seconds": 8.88
     }
   },
-  "pending": [
-    "final commit Ubuntu CI"
-  ],
+  "pending": [],
   "provenance": "AI-authored Smoke/Adversarial, real Service+SQLite+local backend; synthetic LLM and MockEmbedding64 only validate contracts, not retrieval quality",
   "skipped": [
     "Existing CLI symlink creation unavailable on Windows",
@@ -585,5 +583,31 @@
     "status": "passed",
     "evidence": "explicit user message in current conversation",
     "quote": "我已检查普通问答、计算工具和知识库问答，并认可隔离测试证明的故障处理行为。V1C-001 用户业务验收通过"
+  },
+  "current_head_closure": {
+    "sha": "9cbe94fffe269cde9d93c00fb6d1f6d25fd01264",
+    "result": "done",
+    "historical_changed_inputs": [
+      "app/agents/fast_path.py",
+      "app/agents/pipeline.py",
+      "app/agents/plan_runtime.py",
+      "app/agents/prompts.py",
+      "app/agents/skills/base.py",
+      "app/agents/skills/manager.py",
+      "app/agents/state.py",
+      "app/agents/supervisor.py",
+      "app/agents/tools/executor.py",
+      "app/services/chat_service.py",
+      "tests/eval/test_agent_eval_runner.py",
+      "tests/test_chat_retrieval_lifecycle.py",
+      "tests/test_rag_028_model_capability.py",
+      "tests/test_supervisor.py"
+    ],
+    "current_input_manifest": "docs/reviews/2026-10-19-v1c-005-baseline.json",
+    "independent_recheck": "/root/v1c004_close_recheck",
+    "ci_run": "https://github.com/lwmjava/ai-assistant/actions/runs/39268207253",
+    "ci_jobs": "Backend/Frontend/Agent official baseline all success",
+    "report": "docs/reviews/2026-10-19-v1c-005-dependency-admission.md",
+    "scope": "documentation-only closure of historical missing-CI gate; original accepted business contract unchanged"
   }
 }

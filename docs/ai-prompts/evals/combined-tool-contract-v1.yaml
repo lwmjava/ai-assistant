@@ -1,0 +1,26 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial/Observed Regression"
+provenance: "AI-authored; isolated SQLite, real local retriever and calculator, synthetic extraction provider, MockEmbedding(64). Not Gold or production quality evidence."
+execution: "pytest tests/test_chat_combined_tools.py tests/test_combined_tool_contract.py tests/test_fast_route.py"
+protocol: "SYSTEM_COMBINED_EXTRACT / schema_version=1; exact selected-source offsets; Decimal and dimensional AST validation; actual calculator result comparison"
+cases:
+  - id: actual_four_entries
+    expected: "self/langgraph, chat/stream retrieve actual private policy and execute once; (300+80)*1*3 produces actual 1140.00 with current sources and new-Session audit."
+  - id: evidence_failure
+    expected: "Disabled/no_hit/below_threshold/unavailable/empty context and incompatible index identity start no calculator; no invented amount or stale sources."
+  - id: source_integrity
+    expected: "Foreign chunk, attachment/history-only facts, clipped offsets, unknown units, reversed lexemes, contradictory rates and punctuation-displaced qualifiers fail closed."
+  - id: bounded_arithmetic
+    expected: "Reject nonfinite/bool, duplicate keys/facts, unknown fields, unused facts, free constants/calls/power, dimensional conflicts and oversized/deep input. Actual float disagreement never becomes a verified amount."
+  - id: authority_skill
+    expected: "Current principal and skill restrictions are rechecked after model and tool.call suspension and before executor attempts. Denial audit contains no raw arguments."
+  - id: cancellation
+    expected: "Cancellation or outer generator close stops later stages; already performed actions retain their actual status and audit, with no automatic replay."
+  - id: model_tool_failure
+    expected: "Malformed extraction, model timeout and executor error never produce a success amount; existing retries remain bounded."
+  - id: cache_regenerate_resume
+    expected: "Extraction cache bypass leaves global caching enabled. Every request revalidates and executes; regeneration failure preserves original result. New combination is not a resumable Plan v1 checkpoint."
+  - id: untrusted_material
+    expected: "Source content and model extraction cannot expand calculator-only authority or replace the current user goal. Unsupported combinations explicitly start zero tools."
+  - id: trace
+    expected: "Actual extraction and tool outcomes enter existing Trace without source text, prompts or model response payload."

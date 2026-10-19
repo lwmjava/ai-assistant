@@ -40,6 +40,10 @@ ADR-0012：[SSE ActiveRun 生命周期与断线回放](0012-sse-active-run-lifec
 
 ADR-0013：[对话检索依赖按使用时机创建](0013-chat-retrieval-dependency-lifecycle.md)，Accepted，2026-10-18；用户批准按 V1C-001 实施计划和具体范围推进。对话层请求内惰性依赖，不改变既有默认检索策略或知识库读域；实现与验收以本卡证据为准。
 
+## 技能运行时绑定
+
+ADR-0014：[技能快照、运行时工具约束与恢复绑定](0014-skill-runtime-binding.md)，**Accepted**，2026-10-19用户明确批准V1C-003实施计划、允许路径与本决定；架构批准不代表实现验收通过。
+
 ## 格式
 
 每份 ADR 至少包含：背景、事实、选项、决定、后果、迁移、验证和回滚。模板见 `docs/governance/agent-harness-engineering.md` §17。

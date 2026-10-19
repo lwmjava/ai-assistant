@@ -21,7 +21,7 @@ from sqlmodel import Session, col, select
 from app.agents.fast_path import iter_fast_path
 from app.agents.pipeline import AgentEvent, AgentPipeline, AgentState, protocol_event, safe_error_metadata
 from app.agents.route import ChatRoute, RouteKind, route_message
-from app.agents.skills.base import SkillContext
+from app.agents.skills.base import SkillBindingRejected, SkillContext, SkillRuntime
 from app.agents.tools.base import Tool, ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.agents.tools.executor import ToolExecutor
@@ -54,6 +54,12 @@ from app.services.chat_attachments import (
     serialize_attachments,
 )
 from app.services.chat_retrieval import ChatRetriever
+from app.services.chat_skills import (
+    make_skill_runtime,
+    precheck_resume_skill_binding,
+    restore_skill_context,
+    validate_resume_skill_binding,
+)
 from app.services.quota import accept_user_message
 
 if TYPE_CHECKING:
@@ -330,6 +336,7 @@ class ChatService:
         retriever,
         tools,
         skill_ctx: SkillContext | None,
+        skill_runtime: SkillRuntime | None = None,
     ) -> AsyncIterator[AgentEvent]:
         skill_prompt = skill_ctx.prompt_injection if skill_ctx and skill_ctx.prompt_injection else ""
         logger.info("对话走短路径：%s", route.kind.value)
@@ -341,10 +348,14 @@ class ChatService:
             retriever,
             tools,
             skill_prompt,
+            skill_runtime=skill_runtime,
         ):
             yield event
 
-    def _build_pipeline(self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None):
+    def _build_pipeline(
+        self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None,
+        skill_runtime: SkillRuntime | None = None,
+    ):
         """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
 
         当配置 ``AGENT_ORCHESTRATION=langgraph`` 但 ``langgraph`` 未安装时，
@@ -367,11 +378,14 @@ class ChatService:
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
+            pipeline.skill_runtime = skill_runtime
             return pipeline
         try:
             from app.agents.supervisor import SupervisorGraph
 
-            return SupervisorGraph(self.llm, options=self._options, retriever=retriever, tools=tools)
+            return SupervisorGraph(
+                self.llm, options=self._options, retriever=retriever, tools=tools, skill_runtime=skill_runtime,
+            )
         except ImportError as exc:
             logger.warning("AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc)
             pipeline = AgentPipeline(
@@ -383,6 +397,7 @@ class ChatService:
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
+            pipeline.skill_runtime = skill_runtime
             return pipeline
 
     def _wire_runtime(
@@ -446,10 +461,18 @@ class ChatService:
             claim_execution(session, user.tenant_id, conv.id, original.id, claims)
             from app.services.agent_state_service import AgentStateService
 
+            try:
+                precheck_resume_skill_binding(session, user, conv.id, original.id)
+            except SkillBindingRejected as exc:
+                raise ResumeRejectedError(str(exc)) from None
             snapshot = AgentStateService(session, tenant_id=user.tenant_id, user_id=user.id).load_active(
                 conv.id, original.id)
             if snapshot is None:
                 raise ResumeRejectedError("没有可恢复的活动执行")
+            try:
+                validate_resume_skill_binding(session, user, snapshot)
+            except SkillBindingRejected as exc:
+                raise ResumeRejectedError(str(exc)) from None
             session.info["agent_resume_snapshot"] = snapshot
             message_id = original.id
         session.info["agent_message_id"] = message_id
@@ -532,19 +555,31 @@ class ChatService:
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
         # 4. 技能匹配与激活
-        skill_ctx = await self._match_skills_async(session, user, safe_message)
+        if resume_message_id is not None:
+            try:
+                skill_ctx = restore_skill_context(session, user, session.info["agent_resume_snapshot"])
+            except SkillBindingRejected as exc:
+                raise ResumeRejectedError(str(exc)) from None
+        else:
+            skill_ctx = await self._match_skills_async(session, user, safe_message)
+        try:
+            skill_runtime = make_skill_runtime(session, user, skill_ctx, tools)
+        except SkillBindingRejected as exc:
+            raise ResumeRejectedError(str(exc)) from None
         # 5. 调试追踪
         trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
         fast = None if resume_message_id or prepared else self._fast_route(safe_message)
         try:
             if fast is not None:
-                async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx):
+                async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime):
                     if _event.type == "error":
                         state.error_code = str(safe_error_metadata(_event.metadata)["code"])
                 result = state
             else:
-                pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace)
+                pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace, skill_runtime=skill_runtime)
+                if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
+                    raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
                 if isinstance(pipeline, AgentPipeline):
                     pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
                     self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
@@ -556,6 +591,8 @@ class ChatService:
             # 预算超限不是故障：给固定提示并把这次回复照常落库，不抛给路由。
             result = state
             result.answer = BUDGET_EXCEEDED_REPLY
+        except SkillBindingRejected as exc:
+            raise ResumeRejectedError(str(exc)) from None
         # 8. 收集追踪
         self._collect_trace(trace)
         # 9. 安全治理：输出过滤
@@ -626,12 +663,25 @@ class ChatService:
             state.context = memory.memory_context
 
         # 技能匹配与激活
-        skill_ctx = await self._match_skills_async(session, user, safe_message)
+        if resume_message_id is not None:
+            try:
+                skill_ctx = restore_skill_context(session, user, session.info["agent_resume_snapshot"])
+            except SkillBindingRejected as exc:
+                raise ResumeRejectedError(str(exc)) from None
+        else:
+            skill_ctx = await self._match_skills_async(session, user, safe_message)
 
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
+        try:
+            skill_runtime = make_skill_runtime(session, user, skill_ctx, tools)
+        except SkillBindingRejected as exc:
+            raise ResumeRejectedError(str(exc)) from None
         fast = None if resume_message_id or prepared else self._fast_route(safe_message)
-        pipeline = None if fast is not None else self._build_pipeline(retriever, tools, skill_ctx)
+        pipeline = (None if fast is not None else
+                    self._build_pipeline(retriever, tools, skill_ctx, skill_runtime=skill_runtime))
+        if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
+            raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
             self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
@@ -646,7 +696,7 @@ class ChatService:
         stopped = False
         try:
             if fast is not None:
-                events = self._iter_fast(state, fast, retriever, tools, skill_ctx)
+                events = self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime)
             else:
                 assert pipeline is not None
                 events = pipeline.run_stream(state)
@@ -683,6 +733,8 @@ class ChatService:
         except (GeneratorExit, asyncio.CancelledError):
             stopped = True
             raise
+        except SkillBindingRejected as exc:
+            raise ResumeRejectedError(str(exc)) from None
         except ContextBudgetError:
             # 预算超限时给固定提示，异常原文不外传；补一个 done 让流有终态。
             state.answer = BUDGET_EXCEEDED_REPLY

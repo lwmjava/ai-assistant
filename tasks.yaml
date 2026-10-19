@@ -115,10 +115,34 @@ tasks:
 
   - id: "V1C-003"
     title: "1.0收尾：补齐技能在不同编排路径中的生效接线"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     depends_on: ["SKILL-003", "PAGT-005", "V1C-002"]
     scope:
+      allowed_paths:
+        - "app/services/chat_service.py"
+        - "app/services/skill_service.py"
+        - "app/services/chat_skills.py"
+        - "app/agents/skills/base.py"
+        - "app/agents/skills/manager.py"
+        - "app/agents/pipeline.py"
+        - "app/agents/fast_path.py"
+        - "app/agents/supervisor.py"
+        - "app/agents/state.py"
+        - "app/agents/plan_runtime.py"
+        - "tests/test_chat_retrieval_lifecycle.py"
+        - "tests/test_skill_path_contract.py"
+        - "tests/test_skill_path_contract_review.py"
+        - "tests/test_agent_state_resume.py"
+        - "tests/test_structured_plan_runtime.py"
+        - "docs/ai-prompts/evals/skill-path-contract-v1.yaml"
+        - "docs/adr/0014-skill-runtime-binding.md"
+        - "docs/adr/README.md"
+        - "docs/plans/"
+        - "docs/reviews/"
+        - "README.md"
+        - "tasks.yaml"
+      forbidden_paths: [".env", "生产数据", "数据库迁移", "前端与API schema", "CI配置"]
       deliverables: ["技能Prompt与工具模式接线", "匹配、注入与实际执行的状态和版本证据"]
       non_goals: ["不做技能市场或自动淘汰", "技能绑定不授予额外权限"]
     acceptance:
@@ -128,7 +152,7 @@ tasks:
     risk: {level: "L2", side_effect: "技能与运行时接线变化，先核对或补充批准ADR"}
     execution:
       plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
-      progress: "仅登记Planned；实现方案、allowed_paths与必要ADR须在开工前明确。"
+      progress: "2026-10-19用户批准实施计划、允许路径及ADR-0014；已实现授权Prompt跨路径传递、工具绑定与原policy交集、离散撤权及精确版本恢复，Supervisor仅worker Prompt，未扩工具权限。主线36项与独立57项反例、相关旧回归最终共370 passed/1 warning（61.75秒），Ruff无缓存/mypy退出0（214文件）。独立入口审查发现P1/P2均先红后修并复验，修复记录docs/reviews/2026-10-19-v1c-003-review-fixes.md；实现说明docs/plans/implementation_v1c_003_20261019.md，验收对账docs/reviews/2026-10-19-v1c-003-acceptance.md。首轮全量2失败为旧Supervisor.__new__调用缺可选属性，添加None兼容默认后123项相关测试和370专项通过；520项最终输入重新冻结；第二轮全量2796通过/1失败，已从未修改的基线regenerate分支复现等时间戳加随机ID排序缺陷。拟仅稳定旧测试先问后答夹具，用户随后明确批准最小修正测试夹具，已追加tests/test_chat_retrieval_lifecycle.py路径并仅明确测试消息先后，未改排序业务。前置d886560的Backend/Frontend/Agent official baseline已success，仅作前置证据。批准夹具后164项通过，第三轮全量2797 passed/3 skipped/3 warnings（630.25秒）退出0，521项输入指纹一致。Final independent audit passed: 93 tests, exit 0, no in-scope P1/P2; report docs/reviews/2026-10-19-v1c-003-人工审核-第1轮.md. Business acceptance delegated by user and passed by independent /root/v1c003_business_acceptance: 93 tests plus 4 real-entry resume counterexamples; report docs/reviews/2026-10-19-v1c-003-business-acceptance.md. Pending final candidate Ubuntu CI; status in_review. User authorized commit/push after code comparison."
 
   - id: "V1C-004"
     title: "1.0收尾：补齐Supervisor任务的受控工具执行能力"

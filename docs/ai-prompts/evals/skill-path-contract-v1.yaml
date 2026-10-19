@@ -1,0 +1,29 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored deterministic cases; real Service/Runtime/SQLite with synthetic tools and scripted model; not Gold or production model-quality evidence"
+execution: "pytest tests/test_skill_path_contract.py tests/test_skill_path_contract_review.py"
+cases:
+  - id: prompt_support_matrix
+    expected: "Authorized prompt and exact content version reach default/fast and Supervisor workers; Supervisor control receives no skill body."
+  - id: binding_intersection
+    expected: "A binding narrows existing registered and per-path allowed tools; another registered tool cannot execute, including structured plans."
+  - id: real_bound_tool
+    expected: "A permitted bound calculator really executes; metadata records exact version and actual path without prompt or argument content."
+  - id: missing_and_unsupported
+    expected: "Missing bindings and unsupported SIMPLE/RAG/Supervisor tool mode have deterministic notices and never claim tool execution."
+  - id: low_score_terminal
+    expected: "Early RAG refusal retains the skill notice and empty sources at both Service entry points."
+  - id: isolation_and_fence
+    expected: "Other members' and tenants' private prompts never enter a model; authorized private/global content retains the untrusted fence."
+  - id: discrete_revocation
+    expected: "Disable, delete or version change before injection or the next tool prevents stale consumption; completed side effects are retained."
+  - id: error_and_cancel
+    expected: "Tool errors and cancellation retain their terminal states; cancellation propagates and has no success audit."
+  - id: malformed_binding
+    expected: "Missing, malformed, boolean/NaN schema version and container fields reject recovery without new model/tool calls or checkpoint deletion."
+  - id: exact_resume
+    expected: "Only the original authorized binding resumes; effective-version conflicts do not silently restart or replay committed tool prefixes."
+  - id: finite_confidence
+    expected: "Non-finite, boolean or out-of-range match confidence never activates a skill."
+  - id: disabled_compatibility
+    expected: "No-skill new snapshots use explicit empty binding; disabling skills preserves ordinary new-request behavior and rejects stale skill recovery."

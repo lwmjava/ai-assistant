@@ -20,6 +20,7 @@ from contextlib import suppress
 from typing import TypedDict
 
 from app.agents.pipeline import AgentEvent, AgentState, _failure_text, error_metadata, node_event, protocol_event
+from app.agents.skills.base import SkillBindingRejected, SkillRuntime
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, user_message_content
 from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
@@ -107,6 +108,8 @@ class SupervisorGraph:
     其余情形把状态与披露要求随图状态传给 research / draft 两个节点。
     """
 
+    skill_runtime: SkillRuntime | None = None
+
     def __init__(
         self,
         llm: LLMProvider,
@@ -114,12 +117,14 @@ class SupervisorGraph:
         retriever=None,  # Retriever 协议；为 None 时不注入检索
         tools: ToolRegistry | None = None,
         max_revisions: int = 2,
+        skill_runtime=None,
     ) -> None:
         self.llm = llm
         self.options = options or LLMOptions()
         self.retriever = retriever
         self.tools = tools
         self.max_revisions = max_revisions
+        self.skill_runtime = skill_runtime
         self._last_outcome: RetrievalOutcome | None = None
         self._event_queue: asyncio.Queue[AgentEvent | None] | None = None
         self._failure_metadata: dict[str, object] | None = None
@@ -206,6 +211,8 @@ class SupervisorGraph:
             "请写一段调研记录。"
         )
         system = _RESEARCH_SYSTEM
+        if self.skill_runtime:
+            system = self.skill_runtime.prompt(system, "supervisor.research")
         notice = state.get("retrieval_notice", "")
         if notice:
             system = f"{system}\n\n{notice}"
@@ -238,6 +245,8 @@ class SupervisorGraph:
             "请产出最终回答。"
         )
         system = _DRAFT_SYSTEM
+        if self.skill_runtime:
+            system = self.skill_runtime.prompt(system, "supervisor.draft")
         notice = state.get("retrieval_notice", "")
         if notice:
             system = f"{system}\n\n{notice}"
@@ -319,10 +328,17 @@ class SupervisorGraph:
             await self._observe_node("retrieval", self._retrieve)(state)
         else:
             await self._retrieve(state)
+        if self.skill_runtime:
+            note = self.skill_runtime.notice("supervisor")
+            if note:
+                state.retrieval_disclosure = "\n\n".join(filter(None, [note, state.retrieval_disclosure]))
         # 全低分是终态拒答：不进图，直接给出拒答语。
         if self._last_outcome is not None:
             terminal = self._last_outcome.terminal_reply()
             if terminal is not None:
+                note = self.skill_runtime.notice("supervisor") if self.skill_runtime else ""
+                if note:
+                    terminal = f"{note}\n\n{terminal}"
                 state.answer = terminal
                 state.draft = terminal
                 return state
@@ -341,6 +357,8 @@ class SupervisorGraph:
         }
         try:
             final = await self._graph.ainvoke(graph_state)
+        except SkillBindingRejected:
+            raise
         except Exception as exc:  # noqa: BLE001 — 编排级兜底
             logger.exception("Supervisor 编排执行失败")
             self._failure_metadata = error_metadata(exc)

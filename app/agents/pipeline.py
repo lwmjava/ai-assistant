@@ -37,6 +37,7 @@ from app.agents.prompts import (
     SYSTEM_RESPOND,
     SYSTEM_UNDERSTAND,
 )
+from app.agents.skills.base import SkillBindingRejected, SkillRuntime, empty_skill_binding, valid_skill_binding
 from app.agents.state import AgentStateStore, StateManager
 from app.agents.tools.base import Tool, ToolIntent, ToolRegistry, inspect_tool_call
 from app.agents.tools.executor import ToolExecutor
@@ -337,6 +338,7 @@ class AgentState:
     """管线在一次执行中的可变状态。"""
 
     user_input: str
+    skill_binding: dict = field(default_factory=empty_skill_binding)
     user_images: list[str] = field(default_factory=list, repr=False)
     retrieval_query: str | None = None
     history: list[ChatMessage] = field(default_factory=list)
@@ -472,6 +474,8 @@ class AgentPipeline:
         self.max_tool_rounds: int = 10
         # 技能系统：Prompt 注入文本（由 ChatService 匹配技能后设置）
         self.skill_prompt_injection: str = ""
+        self.skill_runtime: SkillRuntime | None = None
+        self.skill_path: str = "self"
         # 调试追踪
         self.trace = trace
         self._execution_policy = ExecutionPolicy()
@@ -495,7 +499,9 @@ class AgentPipeline:
         builder = getattr(self, builder_name)
         content = builder(state)
         # 注入技能提示词（若已激活）
-        if self.skill_prompt_injection:
+        if self.skill_runtime is not None:
+            system = self.skill_runtime.prompt(system, self.skill_path)
+        elif self.skill_prompt_injection:
             system = f"{system}\n\n---\n# 激活的技能指令\n{self.skill_prompt_injection}"
         t0 = time.monotonic()
         if self.structured_plans_enabled or state.structured_plan is not None:
@@ -518,7 +524,19 @@ class AgentPipeline:
                 raise PlanExecutionError("INVALID_STEP_OUTPUT", "draft")
         if is_action_stage and isinstance(result, str) and not result.strip():
             raise ValueError("EMPTY_ACTION_OUTPUT")
-        return result.strip()
+        text = result.strip()
+        if system.startswith(_FINAL_SYSTEM):
+            note = self._skill_notice(state)
+            if note:
+                text = f"{note}\n\n{text}"
+        return text
+
+    def _skill_notice(self, state: AgentState) -> str:
+        if self.skill_runtime is None:
+            return ""
+        policy = ExecutionPolicy() if state.needs_full_pipeline else _SHORT_PATH_POLICY
+        registry = self._tools_for_policy(policy)
+        return self.skill_runtime.notice(self.skill_path, [t.name for t in registry.all()] if registry else [])
 
     # ── 各环节内容构造 ──────────────────────────────
     @staticmethod
@@ -544,9 +562,10 @@ class AgentPipeline:
         )
 
     def _build_plan(self, state: AgentState) -> str:
-        tools = self.tools.describe() if self.tools is not None else "（无工具，只能规划 reason 步骤）"
+        registry = self._tools_for_policy(ExecutionPolicy())
+        tools = registry.describe() if registry is not None else "（无工具，只能规划 reason 步骤）"
         remaining = not state.tool_budget_exhausted and state.tool_rounds_used < self.max_tool_rounds
-        guidance = _confirmed_code_guidance(self.tools, remaining)
+        guidance = _confirmed_code_guidance(registry, remaining)
         return (
             f"## 用户意图理解\n{state.understanding}\n\n"
             f"## 最近对话\n{recent_dialogue(state.history)}\n\n"
@@ -573,6 +592,11 @@ class AgentPipeline:
                 raise PlanExecutionError("SENSITIVE_PLAN_ARGUMENT", step["id"])
             if step["kind"] != "tool":
                 continue
+            if self.skill_runtime is not None:
+                self.skill_runtime.check()
+                allowed = self.skill_runtime.allowed(None)
+                if allowed is not None and step["tool"] not in allowed:
+                    raise PlanExecutionError("PERMISSION_DENIED", step["id"])
             tool = self.tools.get(step["tool"]) if self.tools is not None else None
             if tool is None:
                 raise PlanExecutionError("TOOL_UNAVAILABLE", step["id"])
@@ -595,22 +619,28 @@ class AgentPipeline:
         self._checkpoint(state, stage="plan", status="running")
 
     async def _stream_final(self, state: AgentState) -> AsyncIterator[str]:
+        system = self.skill_runtime.prompt(_FINAL_SYSTEM, self.skill_path) if self.skill_runtime else _FINAL_SYSTEM
+        note = self._skill_notice(state)
+        if note:
+            yield note + "\n\n"
         if self.structured_plans_enabled or state.structured_plan is not None:
             async with asyncio.timeout(model_timeout(self)):
                 async for delta in self.llm.stream_chat(
-                    self._messages(_FINAL_SYSTEM, self._build_respond(state), state), self.options):
+                    self._messages(system, self._build_respond(state), state), self.options):
                     yield delta
         else:
             async for delta in self.llm.stream_chat(
-                self._messages(_FINAL_SYSTEM, self._build_respond(state), state), self.options):
+                self._messages(system, self._build_respond(state), state), self.options):
                 yield delta
 
     def _tools_for_policy(self, policy: ExecutionPolicy) -> ToolRegistry | None:
         if self.tools is None or not policy.include_tools:
             return None
-        if policy.allowed_tool_names is None:
+        allowed = (self.skill_runtime.allowed(policy.allowed_tool_names)
+                   if self.skill_runtime else policy.allowed_tool_names)
+        if allowed is None:
             return self.tools
-        selected = [tool for tool in self.tools.all() if tool.name in policy.allowed_tool_names]
+        selected = [tool for tool in self.tools.all() if tool.name in allowed]
         if not selected:
             return None
         return ToolRegistry(selected)
@@ -628,6 +658,12 @@ class AgentPipeline:
         """执行工具调用并追加观测结果到状态。"""
         from app.agents.tools.outcome import ToolOutput
 
+        if self.skill_runtime is not None:
+            self.skill_runtime.check()
+            allowed = self.skill_runtime.allowed(self._execution_policy.allowed_tool_names)
+            if allowed is not None and call.name not in allowed:
+                self.skill_runtime.record(self.skill_path, "denied", call.name)
+                return ToolOutput(_DENIED_OBSERVATION, status="denied")
         if self.tools is None:
             return ToolOutput("[工具调用失败] 当前未配置任何工具。", status="error")
         if self._reject_untrusted_tool(call.name, state):
@@ -636,7 +672,14 @@ class AgentPipeline:
         if executor is None:
             executor = ToolExecutor(self.tools)
             self.executor = executor
-        result = await executor.execute(call)
+        try:
+            result = await executor.execute(call)
+        except (asyncio.CancelledError, GeneratorExit):
+            if self.skill_runtime is not None:
+                self.skill_runtime.record(self.skill_path, "cancelled", call.name)
+            raise
+        if self.skill_runtime is not None:
+            self.skill_runtime.record(self.skill_path, result.status, call.name)
         return ToolOutput(result.observation, status=result.status)
 
     @staticmethod
@@ -649,6 +692,8 @@ class AgentPipeline:
 
     def _resume_state(self, state: AgentState) -> bool:
         """run 开始时尝试从 store 恢复活动 checkpoint；无/过期/损坏→全新 run。"""
+        binding = self.skill_runtime.binding() if self.skill_runtime else empty_skill_binding()
+        state.skill_binding = binding
         if self.state_store is None or not settings.AGENT_STATE_PERSIST_ENABLED:
             return False
         conv_id = self.state_binding.get("conversation_id")
@@ -659,6 +704,12 @@ class AgentPipeline:
             data = self.state_binding.pop("resume_snapshot", None)
             if data is None:
                 data = self.state_store.load_active(conv_id, self.state_binding.get("message_id"))
+            if data:
+                if (not valid_skill_binding(data.get("skill_binding"))
+                        or data["skill_binding"] != binding):
+                    raise SkillBindingRejected()
+                if self.skill_runtime:
+                    self.skill_runtime.check()
             if data and StateManager(state).apply_snapshot(data):
                 if state.structured_plan is not None:
                     try:
@@ -674,7 +725,7 @@ class AgentPipeline:
                 state.retrieval_notice = ""
                 state.retrieval_disclosure = ""
                 return True
-        except PlanExecutionError:
+        except (PlanExecutionError, SkillBindingRejected):
             raise
         except Exception as exc:  # noqa: BLE001
             logger.warning("Agent checkpoint restore unavailable error_type=%s", type(exc).__name__)
@@ -907,6 +958,9 @@ class AgentPipeline:
             # 把它变成一段看起来像知识回答的文字。不依赖模型服从 prompt。
             terminal = self._terminal_reply(state)
             if terminal is not None:
+                note = self._skill_notice(state)
+                if note:
+                    terminal = f"{note}\n\n{terminal}"
                 state.answer = terminal
                 state.draft = terminal
                 if self.trace:
@@ -937,6 +991,8 @@ class AgentPipeline:
             if self.trace:
                 self.trace.stage_end("响应")
                 self.trace.finish()
+        except SkillBindingRejected:
+            raise
         except Exception as exc:  # noqa: BLE001 — 管线级兜底，避免向上吞没请求
             if self.trace:
                 self.trace.finish(error=str(exc))
@@ -1051,6 +1107,13 @@ class AgentPipeline:
             state.tool_results.append(_INVALID_CALL_OBSERVATION)
             return "invalid"
         call = intent.call
+        if self.skill_runtime is not None:
+            self.skill_runtime.check()
+            allowed = self.skill_runtime.allowed(policy.allowed_tool_names)
+            if allowed is not None and call.name not in allowed:
+                self.skill_runtime.record(self.skill_path, "denied", call.name)
+                state.tool_results.append(_DENIED_OBSERVATION)
+                return "denied"
         if tool_fingerprint(call.name, call.arguments) in state.executed_tool_fingerprints:
             state.tool_results.append(_DUPLICATE_OBSERVATION)
             return "skip"
@@ -1220,6 +1283,9 @@ class AgentPipeline:
             # 4b. 检索终态短路：全低分直接吐出拒答语，不进入生成
             terminal = self._terminal_reply(state)
             if terminal is not None:
+                note = self._skill_notice(state)
+                if note:
+                    terminal = f"{note}\n\n{terminal}"
                 state.answer = terminal
                 state.draft = terminal
                 for piece in _chunk_text(terminal):
@@ -1267,6 +1333,8 @@ class AgentPipeline:
             # 披露语已作为 token 先行吐出，这里补回 state.answer，
             # 保证 state 与用户实际看到的一致。
             state.answer = self._with_disclosure(state, "".join(response_chunks))
+        except SkillBindingRejected:
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.exception("Agent 流式管线执行失败")
             state.error_code = str(error_metadata(exc)["code"])

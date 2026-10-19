@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from datetime import timedelta
 
 import pytest
 from sqlmodel import Session, SQLModel, col, create_engine, select
@@ -296,6 +297,11 @@ async def test_regenerate_direct_reply_stays_independent_of_unused_rag(lifecycle
         conversation_id = conv.id
     with Session(engine) as fresh:
         original = fresh.exec(select(Message).where(col(Message.role) == "assistant")).one()
+        question = fresh.exec(select(Message).where(col(Message.role) == "user")).one()
+        original.created_at = question.created_at + timedelta(microseconds=1)
+        fresh.add(original)
+        fresh.commit()
+        assert question.created_at < original.created_at
         original_id = original.id
 
     def broken():

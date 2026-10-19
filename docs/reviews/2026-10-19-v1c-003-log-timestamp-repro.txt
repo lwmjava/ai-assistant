@@ -1,0 +1,2 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+{"result": "pre_existing_defect_reproduced", "baseline_sha": "d886560", "regenerate_ast_unchanged": true, "equal_created_at": true, "rejection": "baseline 409 before any chat/model call", "messages_after": 2}

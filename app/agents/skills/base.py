@@ -7,6 +7,10 @@
 - ``SkillMatch``：匹配结果（哪个技能被触发、置信度）
 """
 
+import logging
+import re
+from collections.abc import Callable, Iterable
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -159,3 +163,94 @@ class SkillContext:
     origin: str = "builtin"
     # Exact activated snapshots, not all matching candidates or an authority grant.
     versions: list[dict[str, str]] = field(default_factory=list)
+    mode: SkillMode = SkillMode.PROMPT_INJECTION
+
+
+class SkillBindingRejected(RuntimeError):  # noqa: N818 -- stable typed resume rejection
+    """A skill authority/version conflict cannot safely resume old execution."""
+
+    def __init__(self) -> None:
+        super().__init__("技能授权或版本已变化，无法继续执行，请重新发起请求。")
+
+
+def empty_skill_binding() -> dict:
+    return {"version": 1, "skills": [], "mode": "none", "tool_names": []}
+
+
+def valid_skill_binding(value: object) -> bool:
+    if not isinstance(value, dict) or set(value) != {"version", "skills", "mode", "tool_names"}:
+        return False
+    if type(value["version"]) is not int or value["version"] != 1:
+        return False
+    skills, names = value["skills"], value["tool_names"]
+    if (not isinstance(skills, list) or len(skills) > 32 or not isinstance(names, list)
+            or len(names) > 128 or any(not isinstance(n, str) or not n or len(n) > 256 for n in names)
+            or len(set(names)) != len(names)):
+        return False
+    if not skills:
+        return value == empty_skill_binding()
+    if not isinstance(value["mode"], str) or value["mode"] not in {"prompt_injection", "tool"}:
+        return False
+    required = {"name", "version", "content_revision", "effective_version", "origin"}
+    return all(isinstance(item, dict) and set(item) == required
+               and all(isinstance(v, str) and 0 < len(v) <= 512 for v in item.values())
+               and item["origin"] in {"builtin", "global", "private"} for item in skills)
+
+
+class SkillRuntime:
+    """Request-local metadata and discrete service authorization callbacks; no DB access."""
+
+    def __init__(self, ctx: SkillContext | None = None, verify: Callable[[], None] | None = None):
+        self.ctx = deepcopy(ctx) if ctx is not None else SkillContext()
+        self.verify = verify
+        self.registered_tool_names: frozenset[str] = frozenset()
+
+    def binding(self) -> dict:
+        if not self.ctx.versions:
+            return empty_skill_binding()
+        value = {"version": 1, "skills": deepcopy(self.ctx.versions),
+                 "mode": self.ctx.mode.value, "tool_names": list(self.ctx.tool_names)}
+        if not valid_skill_binding(value):
+            raise SkillBindingRejected()
+        return value
+
+    def check(self) -> None:
+        if self.ctx.versions and self.verify is not None:
+            self.verify()
+
+    def record(self, path: str, status: str, tool: str | None = None) -> None:
+        safe_tool = "none" if tool is None else "unknown"
+        if (isinstance(tool, str) and tool in self.registered_tool_names
+                and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_:-]{0,127}", tool)):
+            safe_tool = tool
+        for identity in self.ctx.versions:
+            logging.getLogger(__name__).info(
+                "skill_runtime name=%s origin=%s effective_version=%s path=%s status=%s tool=%s",
+                identity["name"], identity["origin"], identity["effective_version"], path, status, safe_tool)
+
+    def prompt(self, base: str, path: str = "self") -> str:
+        if not self.ctx.prompt_injection:
+            return base
+        self.check()
+        self.record(path, "injected")
+        return f"{base}\n\n---\n# 激活的技能指令\n{self.ctx.prompt_injection}"
+
+    def allowed(self, original: frozenset[str] | None) -> frozenset[str] | None:
+        if self.ctx.mode != SkillMode.TOOL or not self.ctx.versions:
+            return original
+        bound = frozenset(self.ctx.tool_names)
+        return bound if original is None else bound & original
+
+    def notice(self, path: str, available: Iterable[str] | None = None) -> str:
+        if self.ctx.mode != SkillMode.TOOL or not self.ctx.versions:
+            return ""
+        self.check()
+        if path in {"supervisor", "simple", "rag"}:
+            self.record(path, "unsupported")
+            return "【技能提示】当前路径不支持执行技能绑定工具。"
+        if not self.ctx.tool_names or (
+                available is not None and not set(self.ctx.tool_names).issubset(set(available))):
+            self.record(path, "binding_missing")
+            return "【技能提示】技能绑定工具缺失或在当前路径不可用。"
+        self.record(path, "binding_available")
+        return ""

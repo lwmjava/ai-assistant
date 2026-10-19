@@ -18,6 +18,7 @@ from app.agents.pipeline import (
     protocol_event,
 )
 from app.agents.route import ChatRoute, RouteKind
+from app.agents.skills.base import SkillBindingRejected, SkillRuntime
 from app.agents.tools.base import ToolRegistry
 from app.agents.tools.executor import ToolExecutor
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text, user_message_content
@@ -103,13 +104,15 @@ async def iter_fast_path(
     retriever,
     tools: ToolRegistry | None,
     skill_prompt: str = "",
+    skill_runtime: SkillRuntime | None = None,
 ) -> AsyncIterator[AgentEvent]:
     """短路路径只报告实际执行的节点，不伪造被省略的规划/反思。"""
     yield protocol_event("intent.classified", intent=route.kind.value, shortcut=True)
     current: str | None = None
     names = {"行动": "action", "检索": "retrieval", "响应": "respond"}
     try:
-        async for event in _iter_fast_path_events(llm, options, state, route, retriever, tools, skill_prompt):
+        async for event in _iter_fast_path_events(
+                llm, options, state, route, retriever, tools, skill_prompt, skill_runtime):
             if event.type == "stage":
                 if current is not None:
                     yield node_event("node.finished", current, status="done")
@@ -122,6 +125,8 @@ async def iter_fast_path(
     except asyncio.CancelledError:
         if current is not None:
             yield node_event("node.finished", current, status="cancelled")
+        raise
+    except SkillBindingRejected:
         raise
     except Exception as exc:
         if current is not None:
@@ -140,6 +145,7 @@ async def _iter_fast_path_events(
     retriever,
     tools: ToolRegistry | None,
     skill_prompt: str = "",
+    skill_runtime: SkillRuntime | None = None,
 ) -> AsyncIterator[AgentEvent]:
     """按已决定的短路径产出事件，并把最终文本写进 state.answer。"""
     if route.kind is RouteKind.TOOLS and route.tool_names:
@@ -148,11 +154,19 @@ async def _iter_fast_path_events(
             pipeline.executor = ToolExecutor(tools)
         pipeline.max_tool_rounds = _TOOL_ROUND_CAP
         pipeline.skill_prompt_injection = skill_prompt
+        pipeline.skill_runtime = skill_runtime
+        pipeline.skill_path = "fast.tools"
         policy = ExecutionPolicy(allowed_tool_names=route.tool_names)
         yield AgentEvent("stage", "行动")
         async for event in pipeline._iter_action_loop(state, policy):
             yield event
         state.answer = state.draft or ""
+        if skill_runtime:
+            available = [t.name for t in tools.all() if t.name in route.tool_names] if tools else []
+            note = skill_runtime.notice("fast.tools", available)
+            if note:
+                state.answer = f"{note}\n\n{state.answer}"
+                state.draft = state.answer
         yield AgentEvent("stage", "响应")
         for piece in _chunk_tokens(state.answer):
             yield AgentEvent("token", piece)
@@ -205,6 +219,9 @@ async def _iter_fast_path_events(
         )
         # 全低分：拒答语本身就是结论，直接吐给用户，不交给模型改写。
         if terminal is not None:
+            note = skill_runtime.notice(route.kind.value) if skill_runtime else ""
+            if note:
+                terminal = f"{note}\n\n{terminal}"
             state.answer = terminal
             state.draft = terminal
             for piece in _chunk_tokens(terminal):
@@ -224,11 +241,17 @@ async def _iter_fast_path_events(
         else:
             extra = "## 知识库\n没有可用的检索结果。"
 
+    if skill_runtime:
+        note = skill_runtime.notice(route.kind.value)
+        if note:
+            state.retrieval_disclosure = "\n\n".join(filter(None, [note, state.retrieval_disclosure]))
+    system = _DIRECT_SYSTEM + ("\n\n" + notice if notice else "")
+    system = skill_runtime.prompt(system, route.kind.value) if skill_runtime else _system(system, skill_prompt)
     async for event in _stream_reply(
         llm,
         options,
         state,
-        _system(_DIRECT_SYSTEM + ("\n\n" + notice if notice else ""), skill_prompt),
+        system,
         _user_block(state, extra),
     ):
         yield event

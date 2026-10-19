@@ -15,6 +15,7 @@ import json
 from typing import TYPE_CHECKING, Protocol
 
 from app.agents.plan import validate_plan, validate_progress
+from app.agents.skills.base import valid_skill_binding
 
 if TYPE_CHECKING:
     from app.agents.pipeline import AgentState
@@ -54,6 +55,7 @@ class StateManager:
 
     # 允许序列化进 checkpoint 的字段（AgentState 子集）。
     _SNAPSHOT_FIELDS = (
+        "skill_binding",
         "understanding",
         "plan",
         "context",
@@ -93,6 +95,10 @@ class StateManager:
             if name not in data:
                 continue
             value = data[name]
+            if name == "skill_binding":
+                if not valid_skill_binding(value):
+                    return False
+                continue
             if name in {"structured_plan", "plan_progress", "plan_cursor", "failed_step_id"}:
                 continue
             if name in {"tool_budget_exhausted", "needs_full_pipeline"}:

@@ -1,0 +1,82 @@
+........................................................................ [  2%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [ 10%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 18%]
+........................................................................ [ 20%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+...........................................ss........s.................. [ 28%]
+........................................................................ [ 30%]
+.........................................F.............................. [ 33%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+............................F........................................... [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 51%]
+........................................................................ [ 54%]
+........................................................................ [ 56%]
+........................................................................ [ 59%]
+........................................................................ [ 61%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 82%]
+........................................................................ [ 84%]
+........................................................................ [ 87%]
+........................................................................ [ 90%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 97%]
+................................................................         [100%]
+================================== FAILURES ===================================
+________________ test_supervisor_preserves_typed_model_failure ________________
+tests\test_error_model_boundary.py:66: in test_supervisor_preserves_typed_model_failure
+    state = asyncio.run(graph.run(AgentState(user_input="question")))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\asyncio\runners.py:194: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\asyncio\runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\asyncio\base_events.py:664: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+app\agents\supervisor.py:329: in run
+    if self.skill_runtime:
+       ^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'SupervisorGraph' object has no attribute 'skill_runtime'
+_______________ test_supervisor_draft_sends_chatmessage_objects _______________
+tests\test_p0_regression.py:362: in test_supervisor_draft_sends_chatmessage_objects
+    await graph._node_draft({"user_input": "你好", "plan": "", "research": "调研"})
+app\agents\supervisor.py:246: in _node_draft
+    if self.skill_runtime:
+       ^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'SupervisorGraph' object has no attribute 'skill_runtime'
+============================== warnings summary ===============================
+app\agents\tools\sandbox\sandbox.py:93
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\tools\sandbox\sandbox.py:93: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    ast.NameConstant,  # Python 3.7 兼容
+
+tests/test_rag_019_acceptance.py::test_cache_acceptance_numeric_vector_change_never_hidden[vector1]
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\rag\vectorstore\local.py:268: RuntimeWarning: invalid value encountered in divide
+    matrix = matrix / norms
+
+tests/test_rag_019_acceptance.py::test_cache_acceptance_numeric_vector_change_never_hidden[vector2]
+  D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\numpy\linalg\_linalg.py:2832: RuntimeWarning: overflow encountered in multiply
+    s = (x.conj() * x).real
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_error_model_boundary.py::test_supervisor_preserves_typed_model_failure
+FAILED tests/test_p0_regression.py::test_supervisor_draft_sends_chatmessage_objects
+2 failed, 2795 passed, 3 skipped, 3 warnings in 623.82s (0:10:23)

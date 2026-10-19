@@ -337,6 +337,7 @@ class SkillManager:
         ctx.confidence = max(activated_confidences, default=0.0)
         if ctx.versions:
             ctx.origin = ctx.versions[0]["origin"]
+            ctx.mode = next(m.skill.mode for m in matches if m.is_match)
 
         if skill_names:
             logger.info(

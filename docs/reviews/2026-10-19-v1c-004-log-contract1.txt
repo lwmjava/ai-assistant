@@ -1,0 +1,118 @@
+.........................................F.....FF....................... [ 30%]
+.........FFF............................FF........................FF.... [ 61%]
+........................................................................ [ 91%]
+...................                                                      [100%]
+================================== FAILURES ===================================
+________________ test_supervisor_delegates_and_returns_summary ________________
+tests\test_supervisor.py:241: in test_supervisor_delegates_and_returns_summary
+    assert state.answer == "���ܽ��"
+E   AssertionError: assert '������ִ����ʵ��not_...ִ�й��ߡ�\n\n���ܽ��' == '���ܽ��'
+E     
+E     + ������ִ����ʵ��not_called����ǰ·��δִ�й��ߡ�
+E     + 
+E       ���ܽ��
+________ test_supervisor_drafts_once_when_model_keeps_asking_to_draft _________
+tests\test_supervisor.py:388: in test_supervisor_drafts_once_when_model_keeps_asking_to_draft
+    assert state.answer == "��1��"
+E   AssertionError: assert '������ִ����ʵ��not_...δִ�й��ߡ�\n\n��1��' == '��1��'
+E     
+E     + ������ִ����ʵ��not_called����ǰ·��δִ�й��ߡ�
+E     + 
+E       ��1��
+____________ test_supervisor_research_is_one_call_and_stops_at_two ____________
+tests\test_supervisor.py:403: in test_supervisor_research_is_one_call_and_stops_at_two
+    assert state.answer == "����"
+E   AssertionError: assert '������ִ����ʵ��not_...��δִ�й��ߡ�\n\n����' == '����'
+E     
+E     + ������ִ����ʵ��not_called����ǰ·��δִ�й��ߡ�
+E     + 
+E       ����
+------------------------------ Captured log call ------------------------------
+INFO     app.agents.supervisor:supervisor.py:311 Supervisor ���������Ѵ����� 2��ǿ��ת��׫д
+_____________ test_cancel_propagates_without_success_audit[fast] ______________
+tests\test_tool_path_contract.py:377: in test_cancel_propagates_without_success_audit
+    assert _audits() == []
+E   AssertionError: assert [AuditLog(id=...'path_probe')] == []
+E     
+E     Left contains one more item: AuditLog(id='df88d62ceadf4a89b0ee10890c73cafb', action='tool_call', user_id=None, resource='tool'/'path_probe')
+E     Use -v to get more diff
+_____________ test_cancel_propagates_without_success_audit[wired] _____________
+tests\test_tool_path_contract.py:377: in test_cancel_propagates_without_success_audit
+    assert _audits() == []
+E   AssertionError: assert [AuditLog(id=...'path_probe')] == []
+E     
+E     Left contains one more item: AuditLog(id='56fea529f1ed41ac8a7ebaf5cc205d90', action='tool_call', user_id=None, resource='tool'/'path_probe')
+E     Use -v to get more diff
+____________ test_cancel_propagates_without_success_audit[unwired] ____________
+tests\test_tool_path_contract.py:377: in test_cancel_propagates_without_success_audit
+    assert _audits() == []
+E   AssertionError: assert [AuditLog(id=...'path_probe')] == []
+E     
+E     Left contains one more item: AuditLog(id='9bda340a285b48c2a87505c2f7fcb298', action='tool_call', user_id=None, resource='tool'/'path_probe')
+E     Use -v to get more diff
+_____ test_supervisor_workers_consume_prompt_but_control_does_not[False] ______
+tests\test_skill_path_contract.py:104: in test_supervisor_workers_consume_prompt_but_control_does_not
+    assert calls and all("BRIDGE_BODY" in text for text in calls)
+E   assert ([])
+------------------------------ Captured log call ------------------------------
+INFO     app.agents.skills.manager:manager.py:126 ��ע�Ἴ�ܣ�bridge_probe��v1.0��
+INFO     app.agents.skills.manager:manager.py:343 �����Ѽ��bridge_probe�����Ŷ� 1.00��ģʽ prompt_injection��
+INFO     app.agents.skills.manager:manager.py:350 skill_activated name=bridge_probe effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e origin=builtin
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e path=service status=matched tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e path=supervisor.research status=injected tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e path=supervisor.draft status=injected tool=none
+______ test_supervisor_workers_consume_prompt_but_control_does_not[True] ______
+tests\test_skill_path_contract.py:104: in test_supervisor_workers_consume_prompt_but_control_does_not
+    assert calls and all("BRIDGE_BODY" in text for text in calls)
+E   assert ([])
+------------------------------ Captured log call ------------------------------
+INFO     app.agents.skills.manager:manager.py:126 ��ע�Ἴ�ܣ�bridge_probe��v1.0��
+INFO     app.agents.skills.manager:manager.py:343 �����Ѽ��bridge_probe�����Ŷ� 1.00��ģʽ prompt_injection��
+INFO     app.agents.skills.manager:manager.py:350 skill_activated name=bridge_probe effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e origin=builtin
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e path=service status=matched tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e path=supervisor.research status=injected tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:51c34369099dbe5c4882099fdaeada07051b8ca3d818d8cf35f7a16f2540f45e path=supervisor.draft status=injected tool=none
+INFO     app.services.chat_service:chat_service.py:744 rag_sources_returned source_count=0
+_ test_unsupported_tool_mode_is_explicit_and_never_reports_execution[\u5148\u8c03\u7814\u591a\u8f6e\u9700\u6c42-False] _
+tests\test_skill_path_contract.py:209: in test_unsupported_tool_mode_is_explicit_and_never_reports_execution
+    assert "��������ʾ��" in answer.content and "��֧��" in answer.content
+E   AssertionError: assert ('��������ʾ��' in '������ִ����ʵ��not_called��������ʵ��ִ�м�¼��ģ�����ֲ����ɹ���ִ��֤����\n\n���뼼�ܻش�')
+E    +  where '������ִ����ʵ��not_called��������ʵ��ִ�м�¼��ģ�����ֲ����ɹ���ִ��֤����\n\n���뼼�ܻش�' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 49, 9, 93231), id='ad36b5f3a63d4f468fb8b3b749932aa7', role='assi...1), content='������ִ����ʵ��not_called��������ʵ��ִ�м�¼��ģ�����ֲ����ɹ���ִ��֤����\n\n���뼼�ܻش�', sources=None, status='complete', attachments=None).content
+------------------------------ Captured log call ------------------------------
+INFO     app.agents.skills.manager:manager.py:126 ��ע�Ἴ�ܣ�bridge_probe��v1.0��
+INFO     app.agents.skills.manager:manager.py:343 �����Ѽ��bridge_probe�����Ŷ� 1.00��ģʽ tool��
+INFO     app.agents.skills.manager:manager.py:350 skill_activated name=bridge_probe effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c origin=builtin
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c path=service status=matched tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c path=service status=bound tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c path=supervisor.research status=binding_available tool=none
+_ test_unsupported_tool_mode_is_explicit_and_never_reports_execution[\u5148\u8c03\u7814\u591a\u8f6e\u9700\u6c42-True] _
+tests\test_skill_path_contract.py:209: in test_unsupported_tool_mode_is_explicit_and_never_reports_execution
+    assert "��������ʾ��" in answer.content and "��֧��" in answer.content
+E   AssertionError: assert ('��������ʾ��' in '������ִ����ʵ��not_called��������ʵ��ִ�м�¼��ģ�����ֲ����ɹ���ִ��֤����\n\n���뼼�ܻش�')
+E    +  where '������ִ����ʵ��not_called��������ʵ��ִ�м�¼��ģ�����ֲ����ɹ���ִ��֤����\n\n���뼼�ܻش�' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 49, 9, 725086), id='764a32b7995f4e53ba670df0e7c5e3e9', role='ass...6), content='������ִ����ʵ��not_called��������ʵ��ִ�м�¼��ģ�����ֲ����ɹ���ִ��֤����\n\n���뼼�ܻش�', sources=None, status='complete', attachments=None).content
+------------------------------ Captured log call ------------------------------
+INFO     app.agents.skills.manager:manager.py:126 ��ע�Ἴ�ܣ�bridge_probe��v1.0��
+INFO     app.agents.skills.manager:manager.py:343 �����Ѽ��bridge_probe�����Ŷ� 1.00��ģʽ tool��
+INFO     app.agents.skills.manager:manager.py:350 skill_activated name=bridge_probe effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c origin=builtin
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c path=service status=matched tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c path=service status=bound tool=none
+INFO     app.agents.skills.base:base.py:227 skill_runtime name=bridge_probe origin=builtin effective_version=1.0#sha256:aa5f58c277654736920c57d77cabc1b6ee1b0520267698f7b82a38b2b7e8171c path=supervisor.research status=binding_available tool=none
+INFO     app.services.chat_service:chat_service.py:744 rag_sources_returned source_count=0
+============================== warnings summary ===============================
+tests/test_skill_path_contract_review.py::test_real_entry_cannot_consume_other_members_private_skill[same_tenant-self-False]
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\tools\sandbox\sandbox.py:93: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    ast.NameConstant,  # Python 3.7 ����
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_supervisor.py::test_supervisor_delegates_and_returns_summary
+FAILED tests/test_supervisor.py::test_supervisor_drafts_once_when_model_keeps_asking_to_draft
+FAILED tests/test_supervisor.py::test_supervisor_research_is_one_call_and_stops_at_two
+FAILED tests/test_tool_path_contract.py::test_cancel_propagates_without_success_audit[fast]
+FAILED tests/test_tool_path_contract.py::test_cancel_propagates_without_success_audit[wired]
+FAILED tests/test_tool_path_contract.py::test_cancel_propagates_without_success_audit[unwired]
+FAILED tests/test_skill_path_contract.py::test_supervisor_workers_consume_prompt_but_control_does_not[False]
+FAILED tests/test_skill_path_contract.py::test_supervisor_workers_consume_prompt_but_control_does_not[True]
+FAILED tests/test_skill_path_contract.py::test_unsupported_tool_mode_is_explicit_and_never_reports_execution[\u5148\u8c03\u7814\u591a\u8f6e\u9700\u6c42-False]
+FAILED tests/test_skill_path_contract.py::test_unsupported_tool_mode_is_explicit_and_never_reports_execution[\u5148\u8c03\u7814\u591a\u8f6e\u9700\u6c42-True]
+10 failed, 225 passed, 1 warning in 54.66s

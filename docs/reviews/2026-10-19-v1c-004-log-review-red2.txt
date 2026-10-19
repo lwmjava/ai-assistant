@@ -1,0 +1,84 @@
+FFFFF                                                                    [100%]
+================================== FAILURES ===================================
+___ test_successful_side_effect_is_visible_when_followup_model_fails[False] ___
+tests\test_supervisor_tool_contract.py:220: in test_successful_side_effect_is_visible_when_followup_model_fails
+    assert "ok" in answer.content
+E   AssertionError: assert 'ok' in '��Ǹ���� Agent Э������ʱ�������⣬���Ժ����ԡ�'
+E    +  where '��Ǹ���� Agent Э������ʱ�������⣬���Ժ����ԡ�' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 42, 31, 725455), id='82f56e52751c432381fd1c35101bba91', role='as..., 10, 19, 5, 42, 31, 725455), content='��Ǹ���� Agent Э������ʱ�������⣬���Ժ����ԡ�', sources=None, status='complete', attachments=None).content
+------------------------------ Captured log call ------------------------------
+ERROR    app.agents.supervisor:supervisor.py:401 Supervisor ����ִ��ʧ��
+Traceback (most recent call last):
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor.py", line 397, in run
+    final = await self._graph.ainvoke(graph_state)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\main.py", line 3184, in ainvoke
+    async for chunk in self.astream(
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\main.py", line 2997, in astream
+    async for _ in runner.atick(
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\_retry.py", line 163, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\_internal\_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\_internal\_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor.py", line 185, in observed
+    return await handler(state)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor.py", line 223, in _node_research
+    async for event in self.tool_delegate.iter_research():
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor_tools.py", line 121, in iter_research
+    async for event in self.pipeline._iter_action_loop(
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\pipeline.py", line 1184, in _iter_action_loop
+    state.draft = await self._run_action_once(state)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\pipeline.py", line 672, in _run_action_once
+    return await self._stage(SYSTEM_ACT, "_build_act", state)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\pipeline.py", line 517, in _stage
+    result = await self.llm.chat(self._messages(system, content, state), self.options)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\tests\test_supervisor_tool_contract.py", line 213, in chat
+    raise RuntimeError("ISOLATED_MODEL_FAILURE")
+RuntimeError: ISOLATED_MODEL_FAILURE
+During task with name 'research' and id 'a372ddaf-24f5-1342-6a8a-0dc720630057'
+___ test_successful_side_effect_is_visible_when_followup_model_fails[True] ____
+tests\test_supervisor_tool_contract.py:220: in test_successful_side_effect_is_visible_when_followup_model_fails
+    assert "ok" in answer.content
+E   AssertionError: assert 'ok' in '��Ǹ���� Agent Э������ʱ�������⣬���Ժ����ԡ�'
+E    +  where '��Ǹ���� Agent Э������ʱ�������⣬���Ժ����ԡ�' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 42, 33, 392977), id='8158eb20636543e1a14184cdbd64b4d6', role='as...26, 10, 19, 5, 42, 33, 392977), content='��Ǹ���� Agent Э������ʱ�������⣬���Ժ����ԡ�', sources=None, status='failed', attachments=None).content
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:42:33.392977+00:00", "level": "ERROR", "logger": "app.agents.supervisor", "message": "Supervisor ����ִ��ʧ��", "trace_id": "", "user_id": "674f72ce02994b8b843c94cf9e3c66c3", "tenant_id": "61a8c160cda546b4acb49a7d0dbcda08"}
+{"ts": "2026-10-19T05:42:33.392977+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "674f72ce02994b8b843c94cf9e3c66c3", "tenant_id": "61a8c160cda546b4acb49a7d0dbcda08"}
+________ test_service_without_registry_reports_tools_not_called[False] ________
+tests\test_supervisor_tool_contract.py:235: in test_service_without_registry_reports_tools_not_called
+    assert audits == [] and "not_called" in answer.content
+E   AssertionError: assert ([] == []
+E     
+E     Use -v to get more diff and 'not_called' in 'MODEL_CLAIMS_TOOL_SUCCESS')
+E    +  where 'MODEL_CLAIMS_TOOL_SUCCESS' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 42, 33, 682725), id='a664931893c94c3eb9d994b8a0c3878a', role='as...26, 10, 19, 5, 42, 33, 682725), content='MODEL_CLAIMS_TOOL_SUCCESS', sources=None, status='complete', attachments=None).content
+________ test_service_without_registry_reports_tools_not_called[True] _________
+tests\test_supervisor_tool_contract.py:235: in test_service_without_registry_reports_tools_not_called
+    assert audits == [] and "not_called" in answer.content
+E   AssertionError: assert ([] == []
+E     
+E     Use -v to get more diff and 'not_called' in 'MODEL_CLAIMS_TOOL_SUCCESS')
+E    +  where 'MODEL_CLAIMS_TOOL_SUCCESS' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 42, 33, 947934), id='766d9af529ce4da497fc065acdf5b042', role='as...26, 10, 19, 5, 42, 33, 947934), content='MODEL_CLAIMS_TOOL_SUCCESS', sources=None, status='complete', attachments=None).content
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:42:33.954642+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "60e161d4a2a64aabafe0be48c7c189f1", "tenant_id": "2c72c4122c81406fbb861ad834049d2c"}
+_________ test_cancellation_during_executor_retry_backoff_is_audited __________
+tests\test_supervisor_tool_contract.py:258: in test_cancellation_during_executor_retry_backoff_is_audited
+    assert len(rows) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+=========================== short test summary info ===========================
+FAILED tests/test_supervisor_tool_contract.py::test_successful_side_effect_is_visible_when_followup_model_fails[False]
+FAILED tests/test_supervisor_tool_contract.py::test_successful_side_effect_is_visible_when_followup_model_fails[True]
+FAILED tests/test_supervisor_tool_contract.py::test_service_without_registry_reports_tools_not_called[False]
+FAILED tests/test_supervisor_tool_contract.py::test_service_without_registry_reports_tools_not_called[True]
+FAILED tests/test_supervisor_tool_contract.py::test_cancellation_during_executor_retry_backoff_is_audited
+5 failed, 24 deselected in 4.21s

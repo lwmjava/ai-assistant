@@ -361,20 +361,26 @@ def test_round_cap_stops_further_execution(path: str) -> None:
 
 @pytest.mark.parametrize("path", _PATHS)
 def test_cancel_propagates_without_success_audit(path: str) -> None:
+    started = asyncio.Event()
+
     async def hang(_arguments):
+        started.set()
         await asyncio.Event().wait()
 
     async def _cancel() -> None:
         task = asyncio.create_task(
             _drive_async(path, ScriptLLM([_call(), "完成"]), _registry(hang))
         )
-        await asyncio.sleep(0.05)
+        await asyncio.wait_for(started.wait(), timeout=2)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
 
     asyncio.run(_cancel())
-    assert _audits() == []
+    rows = _audits()
+    assert len(rows) == 1
+    assert json.loads(rows[0].details)["allowed"] is False
+    assert json.loads(rows[0].details)["reason"] == "cancelled"
 
 
 async def _drive_async(path: str, llm: LLMProvider, registry: ToolRegistry) -> AgentState:

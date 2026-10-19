@@ -1,0 +1,47 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+____________ test_supervisor_reports_budget_message_not_retry_hint ____________
+tests\test_rag_028_model_capability.py:886: in test_supervisor_reports_budget_message_not_retry_hint
+    assert state.answer == BUDGET_EXCEEDED_MESSAGE
+E   AssertionError: assert '������ִ����ʵ��not_...��������������ֺ����ԡ�' == '�����������ݳ���ģ���ѵ�...��������������ֺ����ԡ�'
+E     
+E     + ������ִ����ʵ��not_called����ǰ·��δִ�й��ߡ�
+E     + 
+E       �����������ݳ���ģ���ѵǼǵ�������Ԥ�㣬������������ֺ����ԡ�
+------------------------------ Captured log call ------------------------------
+ERROR    app.agents.supervisor:supervisor.py:407 Supervisor ����ִ��ʧ��
+Traceback (most recent call last):
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor.py", line 403, in run
+    final = await self._graph.ainvoke(graph_state)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\main.py", line 3184, in ainvoke
+    async for chunk in self.astream(
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\main.py", line 2997, in astream
+    async for _ in runner.atick(
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\_retry.py", line 163, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\_internal\_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\_internal\_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor.py", line 191, in observed
+    return await handler(state)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor.py", line 214, in _node_supervisor
+    decision = await self._chat(
+               ^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\supervisor.py", line 153, in _chat
+    return await self.llm.chat(messages, options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\culture\SmartCustomerServiceSystem\ai-assistant\tests\test_rag_028_model_capability.py", line 174, in chat
+    raise ContextBudgetError(
+app.llm.budget.ContextBudgetError: context_budget_exceeded reason=context_window_exceeded payload=99999 reserved=2048 margin=512 limit=4000
+During task with name 'supervisor' and id '48c8c62b-b0e1-5ed8-24ea-99d907ad6c8f'
+=========================== short test summary info ===========================
+FAILED tests/test_rag_028_model_capability.py::test_supervisor_reports_budget_message_not_retry_hint
+1 failed in 2.65s

@@ -1,0 +1,29 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored; real ChatService, LangGraph and isolated SQLite with synthetic models and local tools. Not Gold or production model-quality evidence."
+execution: "pytest tests/test_supervisor_tool_contract.py tests/test_supervisor_tool_contract_review.py"
+cases:
+  - id: actual_execution
+    expected: "A research request reaches the existing ToolExecutor; actual local output enters worker context and audit is read using a new Session."
+  - id: authoritative_status
+    expected: "not_called, denied, invalid, error, timeout and ok remain observable despite model prose claiming success."
+  - id: request_budget
+    expected: "Two research rounds share attempts, fingerprints and observations; exhausted budgets do not reset or repeatedly finalize."
+  - id: contract_boundary
+    expected: "Unlisted, unregistered, L2/L3 or malformed contracts never start; timeout and retries must be finite and bounded."
+  - id: principal_boundary
+    expected: "User/Tenant/role/token changes fail closed before new execution, including requests without an active skill."
+  - id: skill_binding
+    expected: "Authorized skill binding narrows the new research path; version change or revocation prevents subsequent execution."
+  - id: streaming_boundary
+    expected: "Cancellation and generator close stop future execution; authorization is checked after a tool-call suspension, not just before enqueue."
+  - id: partial_success
+    expected: "A completed first operation remains recorded when the next fails or cancels, with no automatic replay."
+  - id: untrusted_result
+    expected: "Tool and research text stay bounded, sanitized and untrusted; they cannot rewrite the original user goal or grant tool authority."
+  - id: cached_model
+    expected: "A cached model suggestion does not cache execution success: a new authorized request still executes and records its own audit."
+  - id: compatibility
+    expected: "No-delegate Supervisor preserves its no-tool behavior and typed failures; explicit checkpoint recovery remains rejected."
+  - id: numeric_limits
+    expected: "Non-finite, bool, negative and oversized R/T/timeout/retry inputs fail closed; zero budget starts no tool."

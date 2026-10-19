@@ -44,6 +44,10 @@ ADR-0013：[对话检索依赖按使用时机创建](0013-chat-retrieval-depende
 
 ADR-0014：[技能快照、运行时工具约束与恢复绑定](0014-skill-runtime-binding.md)，**Accepted**，2026-10-19用户明确批准V1C-003实施计划、允许路径与本决定；架构批准不代表实现验收通过。
 
+## Supervisor 受控工具委派
+
+ADR-0015：[Supervisor 研究节点受控委派工具行动](0015-supervisor-controlled-tool-delegation.md)，**Accepted**，2026-10-19；用户已明确批准计划、允许路径及 ADR-0015，架构批准不代表实现验收通过。
+
 ## 格式
 
 每份 ADR 至少包含：背景、事实、选项、决定、后果、迁移、验证和回滚。模板见 `docs/governance/agent-harness-engineering.md` §17。

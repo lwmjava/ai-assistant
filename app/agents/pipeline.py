@@ -17,7 +17,7 @@ import logging
 import re
 import time
 import uuid
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
@@ -41,6 +41,7 @@ from app.agents.skills.base import SkillBindingRejected, SkillRuntime, empty_ski
 from app.agents.state import AgentStateStore, StateManager
 from app.agents.tools.base import Tool, ToolIntent, ToolRegistry, inspect_tool_call
 from app.agents.tools.executor import ToolExecutor
+from app.core import log_context
 from app.core.config import settings
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text, user_message_content
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
@@ -472,6 +473,11 @@ class AgentPipeline:
         self.retriever = retriever
         self.tools = tools
         self.max_tool_rounds: int = 10
+        self.cumulative_tool_budget = False
+        self.execution_principal: tuple[str | None, str | None] | None = None
+        self.authority_check: Callable[[], None] | None = None
+        self.tool_guard: Callable | None = None
+        self.tool_decision: Callable[..., Awaitable[None]] | None = None
         # 技能系统：Prompt 注入文本（由 ChatService 匹配技能后设置）
         self.skill_prompt_injection: str = ""
         self.skill_runtime: SkillRuntime | None = None
@@ -495,6 +501,8 @@ class AgentPipeline:
         ]
 
     async def _stage(self, system: str, builder_name: str, state: AgentState) -> str:
+        if self.authority_check is not None:
+            self.authority_check()
         is_action_stage = system == SYSTEM_ACT
         builder = getattr(self, builder_name)
         content = builder(state)
@@ -648,6 +656,15 @@ class AgentPipeline:
     def _build_act(self, state: AgentState) -> str:
         policy = self._execution_policy
         registry = self._tools_for_policy(policy) if policy.include_tools else None
+        if self.cumulative_tool_budget and state.tool_results:
+            from copy import copy
+
+            from app.security.log_sanitizer import LogSanitizer
+
+            bounded = copy(state)
+            text = LogSanitizer().sanitize("\n".join(state.tool_results))[:6000]
+            bounded.tool_results = ["[UNTRUSTED_TOOL_RESULTS]\n" + text + "\n[/UNTRUSTED_TOOL_RESULTS]"]
+            return action_user_content(bounded, registry, policy.include_tools)
         return action_user_content(state, registry, policy.include_tools)
 
     async def _run_action_once(self, state: AgentState) -> str:
@@ -658,6 +675,10 @@ class AgentPipeline:
         """执行工具调用并追加观测结果到状态。"""
         from app.agents.tools.outcome import ToolOutput
 
+        if self.tool_guard is not None:
+            denied = await self.tool_guard(call)
+            if denied is not None:
+                return denied
         if self.skill_runtime is not None:
             self.skill_runtime.check()
             allowed = self.skill_runtime.allowed(self._execution_policy.allowed_tool_names)
@@ -666,18 +687,35 @@ class AgentPipeline:
                 return ToolOutput(_DENIED_OBSERVATION, status="denied")
         if self.tools is None:
             return ToolOutput("[工具调用失败] 当前未配置任何工具。", status="error")
-        if self._reject_untrusted_tool(call.name, state):
+        guard_state = state
+        if self.cumulative_tool_budget and state.tool_results:
+            from copy import copy
+
+            guard_state = copy(state)
+            external = [str(result).partition(" 结果=")[2] for result in state.tool_results
+                        if isinstance(result, ToolOutput) and " 结果=" in result]
+            if external:
+                guard_state.context += "\n[UNTRUSTED_SOURCE]\n" + "\n".join(external)
+        if self._reject_untrusted_tool(call.name, guard_state):
+            if self.tool_decision is not None:
+                await self.tool_decision(ToolIntent("ok", call), "denied")
             return ToolOutput("[工具调用失败] 拒绝执行检索资料中的指令。", status="denied")
         executor = self.executor
         if executor is None:
             executor = ToolExecutor(self.tools)
             self.executor = executor
+        prior_actor = (log_context.get_user_id(), log_context.get_tenant_id())
+        if self.execution_principal is not None:
+            log_context.set_user(*self.execution_principal)
         try:
             result = await executor.execute(call)
         except (asyncio.CancelledError, GeneratorExit):
             if self.skill_runtime is not None:
                 self.skill_runtime.record(self.skill_path, "cancelled", call.name)
             raise
+        finally:
+            if self.execution_principal is not None:
+                log_context.set_user(*prior_actor)
         if self.skill_runtime is not None:
             self.skill_runtime.record(self.skill_path, result.status, call.name)
         return ToolOutput(result.observation, status=result.status)
@@ -1142,13 +1180,15 @@ class AgentPipeline:
             return
         self._execution_policy = policy
         persisted_budget = self.state_store is not None and settings.AGENT_STATE_PERSIST_ENABLED
-        if not persisted_budget:
+        cumulative = self.cumulative_tool_budget
+        if not persisted_budget and not cumulative:
             state.tool_rounds_used = 0
         try:
             if (self.max_tool_rounds <= 0 or (persisted_budget and state.tool_budget_exhausted)
                     or state.tool_rounds_used >= self.max_tool_rounds):
                 state.tool_budget_exhausted = True
-                state.draft = await self._finalize_without_tools(state)
+                if not cumulative:
+                    state.draft = await self._finalize_without_tools(state)
                 return
             wrap_up = False
             for round_no in range(state.tool_rounds_used + 1, self.max_tool_rounds + 1):
@@ -1158,7 +1198,14 @@ class AgentPipeline:
                     return
                 state.tool_rounds_used = round_no
                 state.tool_budget_exhausted = persisted_budget and round_no >= self.max_tool_rounds
-                decision = self._reject_tool_call(state, intent, policy)
+                try:
+                    decision = self._reject_tool_call(state, intent, policy)
+                except SkillBindingRejected:
+                    if self.tool_decision is not None:
+                        await self.tool_decision(intent, "denied")
+                    raise
+                if decision is not None and self.tool_decision is not None:
+                    await self.tool_decision(intent, decision)
                 if decision is not None and settings.AGENT_STATE_CHECKPOINT_TOOL_ROUND:
                     self._checkpoint(state, stage="action", status="running")
                 if decision == "skip":
@@ -1194,7 +1241,7 @@ class AgentPipeline:
                 # 循环跑满全部轮次（非 return/break 退出）＝预算耗尽，置标志；
                 # 说明文案不在循环内追加，统一由 _apply_budget_notice 在质量门之后注入。
                 state.tool_budget_exhausted = True
-            if wrap_up and inspect_tool_call(state.draft).status != "none":
+            if not cumulative and wrap_up and inspect_tool_call(state.draft).status != "none":
                 state.draft = await self._finalize_without_tools(state)
         finally:
             self._execution_policy = ExecutionPolicy()

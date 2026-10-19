@@ -883,7 +883,8 @@ def test_supervisor_reports_budget_message_not_retry_hint() -> None:
     graph = SupervisorGraph(_BudgetBlocked())
     state = asyncio.run(graph.run(AgentState(user_input="你好")))
 
-    assert state.answer == BUDGET_EXCEEDED_MESSAGE
+    assert state.answer.endswith(BUDGET_EXCEEDED_MESSAGE)
+    assert "not_called" in state.answer
     assert "请稍后重试" not in state.answer
 
 

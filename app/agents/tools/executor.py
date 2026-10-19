@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from app.agents.tools.base import ToolCall, ToolRegistry, format_tool_observation
@@ -51,8 +52,13 @@ class ExecutorResult:
 class ToolExecutor:
     """无状态工具执行器，组合复用 ToolRegistry 的 RBAC/审计。"""
 
-    def __init__(self, registry: ToolRegistry) -> None:
+    def __init__(
+        self, registry: ToolRegistry, *, redact_errors: bool = False,
+        before_attempt: Callable[[], None] | None = None,
+    ) -> None:
         self._registry = registry
+        self._redact_errors = redact_errors
+        self._before_attempt = before_attempt
 
     @staticmethod
     def _validate(tool, arguments: dict) -> dict:
@@ -151,34 +157,48 @@ class ToolExecutor:
         status = "ok"
         error_code: str | None = None
         last_exc: BaseException | None = None
-        while True:
-            attempts += 1
-            last_exc = None
-            try:
-                async with asyncio.timeout(timeout):
-                    observation = await tool.execute(arguments)
-                status = observation.status if isinstance(observation, ToolOutput) else "ok"
-                error_code = observation.error_code if isinstance(observation, ToolOutput) else None
+        try:
+            while True:
+                if self._before_attempt is not None:
+                    try:
+                        self._before_attempt()
+                    except Exception:
+                        await self._registry._record_audit(
+                            call, user_id, tenant_id, risk, False, "authority_changed",
+                            (time.monotonic() - started) * 1000)
+                        raise
+                attempts += 1
+                last_exc = None
+                try:
+                    async with asyncio.timeout(timeout):
+                        observation = await tool.execute(arguments)
+                    status = observation.status if isinstance(observation, ToolOutput) else "ok"
+                    error_code = observation.error_code if isinstance(observation, ToolOutput) else None
+                    break
+                except TimeoutError:
+                    last_exc = TimeoutError()
+                    observation = f"[工具执行错误] {call.name}：执行超时。"
+                    status = "timeout"
+                    error_code = "tool_timeout"
+                except Exception as exc:  # noqa: BLE001 — 工具异常不中断管线
+                    last_exc = exc
+                    if self._redact_errors or call.name in _GENERIC_ERROR_TOOLS:
+                        observation = f"[工具执行错误] {call.name}：工具暂时不可用。"
+                    else:
+                        observation = f"[工具执行错误] {call.name}：{exc}"
+                    status = "error"
+                    error_code = "tool_error"
+                # 重试决策：仅幂等 + 瞬时错误 + 未达上限。
+                transient = isinstance(last_exc, _TRANSIENT_ERRORS)
+                if idempotent and transient and attempts <= max_retries:
+                    await asyncio.sleep(0.05)
+                    continue
                 break
-            except TimeoutError:
-                last_exc = TimeoutError()
-                observation = f"[工具执行错误] {call.name}：执行超时。"
-                status = "timeout"
-                error_code = "tool_timeout"
-            except Exception as exc:  # noqa: BLE001 — 工具异常不中断管线
-                last_exc = exc
-                if call.name in _GENERIC_ERROR_TOOLS:
-                    observation = f"[工具执行错误] {call.name}：工具暂时不可用。"
-                else:
-                    observation = f"[工具执行错误] {call.name}：{exc}"
-                status = "error"
-                error_code = "tool_error"
-            # 重试决策：仅幂等 + 瞬时错误 + 未达上限。
-            transient = isinstance(last_exc, _TRANSIENT_ERRORS)
-            if idempotent and transient and attempts <= max_retries:
-                await asyncio.sleep(0.05)
-                continue
-            break
+        except (asyncio.CancelledError, GeneratorExit):
+            await self._registry._record_audit(
+                call, user_id, tenant_id, risk, False, "cancelled",
+                (time.monotonic() - started) * 1000)
+            raise
 
         latency_ms = (time.monotonic() - started) * 1000
         # 一次逻辑调用聚合为一条审计（reason 为 None 即视为已执行/放行）。

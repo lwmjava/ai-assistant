@@ -1,0 +1,82 @@
+FFFFFFFFFF                                                               [100%]
+================================== FAILURES ===================================
+_ test_supervisor_research_executes_registered_tool_and_persists_audit[False] _
+tests\test_supervisor_tool_contract.py:122: in test_supervisor_research_executes_registered_tool_and_persists_audit
+    assert calls == [{"value": 2}]
+E   AssertionError: assert [] == [{'value': 2}]
+E     
+E     Right contains one more item: {'value': 2}
+E     Use -v to get more diff
+_ test_supervisor_research_executes_registered_tool_and_persists_audit[True] __
+tests\test_supervisor_tool_contract.py:122: in test_supervisor_research_executes_registered_tool_and_persists_audit
+    assert calls == [{"value": 2}]
+E   AssertionError: assert [] == [{'value': 2}]
+E     
+E     Right contains one more item: {'value': 2}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:35:36.493127+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "5fa63c9dfec246199597b4a0081b579a", "tenant_id": "4f386223c63c41fab87ef59f20b51156"}
+_ test_real_tool_failure_is_disclosed_despite_model_success_claim[error-False] _
+tests\test_supervisor_tool_contract.py:146: in test_real_tool_failure_is_disclosed_despite_model_success_claim
+    assert len(calls) == 1 and len(audits) == 1
+E   assert (0 == 1)
+E    +  where 0 = len([])
+_ test_real_tool_failure_is_disclosed_despite_model_success_claim[error-True] _
+tests\test_supervisor_tool_contract.py:146: in test_real_tool_failure_is_disclosed_despite_model_success_claim
+    assert len(calls) == 1 and len(audits) == 1
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:35:37.296843+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "0d0a84cf182a4b01a3068c1f37cc4870", "tenant_id": "d5ecf9a42d7c42cfa5328970159421fb"}
+_ test_real_tool_failure_is_disclosed_despite_model_success_claim[timeout-False] _
+tests\test_supervisor_tool_contract.py:146: in test_real_tool_failure_is_disclosed_despite_model_success_claim
+    assert len(calls) == 1 and len(audits) == 1
+E   assert (0 == 1)
+E    +  where 0 = len([])
+_ test_real_tool_failure_is_disclosed_despite_model_success_claim[timeout-True] _
+tests\test_supervisor_tool_contract.py:146: in test_real_tool_failure_is_disclosed_despite_model_success_claim
+    assert len(calls) == 1 and len(audits) == 1
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:35:38.087814+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "705c976e03b34f2ba5b2848824f1bf79", "tenant_id": "7efce7df5105421194d2b7f819636b2d"}
+______ test_no_tool_call_is_explicit_even_if_model_claims_success[False] ______
+tests\test_supervisor_tool_contract.py:160: in test_no_tool_call_is_explicit_even_if_model_claims_success
+    assert "not_called" in answer.content
+E   AssertionError: assert 'not_called' in 'MODEL_CLAIMS_TOOL_SUCCESS'
+E    +  where 'MODEL_CLAIMS_TOOL_SUCCESS' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 35, 38, 435469), id='72c55e10be3a498491729217f84a40ee', role='as...26, 10, 19, 5, 35, 38, 435469), content='MODEL_CLAIMS_TOOL_SUCCESS', sources=None, status='complete', attachments=None).content
+______ test_no_tool_call_is_explicit_even_if_model_claims_success[True] _______
+tests\test_supervisor_tool_contract.py:160: in test_no_tool_call_is_explicit_even_if_model_claims_success
+    assert "not_called" in answer.content
+E   AssertionError: assert 'not_called' in 'MODEL_CLAIMS_TOOL_SUCCESS'
+E    +  where 'MODEL_CLAIMS_TOOL_SUCCESS' = Message(updated_at=datetime.datetime(2026, 10, 19, 5, 35, 38, 807571), id='663b928db0ef4dce8c958f1f534a21c4', role='as...26, 10, 19, 5, 35, 38, 807571), content='MODEL_CLAIMS_TOOL_SUCCESS', sources=None, status='complete', attachments=None).content
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:35:38.813569+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "505520c1996b46029ba5e7e5e7895375", "tenant_id": "1a12c56b310448668d1684aec46d3b8b"}
+______________ test_research_rounds_share_attempt_budget[False] _______________
+tests\test_supervisor_tool_contract.py:169: in test_research_rounds_share_attempt_budget
+    assert calls == [{"value": 1}] and len(audits) == 1
+E   AssertionError: assert ([] == [{'value': 1}]
+E     
+E     Right contains one more item: {'value': 1}
+E     Use -v to get more diff)
+_______________ test_research_rounds_share_attempt_budget[True] _______________
+tests\test_supervisor_tool_contract.py:169: in test_research_rounds_share_attempt_budget
+    assert calls == [{"value": 1}] and len(audits) == 1
+E   AssertionError: assert ([] == [{'value': 1}]
+E     
+E     Right contains one more item: {'value': 1}
+E     Use -v to get more diff)
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:35:39.650129+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "0cc73ddcd9e142289835c6a1d08c0381", "tenant_id": "8766388cf4064ea283c118eed2ce1e64"}
+=========================== short test summary info ===========================
+FAILED tests/test_supervisor_tool_contract.py::test_supervisor_research_executes_registered_tool_and_persists_audit[False]
+FAILED tests/test_supervisor_tool_contract.py::test_supervisor_research_executes_registered_tool_and_persists_audit[True]
+FAILED tests/test_supervisor_tool_contract.py::test_real_tool_failure_is_disclosed_despite_model_success_claim[error-False]
+FAILED tests/test_supervisor_tool_contract.py::test_real_tool_failure_is_disclosed_despite_model_success_claim[error-True]
+FAILED tests/test_supervisor_tool_contract.py::test_real_tool_failure_is_disclosed_despite_model_success_claim[timeout-False]
+FAILED tests/test_supervisor_tool_contract.py::test_real_tool_failure_is_disclosed_despite_model_success_claim[timeout-True]
+FAILED tests/test_supervisor_tool_contract.py::test_no_tool_call_is_explicit_even_if_model_claims_success[False]
+FAILED tests/test_supervisor_tool_contract.py::test_no_tool_call_is_explicit_even_if_model_claims_success[True]
+FAILED tests/test_supervisor_tool_contract.py::test_research_rounds_share_attempt_budget[False]
+FAILED tests/test_supervisor_tool_contract.py::test_research_rounds_share_attempt_budget[True]
+10 failed in 6.84s

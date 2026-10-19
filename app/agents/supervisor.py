@@ -9,18 +9,21 @@ Supervisor**：由 supervisor 节点决定「先调研」还是「直接撰写�
 - LangGraph 仅覆盖「多 Agent 协作」这一层，不重写五阶段管线；
 - ``langgraph`` 为**可选依赖**，仅在真正构造 `SupervisorGraph` 时懒加载，
   import 失败会抛出带安装指引的 `ImportError`，不影响自研（self）路径；
-- 检索在图执行之前由 ``_retrieve`` 统一做一次，调研 worker 只做一次模型调用、
-  不进入行动循环；检索状态与披露要求与自研管线共用同一套契约。
+- 检索在图执行之前由 ``_retrieve`` 统一做一次。未注入工具委派时，调研只生成文字；
+  注入后，调研把工具请求交给既有行动循环。检索状态与披露要求与自研管线共用同一套契约。
 """
 
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from contextlib import suppress
 from typing import TypedDict
 
 from app.agents.pipeline import AgentEvent, AgentState, _failure_text, error_metadata, node_event, protocol_event
+from app.agents.plan_runtime import model_timeout
 from app.agents.skills.base import SkillBindingRejected, SkillRuntime
+from app.agents.supervisor_tools import SupervisorToolDelegate, bounded_integer
 from app.agents.tools.base import ToolRegistry
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, user_message_content
 from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
@@ -109,6 +112,7 @@ class SupervisorGraph:
     """
 
     skill_runtime: SkillRuntime | None = None
+    tool_delegate: SupervisorToolDelegate | None = None
 
     def __init__(
         self,
@@ -118,6 +122,7 @@ class SupervisorGraph:
         tools: ToolRegistry | None = None,
         max_revisions: int = 2,
         skill_runtime=None,
+        tool_delegate: SupervisorToolDelegate | None = None,
     ) -> None:
         self.llm = llm
         self.options = options or LLMOptions()
@@ -125,11 +130,27 @@ class SupervisorGraph:
         self.tools = tools
         self.max_revisions = max_revisions
         self.skill_runtime = skill_runtime
+        self.tool_delegate = tool_delegate
+        if tool_delegate is not None:
+            bounded_integer(max_revisions, 10)
+        self._event_acks: dict[int, asyncio.Future] = {}
         self._last_outcome: RetrievalOutcome | None = None
         self._event_queue: asyncio.Queue[AgentEvent | None] | None = None
         self._failure_metadata: dict[str, object] | None = None
         self._user_images: list[str] = []
         self._graph = self._build()
+
+    def _tool_summary(self) -> str:
+        if self.tool_delegate is not None:
+            return self.tool_delegate.summary()
+        return "【工具执行事实】not_called。当前路径未执行工具。"
+
+    async def _chat(self, messages, options):
+        if self.tool_delegate is not None:
+            self.tool_delegate.verify_actor()
+            async with asyncio.timeout(model_timeout(self.tool_delegate.pipeline)):
+                return await self.llm.chat(messages, options)
+        return await self.llm.chat(messages, options)
 
     # ── 懒加载 LangGraph ──
     @staticmethod
@@ -183,14 +204,14 @@ class SupervisorGraph:
     async def _node_supervisor(self, state: dict) -> dict:
         user_input = state.get("user_input", "")
         plan = state.get("plan", "")
-        research = state.get("research", "")
+        research = (self.tool_delegate.summary() if self.tool_delegate else state.get("research", ""))
         prompt = (
             f"## 用户目标\n{user_input}\n\n"
             f"## 回答计划\n{plan}\n\n"
             f"## 调研记录\n{research or '（尚无调研记录）'}\n\n"
             "请输出下一步动作（research / draft / FINISH）。"
         )
-        decision = await self.llm.chat(
+        decision = await self._chat(
             [
                 ChatMessage(role=ChatRole.SYSTEM, content=_SUPERVISOR_SYSTEM),
                 ChatMessage(role=ChatRole.USER, content=user_message_content(prompt, self._user_images)),
@@ -203,7 +224,21 @@ class SupervisorGraph:
         return {"next": action}
 
     async def _node_research(self, state: dict) -> dict:
-        """一轮调研只调用一次模型，不进入行动循环。"""
+        """Delegate controlled actions when injected; retain legacy text research otherwise."""
+        if self.tool_delegate is not None:
+            async for event in self.tool_delegate.iter_research():
+                queue = self._event_queue
+                if queue is not None:
+                    if event.type == "tool.call":
+                        ack = asyncio.get_running_loop().create_future()
+                        self._event_acks[id(event)] = ack
+                        queue.put_nowait(event)
+                        await ack
+                    else:
+                        queue.put_nowait(event)
+            text = self.tool_delegate.summary()
+            return {"research": text, "revisions": state.get("revisions", 0) + 1,
+                    "delegations": _append_delegation(state, "research", text)}
         prompt = (
             f"## 用户目标\n{state.get('user_input', '')}\n\n"
             f"## 已掌握上下文\n{state.get('context') or '（无）'}\n\n"
@@ -216,7 +251,7 @@ class SupervisorGraph:
         notice = state.get("retrieval_notice", "")
         if notice:
             system = f"{system}\n\n{notice}"
-        draft = await self.llm.chat(
+        draft = await self._chat(
             [
                 ChatMessage(role=ChatRole.SYSTEM, content=system),
                 ChatMessage(role=ChatRole.USER, content=user_message_content(prompt, self._user_images)),
@@ -237,6 +272,8 @@ class SupervisorGraph:
         plan = state.get("plan", "")
         research = state.get("research", "")
         context = state.get("context", "")
+        if self.tool_delegate is not None:
+            context += "\n" + self.tool_delegate.observations()
         prompt = (
             f"## 用户目标\n{user_input}\n\n"
             f"## 回答计划\n{plan}\n\n"
@@ -250,7 +287,7 @@ class SupervisorGraph:
         notice = state.get("retrieval_notice", "")
         if notice:
             system = f"{system}\n\n{notice}"
-        answer = await self.llm.chat(
+        answer = await self._chat(
             [
                 ChatMessage(role=ChatRole.SYSTEM, content=system),
                 ChatMessage(role=ChatRole.USER, content=user_message_content(prompt, self._user_images)),
@@ -324,19 +361,26 @@ class SupervisorGraph:
         """以 Supervisor 方式执行一次协作，填充并返回 AgentState。"""
         self._failure_metadata = None
         self._user_images = list(state.user_images)
+        if self.tool_delegate is not None:
+            bounded_integer(self.max_revisions, 10)
+            self.tool_delegate.bind(state)
         if self.retriever is not None:
             await self._observe_node("retrieval", self._retrieve)(state)
         else:
             await self._retrieve(state)
         if self.skill_runtime:
-            note = self.skill_runtime.notice("supervisor")
+            note = self.skill_runtime.notice("supervisor.research" if self.tool_delegate else "supervisor",
+                                             self.tool_delegate.allowed_names() if self.tool_delegate else None)
             if note:
                 state.retrieval_disclosure = "\n\n".join(filter(None, [note, state.retrieval_disclosure]))
         # 全低分是终态拒答：不进图，直接给出拒答语。
         if self._last_outcome is not None:
             terminal = self._last_outcome.terminal_reply()
             if terminal is not None:
-                note = self.skill_runtime.notice("supervisor") if self.skill_runtime else ""
+                note = (self.skill_runtime.notice(
+                    "supervisor.research" if self.tool_delegate else "supervisor",
+                    self.tool_delegate.allowed_names() if self.tool_delegate else None,
+                ) if self.skill_runtime else "")
                 if note:
                     terminal = f"{note}\n\n{terminal}"
                 state.answer = terminal
@@ -371,8 +415,12 @@ class SupervisorGraph:
                     exc,
                     generic="抱歉，多 Agent 协作处理时出现问题，请稍后重试。",
                 )
+            if self.tool_delegate is not None and isinstance(exc, PermissionError):
+                self.tool_delegate.statuses.append("denied")
+            state.answer = self._tool_summary() + "\n\n" + state.answer
             return state
         state.draft = final.get("draft", "")
+        state.draft = self._tool_summary() + "\n\n" + state.draft
         state.answer = state.draft
         # 披露语由应用层确定性前置：不依赖模型服从系统提示。
         if state.retrieval_disclosure:
@@ -383,7 +431,7 @@ class SupervisorGraph:
         ]
         return state
 
-    async def run_stream(self, state: AgentState):
+    async def run_stream(self, state: AgentState) -> AsyncIterator[AgentEvent]:
         """流式执行：以 AgentEvent 广播进度，再分块回放正文 token。
 
         先由 Supervisor 编排出完整草稿，再按固定长度切分为多个 token 事件回放。
@@ -408,6 +456,9 @@ class SupervisorGraph:
                 if event is None:
                     break
                 yield event
+                ack = getattr(self, "_event_acks", {}).pop(id(event), None)
+                if ack is not None and not ack.done():
+                    ack.set_result(None)
             result = await task
         except asyncio.CancelledError:
             task.cancel()

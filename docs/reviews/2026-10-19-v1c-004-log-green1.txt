@@ -1,0 +1,28 @@
+.F.F.F....                                                               [100%]
+================================== FAILURES ===================================
+_ test_supervisor_research_executes_registered_tool_and_persists_audit[True] __
+tests\test_supervisor_tool_contract.py:128: in test_supervisor_research_executes_registered_tool_and_persists_audit
+    summaries = [json.loads(event.content)["summary"] for event in events if event.type == "subtask"]
+                            ^^^^^^^^^^^^^
+E   AttributeError: 'AgentEvent' object has no attribute 'content'
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:39:35.413985+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "7df1f460281b403ca64c0306c59146c2", "tenant_id": "6e07a5a7c1d24f65a3abe1c17a72cba6"}
+_ test_real_tool_failure_is_disclosed_despite_model_success_claim[error-True] _
+tests\test_supervisor_tool_contract.py:150: in test_real_tool_failure_is_disclosed_despite_model_success_claim
+    summaries = [json.loads(e.content)["summary"] for e in events if e.type == "subtask"]
+                            ^^^^^^^^^
+E   AttributeError: 'AgentEvent' object has no attribute 'content'
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:39:36.571912+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "351d3249b4d24d2c9d6b29c1d3c693bb", "tenant_id": "7733dc1e62134a6db651c0b052a490d2"}
+_ test_real_tool_failure_is_disclosed_despite_model_success_claim[timeout-True] _
+tests\test_supervisor_tool_contract.py:150: in test_real_tool_failure_is_disclosed_despite_model_success_claim
+    summaries = [json.loads(e.content)["summary"] for e in events if e.type == "subtask"]
+                            ^^^^^^^^^
+E   AttributeError: 'AgentEvent' object has no attribute 'content'
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:39:37.465809+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "b51322c3744e4d08ac8359ba70dc087d", "tenant_id": "77d1832f5ecc48ebb5a51d67ebeae27b"}
+=========================== short test summary info ===========================
+FAILED tests/test_supervisor_tool_contract.py::test_supervisor_research_executes_registered_tool_and_persists_audit[True]
+FAILED tests/test_supervisor_tool_contract.py::test_real_tool_failure_is_disclosed_despite_model_success_claim[error-True]
+FAILED tests/test_supervisor_tool_contract.py::test_real_tool_failure_is_disclosed_despite_model_success_claim[timeout-True]
+3 failed, 7 passed in 6.38s

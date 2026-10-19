@@ -238,7 +238,7 @@ def test_supervisor_delegates_and_returns_summary() -> None:
         ("research", "调研记录"),
         ("draft", "汇总结果"),
     ]
-    assert state.answer == "汇总结果"
+    assert "not_called" in state.answer and state.answer.endswith("汇总结果")
 
     payloads = _subtask_payloads(events)
     assert [item["summary"] for item in payloads] == ["调研记录", "汇总结果"]
@@ -385,7 +385,7 @@ def test_supervisor_drafts_once_when_model_keeps_asking_to_draft() -> None:
     state = AgentState(user_input="写一段说明")
     asyncio.run(_collect(SupervisorGraph(llm), state))
     assert llm.drafts == 1
-    assert state.answer == "第1次"
+    assert "not_called" in state.answer and state.answer.endswith("第1次")
     assert state.delegations == [{"name": "draft", "result": "第1次"}]
     assert all("执行器" not in system for system in llm.systems)
 
@@ -400,7 +400,7 @@ def test_supervisor_research_is_one_call_and_stops_at_two() -> None:
     asyncio.run(_collect(SupervisorGraph(llm), state))
     assert [item["name"] for item in state.delegations] == ["research", "research", "draft"]
     assert [item["result"] for item in state.delegations] == ["甲", "乙", "收束"]
-    assert state.answer == "收束"
+    assert "not_called" in state.answer and state.answer.endswith("收束")
     assert llm._research_index == 2
 
 

@@ -8,7 +8,7 @@ from sqlmodel import Session, SQLModel, col, create_engine, select
 
 from app.agents.prompts import SYSTEM_ACT, SYSTEM_PREFLOW
 from app.agents.skills.base import SkillManifest, SkillMode, SkillTrigger, TriggerType
-from app.agents.supervisor import _DRAFT_SYSTEM, _RESEARCH_SYSTEM, _SUPERVISOR_SYSTEM
+from app.agents.supervisor import _DRAFT_SYSTEM, _SUPERVISOR_SYSTEM
 from app.core.config import settings
 from app.llm.mock import MockLLMProvider
 from app.models.conversation import Message
@@ -99,7 +99,7 @@ async def test_supervisor_workers_consume_prompt_but_control_does_not(skill_entr
     monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", "langgraph")
     model = SkillModel()
     answer, _ = await run_entry(skill_entry, model, "先调研多轮需求", streaming)
-    for base in (_RESEARCH_SYSTEM, _DRAFT_SYSTEM):
+    for base in (SYSTEM_ACT, _DRAFT_SYSTEM):
         calls = [text for text in model.systems if text.startswith(base)]
         assert calls and all("BRIDGE_BODY" in text for text in calls)
     assert all("BRIDGE_BODY" not in text for text in model.systems if text.startswith(_SUPERVISOR_SYSTEM))
@@ -206,10 +206,33 @@ async def test_unsupported_tool_mode_is_explicit_and_never_reports_execution(
     monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", "langgraph")
     caplog.set_level("INFO", logger="app.agents.skills.base")
     answer, _ = await run_entry(skill_entry, SkillModel(), message, streaming)
-    assert "【技能提示】" in answer.content and "不支持" in answer.content
     records = [record.getMessage() for record in caplog.records if "skill_runtime" in record.getMessage()]
-    assert any("status=unsupported" in text for text in records)
+    if message == "先调研多轮需求":
+        assert "not_called" in answer.content
+        assert any("status=binding_available" in text for text in records)
+        assert not any("status=unsupported" in text for text in records)
+    else:
+        assert "【技能提示】" in answer.content and "不支持" in answer.content
+        assert any("status=unsupported" in text for text in records)
     assert not any("status=ok" in text or "status=executed" in text for text in records)
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_supervisor_consumes_skill_tool_binding_and_reports_real_execution(
+    skill_entry, monkeypatch, caplog, streaming,
+):
+    import app.services.skill_service as skills
+
+    monkeypatch.setattr(skills, "manifests_for_chat", lambda session, user: [manifest(tool_names=["calculator"])])
+    monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", "langgraph")
+    caplog.set_level("INFO", logger="app.agents.skills.base")
+    model = SkillModel(tool=True)
+    answer, _ = await run_entry(skill_entry, model, "先调研多轮需求", streaming)
+    records = [record.getMessage() for record in caplog.records if "skill_runtime" in record.getMessage()]
+    assert model.actions == 2 and "ok" in answer.content
+    assert any("path=supervisor.research" in text and "status=ok" in text and "tool=calculator" in text
+               for text in records)
+    assert not any("status=unsupported" in text for text in records)
 
 
 @pytest.mark.parametrize("confidence", [float("nan"), float("inf"), -float("inf"), -1.0, 2.0, True])

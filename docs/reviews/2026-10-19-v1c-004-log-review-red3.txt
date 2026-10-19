@@ -1,0 +1,55 @@
+FFFFF                                                                    [100%]
+================================== FAILURES ===================================
+____________ test_tool_result_cannot_authorize_another_tool[False] ____________
+tests\test_supervisor_tool_contract.py:276: in test_tool_result_cannot_authorize_another_tool
+    assert calls == []
+E   AssertionError: assert [{'value': 2}] == []
+E     
+E     Left contains one more item: {'value': 2}
+E     Use -v to get more diff
+____________ test_tool_result_cannot_authorize_another_tool[True] _____________
+tests\test_supervisor_tool_contract.py:276: in test_tool_result_cannot_authorize_another_tool
+    assert calls == []
+E   AssertionError: assert [{'value': 2}] == []
+E     
+E     Left contains one more item: {'value': 2}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:43:14.911746+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "1ebcd0ca57214035aff47f3b0406e115", "tenant_id": "153f12d0c1d24c998afea3789904e17e"}
+_____________ test_actor_revocation_prevents_retry_attempt[False] _____________
+tests\test_supervisor_tool_contract.py:296: in test_actor_revocation_prevents_retry_attempt
+    assert len(calls) == 1 and audits
+E   AssertionError: assert (2 == 1)
+E    +  where 2 = len([{'value': 2}, {'value': 2}])
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:43:15.284780+00:00", "level": "ERROR", "logger": "app.agents.supervisor", "message": "Supervisor ����ִ��ʧ��", "trace_id": "", "user_id": "df597ac60f88426293a0ec9dc48b3465", "tenant_id": "b55d96bfcfc84510ac466f851000db84"}
+_____________ test_actor_revocation_prevents_retry_attempt[True] ______________
+tests\test_supervisor_tool_contract.py:296: in test_actor_revocation_prevents_retry_attempt
+    assert len(calls) == 1 and audits
+E   AssertionError: assert (2 == 1)
+E    +  where 2 = len([{'value': 2}, {'value': 2}])
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:43:15.655659+00:00", "level": "ERROR", "logger": "app.agents.supervisor", "message": "Supervisor ����ִ��ʧ��", "trace_id": "", "user_id": "b1a046b4ad4646bcac4b055473654e66", "tenant_id": "4ec7e8a9554a4a088edf5c48b5c427d3"}
+{"ts": "2026-10-19T05:43:15.658316+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "b1a046b4ad4646bcac4b055473654e66", "tenant_id": "4ec7e8a9554a4a088edf5c48b5c427d3"}
+_______ test_closing_outer_stream_collects_waiting_supervisor_producer ________
+tests\test_supervisor_tool_contract.py:311: in test_closing_outer_stream_collects_waiting_supervisor_producer
+    assert not pending
+E   AssertionError: assert not [<Task pending name='Task-54' coro=<SupervisorGraph.run_stream.<locals>.produce() running at E:\culture\SmartCustomerS...ages\langgraph\_internal\_runnable.py:473> wait_for=<Future pending cb=[Task.task_wakeup()]> cb=[Task.task_wakeup()]>>]
+=========================== short test summary info ===========================
+FAILED tests/test_supervisor_tool_contract.py::test_tool_result_cannot_authorize_another_tool[False]
+FAILED tests/test_supervisor_tool_contract.py::test_tool_result_cannot_authorize_another_tool[True]
+FAILED tests/test_supervisor_tool_contract.py::test_actor_revocation_prevents_retry_attempt[False]
+FAILED tests/test_supervisor_tool_contract.py::test_actor_revocation_prevents_retry_attempt[True]
+FAILED tests/test_supervisor_tool_contract.py::test_closing_outer_stream_collects_waiting_supervisor_producer
+5 failed, 29 deselected in 4.33s
+{"ts": "2026-10-19T05:43:16.561030+00:00", "level": "ERROR", "logger": "asyncio", "message": "Task was destroyed but it is pending!\ntask: <Task cancelling name='Task-54' coro=<SupervisorGraph.run_stream.<locals>.produce() running at E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\app\\agents\\supervisor.py:440> wait_for=<Task cancelling name='Task-59' coro=<RunnableCallable.ainvoke() running at D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py:473> wait_for=<Future cancelled> cb=[Task.task_wakeup()]> cb=[Task.task_wakeup()]>", "trace_id": "", "user_id": "", "tenant_id": ""}
+Exception ignored in: <coroutine object arun_with_retry at 0x0000023125A89DF0>
+Traceback (most recent call last):
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\_retry.py", line 163, in arun_with_retry
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\_internal\_runnable.py", line 714, in ainvoke
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langchain_core\callbacks\manager.py", line 244, in wrapped
+  File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\asyncio\tasks.py", line 407, in create_task
+RuntimeError: no running event loop
+D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\main.py:3184: RuntimeWarning: coroutine 'AsyncCallbackManagerForChainRun.on_chain_error' was never awaited
+{"ts": "2026-10-19T05:43:16.561030+00:00", "level": "ERROR", "logger": "asyncio", "message": "Task was destroyed but it is pending!\ntask: <Task cancelling name='Task-59' coro=<RunnableCallable.ainvoke() running at D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py:473> wait_for=<Future cancelled> cb=[Task.task_wakeup()]>", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-19T05:43:16.561030+00:00", "level": "ERROR", "logger": "asyncio", "message": "Task was destroyed but it is pending!\ntask: <Task pending name='Task-60' coro=<<async_generator_athrow without __name__>()> wait_for=<Task cancelling name='Task-54' coro=<SupervisorGraph.run_stream.<locals>.produce() done, defined at E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\app\\agents\\supervisor.py:438> wait_for=<Task cancelling name='Task-59' coro=<RunnableCallable.ainvoke() done, defined at D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py:405> wait_for=<Future cancelled> cb=[Task.task_wakeup()]> cb=[Task.task_wakeup()]>>", "trace_id": "", "user_id": "", "tenant_id": ""}

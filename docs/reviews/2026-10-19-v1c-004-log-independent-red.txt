@@ -1,0 +1,169 @@
+FFFFFFFFFFFFFFFFFFFF........FFFFF                                        [100%]
+================================== FAILURES ===================================
+_________ test_two_research_rounds_do_not_replay_same_success[False] __________
+tests\test_supervisor_tool_contract_review.py:120: in test_two_research_rounds_do_not_replay_same_success
+    assert calls == [{"value": 1}]
+E   AssertionError: assert [] == [{'value': 1}]
+E     
+E     Right contains one more item: {'value': 1}
+E     Use -v to get more diff
+__________ test_two_research_rounds_do_not_replay_same_success[True] __________
+tests\test_supervisor_tool_contract_review.py:120: in test_two_research_rounds_do_not_replay_same_success
+    assert calls == [{"value": 1}]
+E   AssertionError: assert [] == [{'value': 1}]
+E     
+E     Right contains one more item: {'value': 1}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:41.455959+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "ebdeb02662ce4c95ac454b4c6a5ac126", "tenant_id": "41536adc7ce44a228ec61de0dc195b3b"}
+_______ test_partial_success_followed_by_failure_remains_visible[False] _______
+tests\test_supervisor_tool_contract_review.py:137: in test_partial_success_followed_by_failure_remains_visible
+    assert calls == [{"value": 1}, {"value": 2}]
+E   AssertionError: assert [] == [{'value': 1}, {'value': 2}]
+E     
+E     Right contains 2 more items, first extra item: {'value': 1}
+E     Use -v to get more diff
+_______ test_partial_success_followed_by_failure_remains_visible[True] ________
+tests\test_supervisor_tool_contract_review.py:137: in test_partial_success_followed_by_failure_remains_visible
+    assert calls == [{"value": 1}, {"value": 2}]
+E   AssertionError: assert [] == [{'value': 1}, {'value': 2}]
+E     
+E     Right contains 2 more items, first extra item: {'value': 1}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:42.007613+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "853e34dc91a141b3a3aeef76ace57b90", "tenant_id": "146da2c01e544de886e3e0efcd10dc94"}
+______ test_invalid_contracts_never_execute_or_claim_success[None-False] ______
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+______ test_invalid_contracts_never_execute_or_claim_success[None-True] _______
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:42.561859+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "261fad5fb9c942b697c823e6b7a9c43d", "tenant_id": "efa5c3caedc740c69582b8846a086c34"}
+______ test_invalid_contracts_never_execute_or_claim_success[risk-False] ______
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+______ test_invalid_contracts_never_execute_or_claim_success[risk-True] _______
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:43.116413+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "c1235de15c5e40389ff6352eda33b047", "tenant_id": "a86fabd7429c43538d6f68f0b93332b3"}
+______ test_invalid_contracts_never_execute_or_claim_success[nan-False] _______
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+_______ test_invalid_contracts_never_execute_or_claim_success[nan-True] _______
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:43.667803+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "8228f86d805849bf8713e26b954de663", "tenant_id": "4032852523c1495d92ab989928fda44f"}
+____ test_invalid_contracts_never_execute_or_claim_success[infinite-False] ____
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+____ test_invalid_contracts_never_execute_or_claim_success[infinite-True] _____
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:44.208606+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "4bfa78903520492eaba56d9b66c56a56", "tenant_id": "b55a9edba9304db09f16c91e72267be6"}
+__ test_invalid_contracts_never_execute_or_claim_success[bool_timeout-False] __
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+__ test_invalid_contracts_never_execute_or_claim_success[bool_timeout-True] ___
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:44.754083+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "a7d78bd2d7b6420680905d59093e0df2", "tenant_id": "c33f3bf77fef45278cb43a1dd32de936"}
+___ test_invalid_contracts_never_execute_or_claim_success[retry_bool-False] ___
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+___ test_invalid_contracts_never_execute_or_claim_success[retry_bool-True] ____
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:45.352182+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "e10344e220d24cc69adcf710f9875e37", "tenant_id": "8465070d52be4ac6b53abd50af326e03"}
+_ test_invalid_contracts_never_execute_or_claim_success[retry_negative-False] _
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+_ test_invalid_contracts_never_execute_or_claim_success[retry_negative-True] __
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:45.883920+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "07d8e1274f2a44c488495fdce2c53c64", "tenant_id": "fc9fedff7c864e30a65b7b354bcca872"}
+___ test_invalid_contracts_never_execute_or_claim_success[unaudited-False] ____
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+____ test_invalid_contracts_never_execute_or_claim_success[unaudited-True] ____
+tests\test_supervisor_tool_contract_review.py:157: in test_invalid_contracts_never_execute_or_claim_success
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:46.422159+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "2d12a52edcc54743b38211167325380b", "tenant_id": "b427e1f7336d4a13ae82bf71fee0aec7"}
+____________ test_unknown_tool_cannot_create_success_audit[False] _____________
+tests\test_supervisor_tool_contract_review.py:200: in test_unknown_tool_cannot_create_success_audit
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+_____________ test_unknown_tool_cannot_create_success_audit[True] _____________
+tests\test_supervisor_tool_contract_review.py:200: in test_unknown_tool_cannot_create_success_audit
+    assert "denied" in text or "invalid" in text
+E   AssertionError: assert ('denied' in 'MODEL_SAYS_COMPLETED' or 'invalid' in 'MODEL_SAYS_COMPLETED')
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:49.055250+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "99bcaf88e27d4a2baad61e10cae07a09", "tenant_id": "53b7e86a103a45ea9b8ec9af170e5e85"}
+_________ test_tool_observation_does_not_become_control_system[False] _________
+tests\test_supervisor_tool_contract_review.py:209: in test_tool_observation_does_not_become_control_system
+    assert "ok" in text
+E   AssertionError: assert 'ok' in 'MODEL_SAYS_COMPLETED'
+_________ test_tool_observation_does_not_become_control_system[True] __________
+tests\test_supervisor_tool_contract_review.py:209: in test_tool_observation_does_not_become_control_system
+    assert "ok" in text
+E   AssertionError: assert 'ok' in 'MODEL_SAYS_COMPLETED'
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:49.623191+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "cd7899e5afaf4e83bcf7210f2bc3c177", "tenant_id": "0c59a0e460a94beeafaadc2dc2740586"}
+____________ test_generator_close_stops_running_tool_before_draft _____________
+tests\test_supervisor_tool_contract_review.py:238: in test_generator_close_stops_running_tool_before_draft
+    assert started.is_set() and cancelled.is_set()
+E   assert (False)
+E    +  where False = is_set()
+E    +    where is_set = <asyncio.locks.Event object at 0x000002607B5FB110 [unset]>.is_set
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:37:49.950368+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "e4114b7dc069434a83b2877181377926", "tenant_id": "eabfe9b029c9455e872be2e5ff26be76"}
+=========================== short test summary info ===========================
+FAILED tests/test_supervisor_tool_contract_review.py::test_two_research_rounds_do_not_replay_same_success[False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_two_research_rounds_do_not_replay_same_success[True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_partial_success_followed_by_failure_remains_visible[False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_partial_success_followed_by_failure_remains_visible[True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[None-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[None-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[risk-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[risk-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[nan-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[nan-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[infinite-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[infinite-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[bool_timeout-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[bool_timeout-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[retry_bool-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[retry_bool-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[retry_negative-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[retry_negative-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[unaudited-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_invalid_contracts_never_execute_or_claim_success[unaudited-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_unknown_tool_cannot_create_success_audit[False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_unknown_tool_cannot_create_success_audit[True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_tool_observation_does_not_become_control_system[False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_tool_observation_does_not_become_control_system[True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_generator_close_stops_running_tool_before_draft
+25 failed, 8 passed in 11.96s

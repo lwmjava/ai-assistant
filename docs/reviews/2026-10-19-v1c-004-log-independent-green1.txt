@@ -1,0 +1,125 @@
+.................................FFFF..FFFFFF                            [100%]
+================================== FAILURES ===================================
+_ test_selected_skill_changed_before_tool_start_cannot_grant_execution[disabled-False] _
+tests\test_supervisor_tool_contract_review.py:268: in test_selected_skill_changed_before_tool_start_cannot_grant_execution
+    assert calls == []
+E   AssertionError: assert [{'value': 1}] == []
+E     
+E     Left contains one more item: {'value': 1}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:51.532015+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "skill_match outcome=unavailable", "trace_id": "", "user_id": "c2f208cc86fc45af93122f50e6489cb5", "tenant_id": "3425076a28af42c0948939262594ccd7"}
+_ test_selected_skill_changed_before_tool_start_cannot_grant_execution[disabled-True] _
+tests\test_supervisor_tool_contract_review.py:268: in test_selected_skill_changed_before_tool_start_cannot_grant_execution
+    assert calls == []
+E   AssertionError: assert [{'value': 1}] == []
+E     
+E     Left contains one more item: {'value': 1}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:52.798328+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "skill_match outcome=unavailable", "trace_id": "", "user_id": "3dbe9d3ece0246ba91e33a67f7e10f5c", "tenant_id": "ee8ba342362e44998ea43fb4fd169459"}
+{"ts": "2026-10-19T05:40:52.814862+00:00", "level": "ERROR", "logger": "asyncio", "message": "Task was destroyed but it is pending!\ntask: <Task pending name='Task-602' coro=<SupervisorGraph.run_stream.<locals>.produce() running at E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\app\\agents\\supervisor.py:440> wait_for=<Task pending name='Task-607' coro=<RunnableCallable.ainvoke() running at D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py:473> wait_for=<Future pending cb=[Task.task_wakeup()]> cb=[Task.task_wakeup()]>>", "trace_id": "", "user_id": "3dbe9d3ece0246ba91e33a67f7e10f5c", "tenant_id": "ee8ba342362e44998ea43fb4fd169459"}
+{"ts": "2026-10-19T05:40:52.815868+00:00", "level": "ERROR", "logger": "asyncio", "message": "Task was destroyed but it is pending!\ntask: <Task pending name='Task-607' coro=<RunnableCallable.ainvoke() running at D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\Lib\\site-packages\\langgraph\\_internal\\_runnable.py:473> wait_for=<Future pending cb=[Task.task_wakeup()]> cb=[Task.task_wakeup()]>", "trace_id": "", "user_id": "3dbe9d3ece0246ba91e33a67f7e10f5c", "tenant_id": "ee8ba342362e44998ea43fb4fd169459"}
+{"ts": "2026-10-19T05:40:52.853107+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "3dbe9d3ece0246ba91e33a67f7e10f5c", "tenant_id": "ee8ba342362e44998ea43fb4fd169459"}
+_ test_selected_skill_changed_before_tool_start_cannot_grant_execution[version-False] _
+tests\test_supervisor_tool_contract_review.py:268: in test_selected_skill_changed_before_tool_start_cannot_grant_execution
+    assert calls == []
+E   AssertionError: assert [{'value': 1}] == []
+E     
+E     Left contains one more item: {'value': 1}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:53.124678+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "skill_match outcome=unavailable", "trace_id": "", "user_id": "387fd6c5203e413888b23f0417aadc1a", "tenant_id": "8c03b981392b4866a20c531ac1158175"}
+_ test_selected_skill_changed_before_tool_start_cannot_grant_execution[version-True] _
+tests\test_supervisor_tool_contract_review.py:268: in test_selected_skill_changed_before_tool_start_cannot_grant_execution
+    assert calls == []
+E   AssertionError: assert [{'value': 1}] == []
+E     
+E     Left contains one more item: {'value': 1}
+E     Use -v to get more diff
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:53.455526+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "skill_match outcome=unavailable", "trace_id": "", "user_id": "abb9c84481ed40ce8a2ad8c77ad857d7", "tenant_id": "b67ce95249b94d44aa0e2937a88f6b77"}
+{"ts": "2026-10-19T05:40:53.494206+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "abb9c84481ed40ce8a2ad8c77ad857d7", "tenant_id": "b67ce95249b94d44aa0e2937a88f6b77"}
+__ test_real_provider_cache_hit_reexecutes_tool_for_each_new_request[False] ___
+tests\test_supervisor_tool_contract_review.py:342: in test_real_provider_cache_hit_reexecutes_tool_for_each_new_request
+    assert first_count > 0 and calls == [{"value": 1}]
+E   AssertionError: assert (2 > 0 and [] == [{'value': 1}]
+E     
+E     Right contains one more item: {'value': 1}
+E     Use -v to get more diff)
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:55.289503+00:00", "level": "INFO", "logger": "httpx", "message": "http_request_completed method=POST status=200", "trace_id": "", "user_id": "b0b68b5f50414def9465a250671460c3", "tenant_id": "076cff172cf54bfb9d274cb85abc0b9e"}
+{"ts": "2026-10-19T05:40:55.346693+00:00", "level": "INFO", "logger": "httpx", "message": "http_request_completed method=POST status=200", "trace_id": "", "user_id": "b0b68b5f50414def9465a250671460c3", "tenant_id": "076cff172cf54bfb9d274cb85abc0b9e"}
+___ test_real_provider_cache_hit_reexecutes_tool_for_each_new_request[True] ___
+tests\test_supervisor_tool_contract_review.py:342: in test_real_provider_cache_hit_reexecutes_tool_for_each_new_request
+    assert first_count > 0 and calls == [{"value": 1}]
+E   AssertionError: assert (2 > 0 and [] == [{'value': 1}]
+E     
+E     Right contains one more item: {'value': 1}
+E     Use -v to get more diff)
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:55.756346+00:00", "level": "INFO", "logger": "httpx", "message": "http_request_completed method=POST status=200", "trace_id": "", "user_id": "00549a5112e44a9db18dcc2b8872ac97", "tenant_id": "ae0d494e06ac43ccb4a6c463caab0d3d"}
+{"ts": "2026-10-19T05:40:55.793617+00:00", "level": "INFO", "logger": "httpx", "message": "http_request_completed method=POST status=200", "trace_id": "", "user_id": "00549a5112e44a9db18dcc2b8872ac97", "tenant_id": "ae0d494e06ac43ccb4a6c463caab0d3d"}
+{"ts": "2026-10-19T05:40:55.793617+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "00549a5112e44a9db18dcc2b8872ac97", "tenant_id": "ae0d494e06ac43ccb4a6c463caab0d3d"}
+_ test_direct_legacy_supervisor_without_delegate_remains_non_executing[False] _
+tests\test_supervisor_tool_contract_review.py:363: in test_direct_legacy_supervisor_without_delegate_remains_non_executing
+    assert "δ" in state.answer or "not_called" in state.answer or "�޹���" in state.answer
+E   AssertionError: assert ('δ' in 'MODEL_SAYS_COMPLETED' or 'not_called' in 'MODEL_SAYS_COMPLETED' or '�޹���' in 'MODEL_SAYS_COMPLETED')
+E    +  where 'MODEL_SAYS_COMPLETED' = AgentState(user_input='���ȵ��У��������', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names': []}, retri...PLETED'}, {'name': 'research', 'result': 'MODEL_SAYS_COMPLETED'}, {'name': 'draft', 'result': 'MODEL_SAYS_COMPLETED'}]).answer
+E    +  and   'MODEL_SAYS_COMPLETED' = AgentState(user_input='���ȵ��У��������', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names': []}, retri...PLETED'}, {'name': 'research', 'result': 'MODEL_SAYS_COMPLETED'}, {'name': 'draft', 'result': 'MODEL_SAYS_COMPLETED'}]).answer
+E    +  and   'MODEL_SAYS_COMPLETED' = AgentState(user_input='���ȵ��У��������', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names': []}, retri...PLETED'}, {'name': 'research', 'result': 'MODEL_SAYS_COMPLETED'}, {'name': 'draft', 'result': 'MODEL_SAYS_COMPLETED'}]).answer
+_ test_direct_legacy_supervisor_without_delegate_remains_non_executing[True] __
+tests\test_supervisor_tool_contract_review.py:363: in test_direct_legacy_supervisor_without_delegate_remains_non_executing
+    assert "δ" in state.answer or "not_called" in state.answer or "�޹���" in state.answer
+E   AssertionError: assert ('δ' in 'MODEL_SAYS_COMPLETED' or 'not_called' in 'MODEL_SAYS_COMPLETED' or '�޹���' in 'MODEL_SAYS_COMPLETED')
+E    +  where 'MODEL_SAYS_COMPLETED' = AgentState(user_input='���ȵ��У��������', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names': []}, retri...PLETED'}, {'name': 'research', 'result': 'MODEL_SAYS_COMPLETED'}, {'name': 'draft', 'result': 'MODEL_SAYS_COMPLETED'}]).answer
+E    +  and   'MODEL_SAYS_COMPLETED' = AgentState(user_input='���ȵ��У��������', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names': []}, retri...PLETED'}, {'name': 'research', 'result': 'MODEL_SAYS_COMPLETED'}, {'name': 'draft', 'result': 'MODEL_SAYS_COMPLETED'}]).answer
+E    +  and   'MODEL_SAYS_COMPLETED' = AgentState(user_input='���ȵ��У��������', skill_binding={'version': 1, 'skills': [], 'mode': 'none', 'tool_names': []}, retri...PLETED'}, {'name': 'research', 'result': 'MODEL_SAYS_COMPLETED'}, {'name': 'draft', 'result': 'MODEL_SAYS_COMPLETED'}]).answer
+_ test_skill_revocation_after_stream_call_event_prevents_new_execution[disabled] _
+tests\test_supervisor_tool_contract_review.py:392: in test_skill_revocation_after_stream_call_event_prevents_new_execution
+    assert seen and calls == []
+E   AssertionError: assert (True and [{'value': 1}] == []
+E     
+E     Left contains one more item: {'value': 1}
+E     Use -v to get more diff)
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:56.983841+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "skill_match outcome=unavailable", "trace_id": "", "user_id": "bc7d766878814c77b4b1d191303d499c", "tenant_id": "8fc42f8543e841d9ad12d976668b494c"}
+{"ts": "2026-10-19T05:40:57.021131+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "bc7d766878814c77b4b1d191303d499c", "tenant_id": "8fc42f8543e841d9ad12d976668b494c"}
+_ test_skill_revocation_after_stream_call_event_prevents_new_execution[version] _
+tests\test_supervisor_tool_contract_review.py:392: in test_skill_revocation_after_stream_call_event_prevents_new_execution
+    assert seen and calls == []
+E   AssertionError: assert (True and [{'value': 1}] == []
+E     
+E     Left contains one more item: {'value': 1}
+E     Use -v to get more diff)
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-19T05:40:57.361748+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "skill_match outcome=unavailable", "trace_id": "", "user_id": "23273390779d4e7a9a5595d01df503f8", "tenant_id": "366e9ad472044accbc797ecfcc0054cc"}
+{"ts": "2026-10-19T05:40:57.396084+00:00", "level": "INFO", "logger": "app.services.chat_service", "message": "rag_sources_returned source_count=0", "trace_id": "", "user_id": "23273390779d4e7a9a5595d01df503f8", "tenant_id": "366e9ad472044accbc797ecfcc0054cc"}
+============================== warnings summary ===============================
+tests/test_supervisor_tool_contract_review.py::test_selected_skill_changed_before_tool_start_cannot_grant_execution[disabled-True]
+  D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <coroutine object arun_with_retry at 0x000002170BC55F80>
+  
+  Traceback (most recent call last):
+    File "D:\DepTooL\anaconda3\envs\ai-assistant\Lib\site-packages\langgraph\pregel\_retry.py", line 163, in arun_with_retry
+      return await task.proc.ainvoke(task.input, config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  RuntimeError: coroutine ignored GeneratorExit
+  During task with name 'research' and id 'ec163529-7477-bc38-55dd-092e5c21ce80'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_supervisor_tool_contract_review.py::test_selected_skill_changed_before_tool_start_cannot_grant_execution[disabled-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_selected_skill_changed_before_tool_start_cannot_grant_execution[disabled-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_selected_skill_changed_before_tool_start_cannot_grant_execution[version-False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_selected_skill_changed_before_tool_start_cannot_grant_execution[version-True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_real_provider_cache_hit_reexecutes_tool_for_each_new_request[False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_real_provider_cache_hit_reexecutes_tool_for_each_new_request[True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_direct_legacy_supervisor_without_delegate_remains_non_executing[False]
+FAILED tests/test_supervisor_tool_contract_review.py::test_direct_legacy_supervisor_without_delegate_remains_non_executing[True]
+FAILED tests/test_supervisor_tool_contract_review.py::test_skill_revocation_after_stream_call_event_prevents_new_execution[disabled]
+FAILED tests/test_supervisor_tool_contract_review.py::test_skill_revocation_after_stream_call_event_prevents_new_execution[version]
+10 failed, 35 passed, 1 warning in 18.16s

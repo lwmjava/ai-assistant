@@ -1,7 +1,7 @@
 {
   "task": "V1C-003",
   "baseline_sha": "d886560ca211930f7c35d886788496599c6b6d9e",
-  "candidate": "HEAD plus final input_sha256; uncommitted",
+  "candidate": "e005b4d08b5139080423f780db8c60f92d5d219e; frozen input hashes unchanged",
   "branch": "codex/v1c-001-lazy-retrieval",
   "input_sha256": {
     ".env.example": "1720dd18f7aca224c32afa16f4ee4ac2e9e20da19b62bf54386bf3feac4d0620",
@@ -589,9 +589,7 @@
     "network": "synthetic providers; no real model calls"
   },
   "approval": "User explicitly approved plan, allowed_paths and ADR-0014 in this conversation",
-  "pending": [
-    "Ubuntu CI for final candidate commit"
-  ],
+  "pending": [],
   "predecessor_ci": {
     "sha": "d886560ca211930f7c35d886788496599c6b6d9e",
     "run_url": "https://github.com/lwmjava/ai-assistant/actions/runs/39182362484",
@@ -677,5 +675,17 @@
       "docs/reviews/2026-10-19-v1c-003-business-acceptance.log": "f50caf6f0944367857a529cfe1d200c4051cc8e12943c83f4066f2c044f649a3",
       "docs/reviews/2026-10-19-v1c-003-business-resume-probe.log": "4714f87c272eb6e41c07809795f28335ecde49d0c405b56b6c20851ce43a661d"
     }
-  }
+  },
+  "final_ci": {
+    "sha": "e005b4d08b5139080423f780db8c60f92d5d219e",
+    "run": "https://github.com/lwmjava/ai-assistant/actions/runs/39202782711",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": {
+      "Backend": "https://github.com/lwmjava/ai-assistant/actions/runs/39202782711/job/117899112475",
+      "Frontend": "https://github.com/lwmjava/ai-assistant/actions/runs/39202782711/job/117899112477",
+      "Agent official baseline": "https://github.com/lwmjava/ai-assistant/actions/runs/39202782711/job/117899112203"
+    }
+  },
+  "closure": "2026-10-19 explicit user approval; done. Documentation-only closure update preserves final source/test/config/eval inputs."
 }

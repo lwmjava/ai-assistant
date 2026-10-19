@@ -429,6 +429,14 @@ class ChatService:
         if "agent_resume_snapshot" in session.info:
             pipeline.state_binding["resume_snapshot"] = session.info["agent_resume_snapshot"]
 
+    @staticmethod
+    def _wire_supervisor_tools(session: Session, user: User, pipeline) -> None:
+        from app.agents.supervisor import SupervisorGraph
+        from app.services.supervisor_tools import wire_supervisor_tools
+
+        if isinstance(pipeline, SupervisorGraph):
+            wire_supervisor_tools(session, user, pipeline)
+
     def _prepare_user_message(
         self, session: Session, user: User, conversation_id: str | None, message: str,
         resume_message_id: str | None, claims: list[tuple[int, str, str, str]],
@@ -583,6 +591,8 @@ class ChatService:
                 if isinstance(pipeline, AgentPipeline):
                     pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
                     self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
+                else:
+                    self._wire_supervisor_tools(session, user, pipeline)
                 # 7. 执行
                 result = await pipeline.run(state)
         except ContextBudgetError:
@@ -685,6 +695,8 @@ class ChatService:
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
             self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
+        else:
+            self._wire_supervisor_tools(session, user, pipeline)
         # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。
         conversation_id = conv.id
         yield AgentEvent("conversation", conversation_id)
@@ -694,12 +706,14 @@ class ChatService:
         sources: list[dict] = []
         assistant_saved = False
         stopped = False
+        events = None
         try:
             if fast is not None:
                 events = self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime)
             else:
                 assert pipeline is not None
                 events = pipeline.run_stream(state)
+            assert events is not None
             async for event in events:
                 if event.type == "error":
                     state.error_code = str(safe_error_metadata(event.metadata)["code"])
@@ -748,6 +762,10 @@ class ChatService:
                              metadata=safe_error_metadata({"code": "context_budget_exceeded"}))
             yield AgentEvent("done", BUDGET_EXCEEDED_REPLY)
         finally:
+            if events is not None:
+                close_events = getattr(events, "aclose", None)
+                if close_events is not None:
+                    await close_events()
             if stopped and not assistant_saved:
                 # 只用已经交给页面的 token。不用 state.answer，避免把未展示的后文写进去。
                 # 另开会话写入：客户端断开时，请求上的会话可能已经解除绑定。

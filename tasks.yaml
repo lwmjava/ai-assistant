@@ -202,7 +202,7 @@ tasks:
 
   - id: "V1C-005"
     title: "1.0收尾：支持知识库与工具组合任务"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     depends_on: ["V1C-001", "V1C-002", "V1C-003", "V1C-004"]
     scope:
@@ -238,7 +238,7 @@ tasks:
     risk: {level: "L2", side_effect: "路由与规划行为变化，实施前完成ADR及有界Evaluation方案"}
     execution:
       plan: "docs/plans/plan_v1c_005_20261019.md"
-      progress: "2026-10-19按用户批准计划/允许路径/ADR-0016实现calculator-only知识库组合：当前选块与用户参数核验、现有Executor真实执行、固定金额/来源模板、权限技能与取消/缓存/重新生成边界。独立工程三P2已真实红复现并修复；独立反例126通过，最终无筛选pytest3043 passed/3 skipped/3既有warnings，800.71秒，exit0；Ruff全库no-cache与mypy218文件exit0；531最终输入一致。新独立final_audit实际154 passed/75.18秒/exit0，另3条真实分隔符探针，无未修复P1/P2。实现说明docs/plans/implementation_v1c_005_20261019.md；证据/验收/人工审核见docs/reviews/2026-10-19-v1c-005-*。E2合成提取/Mock64维只证链路，真实模型质量未验证。2026-10-20用户明确委托新独立Agent业务接受，/root/v1c005_business_acceptance已通过：154项/64.15秒/exit0，另12条真实Service业务探针全通过（四入口2人4天3040.00和复杂政策受控拒绝），531输入及17原日志指纹一致；报告docs/reviews/2026-10-20-v1c-005-business-acceptance.md。E2隔离范围，未验证真实模型质量；最终候选尚未提交，GitHub Backend/Frontend/Agent official baseline未验证，旧SHA CI仅基线，故in_review不得done。未提交/推送/合并/部署。"
+      progress: "2026-10-19按用户批准计划/允许路径/ADR-0016实现calculator-only知识库组合：当前选块与用户参数核验、现有Executor真实执行、固定金额/来源模板、权限技能与取消/缓存/重新生成边界。独立工程三P2已真实红复现并修复；独立反例126通过，最终无筛选pytest3043 passed/3 skipped/3既有warnings，800.71秒，exit0；Ruff全库no-cache与mypy218文件exit0；531最终输入一致。新独立final_audit实际154 passed/75.18秒/exit0，另3条真实分隔符探针，无未修复P1/P2。实现说明docs/plans/implementation_v1c_005_20261019.md；证据/验收/人工审核见docs/reviews/2026-10-19-v1c-005-*。E2合成提取/Mock64维只证链路，真实模型质量未验证。2026-10-20用户明确委托新独立Agent业务接受，/root/v1c005_business_acceptance已通过：154项/64.15秒/exit0，另12条真实Service业务探针全通过（四入口2人4天3040.00和复杂政策受控拒绝），531输入及17原日志指纹一致；报告docs/reviews/2026-10-20-v1c-005-business-acceptance.md。E2隔离范围，未验证真实模型质量；最终候选尚未提交，GitHub Backend/Frontend/Agent official baseline未验证，旧SHA CI仅基线，故in_review不得done。未提交/推送/合并/部署。 2026-10-20用户明确要求关闭：候选d20136edde18423a1eb0f0ede505601e6a290815，GitHub run39344521725同SHA Backend(job118373795678)/Frontend(job118373795484)/Agent official baseline(job118373795249)全部success。531工作区输入、531提交blob与17原日志指纹匹配，技术独立审核及受托业务接受均通过，无未修复P1/P2，批准范围内done。此前pending/in_review为历史；关闭记录docs/reviews/2026-10-20-v1c-005-closure.md及closure-evidence.json。仅新增关闭元数据，不改执行输入；未合并/部署。"
 
   - id: "V1C-006"
     title: "1.0收尾：测量并优化技能匹配与意图分流开销"

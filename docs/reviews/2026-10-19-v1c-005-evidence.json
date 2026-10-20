@@ -607,10 +607,8 @@
       "exit_code": 0
     }
   },
-  "status": "in_review; local required checks, independent final audit and delegated user business acceptance passed; final commit CI pending",
-  "pending": [
-    "GitHub Backend/Frontend/Agent official baseline for final commit"
-  ],
+  "status": "done within approved calculator-only/E2 scope; user requested closure after final same-SHA CI passed",
+  "pending": [],
   "scope_note": "Earlier dependency closure documentation preserved separately; no commit/push/merge authorization.",
   "report_sha256": {
     "docs/reviews/2026-10-19-v1c-005-route-red.txt": "4547832e85055b93afa792cecf33c6d9923fa2fd0b0171f4116f0dcaa6ab7aa2",
@@ -753,5 +751,13 @@
     "evidence": "docs/reviews/2026-10-20-v1c-005-business-acceptance-evidence.json",
     "inputs_unchanged": 531,
     "limitation": "Synthetic extraction and MockEmbedding64 E2 chain evidence; not production model/retrieval quality. Final commit CI still pending."
+  },
+  "closure": {
+    "candidate_sha": "d20136edde18423a1eb0f0ede505601e6a290815",
+    "ci_run_id": 39344521725,
+    "ci_conclusion": "success",
+    "report": "docs/reviews/2026-10-20-v1c-005-closure.md",
+    "evidence": "docs/reviews/2026-10-20-v1c-005-closure-evidence.json",
+    "metadata_only": true
   }
 }

@@ -379,12 +379,18 @@ def _stamp_if_schema_already_at_head() -> bool:
             {column["name"] for column in inspector.get_columns("messages")}
             if "messages" in inspector.get_table_names() else set()
         )
+        workflow_columns = (
+            {column["name"] for column in inspector.get_columns("workflows")}
+            if "workflows" in inspector.get_table_names() else set()
+        )
     user_flags_present = {"is_test_user", "must_change_password"}.issubset(user_columns)
     if current == head:
         if not user_flags_present:
             raise RuntimeError("数据库修订已到最新版本，但用户安全标记列缺失；请核对并恢复正确 schema。")
         if "attachments" not in message_columns:
             raise RuntimeError("数据库修订已到最新版本，但消息附件列缺失；请核对并恢复正确 schema。")
+        if "timeout_seconds" not in workflow_columns:
+            raise RuntimeError("数据库修订已到最新版本，但工作流超时列缺失；请核对并恢复正确 schema。")
         return False
     if not _later_rag_tables_exist():
         return False
@@ -403,6 +409,10 @@ def _stamp_if_schema_already_at_head() -> bool:
     if "attachments" not in message_columns:
         if current != "f1a6c8d2b903":
             stamp("f1a6c8d2b903")
+        return False
+    if "timeout_seconds" not in workflow_columns:
+        if current != "a4b7c2d9e160":
+            stamp("a4b7c2d9e160")
         return False
     logger.warning(
         "检测到 RAG 导入平台表已存在但 Alembic 修订落后，改为标记到 head: current=%s head=%s",

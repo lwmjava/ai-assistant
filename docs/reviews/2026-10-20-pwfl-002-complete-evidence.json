@@ -1,0 +1,99 @@
+{
+  "baseline_sha": "b7fab9d6db4646ee3a08cc69c1f627b4cc418ee9",
+  "candidate": "HEAD plus final frozen source/test/config/dependency/evaluation SHA256 manifest",
+  "input_manifest": "docs/reviews/2026-10-20-pwfl-002-complete-inputs.json",
+  "frozen_inputs": 728,
+  "changed_inputs_after_checks": [],
+  "platform": "Windows-11-10.0.22621-SP0",
+  "python": "3.12.0",
+  "non_sensitive_config": {
+    "ENV": "development",
+    "AUTH_ENABLED": true,
+    "AGENT_ORCHESTRATION": "self",
+    "SECURITY_RATE_LIMIT": false,
+    "RAG_ENABLED": true,
+    "RAG_BACKEND": "native",
+    "RAG_VECTOR_STORE": "local",
+    "WORKFLOW_ENABLED": false
+  },
+  "results": {
+    "full_pytest": {
+      "collected": 3157,
+      "passed": 3154,
+      "skipped": 3,
+      "warnings": 4,
+      "seconds": 905.94,
+      "exit_code": 0
+    },
+    "migration_and_reconcile": {
+      "passed": 9,
+      "seconds": 4.66,
+      "exit_code": 0
+    },
+    "ruff_no_cache": {
+      "exit_code": 0
+    },
+    "mypy": {
+      "files": 220,
+      "exit_code": 0
+    },
+    "frontend": {
+      "typecheck_exit": 0,
+      "test_exit": 0,
+      "test_files": 18,
+      "passed": 167,
+      "seconds": 2.76,
+      "lint_exit": 0,
+      "build_exit": 0
+    },
+    "independent_entry": {
+      "passed": 44,
+      "seconds": 7.92,
+      "exit_code": 0
+    },
+    "independent_migration": {
+      "passed": 16,
+      "seconds": 7.81,
+      "exit_code": 0,
+      "overlap_with_entry": 7
+    },
+    "independent_real_init_db_probes": {
+      "scenarios": 2,
+      "exit_code": 0
+    },
+    "final_independent_technical_audit": {
+      "agent": "/root/final_audit",
+      "passed": 53,
+      "warnings": 1,
+      "seconds": 14.35,
+      "exit_code": 0,
+      "report": "docs/reviews/2026-10-20-pwfl-002-human-audit-1.md"
+    }
+  },
+  "skips": [
+    "test_cli_init: Windows symlink creation privilege",
+    "test_cli_init: POSIX 0600 permissions require Linux",
+    "test_cli_init_review: open-file replacement identity protection requires Linux"
+  ],
+  "pending": [
+    "final commit Ubuntu Backend/Frontend/Agent official CI",
+    "user business acceptance"
+  ],
+  "git_actions": "local commit authorized; no push, merge or deploy",
+  "logs": {
+    "data/pwfl002-core-baseline.txt": "34d3e3b132e8bf93cd470b37e4ea43780b064998adf0015756f2d5966f3e8fee",
+    "data/pwfl002-core-red.txt": "80eaba5b59ceacbf1477abd3876641db745151cc57cbdd701b0963c80b326220",
+    "data/pwfl002-core-green.txt": "1ebbb0fb97a1baec4569a3fb94968baef2543f7ec60bfdd313cae807588feb97",
+    "data/pwfl002-core-ruff.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/pwfl002-core-mypy.txt": "df5f4b5322df16c9a209ea139a36970e7ab5eed86b60ae8a840fddc762c5094f",
+    "data/pwfl002-complete-full.txt": "2177882737c4285142c94f21e8093bf36c06094c597d43c042e07c0218670276",
+    "data/pwfl002-complete-config.json": "f42113657477b897cfddebf9fc4784fe366587257a34a13f97fc465b3b887d11",
+    "data/pwfl002-migration-review-tests.txt": "d8c52074b826245dc266922751b5caa001dfc95124012f0faf09a714025b8397",
+    "data/pwfl002-migration-review-44.txt": "a82a6584c53b87f20c9bcbbfcc01f18fec7af89c9d0e8b8daff685c557063ab3",
+    "data/pwfl002-migration-review-probes-final.txt": "3150e3809ebe5641f589fea065ec45ab9de9fffd6ac841b3ea3fd8257bcc96b2",
+    "data/pwfl002-complete-frontend-typecheck.txt": "8bccce1b2eea9a81b456e4e225ff2553f200160510898e15a0e20ce50e141d3c",
+    "data/pwfl002-complete-frontend-test.txt": "c85cc4ac476a7e62b81911c984008da07f137be35111fac504028adc3adbab5f",
+    "data/pwfl002-complete-frontend-lint.txt": "39b90cdabf3d30ecb37fe87ba14e3256dc20c5f95f5545691195e53140e45de7",
+    "data/pwfl002-complete-frontend-build.txt": "d665d75c3f4bf18d4c20306c63d3a55dca12a939ca895a0bbbace139d547c4a7"
+  }
+}

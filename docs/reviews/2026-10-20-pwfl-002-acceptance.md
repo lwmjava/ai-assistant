@@ -1,55 +1,73 @@
-# 工作流超时与取消验收对账（阻断，未关闭）
+# 工作流超时与取消：最终关闭对账
 
-日期：2026-10-20。主Agent整合，不冒充独立人工审核。原始契约为tasks.yaml PWFL-002；已批准方案及ADR-0017有效。本地提交授权有效，无推送、合并、部署、真实数据库迁移或收费模型授权。
+日期：2026-10-20。主Agent整合；本文件不是独立人工审核。原始契约：tasks.yaml PWFL-002。批准依据：实施计划及ADR-0017，用户随后明确批准追加app/core/migration.py。本轮只在隔离SQLite/合成合作式执行中验证，没有真实库迁移、收费模型、推送、合并或部署。
 
-## 关闭对账
+本记录覆盖b7fab9d中的旧“缺列阻断”结论：启动修复及独立入口复验已通过。最终全量回归已通过；最终独立技术审核已通过，Ubuntu CI与用户业务接受仍未验证，因此尚不能done。
 
-| 原始要求/约束 | 实际证据与级别 | 结果与缺口 |
-|---|---|---|
-| 任务可配置超时 | E2：真实HTTP创建/更新、严格1–3600整数、默认300、新Session回读；非有限raw JSON6项422且无写入 | 新建/更新配置通过；旧库自动升级失败，整项不能全通过 |
-| 超时中止、标记、释放占用 | E2：真实engine总时限、退避超时、资源finally、超时清理期父重复取消；真实WorkflowBridge/ChatService传播取消 | 合作式路径通过，不声称强杀或清理硬时限 |
-| 手动取消接口 | E2：HTTP运行并发取消、同租户写权限/系统管理员、跨租户/错绑/匿名/只读拒绝、终态幂等及新Session回读 | 通过，无UI按钮交付 |
-| 失败/幂等/身份绑定 | E2：退避撤权、cron取消保留调用者、双独立内存数据库同URL/同ID不交叉取消、事务rollback、实际终态commit失败503 | 通过相应失败反馈；DB持久化不可用会留下running历史，无自动补偿承诺 |
-| 不改执行历史数据结构 | E2：迁移旧行升级/降级及历史表schema对比；仅Workflow新增列 | 直接Alembic通过，启动auto_migrate缺列失败 |
-| 独立入口审查 | 独立Agent `/root/execution_review` 新增7反例，最终44 passed/exit0，含原重试与6非有限输入；最终指纹见工程审查 | 已有已知迁移阻断，不能据此done |
-| 必要回归与最终版本 | 最终专项102 passed/1 failed/exit1；Ruff/mypy通过；前端四门通过。输入清单另存 | 全量过程版本不能替代最终版本全量；Ubuntu CI未验证 |
-| 最终独立人工审核、用户业务接受 | 未执行最终审核：自动验收门禁尚未通过；用户未委托本卡业务接受 | 未验证，禁止关闭 |
+## 原始要求逐项对账
 
-E2均为真实代码与隔离SQLite/合成合作式provider/bridge，不证明真实模型质量或生产可用性。无E1外部收费模型/真实库证据。历史证据及Mock不冒充最终验收。
+| 要求及出处 | 输入/操作链 | 可观察结果及E2证据 | 当前结论 |
+|---|---|---|---|
+| 可配置超时：任务deliverables[0] | 真实HTTP创建/更新，提交后新Session读取 | 默认300，严格整数1–3600；省略保留、显式null及非法值422；6个raw NaN/Infinity/-Infinity创建/更新均422且无写入 | E2通过 |
+| 超时中止、标记、释放：acceptance[0] | 真实engine、合作长任务及退避，实际finally闸门 | 总时限含重试等待；failed/WORKFLOW_TIMEOUT、结束时间与耗时持久化；清理前不返回/不移除活动绑定；重复父取消不打断清理 | E2通过，非强杀或硬实时承诺 |
+| 手动取消：deliverables[1]/acceptance[1] | 真实HTTP /run→查询历史→cancel→新Session回读 | failed/WORKFLOW_CANCELLED、资源释放、终态幂等；cron _trigger调用者继续；匿名/只读/跨租户/错绑拒绝 | E2通过，交付接口而非页面按钮 |
+| 不改历史结构：non_goals[1] | 旧库直接Alembic升级/降级/再升级；启动init_db/auto_migrate | 只新增Workflow.timeout_seconds，旧行默认300，任务/历史内容与行数保留，历史列结构不变 | E2通过 |
+| 旧库兼容及启动修复 | 父修订、更早修订/实际新schema、无版本create_all混合库、重复启动 | 缺列先对账再增量升级，不跳过DDL；版本已head却缺列开发False/生产拒绝，不伪报迁移成功 | E2通过；不授权真实库修补 |
+| 权限/租户与绑定 | 退避时撤销owner、移出租户、tenant禁用；两个相同URL/ID的独立内存Engine | 再次bridge零调用/失败终态；第二库无法取消第一库，原历史不改 | E2通过 |
+| 错误/回滚/幂等 | 失败事务注入、并发取消/删除、终态commit抛OperationalError | rollback后可写终态；活动DELETE409；DB确实不可用时取消503且不泄露内部异常，资源清理但旧running可保留，不伪报已保存 | E2通过相应失败反馈；不承诺自动补偿 |
+| 独立入口审查 | execution_review与migration_review独立运行入口反例 | 工程末轮44项；本轮迁移+对账+review16项（其中7项与44重叠），另真实init_db探针两场景 | 无未修复P1/P2，详见两份评审 |
+| 本地必要回归 | 冻结728输入后全量pytest、Ruff/mypy、前端四门 | 全量3154 passed/3 skipped/exit0，静态及前端通过 | 本地通过，Windows跳过不替代Linux |
+| 最终独立人工审核/业务接受/Ubuntu CI | 另一未参与实现审查Agent、用户业务接受、最终提交CI | 独立final_audit审核53项通过；用户未委托业务接受；未授权推送/未取得最终CI | 本地技术审核通过，外部门禁未验证，禁止done |
 
-## 最终适用检查
+E2为真实代码+隔离SQLite及合成bridge/provider的集成证据，不是Gold、真实模型质量或生产性能证据。没有以E3 helper、E4 Mock/历史替代必交付。单纯HTTP200、截图或单测数量均未被用作业务成功依据。
 
-平台Windows11 build22621，指定conda `D:/DepTooL/anaconda3/envs/ai-assistant/python.exe`，Python3.12.0，pytest8.4.2、Ruff0.8.4、mypy1.14.1、SQLModel0.0.22、Pydantic2.10.4、httpx0.28.1、Alembic1.14.1；langgraph1.0.10已安装，未禁用CI相关extra。Node22.20.0/npm10.9.3。依赖版本与CI锁定版本可能不同（pytest本地8.4.2，项目dev声明8.3.4），最终Ubuntu CI仍需核验。
+## 环境、基线与输入绑定
 
-`PYTHONUTF8=1`，专项 `DATABASE_URL=sqlite:///./data/pwfl002-related-final.db`。完整专项命令：
+基线SHA b7fab9d6db4646ee3a08cc69c1f627b4cc418ee9，分支codex/flow-003-scheduled-execution，开始时工作区干净；候选为该HEAD加最终源码/测试/配置/依赖/评测输入指纹，docs/reviews/2026-10-20-pwfl-002-complete-inputs.json共728项。后续只改说明/评审，不改检查输入；任何相关输入变化使对应证据失效。
+
+Windows11 build22621；解释器D:/DepTooL/anaconda3/envs/ai-assistant/python.exe、Python3.12.0；pytest8.4.2、Ruff0.8.4、mypy1.14.1、SQLModel0.0.22、Pydantic2.10.4、httpx0.28.1、Alembic1.14.1、langgraph1.0.10。CI相关extra已安装，未通过关闭功能规避失败；本地pytest与项目dev声明8.3.4版本有差异，最终Ubuntu CI未验证。Node22.20.0/npm10.9.3。
+
+测试conftest隔离本机.env与模型密钥，禁止外发；ENV=development、AUTH_ENABLED=true、AGENT_ORCHESTRATION=self、SECURITY_RATE_LIMIT=false；RAG原默认native/local与开发Mock行为不变；WORKFLOW在相关fixture中显式启用。每个Agent用独立DATABASE_URL/basetemp，没有共享测试库并发污染。未读出或记录凭据。
+
+## 实际命令与结果
+
+所有python命令均使用上面的指定解释器，PYTHONUTF8=1。
 
 ```powershell
-& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' -m pytest tests/test_workflow.py tests/test_workflow_retry.py tests/test_workflow_schedule_contract.py tests/test_workflow_schedule_integration.py tests/test_workflow_timeout_cancel.py tests/test_workflow_cancel_api.py tests/test_workflow_timeout_migration.py tests/test_workflow_timeout_review.py tests/test_openapi_coverage.py -q --basetemp=data/pytest-tmp/pwfl002-related-final
+$env:DATABASE_URL='sqlite:///./data/pwfl002-core-baseline.db'
+python.exe -m pytest tests/test_workflow_timeout_migration.py tests/test_migration_reconcile.py -q --basetemp=data/pytest-tmp/pwfl002-core-baseline
 ```
 
-结果：102 passed、1 failed、2 warnings、35.51秒、exit1。唯一失败 `test_startup_migration_adds_timeout_to_previous_schema`：旧修订a4b7c2d9e160被auto_migrate直接stamp为b5c8d3e0f271，timeout_seconds仍缺失。未跳过失败。警告为既有ast.NameConstant弃用和故意注入重复主键失败事务的SAWarning。日志 `data/pwfl002-related-final.txt`。
+基线1 failed/5 passed、4.30秒、exit1。新增当前head缺列/更早混合修订反例后4 failed/2 passed、5.11秒、exit1（core-red库及basetemp）；失败均对应缺失的业务行为，非import或环境错误。
 
 ```powershell
-& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' -m ruff check . --no-cache
-& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' -m mypy app/
+$env:DATABASE_URL='sqlite:///./data/pwfl002-core-green.db'
+python.exe -m pytest tests/test_workflow_timeout_migration.py tests/test_migration_reconcile.py -q --basetemp=data/pytest-tmp/pwfl002-core-green
+python.exe -m ruff check . --no-cache
+python.exe -m mypy app/
 ```
 
-各exit0，mypy220文件。日志data/pwfl002-ruff-final.txt、data/pwfl002-mypy-final.txt。
+9 passed、4.66秒、exit0；Ruff exit0，mypy220文件exit0。日志data/pwfl002-core-green.txt、pwfl002-core-ruff.txt、pwfl002-core-mypy.txt。
 
-中间版本还实际执行了无筛选 `python.exe -m pytest --basetemp=data/pytest-tmp/pwfl002-full-01`，DATABASE_URL=sqlite:///./data/pwfl002-full-01.db：3137 passed、1 failed、3 skipped、4 warnings、679.11秒、exit1。唯一失败仍为上述启动迁移。3项跳过沿既有Windows符号链接/POSIX权限/打开文件替换限制，未声称通过；警告含既有弃用、两个向量非有限故障注入及本卡重复主键反例。执行期间后续修复了Engine绑定与非有限字段校验并追加反例，因此这是过程版本，不能冒充最终候选全量通过。修复范围未批准，最终全量尚待阻断解除后运行。曾试图定位该旧进程以停止过期检查，Get-CimInstance权限拒绝，未实际停止；该命令失败不计入业务断言。pytest最终自行正常汇总并exit1，未留下运行任务。日志data/pwfl002-full-01.txt。
+```powershell
+$env:DATABASE_URL='sqlite:///./data/pwfl002-complete-full.db'
+python.exe -m pytest --basetemp=data/pytest-tmp/pwfl002-complete-full
+```
 
-前端目录分别实际执行 `npm run typecheck`、`npm run test`、`npm run lint`、`npm run build`，各exit0；Vitest18文件167测试通过。日志 `data/pwfl002-frontend-final-*.txt`。前端源码与依赖未改，使用已有安装；未运行npm ci。仅API交付，不伪造浏览器页面验收。
+最终全量3157项收集，3154 passed、3 skipped、4 warnings、905.94秒、exit0；完整日志data/pwfl002-complete-full.txt。3项跳过为既有Windows符号链接权限、POSIX0600语义、打开文件替换身份保护，不冒充Linux通过。4项警告为既有ast.NameConstant弃用、两个非有限向量故障注入的NumPy警告、本卡失败事务重复ORM身份SAWarning。728项输入在结束后逐项重算，变化0。最终结构化统计/日志SHA256见2026-10-20-pwfl-002-complete-evidence.json。
 
-## 缺陷修复与过程失败
+前端目录实际执行npm run typecheck、npm run test、npm run lint、npm run build，各exit0；Vitest18文件167测试通过、2.76秒。日志data/pwfl002-complete-frontend-*.txt。源码/依赖未变，使用已有node_modules，未重装依赖；无新增页面交互，浏览器验收不适用。
 
-有效红测为engine1秒仍运行、API13项缺失行为、模型/迁移2项缺列，以及非有限JSON创建/更新6项真实HTTP500。非有限输入已在局部字段before校验归一化为安全字符串，再由strict int拒绝，6项422且DB不变；未改全局handler。数据库绑定从URL改为实际Engine实例，双内存库隔离反例已通过。专项Ruff发现局部import顺序，已修；Ruff缓存权限错误后按既有规范使用--no-cache成功。初次API更新默认None的mypy赋值错误已显式表达省略sentinel，最终类型检查通过。
+独立migration_review：迁移/reconcile/review16 passed、7.81秒、exit0；原入口/engine/API/重试44 passed、7.92秒、exit0。两组重叠7项，不能相加成独立场景数。两种真实init_db重复启动探针exit0；首个探针fixture遗漏updated_at导致IntegrityError，修正后重跑，未当成迁移结论。完整命令、日志及指纹见docs/reviews/2026-10-20-pwfl-002-migration-review.md。
 
-旧库自动升级缺陷仍待 `app/core/migration.py` 最小扩围授权；该文件未改，失败保留。不得把直接Alembic通过当成启动升级通过。没有最终独立人工审核结论或业务关闭接受。
+## 缺陷轨迹、限制与回滚
 
-## 输入与回滚
+历史WIP b7fab9d已有engine超时、API缺失行为、模型缺列、非有限错误响应500的有效红测及修复轨迹；当时全量过程3137 passed/1 failed/3 skipped，不能代表当前版本。旧库缺列现已获授权并修复，历史“未批准/blocked”由本记录覆盖。原inputs/evidence.json保留作历史，不覆盖新complete输入/证据。
 
-当前候选以HEAD8cc3b06加工作区记录；源码/测试/配置/依赖/评测输入SHA256见 `2026-10-20-pwfl-002-inputs.json`。报告和任务状态文档不改变检查输入；相关输入再改使对应验证失效。独立工程审查另有关键8文件指纹。
+合作取消不保证强行中断同步阻塞、吞取消的下游或已发生外部副作用。终态数据库不可写时有安全失败但无恢复队列。没有跨进程取消、并发池、前端按钮、生产迁移或收费模型质量评估。
 
-先排空活动执行，再回退本卡代码。新配置列可保留；如撤迁移只撤超时配置，不删历史。真实重要数据迁移未获授权。任务保持blocked，可按已授权提交为WIP；不得发布或声称可完成关闭。
+回滚先排空活动执行、回退代码，可保留新增列；获授权时只降级配置列，不删历史/重放任务。当前业务尚不能done；最终本地全绿后保持in_review，等待最终Ubuntu CI和用户业务接受。未授权推送，不自动触发外部收费评测。
 
-最终格式复核：移除了独立反例测试末尾多余空行，业务代码未变。为绑定最终测试输入，专项按同一命令改用 `DATABASE_URL=sqlite:///./data/pwfl002-related-final2.db` 与 `--basetemp=data/pytest-tmp/pwfl002-related-final2` 重跑：102 passed、1 failed、2 warnings、27.42秒、exit1；仍唯一旧库启动迁移失败。日志data/pwfl002-related-final2.txt。Ruff再次exit0，mypy/前端检查输入未变沿用。输入清单已更新该测试SHA256；独立审查正文指纹反映修剪前版本，仅末尾空行变化，无业务差异。
+## 最终独立审核结论
+
+未参与实现与既有审查的 `/root/final_audit` 完整核对原卡/批准计划/业务diff/关闭对账/调用方，并独立运行53项真实迁移/HTTP/Engine/Bridge/重试入口，53 passed、1条预期SAWarning、14.35秒、exit0；728输入变化0，14份日志指纹一致，无未修复P1/P2。报告 `docs/reviews/2026-10-20-pwfl-002-human-audit-1.md`。这是本地技术审核，不冒充用户业务接受，不代表最终Ubuntu CI或发布合格。PWFL-002保持in_review，用户已授权本地保存，未授权推送。

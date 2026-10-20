@@ -5103,7 +5103,7 @@ tasks:
 
   - id: "PWFL-001"
     title: "工作流重试：指数退避与上限"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5150,6 +5150,7 @@ tasks:
     execution:
       plan: "docs/plans/plan_pwfl_001_20261020.md"
       progress: "2026-10-20同一次执行内指数退避重试，默认0次、最多3次，单次等待不超过30秒。原实现全量3091pass/3skip及业务接受为历史证据，见docs/reviews/2026-10-20-pwfl-001-business-acceptance.md。实现已提交c1b09010cc135e235b4673f06bcb7fba7f56547f，CI run39377425900 Backend/Frontend通过、Agent official两项工具指标0.5，agent-003输出未支持DSML。用户批准docs/plans/plan_agent_ci_protocol_20261020.md及追加app/agents/、app/llm/、相关测试/计划/评审，随后批准scripts/run_agent_chain_eval.py。兼容修复在工作区：共享严格单调用DSML解析，原权限/参数/预算/审计链保留；官方入口二次拆信封P1已修复。独立protocol_review复核95pass及技能零执行拒绝反例通过，无未修复P1/P2。最终全量pytest3109pass/3skip/3warnings、713.11s、exit0；Ruff无缓存exit0，mypy219文件exit0。4020最终输入指纹无变化，证据docs/reviews/2026-10-20-agent-ci-protocol-evidence.json。3skip为Windows符号链接/权限/打开文件替换限制，未伪装通过。最终SHA三项CI及本轮业务接受未验证，未提交/推送修复，保持in_review。实现说明docs/plans/implementation_agent_ci_protocol_20261020.md。"
+      closure: "2026-10-20用户明确确认GitHub CI通过并接受关闭。最终实现HEAD8e81bb289b9ed10b175041faf212f7c916074b9f；本轮独立关闭复核专项5pass/exit0，4020冻结输入变化0，无未决P1/P2。CI按用户提供证据登记，非本轮独立查询run URL；本补记覆盖progress中的历史待CI/待接受状态。证据docs/reviews/2026-10-20-pwfl-001-closure-recheck.md。"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -5159,7 +5160,7 @@ tasks:
 
   - id: "PWFL-002"
     title: "工作流超时与取消"
-    status: "backlog"
+    status: "blocked"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5175,6 +5176,8 @@ tasks:
         - "app/api/routes/"
         - "tests/"
         - "tasks.yaml"
+        - "docs/plans/"
+        - "docs/reviews/"
       forbidden_paths:
         - ".env"
       deliverables:
@@ -5196,6 +5199,8 @@ tasks:
       commands:
         - "pytest -k 'workflow'"
     execution:
+      plan: "docs/plans/plan_pwfl_002_20261020.md"
+      progress: "2026-10-20用户授权实施、扩展docs/plans与docs/reviews并授权提交，不含推送。前置PWFL-001经用户接受及独立复核关闭。当前工作流基线59pass/exit0，Ruff/mypy219文件exit0；未改业务代码。计划已落盘，需新增Workflow超时字段及隔离迁移、取消生命周期ADR、README/Swagger契约同步；所需最小扩围未批准，按AGENTS第12节保持blocked，禁止范围外实施。"
       owner: "个人开发者"
       nightly:
         eligible: true

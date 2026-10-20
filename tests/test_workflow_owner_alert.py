@@ -13,7 +13,11 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
-from app.audit.models import WorkflowOwnerAlert
+from app.audit.models import (
+    WorkflowExecutionAlert,
+    WorkflowExecutionLog,
+    WorkflowOwnerAlert,
+)
 from app.core.config import settings
 from app.core.database import engine
 from app.core.security import Role
@@ -32,11 +36,21 @@ from app.workflow.engine import WorkflowEngine
 
 @pytest.fixture(autouse=True)
 def _clean_owner_alert():
-    """清理告警 / 执行 / 工作流，并复位认证覆盖与 Mock LLM。"""
+    """清理本用例产生的告警 / 执行 / 工作流，并复位认证覆盖与 Mock LLM。
+
+    经引擎执行路径会同时写入 PWFL-004 的 ``workflow_execution_alerts`` /
+    ``workflow_execution_logs``；按本用例产生的 workflow_id 级联清理这两张表，
+    避免在共享测试库残留行（不清理他用例的行）。
+    """
     yield
     with Session(engine) as s:
-        for row in s.exec(select(WorkflowOwnerAlert)).all():
-            s.delete(row)
+        workflow_ids = list(s.exec(select(Workflow.id)).all())
+        if workflow_ids:
+            for model in (WorkflowExecutionAlert, WorkflowExecutionLog, WorkflowOwnerAlert):
+                for row in s.exec(
+                    select(model).where(model.workflow_id.in_(workflow_ids))
+                ).all():
+                    s.delete(row)
         for row in s.exec(select(WorkflowExecution)).all():
             s.delete(row)
         for row in s.exec(select(Workflow)).all():

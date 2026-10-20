@@ -60,6 +60,11 @@
 - API 用例以全新 TestClient 请求（新会话）读取告警，非同一内存对象。
 - `test_suspended_owner_alert_not_duplicated`：连续两次 execute，告警仍为 1 条。
 
+### 夹具卫生补记（LOW-5，审查后修复）
+- 本卡测试经引擎终端路径会触发 PWFL-004 的 `workflow_execution_alerts` / `workflow_execution_logs` 两表写入；原 teardown 只清 `workflow_owner_alerts` / `workflow_executions` / `workflows`，会在共享测试库残留这两表的行。
+- 已在 `tests/test_workflow_owner_alert.py` 的 `_clean_owner_alert` fixture 中：先收集本用例产生的 `workflow.id`，再按 `workflow_id` 级联删除 `WorkflowExecutionAlert`、`WorkflowExecutionLog`、`WorkflowOwnerAlert`，最后删执行与工作流行。只清理本用例的 workflow 行，不触碰其他用例/其他卡的数据。
+- 复跑：`pytest tests/test_workflow_owner_alert.py -v` 6 passed；`pytest -k suspended_owner` 6 passed；`ruff check .` 退出 0；`mypy app/ tests/test_workflow_owner_alert.py` 退出 0。
+
 ## 4. 明确没做的事（非目标 / 缺口）
 
 - 不发邮件、不做 Webhook/外发通知（契约 non-goal）。

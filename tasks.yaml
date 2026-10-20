@@ -5289,7 +5289,7 @@ tasks:
 
   - id: "PWFL-004"
     title: "工作流失败告警与执行日志持久化"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     target_date: ""
     depends_on:
@@ -5326,6 +5326,9 @@ tasks:
         - "触发失败任务并检查告警与日志"
       commands:
         - "pytest -k 'workflow'"
+    progress:
+      status: "in_review"
+      note: "执行失败告警模型(workflow_execution_alerts)+执行日志模型(workflow_execution_logs)已落库；引擎在终端commit后统一写开始+结束日志与失败告警；trace_id执行级uuid贯穿；查询函数app/workflow/execution_log.py。实现说明 docs/plans/implementation_pwfl_004_20261021.md；5个新测试+pytest -k workflow 155 passed、全量3205 passed/3 skipped/0 failed；ruff/mypy退出0。等待用户2026-10-22业务与代码验收。"
     execution:
       owner: "个人开发者"
       nightly:

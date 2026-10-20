@@ -147,3 +147,49 @@ class WorkflowOwnerAlert(SQLModel, TimestampMixin, table=True):
     # owner_disabled | owner_moved_out | owner_deleted | owner_invalid
     reason: str = Field(index=True)
     detail: str | None = Field(default=None)
+
+
+class WorkflowExecutionAlert(SQLModel, TimestampMixin, table=True):
+    """执行失败告警：一次工作流执行最终失败时落库一条可查询告警（PWFL-004）。
+
+    与 ``WorkflowOwnerAlert`` 语义独立：后者是「创建者失效导致工作流停用」的告警，
+    本类是「一次执行本身失败（重试耗尽 / 超时 / 桥接异常等）」的告警。
+    一次失败执行恰好一条，不随每次 attempt 重复写。
+    """
+
+    __tablename__ = "workflow_execution_alerts"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    workflow_id: str = Field(index=True)
+    # 名称快照：工作流随后可能被删除。
+    workflow_name: str
+    # 关联的执行记录 ID。
+    execution_id: str = Field(index=True)
+    # 关联执行日志的 trace_id，便于从告警跳到完整轨迹。
+    trace_id: str = Field(index=True)
+    # retry_exhausted | timeout | owner_invalid | tenant_unavailable
+    # | bridge_error | cancelled | setup_error
+    reason: str = Field(index=True)
+    error_message: str | None = Field(default=None)
+    detail: str | None = Field(default=None)
+
+
+class WorkflowExecutionLog(SQLModel, TimestampMixin, table=True):
+    """工作流执行日志条目（PWFL-004）。
+
+    同一执行的所有日志共享同一 ``trace_id``，可按 trace_id 检索完整执行轨迹。
+    日志在关键节点写入：开始、每次尝试、结束；成功执行也会落日志，但不产生告警。
+    """
+
+    __tablename__ = "workflow_execution_logs"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    tenant_id: str = Field(index=True)
+    workflow_id: str = Field(index=True)
+    execution_id: str = Field(index=True)
+    # 核心检索键：同一执行的所有条目共享。
+    trace_id: str = Field(index=True)
+    # info | warning | error
+    level: str = Field(default="info")
+    message: str = Field()

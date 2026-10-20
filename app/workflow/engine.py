@@ -9,6 +9,7 @@
 import asyncio
 import logging
 import math
+import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -16,7 +17,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from sqlmodel import Session
 
-from app.audit.models import WorkflowOwnerAlert
+from app.audit.models import WorkflowExecutionAlert, WorkflowExecutionLog, WorkflowOwnerAlert
 from app.core.config import settings
 from app.models.user import Tenant, User
 from app.models.workflow import (
@@ -160,6 +161,8 @@ class WorkflowEngine:
         if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 3600:
             raise ValueError("工作流超时必须为1至3600秒的整数")
         prompt = prompt_override or workflow.prompt_template
+        # 执行级 trace_id：一次执行的所有日志共享同一 ID，重试过程归并到同一 trace。
+        trace_id = uuid.uuid4().hex[:12]
         execution = WorkflowExecution(
             workflow_id=workflow_id, tenant_id=tenant_id, triggered_by=triggered_by,
             status=ExecutionStatus.RUNNING.value, input=prompt, started_at=datetime.now(UTC),
@@ -174,7 +177,8 @@ class WorkflowEngine:
         consume()
         db_key = database_key(session.get_bind())
         attempts = self._attempts(
-            session, workflow_id, tenant_id, owner_id, supplied_owner_id, prompt, sleeper or asyncio.sleep,
+            session, workflow_id, tenant_id, owner_id, supplied_owner_id, prompt,
+            sleeper or asyncio.sleep, trace_id, execution_id, workflow.name,
         )
         child: asyncio.Task[tuple[str, str | None, str | None]] | None = None
         entry: ActiveExecution | None = None
@@ -205,6 +209,18 @@ class WorkflowEngine:
                     failed.finished_at = datetime.now(UTC)
                     session.add(failed)
                     session.commit()
+                    # 初始化失败：写日志 + 告警
+                    self._write_exec_logs(
+                        session, tenant_id, workflow_id, execution_id, trace_id,
+                        entries=[
+                            ("info", f"执行开始 triggered_by={triggered_by}"),
+                            ("error", "执行初始化失败"),
+                        ],
+                    )
+                    self._write_failure_alert(
+                        session, tenant_id, workflow, execution_id, trace_id,
+                        reason="setup_error", error_message="WORKFLOW_EXECUTION_FAILED",
+                    )
             except BaseException:
                 if entry is not None:
                     entry.persistence_failed = True
@@ -255,6 +271,23 @@ class WorkflowEngine:
                 row.duration_ms = int((row.finished_at - started).total_seconds() * 1000)
             session.add(row)
             session.commit()
+            # 终端 commit 后统一写日志（开始 + 结束）与失败告警。
+            # 不在中间做额外 commit，避免干扰既有事务计数测试。
+            final_level = "info" if row.status == "success" else "error"
+            self._write_exec_logs(
+                session, tenant_id, workflow_id, execution_id, trace_id,
+                entries=[
+                    ("info", f"执行开始 triggered_by={triggered_by}"),
+                    (final_level, f"执行结束 status={row.status} error={row.error or ''}"),
+                ],
+            )
+            if row.status == "failed":
+                self._write_failure_alert(
+                    session, tenant_id, workflow, execution_id, trace_id,
+                    reason=self._classify_failure_reason(row.error),
+                    error_message=row.error,
+                )
+            # 日志/告警的 commit 会过期 row，需再次 refresh 使返回对象属性可用。
             session.refresh(row)
             execution = row
             logger.info("Workflow execution finished workflow_id=%s execution_id=%s status=%s reason=%s",
@@ -276,8 +309,13 @@ class WorkflowEngine:
     async def _attempts(
         self, session: Session, workflow_id: str, tenant_id: str, owner_id: str,
         supplied_owner_id: str, prompt: str, pause: Callable[[float], Awaitable[None]],
+        trace_id: str, execution_id: str, workflow_name: str,
     ) -> tuple[str, str | None, str | None]:
-        """在同一执行中有限重试；每次真正调用前重新复核持久身份。"""
+        """在同一执行中有限重试；每次真正调用前重新复核持久身份。
+
+        注意：本方法内不写执行日志（避免额外 session.commit 干扰既有事务测试）。
+        日志由 _execute_admitted 在开始与结束处统一写。
+        """
         limit = workflow_retry_limit()
         last_error = ""
         for index in range(limit + 1):
@@ -325,6 +363,86 @@ class WorkflowEngine:
                 continue
             return "success", output, None
         return "failed", None, f"已达到重试上限 {limit}：{last_error}"
+
+    @staticmethod
+    def _write_exec_log(
+        session: Session, tenant_id: str, workflow_id: str, execution_id: str,
+        trace_id: str, *, level: str, message: str,
+    ) -> None:
+        """写一条执行日志条目；写入失败不阻断主流程（吞异常 + log）。"""
+        try:
+            session.add(WorkflowExecutionLog(
+                tenant_id=tenant_id,
+                workflow_id=workflow_id,
+                execution_id=execution_id,
+                trace_id=trace_id,
+                level=level,
+                message=message[:500],
+            ))
+            session.commit()
+        except Exception:  # noqa: BLE001
+            session.rollback()
+            logger.exception("写执行日志失败 workflow_id=%s", workflow_id)
+
+    @staticmethod
+    def _write_exec_logs(
+        session: Session, tenant_id: str, workflow_id: str, execution_id: str,
+        trace_id: str, *, entries: list[tuple[str, str]],
+    ) -> None:
+        """批量写多条执行日志（单次 commit）；写入失败不阻断主流程。"""
+        try:
+            for level, message in entries:
+                session.add(WorkflowExecutionLog(
+                    tenant_id=tenant_id,
+                    workflow_id=workflow_id,
+                    execution_id=execution_id,
+                    trace_id=trace_id,
+                    level=level,
+                    message=message[:500],
+                ))
+            session.commit()
+        except Exception:  # noqa: BLE001
+            session.rollback()
+            logger.exception("批量写执行日志失败 workflow_id=%s", workflow_id)
+
+    @staticmethod
+    def _write_failure_alert(
+        session: Session, tenant_id: str, workflow: Workflow, execution_id: str,
+        trace_id: str, *, reason: str, error_message: str | None,
+    ) -> None:
+        """写一条执行失败告警；写入失败不阻断主流程（吞异常 + log）。"""
+        try:
+            session.add(WorkflowExecutionAlert(
+                tenant_id=tenant_id,
+                workflow_id=workflow.id,
+                workflow_name=workflow.name,
+                execution_id=execution_id,
+                trace_id=trace_id,
+                reason=reason,
+                error_message=(error_message or "")[:500],
+                detail="工作流执行最终失败",
+            ))
+            session.commit()
+        except Exception:  # noqa: BLE001
+            session.rollback()
+            logger.exception("写执行失败告警失败 workflow_id=%s", workflow.id)
+
+    @staticmethod
+    def _classify_failure_reason(error: str | None) -> str:
+        """根据 WorkflowExecution.error 字段分类失败原因。"""
+        if not error:
+            return "bridge_error"
+        if "WORKFLOW_TIMEOUT" in error:
+            return "timeout"
+        if "创建者已失效" in error:
+            return "owner_invalid"
+        if "WORKFLOW_TENANT_UNAVAILABLE" in error:
+            return "tenant_unavailable"
+        if "已达到重试上限" in error:
+            return "retry_exhausted"
+        if "WORKFLOW_CANCELLED" in error:
+            return "cancelled"
+        return "bridge_error"
 
     async def _fire_webhook(self, workflow: Workflow, execution: WorkflowExecution) -> None:
         """执行完成后回调 webhook（P2）；失败仅告警，不影响主结果。"""

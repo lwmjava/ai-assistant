@@ -345,6 +345,18 @@ export interface ExecutionOut {
   updated_at: string
 }
 
+export interface WorkflowAlertOut {
+  id: string
+  tenant_id: string
+  workflow_id: string
+  workflow_name: string
+  owner_id: string
+  owner_username: string | null
+  reason: string
+  detail: string | null
+  created_at: string
+}
+
 export interface WorkflowCreate {
   name: string
   cron_expr: string

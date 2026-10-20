@@ -8917,9 +8917,10 @@ tasks:
 
   - id: "FLOW-005"
     title: "创建者失效：可查询告警通知 tenant_admin"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
+    progress: "实现说明 docs/plans/implementation_flow_005_20261021.md；pytest -k suspended_owner 6 passed、全量 3200 passed/0 failed（--basetemp 全新，Windows 固定 run 目录清理为基线既有问题）、ruff=0、mypy=0、前端 typecheck/test/lint/build=0；等用户 2026-10-22 业务与代码验收。"
     depends_on:
       - "FLOW-002"
     context:

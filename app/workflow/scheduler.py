@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 
 from sqlmodel import Session, col, select
 
+from app.audit.models import WorkflowOwnerAlert
 from app.core.config import settings
 from app.core.database import engine
 from app.models.user import Tenant, User
@@ -125,6 +126,16 @@ async def _trigger(wf: Workflow) -> None:
         wf = current
         owner = session.get(User, wf.owner_id)
         if owner is None:
+            if not wf.suspended_owner:
+                session.add(WorkflowOwnerAlert(
+                    tenant_id=wf.tenant_id,
+                    workflow_id=wf.id,
+                    workflow_name=wf.name,
+                    owner_id=wf.owner_id,
+                    owner_username=None,
+                    reason="owner_deleted",
+                    detail="创建者账号不存在，工作流已自动停用",
+                ))
             wf.enabled = False
             wf.suspended_owner = True
             session.add(wf)

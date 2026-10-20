@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
-from app.audit.models import AuditAction
+from app.audit.models import AuditAction, WorkflowOwnerAlert
 from app.core.config import settings
 from app.core.security import Role
 from app.models.user import User
@@ -122,6 +122,22 @@ class ToggleIn(BaseModel):
     enabled: bool
 
 
+class WorkflowAlertOut(BaseModel):
+    """创建者失效告警（FLOW-005）：tenant_admin 可查询，不外发。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    tenant_id: str
+    workflow_id: str
+    workflow_name: str
+    owner_id: str
+    owner_username: str | None
+    reason: str
+    detail: str | None
+    created_at: datetime
+
+
 # ── 内部辅助 ──────────────────────────────────
 def _list_stmt(user: User):
     stmt = select(Workflow)
@@ -188,6 +204,18 @@ async def list_workflows(
     if mode != "disabled":
         response.headers["X-Workflow-Schedule"] = mode
     return list(session.exec(_list_stmt(user)).all())
+
+
+@router.get("/alerts", response_model=list[WorkflowAlertOut])
+async def list_workflow_alerts(
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "read")),
+) -> list[WorkflowOwnerAlert]:
+    """创建者失效告警列表：本租户可见；系统管理员跨租户，其余按租户隔离。"""
+    stmt = select(WorkflowOwnerAlert).order_by(col(WorkflowOwnerAlert.created_at).desc())
+    if user.role_enum.value != Role.SYSTEM_ADMIN.value:
+        stmt = stmt.where(WorkflowOwnerAlert.tenant_id == user.tenant_id)
+    return list(session.exec(stmt).all())
 
 
 @router.get("/{workflow_id}", response_model=WorkflowOut)

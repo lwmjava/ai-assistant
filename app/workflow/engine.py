@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from sqlmodel import Session
 
+from app.audit.models import WorkflowOwnerAlert
 from app.core.config import settings
 from app.models.user import Tenant, User
 from app.models.workflow import (
@@ -289,6 +290,25 @@ class WorkflowEngine:
                     or supplied_owner_id != owner_id or actor is None or not actor.is_active
                     or actor.tenant_id != tenant_id):
                 if current is not None:
+                    # 仅首次转入停用态时落库告警，避免重试 / 重复触发产生重复记录。
+                    if not current.suspended_owner:
+                        if actor is None:
+                            reason = "owner_deleted"
+                        elif not actor.is_active:
+                            reason = "owner_disabled"
+                        elif actor.tenant_id != tenant_id:
+                            reason = "owner_moved_out"
+                        else:
+                            reason = "owner_invalid"
+                        session.add(WorkflowOwnerAlert(
+                            tenant_id=tenant_id,
+                            workflow_id=current.id,
+                            workflow_name=current.name,
+                            owner_id=owner_id,
+                            owner_username=actor.username if actor is not None else None,
+                            reason=reason,
+                            detail="创建者已失效，工作流已自动停用",
+                        ))
                     current.enabled = False
                     current.suspended_owner = True
                     session.add(current)

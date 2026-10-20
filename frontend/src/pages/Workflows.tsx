@@ -29,6 +29,7 @@ import {
   useRunWorkflow,
   useToggleWorkflow,
   useUpdateWorkflow,
+  useWorkflowAlerts,
   useWorkflowExecutions,
   useWorkflows,
 } from '@/api/workflows'
@@ -37,7 +38,7 @@ import { ApiError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, formatDuration, truncate } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
-import type { ExecutionOut, WorkflowOut } from '@/types/api'
+import type { ExecutionOut, WorkflowAlertOut, WorkflowOut } from '@/types/api'
 
 const workflowSchema = z.object({
   name: z.string().min(1, '请输入任务名称').max(100, '名称过长'),
@@ -84,6 +85,36 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const FAILED_WITHOUT_REASON = '执行失败，未返回原因'
+
+const ALERT_REASON_LABEL: Record<string, string> = {
+  owner_disabled: '创建者已被禁用',
+  owner_moved_out: '创建者已移出租户',
+  owner_deleted: '创建者账号已删除',
+  owner_invalid: '创建者身份失效',
+}
+
+function AlertsStrip({ alerts }: { alerts: WorkflowAlertOut[] }) {
+  if (alerts.length === 0) return null
+  return (
+    <div className="panel space-y-2 border-warning/40 bg-warning/5 px-4 py-3" role="status">
+      <p className="text-sm font-medium text-text">
+        {alerts.length} 个定时任务因创建者失效已自动停用
+      </p>
+      <ul className="space-y-1.5 text-sm text-text-muted">
+        {alerts.map((a) => (
+          <li key={a.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="font-medium text-text">《{a.workflow_name}》</span>
+            <span>{ALERT_REASON_LABEL[a.reason] ?? a.reason}</span>
+            <span className="text-xs text-text-faint">
+              原创建者：{a.owner_username ?? a.owner_id}
+            </span>
+            <span className="ml-auto text-xs text-text-faint">{formatDateTime(a.created_at)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 function WorkflowFormModal({
   open,
@@ -442,6 +473,7 @@ export default function WorkflowsPage() {
   const [runningId, setRunningId] = useState<string | null>(null)
 
   const workflows = useWorkflows()
+  const alerts = useWorkflowAlerts()
   const remove = useDeleteWorkflow()
   const run = useRunWorkflow()
   const toggle = useToggleWorkflow()
@@ -510,6 +542,8 @@ export default function WorkflowsPage() {
           ) : undefined
         }
       />
+
+      <AlertsStrip alerts={alerts.data ?? []} />
 
       {workflows.isLoading ? (
         <div className="grid gap-4 lg:grid-cols-2">

@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/http'
-import type { ExecutionOut, WorkflowCreate, WorkflowOut, WorkflowUpdate } from '@/types/api'
+import type { ExecutionOut, WorkflowAlertOut, WorkflowCreate, WorkflowOut, WorkflowUpdate } from '@/types/api'
 
 export interface WorkflowList {
   workflows: WorkflowOut[]
@@ -14,6 +14,7 @@ export const workflowKeys = {
   all: ['workflows'] as const,
   list: () => [...workflowKeys.all, 'list'] as const,
   executions: (id: string) => [...workflowKeys.all, 'executions', id] as const,
+  alerts: () => [...workflowKeys.all, 'alerts'] as const,
 }
 
 export function useWorkflows(enabled = true) {
@@ -83,5 +84,16 @@ export function useToggleWorkflow() {
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       api.post<WorkflowOut>(`/workflows/${id}/toggle`, { enabled }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: workflowKeys.all }),
+  })
+}
+
+/** 创建者失效告警（本租户可见）。 */
+export function useWorkflowAlerts(enabled = true) {
+  return useQuery({
+    queryKey: workflowKeys.alerts(),
+    queryFn: () => api.get<WorkflowAlertOut[]>('/workflows/alerts'),
+    enabled,
+    // 引擎未启用或无权限时不重试，静默隐藏告警条
+    retry: false,
   })
 }

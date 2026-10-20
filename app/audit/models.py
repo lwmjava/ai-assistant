@@ -123,3 +123,27 @@ class AuditLog(SQLModel, TimestampMixin, table=True):
             f"AuditLog(id={self.id!r}, action={self.action!r}, "
             f"user_id={self.user_id!r}, resource={self.resource_type!r}/{self.resource_id!r})"
         )
+
+
+class WorkflowOwnerAlert(SQLModel, TimestampMixin, table=True):
+    """创建者失效告警：工作流因 owner 被禁用 / 移出租户 / 删除而自动停用时落库。
+
+    与审计日志分离：审计记录「谁在何时做了什么操作」，本表面向
+    tenant_admin 提供「哪个工作流、因原创建者何故被停用」的可查询告警。
+    只落库，不外发邮件 / Webhook（见 FLOW-005 契约）。
+    """
+
+    __tablename__ = "workflow_owner_alerts"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    # 告警归属租户，多租户隔离查询键。
+    tenant_id: str = Field(index=True)
+    workflow_id: str = Field(index=True)
+    # 名称快照：工作流随后可能被删除，快照保留供管理员追溯。
+    workflow_name: str
+    owner_id: str = Field(index=True)
+    # 用户名快照：owner 被删除时为 None。
+    owner_username: str | None = Field(default=None)
+    # owner_disabled | owner_moved_out | owner_deleted | owner_invalid
+    reason: str = Field(index=True)
+    detail: str | None = Field(default=None)

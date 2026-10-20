@@ -3,8 +3,8 @@
 让 Agent 在「行动」阶段能够声明并调用外部工具 / API：
 - ``Tool``：单个工具的元数据与执行入口（名称、描述、参数 JSON Schema、执行函数）；
 - ``ToolRegistry``：按名称管理的工具注册表，并提供供提示词使用的文本描述；
-- ``parse_tool_call``：解析模型在「行动」阶段产出的工具调用指令（统一采用
-  ``<tool_call>`` 包裹的 JSON 信封，避免与普通文本混淆）。
+- ``parse_tool_call``：解析模型在「行动」阶段产出的工具调用指令，优先采用
+  ``<tool_call>`` JSON 信封，兼容严格限定的单调用 DSML。
 
 工具执行与具体大模型实现无关，因此本模块可在任意 LLM 提供商下工作。
 """
@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from app.agents.tools.contract import ToolContract
+from app.agents.tools.dsml import decode_dsml
 from app.agents.tools.outcome import ToolOutput
 from app.core import log_context
 
@@ -277,6 +278,12 @@ def inspect_tool_call(text: str) -> ToolIntent:
     缺少闭合标签、多个信封、坏 JSON、名称不是非空字符串、参数不是对象，都算格式错误。
     """
     body = text or ""
+    if "DSML" in body and any(token in body for token in ("<｜", "</｜")):
+        try:
+            name, arguments = decode_dsml(body)
+        except (ValueError, RecursionError):
+            return ToolIntent("invalid")
+        return ToolIntent("ok", ToolCall(name=name, arguments=arguments))
     opens = body.count("<tool_call>")
     closes = body.count("</tool_call>")
     if opens == 0 and closes == 0:

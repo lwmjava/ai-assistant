@@ -31,7 +31,7 @@ def test_runtime_and_official_share_explicit_tool_wire_protocol():
     assert "禁止" in SYSTEM_ACT and "</tool_call>" in SYSTEM_ACT
 
 
-@pytest.mark.parametrize("private_protocol", [True, False])
+@pytest.mark.parametrize("private_protocol", [True, False, "supported"])
 def test_official_tool_protocol_failure_stays_failed_without_retry(
     isolated_real_transport, monkeypatch, tmp_path, private_protocol,
 ):
@@ -40,6 +40,7 @@ def test_official_tool_protocol_failure_stays_failed_without_retry(
 
     provider, _ = isolated_real_transport
     arguments = {"code": "print(2 + 3)"}
+    rejected = private_protocol is True
     if private_protocol:
         raw = (
             '<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name="code_sandbox">\n'
@@ -47,6 +48,11 @@ def test_official_tool_protocol_failure_stays_failed_without_retry(
             + json.dumps(arguments)
             + '</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>'
         )
+        if rejected:
+            raw += raw  # Multiple calls remain invalid, without retry.
+        else:
+            raw = raw.replace('name="arguments" string="false">' + json.dumps(arguments),
+                              'name="code" string="true">' + arguments["code"])
     else:
         raw = '<tool_call>' + json.dumps({"name": "code_sandbox", "arguments": arguments}) + '</tool_call>'
     calls = []
@@ -63,20 +69,20 @@ def test_official_tool_protocol_failure_stays_failed_without_retry(
 
     monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
     target = tmp_path / "protocol-replay.json"
-    assert asyncio.run(runner.run("official", tmp_path, target)) == int(private_protocol)
+    assert asyncio.run(runner.run("official", tmp_path, target)) == int(rejected)
     report = json.loads(target.read_text(encoding="utf-8"))
     assert len(calls) == report["model_requests"] == 12
     assert report["empty_response_retries"] == 0
     assert tool_requests == 2
     row = next(row for row in report["cases"] if row["tool_reply"] == raw)
-    assert row["tool_record"]["recorded_calls"] == int(not private_protocol)
-    assert row["tool_record"]["error_code"] == ("no_tool_call" if private_protocol else "")
-    expected_recall = 0.5 if private_protocol else 1.0
+    assert row["tool_record"]["recorded_calls"] == int(not rejected)
+    assert row["tool_record"]["error_code"] == ("invalid_envelope" if rejected else "")
+    expected_recall = 0.5 if rejected else 1.0
     assert report["tool_selection_recall"] == expected_recall
     assert report["tool_call_validity_recall"] == expected_recall
     failed = gate.check_report(report, provider.model, report["endpoint_hash"])
-    assert ("tool_selection_recall" in failed) == private_protocol
-    assert ("tool_call_validity_recall" in failed) == private_protocol
+    assert ("tool_selection_recall" in failed) == rejected
+    assert ("tool_call_validity_recall" in failed) == rejected
     assert all(value == 0 for value in report["side_effects"].values())
 
 

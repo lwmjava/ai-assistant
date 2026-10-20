@@ -1,0 +1,41 @@
+{
+  "baseline_sha": "c1b09010cc135e235b4673f06bcb7fba7f56547f",
+  "candidate": "HEAD plus frozen input manifest",
+  "input_manifest": "docs/reviews/2026-10-20-agent-ci-protocol-inputs.json",
+  "frozen_inputs": 4020,
+  "changed_inputs_after_checks": 0,
+  "results": {
+    "full_pytest": {
+      "passed": 3109,
+      "skipped": 3,
+      "warnings": 3,
+      "seconds": 713.11,
+      "exit_code": 0
+    },
+    "ruff_no_cache": {
+      "exit_code": 0
+    },
+    "mypy": {
+      "files": 219,
+      "exit_code": 0
+    },
+    "independent_entry": {
+      "passed": 95,
+      "seconds": 7.3,
+      "exit_code": 0
+    }
+  },
+  "logs": {
+    "data/protocol-full-01.txt": "996082190a226fe19797c34ea6a4b4708b7637f3811c34a7e4cc7c2512fa45d6",
+    "data/protocol-final-ruff.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/protocol-final-mypy.txt": "740b6f6d73760bcb916de78fcedb7518e2de9958cb382f405d09228001134c3a",
+    "data/protocol-related-03.txt": "76d510332a24bec009af1f029aadc980573024f0cd71e044fa7a4851809c39ab",
+    "data/protocol-review-02.txt": "f12f693db1ff8de08f7541af0d9c50f9d004a6e1771bd35efd5c6c88af6fbd58",
+    "data/protocol-review-skill-02.txt": "068af7300bd34d76214cc03f70d8e8e68d734df6ad4119f528bc2a02a1595388"
+  },
+  "pending": [
+    "Final commit Ubuntu Backend / Frontend / Agent official baseline",
+    "User business acceptance"
+  ],
+  "git_actions": "No commit or push"
+}

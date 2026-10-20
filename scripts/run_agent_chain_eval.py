@@ -38,7 +38,7 @@ from app.llm.base import LLMOptions  # noqa: E402
 from app.llm.factory import get_llm_provider  # noqa: E402
 from app.llm.openai_compatible import LLMResponseError, OpenAICompatibleProvider  # noqa: E402
 
-EVALUATOR_VERSION = "agent-chain-eval-0.4.0"
+EVALUATOR_VERSION = "agent-chain-eval-0.4.1"
 # Compatibility declaration: no Tool/DB/RAG execution; these are NOT runtime counters.
 SIDE_EFFECTS = {"sandbox": 0, "mcp": 0, "network": 0, "rag": 0, "database": 0}
 REPORT_SCHEMA_VERSION = "agent-chain-report-3.0.0"
@@ -278,10 +278,12 @@ def _validate_call(case: dict, raw: str) -> dict:
         if intent.status != "ok" or intent.call is None:
             record["error_code"] = "no_tool_call" if intent.status == "none" else "invalid_envelope"
             return record
-        # Reject duplicate keys and nonfinite numbers instead of silently taking the last value.
-        payload = raw.split("<tool_call>", 1)[1].split("</tool_call>", 1)[0]
-        json.loads(payload, object_pairs_hook=_unique_call,
-                   parse_constant=_nonfinite_call)
+        # Standard JSON keeps its independent strict check. DSML was already
+        # decoded with duplicate/nonfinite rejection by the shared parser.
+        if "<tool_call>" in raw:
+            payload = raw.split("<tool_call>", 1)[1].split("</tool_call>", 1)[0]
+            json.loads(payload, object_pairs_hook=_unique_call,
+                       parse_constant=_nonfinite_call)
         record["tool_name"] = intent.call.name
         tool = selection_tool_registry().get(intent.call.name)
         if tool is None:

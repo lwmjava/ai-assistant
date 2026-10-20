@@ -5122,6 +5122,11 @@ tasks:
         - ".env.example"
         - "tests/"
         - "tasks.yaml"
+        - "app/agents/"
+        - "app/llm/"
+        - "scripts/run_agent_chain_eval.py"
+        - "docs/plans/"
+        - "docs/reviews/"
       forbidden_paths:
         - ".env"
       deliverables:
@@ -5144,7 +5149,7 @@ tasks:
         - "pytest -k 'workflow or retry'"
     execution:
       plan: "docs/plans/plan_pwfl_001_20261020.md"
-      progress: "2026-10-20同一次执行内指数退避重试，默认0次、最多3次，单次等待不超过30秒。全量pytest 3091 passed、3 skipped、732.87秒、exit0；ruff与mypy app/218文件exit0。独立工程审查与人工审核通过，无未修复P1/P2。用户委托的人工业务验收已通过，见docs/reviews/2026-10-20-pwfl-001-business-acceptance.md：临时失败后一条success且等待一次；持续失败停在上限并记下原因。实现未提交，最终SHA的三项CI未验证，保持in_review，不得done。"
+      progress: "2026-10-20同一次执行内指数退避重试，默认0次、最多3次，单次等待不超过30秒。原实现全量3091pass/3skip及业务接受为历史证据，见docs/reviews/2026-10-20-pwfl-001-business-acceptance.md。实现已提交c1b09010cc135e235b4673f06bcb7fba7f56547f，CI run39377425900 Backend/Frontend通过、Agent official两项工具指标0.5，agent-003输出未支持DSML。用户批准docs/plans/plan_agent_ci_protocol_20261020.md及追加app/agents/、app/llm/、相关测试/计划/评审，随后批准scripts/run_agent_chain_eval.py。兼容修复在工作区：共享严格单调用DSML解析，原权限/参数/预算/审计链保留；官方入口二次拆信封P1已修复。独立protocol_review复核95pass及技能零执行拒绝反例通过，无未修复P1/P2。最终全量pytest3109pass/3skip/3warnings、713.11s、exit0；Ruff无缓存exit0，mypy219文件exit0。4020最终输入指纹无变化，证据docs/reviews/2026-10-20-agent-ci-protocol-evidence.json。3skip为Windows符号链接/权限/打开文件替换限制，未伪装通过。最终SHA三项CI及本轮业务接受未验证，未提交/推送修复，保持in_review。实现说明docs/plans/implementation_agent_ci_protocol_20261020.md。"
       owner: "个人开发者"
       nightly:
         eligible: true

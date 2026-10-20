@@ -5160,7 +5160,7 @@ tasks:
 
   - id: "PWFL-002"
     title: "工作流超时与取消"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5208,6 +5208,7 @@ tasks:
     execution:
       plan: "docs/plans/plan_pwfl_002_20261020.md"
       progress: "2026-10-20已按用户批准计划及追加app/core/migration.py实现超时/协作取消、鉴权API、活动删除409和旧库启动补列；此前WIP b7fab9d缺列阻断已修复。配置1–3600秒默认300，超时和取消分别failed/TIMEOUT、CANCELLED，保留历史结构。最终无筛选pytest3154pass/3skip/4warnings、905.94秒、exit0；Ruff无缓存exit0，mypy220文件exit0；前端四门exit0/167测试。728最终输入重算变化0。独立迁移16pass、原入口44pass及两种真实init_db混合库重复启动探针通过，无未修复P1/P2；组间7项重叠未重复计数。最终独立技术审核final_audit复验53pass/exit0、728输入变化0及14日志一致，报告docs/reviews/2026-10-20-pwfl-002-human-audit-1.md。最终提交Ubuntu三项CI与用户业务接受未验证，保持in_review。新证据docs/reviews/2026-10-20-pwfl-002-complete-evidence.json；关闭对账acceptance.md；实现说明docs/plans/implementation_pwfl_002_20261020.md。已授权本地提交，不推送/合并/部署或迁移真实数据。"
+      closure: "2026-10-20用户明确确认PWFL-002可以关闭、GitHub CI成功，登记为用户提供的CI通过及关闭接受。最终实现8c56a23a97e80b4f24862642107af02d8df9df8d；独立当前关闭复核53pass/exit0，728输入变化0、14日志一致，无未决P1/P2。证据docs/reviews/2026-10-20-pwfl-002-closure-recheck.md。本补记覆盖progress历史待CI/业务接受状态，不伪称本轮取得run URL或独立核验远端保护。"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -5217,7 +5218,7 @@ tasks:
 
   - id: "PWFL-003"
     title: "工作流并发控制与幂等"
-    status: "backlog"
+    status: "blocked"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5257,6 +5258,20 @@ tasks:
       commands:
         - "pytest -k 'workflow or idempot'"
     execution:
+      proposed_plan: |
+        原始契约：同任务同周期重复只执行一次；并发上限可配置；同进程重复不新增记录；满容量排队或拒绝。单进程范围已批准，不依赖OPS-001。
+        基线8c56a23a97e80b4f24862642107af02d8df9df8d，开始工作区干净；指定conda与独立pwfl003-preflight库，pytest -k 'workflow or idempot' 128 passed/3029 deselected/2 warnings/45.05秒/exit0；Ruff无缓存exit0，mypy220文件exit0。历史全量3154pass/3skip由728相同输入复核，不冒称本轮重跑全量。
+        现状：scheduler串行扫描；Engine在首次记录commit前无共享准入；control只有可取消句柄，不限制相同workflow与总并发。复用这些入口，不新增Runtime/任务池或历史表。
+        推荐方案：Engine创建历史前做全进程原子准入，threading.Lock仅保护标量，不持锁SQL或await。所有manual/cron共享WORKFLOW_MAX_CONCURRENCY，默认4、整数1..1000；bool/浮点/非有限数/越界拒绝。满容量HTTP409，不创建记录或调用Bridge。
+        同workflow活动时重复触发HTTP409，不新增记录；手动终态后再次点击属于新执行意图，不把所有手动请求按分钟永久合并。未包含响应丢失后的手动终态幂等重试，该需求需要另批准显式Idempotency-Key及保留策略。
+        cron以实际Engine、租户、workflow、aware UTC due为周期身份。首次记录commit成功才消费due，同due无论成功/失败/超时/取消均不重放；容量拒绝不消费due，后续tick按原run_latest重试。每workflow只保留最新已消费槽，旧槽不重放；任务删除后清理进程标记。进程重启不承诺exactly-once，不引入分布式锁。
+        首次commit失败释放未消费占位；终态commit失败保守保留已尝试due，不能因重试制造重复副作用。容量令牌finally覆盖Task/计时器建立异常、取消清理、终态写入、webhook结束，禁止提前释放；同wf活动标记保护删除与重复，不改变已有Session唯一所有者/同事件循环取消边界。
+        保留串行_tick，不新增cron并行吞吐；长任务仍可能延迟后续扫描。并发上限是全进程真实manual/cron入口共同的资源上限，不承诺cron同时跑满N项。备选队列需容量/公平/等待取消/停机等新契约，本次选择原验收允许的拒绝。
+        新增ADR-0018描述准入、周期消费及与ADR-0017衔接。最小追加：docs/plans/、docs/reviews/、docs/adr/0018-workflow-concurrency-idempotency.md、docs/adr/README.md、app/api/routes/workflow.py、.env.example、README.md、docs/swagger.json。无需models、Alembic、前端源码或新依赖。
+        失败边界：数值非法值与1/1000；同wf并发N次/同due终态再触发/下个due；不同wf可到cap但不超；容量满零记录与Bridge、释放后重试；跨租户/Engine/线程事件循环；不同有效输入不误合并；首commit失败/终态commit失败/Task建立异常；取消finally未完成不释放；原重试、超时、取消、cron水位/manual不消费cron回归。使用真实HTTP/_tick/Engine及隔离SQLite，版本化Smoke/Adversarial workflow-concurrency-idempotency-v1，非Gold。
+        验证：先有效红测，再最小实现；公共路径全量pytest、Ruff/mypy、API契约变化前端四门；独立入口反例及另一Agent最终审核，最终输入指纹。最终Ubuntu CI与用户业务接受未齐不能done。回滚先排空活动执行再撤代码，不重放历史，不操作真实库。
+        只读独立scope_review确认方案满足原契约；cron并行化非必须项。尚需用户批准上述具体周期/拒绝语义及最小扩围。获批后先在docs/plans落正式实现计划，再写ADR和业务代码；本execution提案不替代正式落盘计划。
+      progress: "2026-10-20已授权推进；原始范围未含必须的计划/审查、ADR、配置示例与API文档。已完成事实核对、有效前置关闭及128项基线；具体准入/周期方案与最小扩围在proposed_plan集中列出，待批准前不改业务代码，保持blocked。不推送。"
       owner: "个人开发者"
       nightly:
         eligible: false

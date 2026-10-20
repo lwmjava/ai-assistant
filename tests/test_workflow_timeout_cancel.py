@@ -33,7 +33,7 @@ def job(persist_identity):
     owner = User(id="timeout-owner", tenant_id="timeout-tenant", username="timeout-owner",
                  hashed_password="", role=Role.MEMBER.value, is_active=True)
     persist_identity(owner)
-    wf = Workflow(id="timeout-job", owner_id=owner.id, tenant_id=owner.tenant_id,
+    wf = Workflow(owner_id=owner.id, tenant_id=owner.tenant_id,
                   name="long", cron_expr="* * * * *", prompt_template="hello", timeout_seconds=1)
     with Session(engine) as session:
         session.add(wf)

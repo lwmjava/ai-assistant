@@ -1,0 +1,115 @@
+{
+  "baseline_sha": "ee1018435a757fe7e1eca97be6bc271442d277ae",
+  "candidate": "HEAD plus 733 frozen inputs",
+  "inputs": "2026-10-20-pwfl-003-inputs.json",
+  "status": "in_review; local applicable checks passed; final same-SHA Ubuntu CI and user business acceptance unverified",
+  "environment": {
+    "platform": "Windows-11-10.0.22621-SP0",
+    "python": "3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]",
+    "executable": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+    "dependencies": {
+      "pytest": "8.4.2",
+      "ruff": "0.8.4",
+      "mypy": "1.14.1",
+      "sqlmodel": "0.0.22",
+      "sqlalchemy": "2.0.36",
+      "pydantic": "2.10.4",
+      "httpx": "0.28.1",
+      "alembic": "1.14.1",
+      "langgraph": "1.0.10"
+    },
+    "ci_extras": "dev,langgraph installed; local pytest 8.4.2 differs from CI dev pin 8.3.4; final Ubuntu CI pending",
+    "config": {
+      "DATABASE_URL": "sqlite:///./data/pwfl003-full-final.db",
+      "PYTHONUTF8": "1",
+      "ENV": "development (conftest)",
+      "AUTH_ENABLED": true,
+      "AGENT_ORCHESTRATION": "self",
+      "SECURITY_RATE_LIMIT_ENABLED": false,
+      "RAG_ENABLED": true,
+      "RAG_BACKEND": "native",
+      "RAG_VECTOR_STORE": "local",
+      "WORKFLOW_ENABLED": "default false, workflow fixtures enable",
+      "WORKFLOW_MAX_CONCURRENCY": "default4; fixtures bound1/2/4",
+      "credentials": "conftest strips external credentials; no real LLM request"
+    }
+  },
+  "commands": {
+    "ruff": {
+      "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check . --no-cache",
+      "exit_code": 0
+    },
+    "mypy": {
+      "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/",
+      "exit_code": 0,
+      "source_files": 221
+    },
+    "frontend": {
+      "commands": [
+        "npm run typecheck",
+        "npm run test",
+        "npm run lint",
+        "npm run build"
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "vitest_files": 18,
+      "vitest_tests": 167
+    },
+    "pytest_full": {
+      "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest --basetemp=data/pytest-tmp/pwfl003-full-final",
+      "collected": 3197,
+      "exit_code": 0,
+      "passed": 3194,
+      "skipped": 3,
+      "warnings": 4,
+      "duration_seconds": 855.25,
+      "configuration": "DATABASE_URL=sqlite:///./data/pwfl003-full-final.db; PYTHONUTF8=1"
+    }
+  },
+  "logs": {
+    "data/pwfl003-preflight.txt": "69234e146b1ef2acb8ed437d9c2b25a1aa55127c532c7a9def1fd56cd1f469d0",
+    "data/pwfl003-preflight-ruff.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/pwfl003-preflight-mypy.txt": "df5f4b5322df16c9a209ea139a36970e7ab5eed86b60ae8a840fddc762c5094f",
+    "data/pwfl003-engine-red.txt": "cc03cf8990e6b24be3e3f817c18d78f3a767ecaf46663c2475a8d9a31ac87a7e",
+    "data/pwfl003-engine-green.txt": "01504200683e58bf92c9fb92ecb615ba778a1db5bf86a82cdbc8e1821c71156f",
+    "data/pwfl003-related.txt": "def8d3e04f1cf16452c027f213d4e7b37367288ece14f00b4e767aa0f3c96648",
+    "data/pwfl003-related-final.txt": "12b42b89c9a27c38f727f045e7e2367398e5529863e7492863cac604771e01a3",
+    "data/pwfl003-ruff-final.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/pwfl003-mypy-final.txt": "d13403757bdba3a1bad71f1d6bb89cda36e47e7ecdcbff157c46746d2809edc0",
+    "data/pwfl003-frontend-typecheck.txt": "8bccce1b2eea9a81b456e4e225ff2553f200160510898e15a0e20ce50e141d3c",
+    "data/pwfl003-frontend-test.txt": "08bbf67a1c0ba1b16107f90c0b3a4656958972fe29f96719de2ee6b97e43c4ec",
+    "data/pwfl003-frontend-lint.txt": "fec427e6da4f0db6e1d954ca97719ec27d0b9e582a73b4368a8487477c07ab52",
+    "data/pwfl003-frontend-build.txt": "c7b3163598c7ef6438e7b9f13fcb89d24e9ccfe633e551a6b32bd5794398afbb",
+    "data/pwfl003-config.json": "08e985d8c5490bd0f347a3a1ff85a4e29a6fb6f880e9fef7fa506eb3a1cba286",
+    "docs/reviews/2026-10-20-pwfl-003-full-final.txt": "6072c9fefe72ea134bf5b6a03ee008cfa988ca64e09ada9bae0164791c27130d",
+    "docs/reviews/2026-10-20-pwfl-003-ruff-final.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "docs/reviews/2026-10-20-pwfl-003-mypy-final.txt": "d13403757bdba3a1bad71f1d6bb89cda36e47e7ecdcbff157c46746d2809edc0",
+    "docs/reviews/2026-10-20-pwfl-003-frontend-typecheck.txt": "303685991612ebedb76003d49cd897b8c2ca4f5750870af62a6e5f09e052fbf5",
+    "docs/reviews/2026-10-20-pwfl-003-frontend-test.txt": "08bbf67a1c0ba1b16107f90c0b3a4656958972fe29f96719de2ee6b97e43c4ec",
+    "docs/reviews/2026-10-20-pwfl-003-frontend-lint.txt": "fec427e6da4f0db6e1d954ca97719ec27d0b9e582a73b4368a8487477c07ab52",
+    "docs/reviews/2026-10-20-pwfl-003-frontend-build.txt": "c7b3163598c7ef6438e7b9f13fcb89d24e9ccfe633e551a6b32bd5794398afbb",
+    "data/pwfl003-full-final.txt": "6072c9fefe72ea134bf5b6a03ee008cfa988ca64e09ada9bae0164791c27130d"
+  },
+  "skips": [
+    "Windows symlink privilege unavailable",
+    "POSIX 0600 semantics require Linux",
+    "Windows open-file replacement semantics require Linux"
+  ],
+  "warning_categories": [
+    "existing ast.NameConstant deprecation",
+    "intentional RAG numeric-vector invalid divide",
+    "intentional RAG numeric-vector overflow",
+    "intentional workflow failed-transaction duplicate-identity SAWarning"
+  ],
+  "frozen_input_verification": {
+    "count": 733,
+    "changed": 0,
+    "exit_code": 0
+  },
+  "archive_format_note": "Archived frontend-typecheck stdout has trailing blank line removed for diff hygiene; original data log retained with original SHA256. No validation input or result changed."
+}

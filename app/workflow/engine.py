@@ -24,6 +24,7 @@ from app.models.workflow import (
     Workflow,
     WorkflowExecution,
 )
+from app.workflow.admission import acquire
 from app.workflow.bridge import WorkflowBridge
 from app.workflow.control import ActiveExecution, database_key, finish, register
 
@@ -131,9 +132,29 @@ class WorkflowEngine:
         triggered_by: str = TriggerSource.MANUAL.value,
         prompt_override: str | None = None,
         sleeper: Callable[[float], Awaitable[None]] | None = None,
+        scheduled_due: datetime | None = None,
     ) -> WorkflowExecution:
         """以快照总时限执行；合作式取消完成清理后由本调用唯一写入终态。"""
+        due = scheduled_due
+        if triggered_by == TriggerSource.CRON.value and due is None:
+            due = latest_due_time(workflow.cron_expr, workflow.timezone, datetime.now(UTC))
+        if triggered_by != TriggerSource.CRON.value and due is not None:
+            raise ValueError("手动执行不能消费定时周期")
+        lease = acquire(session.get_bind(), workflow.tenant_id, workflow.id, due)
+        try:
+            return await self._execute_admitted(
+                session, workflow, owner, triggered_by, prompt_override, sleeper, lease.consume,
+            )
+        finally:
+            lease.release()
+
+    async def _execute_admitted(
+        self, session: Session, workflow: Workflow, owner: User, triggered_by: str,
+        prompt_override: str | None, sleeper: Callable[[float], Awaitable[None]] | None,
+        consume: Callable[[], None],
+    ) -> WorkflowExecution:
         workflow_id, tenant_id, owner_id = workflow.id, workflow.tenant_id, workflow.owner_id
+        supplied_owner_id = owner.id
         timeout = workflow.timeout_seconds
         if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 3600:
             raise ValueError("工作流超时必须为1至3600秒的整数")
@@ -142,18 +163,56 @@ class WorkflowEngine:
             workflow_id=workflow_id, tenant_id=tenant_id, triggered_by=triggered_by,
             status=ExecutionStatus.RUNNING.value, input=prompt, started_at=datetime.now(UTC),
         )
+        execution_id, started_at = execution.id, execution.started_at
         session.add(execution)
-        session.commit()
-        session.refresh(execution)
-        execution_id = execution.id
-        started_at = execution.started_at
+        try:
+            session.commit()
+        except BaseException:
+            session.rollback()
+            raise
+        consume()
         db_key = database_key(session.get_bind())
-        child = asyncio.create_task(self._attempts(
-            session, workflow_id, tenant_id, owner_id, owner.id, prompt, sleeper or asyncio.sleep,
-        ))
-        entry = ActiveExecution(workflow_id, tenant_id, db_key, child)
-        register(execution_id, entry)
-        timer = asyncio.get_running_loop().call_later(timeout, entry.stop, "WORKFLOW_TIMEOUT")
+        attempts = self._attempts(
+            session, workflow_id, tenant_id, owner_id, supplied_owner_id, prompt, sleeper or asyncio.sleep,
+        )
+        child: asyncio.Task[tuple[str, str | None, str | None]] | None = None
+        entry: ActiveExecution | None = None
+        try:
+            session.refresh(execution)
+            child = asyncio.create_task(attempts)
+            entry = ActiveExecution(workflow_id, tenant_id, db_key, child)
+            register(execution_id, entry)
+            timer = asyncio.get_running_loop().call_later(timeout, entry.stop, "WORKFLOW_TIMEOUT")
+        except BaseException:
+            if child is None:
+                attempts.close()
+            else:
+                child.cancel()
+                while not child.done():
+                    try:
+                        await asyncio.shield(child)
+                    except asyncio.CancelledError:
+                        continue
+                    except Exception:
+                        break
+            try:
+                session.rollback()
+                failed = session.get(WorkflowExecution, execution_id, populate_existing=True)
+                if failed is not None:
+                    failed.status = "failed"
+                    failed.error = "WORKFLOW_EXECUTION_FAILED"
+                    failed.finished_at = datetime.now(UTC)
+                    session.add(failed)
+                    session.commit()
+            except BaseException:
+                if entry is not None:
+                    entry.persistence_failed = True
+                session.rollback()
+                raise
+            finally:
+                if entry is not None:
+                    finish(execution_id, entry)
+            raise
         parent_cancelled = False
         outcome: tuple[str, str | None, str | None] = ("failed", None, "WORKFLOW_CANCELLED")
         try:

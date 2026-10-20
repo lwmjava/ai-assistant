@@ -9,6 +9,7 @@ croniter 未安装时调度器不启动（仅手动触发可用）；``WORKFLOW_
 
 import asyncio
 import logging
+from contextvars import ContextVar
 from datetime import UTC, datetime
 
 from sqlmodel import Session, col, select
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 _task: asyncio.Task | None = None
 # 进程级已消费时刻；数据库创建时间仅提供保守恢复，不保证跨重启恰好一次。
 _last_run: dict[str, datetime] = {}
+_scan_due: ContextVar[datetime | None] = ContextVar("workflow_scan_due", default=None)
 
 
 def schedule_mode() -> str:
@@ -78,8 +80,12 @@ async def _tick() -> None:
                 if value is not None
             ]
             if not consumed or due > max(consumed):
-                _last_run[wf.id] = due
-                await _trigger(wf)
+                token = _scan_due.set(due)
+                try:
+                    await _trigger(wf)
+                    _last_run[wf.id] = due
+                finally:
+                    _scan_due.reset(token)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Workflow %s 调度失败（%s）", wf.id, type(exc).__name__)
 
@@ -130,7 +136,12 @@ async def _trigger(wf: Workflow) -> None:
             logger.warning("Workflow %s 的租户不可用，本次不执行", wf.id)
             return
         engine_svc = WorkflowEngine()
-        await engine_svc.execute(session, wf, owner, triggered_by=TriggerSource.CRON.value)
+        due = _scan_due.get()
+        if due is None:
+            due = latest_due_time(wf.cron_expr, wf.timezone, datetime.now(UTC))
+        await engine_svc.execute(
+            session, wf, owner, triggered_by=TriggerSource.CRON.value, scheduled_due=due,
+        )
 
 
 async def start_scheduler() -> None:

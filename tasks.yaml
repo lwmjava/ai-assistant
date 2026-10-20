@@ -5218,7 +5218,7 @@ tasks:
 
   - id: "PWFL-003"
     title: "工作流并发控制与幂等"
-    status: "blocked"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5236,6 +5236,14 @@ tasks:
         - "app/core/"
         - "tests/"
         - "tasks.yaml"
+        - "docs/plans/"
+        - "docs/reviews/"
+        - "docs/adr/0018-workflow-concurrency-idempotency.md"
+        - "docs/adr/README.md"
+        - "app/api/routes/workflow.py"
+        - ".env.example"
+        - "README.md"
+        - "docs/swagger.json"
       forbidden_paths:
         - ".env"
       deliverables:
@@ -5271,7 +5279,7 @@ tasks:
         失败边界：数值非法值与1/1000；同wf并发N次/同due终态再触发/下个due；不同wf可到cap但不超；容量满零记录与Bridge、释放后重试；跨租户/Engine/线程事件循环；不同有效输入不误合并；首commit失败/终态commit失败/Task建立异常；取消finally未完成不释放；原重试、超时、取消、cron水位/manual不消费cron回归。使用真实HTTP/_tick/Engine及隔离SQLite，版本化Smoke/Adversarial workflow-concurrency-idempotency-v1，非Gold。
         验证：先有效红测，再最小实现；公共路径全量pytest、Ruff/mypy、API契约变化前端四门；独立入口反例及另一Agent最终审核，最终输入指纹。最终Ubuntu CI与用户业务接受未齐不能done。回滚先排空活动执行再撤代码，不重放历史，不操作真实库。
         只读独立scope_review确认方案满足原契约；cron并行化非必须项。尚需用户批准上述具体周期/拒绝语义及最小扩围。获批后先在docs/plans落正式实现计划，再写ADR和业务代码；本execution提案不替代正式落盘计划。
-      progress: "2026-10-20已授权推进；原始范围未含必须的计划/审查、ADR、配置示例与API文档。已完成事实核对、有效前置关闭及128项基线；具体准入/周期方案与最小扩围在proposed_plan集中列出，待批准前不改业务代码，保持blocked。不推送。"
+      progress: "2026-10-20批准方案与最小扩围后实现共享进程容量、活动任务互斥、cron精确周期去重和删除原子保留；计划/ADR/实现说明已落盘。独立入口发现的refresh与delete两项P2修复后144项工作流通过，fresh最终审核技术通过、实际58项通过，报告docs/reviews/2026-10-20-pwfl-003-human-audit-1.md。Ruff/mypy及前端四门exit0；最终全量3194passed/3skipped/4warnings/855.25秒/exit0，733项输入指纹变化0。最终同SHA Ubuntu CI及用户业务接受未验证，保持in_review；无推送。证据见docs/reviews/2026-10-20-pwfl-003-acceptance.md。"
       owner: "个人开发者"
       nightly:
         eligible: false

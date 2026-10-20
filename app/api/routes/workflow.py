@@ -25,7 +25,8 @@ from app.models.workflow import (
     Workflow,
     WorkflowExecution,
 )
-from app.workflow.control import cancel_execution, database_key, has_active_workflow
+from app.workflow.admission import WorkflowAdmissionError, forget_workflow, reserve_deletion
+from app.workflow.control import cancel_execution, database_key
 from app.workflow.engine import WorkflowEngine
 from app.workflow.scheduler import schedule_mode
 
@@ -240,10 +241,16 @@ async def delete_workflow(
     wf = _get_owned(session, user, workflow_id)
     if wf is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工作流不存在或无权访问")
-    if has_active_workflow(wf.id, wf.tenant_id, database_key(session.get_bind())):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="工作流仍有活动执行，暂不能删除")
-    session.delete(wf)
-    session.commit()
+    try:
+        lease = reserve_deletion(session.get_bind(), wf.id, wf.tenant_id)
+    except WorkflowAdmissionError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.code) from None
+    try:
+        session.delete(wf)
+        session.commit()
+        forget_workflow(session.get_bind(), workflow_id, wf.tenant_id)
+    finally:
+        lease.release()
     await audit_event(
         request,
         AuditAction.WORKFLOW_DELETE,
@@ -272,7 +279,10 @@ async def list_executions(
     return list(session.exec(stmt).all())
 
 
-@router.post("/{workflow_id}/run", response_model=ExecutionOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{workflow_id}/run", response_model=ExecutionOut, status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "工作流已有活动执行或进程并发容量已满，不新增执行记录"}},
+)
 async def run_workflow(
     request: Request,
     workflow_id: str,
@@ -287,7 +297,10 @@ async def run_workflow(
     if owner is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="工作流创建者已失效，不能执行")
     engine = WorkflowEngine()
-    execution = await engine.execute(session, wf, owner, triggered_by=TriggerSource.MANUAL.value)
+    try:
+        execution = await engine.execute(session, wf, owner, triggered_by=TriggerSource.MANUAL.value)
+    except WorkflowAdmissionError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.code) from None
     await audit_event(
         request,
         AuditAction.WORKFLOW_EXECUTE,

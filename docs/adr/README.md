@@ -62,3 +62,5 @@ ADR-0017：[工作流执行超时与协作取消](0017-workflow-execution-cancel
 
 - 不把 `docs/plans/` 中的历史方案当成已批准 ADR。
 - 不把 Proposed 草稿当成已交付能力。
+
+ADR-0018：[工作流单进程准入与周期幂等](0018-workflow-concurrency-idempotency.md)，Accepted，2026-10-20；用户批准共享容量、周期消费语义及最小扩围，批准不代表已实现。

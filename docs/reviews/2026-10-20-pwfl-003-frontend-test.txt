@@ -1,0 +1,125 @@
+
+> ai-assistant-console@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 E:/culture/SmartCustomerServiceSystem/ai-assistant/frontend
+
+ ✓ src/lib/download.test.ts (10 tests) 17ms
+ ✓ src/lib/chunk-content.test.ts (15 tests) 16ms
+ ✓ src/lib/permissions.test.ts (6 tests) 7ms
+ ✓ src/lib/chat-regenerate.test.ts (8 tests) 33ms
+ ✓ src/lib/chat-attachment-drafts.test.ts (5 tests) 24ms
+ ✓ src/lib/chat-stream-hook-review.test.ts (5 tests) 29ms
+ ✓ src/lib/sse-review.test.ts (7 tests) 81ms
+ ✓ src/components/knowledge/ChunkContent.test.ts (6 tests) 20ms
+ ✓ src/lib/chat-stream-state.test.ts (3 tests) 23ms
+ ✓ src/lib/error-contract.test.ts (32 tests) 419ms
+ ✓ src/lib/sse-replay.test.ts (3 tests) 32ms
+ ✓ src/lib/api-version.test.ts (3 tests) 36ms
+ ✓ src/lib/api-version-review.test.ts (2 tests) 30ms
+ ✓ src/lib/workflow-schedule.test.ts (2 tests) 15ms
+ ✓ src/lib/chat-attachments.test.ts (40 tests) 80ms
+stderr | src/first-password.test.ts > 待改密用户深链不能渲染业务布局
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at Navigate (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1115:7)
+    at RequireAuth (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\App.tsx:43:24)
+    at RenderedRoute (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:539:7)
+    at Outlet (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1153:28)
+    at FirstRunGate (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\App.tsx:68:42)
+    at RenderedRoute (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:539:7)
+    at Routes (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1240:7)
+    at RouteErrorBoundary (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\components\ui\RouteErrorBoundary.tsx:6:5)
+    at App
+    at Router (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1174:17)
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+
+stderr | src/first-password.test.ts > 刷新时旧用户摘要不能在真实 me 返回前放行业务
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+
+stderr | src/first-password.test.ts > 首次改密页面可访问且没有业务布局
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at ChangePasswordPage (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\pages\ChangePassword.tsx:33:42)
+    at RequireAuth (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\App.tsx:43:24)
+    at RenderedRoute (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:539:7)
+    at Outlet (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1153:28)
+    at FirstRunGate (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\App.tsx:68:42)
+    at RenderedRoute (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:539:7)
+    at Routes (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1240:7)
+    at RouteErrorBoundary (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\components\ui\RouteErrorBoundary.tsx:6:5)
+    at App
+    at Router (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1174:17)
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+
+stderr | src/first-password.test.ts > 成功改密后用新双令牌重新读取用户
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+
+stderr | src/first-password.test.ts > me 失败时不以持久化旧摘要放行业务
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+
+stderr | src/first-password.test.ts > 换发令牌后的真实 me 返回前不能使用旧摘要
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+
+stderr | src/first-password.test.ts > 换发令牌后的真实 me 返回前不能使用旧摘要
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+
+stderr | src/first-password.test.ts > 未登录者不能看到改密表单
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+
+stderr | src/first-password.test.ts > 旧 me 响应不能覆盖后建立的待改密会话
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at Navigate (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1115:7)
+    at RequireAuth (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\App.tsx:43:24)
+    at RenderedRoute (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:539:7)
+    at Outlet (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1153:28)
+    at FirstRunGate (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\App.tsx:68:42)
+    at RenderedRoute (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:539:7)
+    at Routes (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1240:7)
+    at RouteErrorBoundary (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\src\components\ui\RouteErrorBoundary.tsx:6:5)
+    at App
+    at Router (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1174:17)
+    at MemoryRouter (E:\culture\SmartCustomerServiceSystem\ai-assistant\frontend\node_modules\react-router\dist\umd\react-router.development.js:1069:7)
+
+stderr | src/first-password.test.ts > 改密 POST 等待期间 logout 后旧响应不能重建旧会话
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+
+stderr | src/first-password.test.ts > 改密 POST 等待期间 reset 后旧响应不能重建旧会话
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+
+stderr | src/first-password.test.ts > 改密 POST 等待期间 establish 后旧响应不能重建旧会话
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'aa-auth', the given storage is currently unavailable.
+
+ ✓ src/first-password.test.ts (12 tests) 302ms
+ ✓ src/components/chat/attachments.test.ts (4 tests) 178ms
+ ✓ src/components/chat/regenerate.test.ts (4 tests) 225ms
+
+ Test Files  18 passed (18)
+      Tests  167 passed (167)
+   Start at  22:39:39
+   Duration  6.28s (transform 6.57s, setup 0ms, collect 16.92s, tests 1.57s, environment 10ms, prepare 7.65s)
+
+npm notice
+npm notice New major version of npm available! 10.9.3 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

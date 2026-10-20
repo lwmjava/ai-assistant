@@ -417,6 +417,7 @@ class Settings(BaseSettings):
     # ── Workflow 工作流引擎 ──
     # 定时任务（cron）触发 Agent 执行，打通「自动化」场景。
     WORKFLOW_ENABLED: bool = False  # 是否启用工作流引擎（调度器 + 路由）；默认关闭
+    WORKFLOW_MAX_CONCURRENCY: int = Field(default=4, ge=1, le=1000)
     WORKFLOW_DEFAULT_TIMEZONE: str = "Asia/Shanghai"  # cron 解析默认时区（IANA 名称）
     WORKFLOW_SCHEDULER_INTERVAL: float = 30.0  # 调度循环扫描间隔（秒）
     WORKFLOW_MAX_EXECUTION_SECONDS: float = 300.0  # 单次任务执行超时（秒）
@@ -462,6 +463,19 @@ class Settings(BaseSettings):
         """环境变量可用整数字符串；布尔值与浮点数不能冒充调度预算。"""
         if isinstance(value, bool) or not isinstance(value, int | str):
             raise ValueError("导入批次与并发上限必须是 1..1000 的整数")
+        return value
+
+    @field_validator("WORKFLOW_MAX_CONCURRENCY", mode="before")
+    @classmethod
+    def _validate_workflow_concurrency(cls, value: object) -> object:
+        """仅接受整数或环境变量中的十进制整数字符串。"""
+        if isinstance(value, bool) or not isinstance(value, int | str):
+            raise ValueError("工作流并发上限必须是 1..1000 的整数")
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized or not normalized.isascii() or not normalized.isdecimal():
+                raise ValueError("工作流并发上限必须是 1..1000 的整数")
+            return int(normalized)
         return value
 
     @field_validator("AGENT_MAX_TOOL_ROUNDS", mode="before")

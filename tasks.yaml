@@ -7557,7 +7557,7 @@ tasks:
 
   - id: "FLOW-003"
     title: "工作流到点触发写入执行记录"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -7598,7 +7598,7 @@ tasks:
         - "pytest -k \"workflow or schedul\""
     execution:
       plan: "docs/plans/plan_flow_003_20261020.md"
-      progress: "2026-10-20用户已批准计划并委托独立Agent代行业务验收。基线150afa8，分支codex/flow-003-scheduled-execution。到点进入原执行链并写cron执行记录。工程审查与独立人工审核已通过，无未修复P1/P2。全量pytest 3082 passed、3 skipped、704.69秒、exit0。业务验收见docs/reviews/2026-10-20-flow-003-business-acceptance.md：集成6 passed/4.23秒/exit0；真实_tick在到期前0条、跨过上海时间10:01后新Session读到1条cron success。实现随本分支提交并推送；最终提交的Backend、Frontend、Agent official baseline仍待该提交的CI结果。保持in_review，不得done。未合并或部署。"
+      progress: "2026-10-20用户已批准计划并委托独立Agent代行业务验收。基线150afa8，分支codex/flow-003-scheduled-execution。到点进入原执行链并写cron执行记录。工程审查与独立人工审核已通过，无未修复P1/P2。全量pytest 3082 passed、3 skipped、704.69秒、exit0。业务验收见docs/reviews/2026-10-20-flow-003-business-acceptance.md。最终提交9d4791c96052029d85b002211ed3a4e6de1c89ec的GitHub Actions run 39357209112：Backend、Frontend、Agent official baseline均为success。关闭记录docs/reviews/2026-10-20-flow-003-close.md。未合并或部署。"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -8336,7 +8336,7 @@ tasks:
 
   - id: "FLOW-004"
     title: "工作流开关与 croniter 缺失提示"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8382,6 +8382,8 @@ tasks:
       commands:
         - "pytest -k workflow -v"
     execution:
+      plan: "docs/plans/plan_flow_004_20261020.md"
+      progress: "2026-10-20已实现开关关闭不建循环、打开且依赖齐全时原start_scheduler到点写cron记录、缺croniter时列表头manual-only且手动执行仍成功。全量pytest 3086 passed、3 skipped、728.32秒、exit0；ruff与mypy exit0；前端类型检查、Vitest 167、ESLint和构建exit0。独立工程审查与人工审核通过，无未修复P1/P2。独立页面验收已通过，见docs/reviews/2026-10-20-flow-004-page-acceptance.md：关闭时页面为工作流引擎未启用且列表503；拦截croniter时页面出现只剩手动执行且响应头manual-only；依赖齐全时不出现该句且响应头scheduled。业务接受和本提交的三项CI尚未返回，保持in_review，不得done。"
       owner: "个人开发者"
       nightly:
         eligible: false

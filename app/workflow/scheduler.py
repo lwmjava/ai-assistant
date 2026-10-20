@@ -17,7 +17,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.models.user import Tenant, User
 from app.models.workflow import TriggerSource, Workflow, WorkflowExecution
-from app.workflow.engine import WorkflowEngine, latest_due_time
+from app.workflow.engine import WorkflowEngine, _require_croniter, latest_due_time
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +26,22 @@ _task: asyncio.Task | None = None
 _last_run: dict[str, datetime] = {}
 
 
-def _is_scheduler_runnable() -> bool:
+def schedule_mode() -> str:
+    """返回当前进程的调度可用性：disabled、scheduled 或 manual-only。"""
     if not settings.WORKFLOW_ENABLED:
-        return False
+        return "disabled"
     try:
-        from app.workflow.engine import _require_croniter
-
         _require_croniter()
     except Exception:  # noqa: BLE001
+        return "manual-only"
+    return "scheduled"
+
+
+def _is_scheduler_runnable() -> bool:
+    mode = schedule_mode()
+    if mode == "manual-only":
         logger.warning("croniter 未安装，调度器不启动（仅手动触发可用）")
-        return False
-    return True
+    return mode == "scheduled"
 
 
 async def _loop() -> None:

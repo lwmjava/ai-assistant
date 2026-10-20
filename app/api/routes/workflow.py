@@ -9,7 +9,7 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, col, select
 
@@ -24,6 +24,7 @@ from app.models.workflow import (
     WorkflowExecution,
 )
 from app.workflow.engine import WorkflowEngine
+from app.workflow.scheduler import schedule_mode
 
 router = APIRouter(
     prefix="/workflows",
@@ -158,10 +159,14 @@ async def create_workflow(
 
 @router.get("", response_model=list[WorkflowOut])
 async def list_workflows(
+    response: Response,
     session: Session = Depends(get_db),
     user: User = Depends(require_permission("workflows", "read")),
 ) -> list[Workflow]:
     """列出当前可见的定时任务（系统管理员跨租户，其余本租户）。"""
+    mode = schedule_mode()
+    if mode != "disabled":
+        response.headers["X-Workflow-Schedule"] = mode
     return list(session.exec(_list_stmt(user)).all())
 
 

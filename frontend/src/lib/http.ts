@@ -326,6 +326,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: 'GET' }),
+  /** 需要读取响应头时使用。错误、鉴权和 401 刷新与 get 相同。 */
+  getResponse: (path: string, options?: RequestOptions) =>
+    requestResponse(path, { ...options, method: 'GET' }),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'POST', body }),
   put: <T>(path: string, body?: unknown, options?: RequestOptions) =>

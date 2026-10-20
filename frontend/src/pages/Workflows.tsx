@@ -32,6 +32,7 @@ import {
   useWorkflowExecutions,
   useWorkflows,
 } from '@/api/workflows'
+import { workflowScheduleNotice } from '@/lib/workflow-schedule'
 import { ApiError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, formatDuration, truncate } from '@/lib/cn'
@@ -445,7 +446,8 @@ export default function WorkflowsPage() {
   const run = useRunWorkflow()
   const toggle = useToggleWorkflow()
 
-  const list = workflows.data ?? []
+  const list = workflows.data?.workflows ?? []
+  const manualOnlyNotice = workflowScheduleNotice(workflows.data?.scheduleMode ?? null)
   const disabled = (workflows.error as { status?: number } | null)?.status === 503
 
   async function handleRun(w: WorkflowOut) {
@@ -529,7 +531,10 @@ export default function WorkflowsPage() {
           <EmptyState
             icon={<CalendarClock className="size-5" aria-hidden />}
             title="还没有定时任务"
-            description="把重复性的 Prompt 变成日程：设定 cron 表达式后，引擎会按周期自动执行。"
+            description={
+              manualOnlyNotice ??
+              '把重复性的 Prompt 变成日程：设定 cron 表达式后，引擎会按周期自动执行。'
+            }
             action={
               canWrite ? (
                 <Button
@@ -547,6 +552,12 @@ export default function WorkflowsPage() {
           />
         </div>
       ) : (
+        <div className="space-y-4">
+          {manualOnlyNotice && (
+            <p className="panel px-4 py-3 text-sm text-text" role="status">
+              {manualOnlyNotice}
+            </p>
+          )}
         <ul className="grid gap-4 lg:grid-cols-2">
           {list.map((w) => (
             <WorkflowCard
@@ -566,6 +577,7 @@ export default function WorkflowsPage() {
             />
           ))}
         </ul>
+        </div>
       )}
 
       <WorkflowFormModal

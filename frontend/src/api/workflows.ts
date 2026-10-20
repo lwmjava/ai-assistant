@@ -5,6 +5,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/http'
 import type { ExecutionOut, WorkflowCreate, WorkflowOut, WorkflowUpdate } from '@/types/api'
 
+export interface WorkflowList {
+  workflows: WorkflowOut[]
+  scheduleMode: string | null
+}
+
 export const workflowKeys = {
   all: ['workflows'] as const,
   list: () => [...workflowKeys.all, 'list'] as const,
@@ -14,7 +19,12 @@ export const workflowKeys = {
 export function useWorkflows(enabled = true) {
   return useQuery({
     queryKey: workflowKeys.list(),
-    queryFn: () => api.get<WorkflowOut[]>('/workflows'),
+    queryFn: async (): Promise<WorkflowList> => {
+      const response = await api.getResponse('/workflows')
+      const text = await response.text()
+      const workflows = text ? (JSON.parse(text) as WorkflowOut[]) : []
+      return { workflows, scheduleMode: response.headers.get('X-Workflow-Schedule') }
+    },
     enabled,
     // 引擎未启用时后端整组返回 503，不重试，直接交给页面展示
     retry: false,

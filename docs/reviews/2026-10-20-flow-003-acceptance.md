@@ -12,7 +12,7 @@
 | 时区与恢复边界 | SQLite naive UTC、等价时区、回退及已批准croniter DST实测 | UTC比较；保持安装croniter候选，不承诺新DST策略、实时SLA或跨重启精确slot | E2回归，方案及工程报告说明 | 批准范围内通过；边界保留 |
 | 范围与防漂移 | 仅scheduler/必要helper、正式测试及批准文档 | 不改API/schema/模型/迁移/配置/依赖/CI/前端，不做其他工作流卡 | diff与允许路径核对 | 通过；允许路径、YAML及diff检查，533输入不变 |
 | 独立技术审核与用户业务接受 | 新Agent从原始契约复核冻结版本；用户2026-10-20委托未参与实现与既有审查的Agent代行业务验收 | 技术审核与业务验收分属不同Agent；不继承前卡业务委托 | 技术审核 docs/reviews/2026-10-20-flow-003-human-audit.md，48 passed/17.02秒/exit0。业务验收 docs/reviews/2026-10-20-flow-003-business-acceptance.md：集成6 passed/4.23秒/exit0；真实_tick到期前0条，跨过上海10:01后新Session 1条cron success | 技术审核与业务验收通过；最终SHA的三项CI未验证，不得done |
-| 最终版本三项CI | 候选最终SHA的Backend、Frontend、Agent official baseline | 同SHA全部通过，不能以旧CI替代 | 实现已纳入本次提交并推送，CI结果尚未返回 | 未验证，不得done |
+| 最终版本三项CI | 候选最终SHA的Backend、Frontend、Agent official baseline | 同SHA全部通过，不能以旧CI替代 | run 39357209112，SHA 9d4791c96052029d85b002211ed3a4e6de1c89ec，三项 success | 通过 |
 
 ## 已有实际证据
 
@@ -28,4 +28,4 @@ E2证据为真实调度/执行器/应用、隔离SQLite和合成provider，不�
 
 前端/API未变，本地前端检查不适用，但最终GitHub Frontend门禁不免除。回滚仅撤回调度helper及接线，保留执行历史、消息与审计，不删除或重放旧执行。
 
-当前本地必要检查、独立人工审核和受委托的业务验收均已通过，卡保持 in_review。实现已纳入本次提交并推送，最终提交的三项 CI 尚未返回，不能 done。没有生产启用、付费调用、真实数据操作、合并或部署。
+当前本地必要检查、独立人工审核、受委托的业务验收，以及最终提交 `9d4791c` 的三项 CI 均已通过。用户于 2026-10-20 要求关闭本卡。没有生产启用、付费调用、真实数据操作、合并或部署。

@@ -1,0 +1,27 @@
+FLOW-004 human audit pytest transcript
+date: 2026-10-20
+cwd: E:\culture\SmartCustomerServiceSystem\ai-assistant
+interpreter: D:\DepTooL\anaconda3\envs\ai-assistant\python.exe
+python: 3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]
+croniter: import succeeded in this interpreter; the module has no __version__ attribute
+DATABASE_URL=sqlite:///./data/flow004-human-audit.db
+PYTHONUTF8=1
+
+command:
+& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' -m pytest tests/test_workflow.py::test_disabled_switch_does_not_start_scheduler tests/test_workflow.py::test_missing_croniter_keeps_manual_execution tests/test_workflow.py::test_schedule_header_when_dependency_present tests/test_workflow_schedule_integration.py::test_running_loop_crosses_due_time_without_manual_trigger -q --basetemp=data/pytest-tmp/flow004-human-audit
+
+....                                                                     [100%]
+============================== warnings summary ===============================
+tests/test_workflow.py::test_missing_croniter_keeps_manual_execution
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\tools\sandbox\sandbox.py:93: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    ast.NameConstant,  # Python 3.7 兼容
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+4 passed, 1 warning in 2.89s
+exit code: 0
+
+database timestamps observed immediately before and after this command:
+- data/flow004-human-audit.db: absent before; after = 589824 bytes, 2026-10-20 11:09:37
+- data/ai_assistant.db: 29409280 bytes, 2026-10-18 21:54:24, unchanged
+- data/test_ai_assistant.db: 1204224 bytes, 2026-10-19 14:37:26, unchanged
+- data/flow004-full.db: 974848 bytes, 2026-10-20 11:03:38, unchanged

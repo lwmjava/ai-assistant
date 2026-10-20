@@ -36,6 +36,7 @@ from app.workflow.bridge import WorkflowBridge
 from app.workflow.engine import WorkflowEngine, next_run_time
 from app.workflow.scheduler import (
     _is_scheduler_runnable,
+    schedule_mode,
     start_scheduler,
     stop_scheduler,
 )
@@ -275,6 +276,11 @@ async def test_scheduler_runnable_and_start_stop(monkeypatch):
         from app.workflow.scheduler import _task
 
         assert _task is not None and not _task.done()
+        first = _task
+        await start_scheduler()
+        from app.workflow.scheduler import _task as again
+
+        assert again is first
 
         await stop_scheduler()
         from app.workflow.scheduler import _task as t2
@@ -282,3 +288,61 @@ async def test_scheduler_runnable_and_start_stop(monkeypatch):
         assert t2 is None or t2.done()
     finally:
         await stop_scheduler()
+
+
+@pytest.mark.asyncio
+async def test_disabled_switch_does_not_start_scheduler(monkeypatch):
+    monkeypatch.setattr(settings, "WORKFLOW_ENABLED", False)
+    await stop_scheduler()
+    await start_scheduler()
+    from app.workflow.scheduler import _task
+
+    assert schedule_mode() == "disabled"
+    assert _task is None or _task.done()
+
+
+def test_schedule_header_when_dependency_present(client: TestClient) -> None:
+    listed = client.get("/api/v1/workflows")
+    assert listed.status_code == 200
+    assert listed.headers["X-Workflow-Schedule"] == "scheduled"
+
+
+def test_schedule_header_hidden_without_reader() -> None:
+    settings.WORKFLOW_ENABLED = True
+    anonymous = TestClient(app)
+    try:
+        response = anonymous.get("/api/v1/workflows")
+        assert response.status_code in {401, 403}
+        assert "x-workflow-schedule" not in {name.lower() for name in response.headers}
+    finally:
+        anonymous.close()
+        settings.WORKFLOW_ENABLED = False
+
+
+@pytest.mark.asyncio
+async def test_missing_croniter_keeps_manual_execution(client: TestClient, monkeypatch) -> None:
+    from app.workflow.engine import CroniterNotAvailableError
+
+    def blocked() -> None:
+        raise CroniterNotAvailableError("no croniter")
+
+    monkeypatch.setattr("app.workflow.scheduler._require_croniter", blocked)
+    await stop_scheduler()
+    await start_scheduler()
+    from app.workflow.scheduler import _task
+
+    assert schedule_mode() == "manual-only"
+    assert _task is None or _task.done()
+    created = client.post(
+        "/api/v1/workflows",
+        json={"name": "manual-only", "cron_expr": "0 0 1 1 *", "prompt_template": "p"},
+    )
+    assert created.status_code == 201
+    listed = client.get("/api/v1/workflows")
+    assert listed.status_code == 200
+    assert listed.headers["X-Workflow-Schedule"] == "manual-only"
+    assert "wf-tenant" not in listed.headers["X-Workflow-Schedule"]
+    started = client.post(f"/api/v1/workflows/{created.json()['id']}/run")
+    assert started.status_code == 201
+    assert started.json()["triggered_by"] == "manual"
+    await stop_scheduler()

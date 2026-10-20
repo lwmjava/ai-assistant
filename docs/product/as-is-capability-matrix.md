@@ -38,7 +38,7 @@
 | Tool Registry（名称/描述/Schema/函数） | `Partial` | `app/agents/tools/` | 权限、风险、超时、审计、版本未齐 |
 | 独立 Tool Executor | `Planned` | 治理规范 §3 | — |
 | YAML Skill 加载 | `Partial` | `app/agents/skills/`、`app/services/skill_service.py` | 成员可创建私有关键词技能并在对话中选用；系统管理员可跨租户管理并新增系统全局技能；工具、检索和升级由服务端固定；版本史和技能市场仍未做 |
-| Workflow 调度 | `Partial` | `app/workflow/`；`frontend/src/pages/Workflows.tsx`；`tests/test_workflow.py`；`tests/test_workflow_schedule_integration.py` | 开关关闭时不启动定时循环。打开且 croniter 可用时，到点走原循环并写执行记录。缺 croniter 时列表标明只剩手动执行，手动触发仍可落库。重试、并发幂等、告警及跨重启精确 slot 尚未完成 |
+| Workflow 调度 | `Partial` | `app/workflow/`；`frontend/src/pages/Workflows.tsx`；`tests/test_workflow.py`；`tests/test_workflow_schedule_integration.py` | 开关关闭时不启动定时循环。打开且 croniter 可用时，到点走原循环并写执行记录。缺 croniter 时列表标明只剩手动执行。同一次执行可按配置指数退避重试，默认 0 次、最多 3 次。超时、并发幂等、告警及跨重启精确 slot 尚未完成 |
 
 ## 3. RAG
 

@@ -420,6 +420,9 @@ class Settings(BaseSettings):
     WORKFLOW_DEFAULT_TIMEZONE: str = "Asia/Shanghai"  # cron 解析默认时区（IANA 名称）
     WORKFLOW_SCHEDULER_INTERVAL: float = 30.0  # 调度循环扫描间隔（秒）
     WORKFLOW_MAX_EXECUTION_SECONDS: float = 300.0  # 单次任务执行超时（秒）
+    WORKFLOW_RETRY_MAX: int = 0  # 失败后的额外重试次数；默认 0，最大按 3
+    WORKFLOW_RETRY_BASE_SECONDS: float = 1.0  # 第一次重试前的等待基数（秒），最大按 30
+    WORKFLOW_RETRY_MAX_DELAY_SECONDS: float = 8.0  # 单次退避等待上限（秒），最大按 30
 
     # ── Evolution 进化系统（夜间蒸馏）──
     # 定时批量分析近期对话，提炼改进建议与技能改善方向

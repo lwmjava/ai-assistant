@@ -1,0 +1,7 @@
+DATABASE_URL=sqlite:///./data/pwfl001-business-acceptance.db
+PYTHONUTF8=1
+& 'D:\DepTooL\anaconda3\envs\ai-assistant\python.exe' -m pytest tests/test_workflow_retry.py -q --basetemp=data/pytest-tmp/pwfl001-business-acceptance
+
+.....                                                                    [100%]
+5 passed in 2.55s
+PYTEST_EXIT_CODE=0

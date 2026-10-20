@@ -5103,7 +5103,7 @@ tasks:
 
   - id: "PWFL-001"
     title: "工作流重试：指数退避与上限"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5143,6 +5143,8 @@ tasks:
       commands:
         - "pytest -k 'workflow or retry'"
     execution:
+      plan: "docs/plans/plan_pwfl_001_20261020.md"
+      progress: "2026-10-20同一次执行内指数退避重试，默认0次、最多3次，单次等待不超过30秒。全量pytest 3091 passed、3 skipped、732.87秒、exit0；ruff与mypy app/218文件exit0。独立工程审查与人工审核通过，无未修复P1/P2。用户委托的人工业务验收已通过，见docs/reviews/2026-10-20-pwfl-001-business-acceptance.md：临时失败后一条success且等待一次；持续失败停在上限并记下原因。实现未提交，最终SHA的三项CI未验证，保持in_review，不得done。"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -8336,7 +8338,7 @@ tasks:
 
   - id: "FLOW-004"
     title: "工作流开关与 croniter 缺失提示"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8383,7 +8385,7 @@ tasks:
         - "pytest -k workflow -v"
     execution:
       plan: "docs/plans/plan_flow_004_20261020.md"
-      progress: "2026-10-20已实现开关关闭不建循环、打开且依赖齐全时原start_scheduler到点写cron记录、缺croniter时列表头manual-only且手动执行仍成功。全量pytest 3086 passed、3 skipped、728.32秒、exit0；ruff与mypy exit0；前端类型检查、Vitest 167、ESLint和构建exit0。独立工程审查与人工审核通过，无未修复P1/P2。独立页面验收已通过，见docs/reviews/2026-10-20-flow-004-page-acceptance.md：关闭时页面为工作流引擎未启用且列表503；拦截croniter时页面出现只剩手动执行且响应头manual-only；依赖齐全时不出现该句且响应头scheduled。业务接受和本提交的三项CI尚未返回，保持in_review，不得done。"
+      progress: "2026-10-20已实现开关关闭不建循环、打开且依赖齐全时原start_scheduler到点写cron记录、缺croniter时列表头manual-only且手动执行仍成功。全量pytest 3086 passed、3 skipped、728.32秒、exit0；ruff与mypy exit0；前端类型检查、Vitest 167、ESLint和构建exit0。独立工程审查与人工审核通过，无未修复P1/P2。页面验收见docs/reviews/2026-10-20-flow-004-page-acceptance.md。最终提交102c0d18d574e5bfdcf3f58096cb5b51b14a167f的GitHub Actions run 39366280824：Backend、Frontend、Agent official baseline均为success。用户于2026-10-20要求关闭。关闭记录docs/reviews/2026-10-20-flow-004-close.md。未合并或部署。"
       owner: "个人开发者"
       nightly:
         eligible: false

@@ -2,17 +2,21 @@
 
 - ``next_run_time``：用可选依赖 ``croniter`` 解析标准 5 字段 cron，按任务时区返回
   下一次触发的 aware datetime；croniter 缺失时抛 ``CroniterNotAvailableError``。
-- ``WorkflowEngine.execute``：编排一次执行（owner 失效校验 → 记录 → 调用 bridge →
-  落库结果 → 可选 webhook 回调），是手动触发与调度器共用的执行入口。
+- ``WorkflowEngine.execute``：编排一次执行（每次尝试前复核创建者 → 记录 → 调用 bridge →
+  失败时按配置指数退避重试 → 落库结果 → 可选 webhook 回调），是手动触发与调度器共用的执行入口。
 """
 
+import asyncio
 import logging
+import math
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
 from sqlmodel import Session
 
+from app.core.config import settings
 from app.models.user import User
 from app.models.workflow import (
     ExecutionStatus,
@@ -23,6 +27,35 @@ from app.models.workflow import (
 from app.workflow.bridge import WorkflowBridge
 
 logger = logging.getLogger(__name__)
+_RETRY_CEILING = 3
+_DELAY_CEILING_SECONDS = 30.0
+
+
+def workflow_retry_limit() -> int:
+    """额外重试次数。默认 0，超过 3 的配置按 3。"""
+    raw = settings.WORKFLOW_RETRY_MAX
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return 0
+    return max(0, min(_RETRY_CEILING, raw))
+
+
+def workflow_retry_delay(retry_number: int) -> float:
+    """第 retry_number 次重试前的等待秒数，基数和单次等待都不超过 30 秒。"""
+
+    def bounded(raw: object) -> float:
+        if isinstance(raw, bool) or not isinstance(raw, int | float):
+            return 0.0
+        number = float(raw)
+        if not math.isfinite(number) or number < 0:
+            return 0.0
+        return min(number, _DELAY_CEILING_SECONDS)
+
+    base = bounded(settings.WORKFLOW_RETRY_BASE_SECONDS)
+    cap = bounded(settings.WORKFLOW_RETRY_MAX_DELAY_SECONDS)
+    delay = base * (2 ** (retry_number - 1))
+    if not math.isfinite(delay) or delay < 0:
+        return 0.0
+    return min(delay, cap, _DELAY_CEILING_SECONDS)
 
 
 class CroniterNotAvailableError(RuntimeError):
@@ -96,17 +129,19 @@ class WorkflowEngine:
         owner: User,
         triggered_by: str = TriggerSource.MANUAL.value,
         prompt_override: str | None = None,
+        sleeper: Callable[[float], Awaitable[None]] | None = None,
     ) -> WorkflowExecution:
-        """执行工作流一次，落库执行记录并返回。
+        """执行工作流一次，失败时在同一条记录内按配置重试。
 
         流程：
-        1. owner 失效校验（禁用 / 不在原租户）→ 标记 suspended_owner，返回 FAILED；
-        2. 创建 PENDING 执行记录，置 RUNNING + started_at；
-        3. 调用 bridge 执行 Prompt；
+        1. 创建 PENDING 执行记录；
+        2. 每次调用 bridge 前重新读取创建者，失效则停用并返回 FAILED；
+        3. 第一次之后按指数退避等待，再调用 bridge；
         4. 置 SUCCESS / FAILED + output / error + finished_at + duration_ms；
-        5. 若有 webhook_url 且成功，异步回调（失败不影响主结果）；
+        5. 仅最终成功时回调 webhook；
         6. 提交并返回。
         """
+        pause = sleeper or asyncio.sleep
         prompt = prompt_override or workflow.prompt_template
         execution = WorkflowExecution(
             workflow_id=workflow.id,
@@ -119,37 +154,47 @@ class WorkflowEngine:
         session.commit()
         session.refresh(execution)
 
-        # 1. owner 失效校验
-        if not owner.is_active or owner.tenant_id != workflow.tenant_id:
-            workflow.enabled = False
-            workflow.suspended_owner = True
-            session.add(workflow)
-            execution.status = ExecutionStatus.FAILED.value
-            execution.error = "任务创建者已失效（禁用或移出租户），工作流已自动停用"
-            execution.finished_at = datetime.now(UTC)
-            session.add(execution)
-            session.commit()
-            session.refresh(execution)
-            logger.warning("Workflow %s 因 owner 失效已停用", workflow.id)
-            return execution
-
-        # 2. 进入运行
-        execution.status = ExecutionStatus.RUNNING.value
-        execution.started_at = datetime.now(UTC)
-        session.add(execution)
-        session.commit()
-
-        # 3. 执行
-        try:
-            output = await self._bridge.execute(session, owner, prompt)
+        attempts = workflow_retry_limit() + 1
+        last_error = ""
+        for index in range(attempts):
+            current = session.get(Workflow, workflow.id)
+            actor = session.get(User, owner.id)
+            if current is None or actor is None or not actor.is_active or actor.tenant_id != workflow.tenant_id:
+                if current is not None:
+                    current.enabled = False
+                    current.suspended_owner = True
+                    session.add(current)
+                execution.status = ExecutionStatus.FAILED.value
+                execution.error = "任务创建者已失效（禁用或移出租户），工作流已自动停用"
+                execution.finished_at = datetime.now(UTC)
+                session.add(execution)
+                session.commit()
+                session.refresh(execution)
+                logger.warning("Workflow %s 因 owner 失效已停用", workflow.id)
+                return execution
+            workflow = current
+            owner = actor
+            if index == 0:
+                execution.status = ExecutionStatus.RUNNING.value
+                execution.started_at = datetime.now(UTC)
+                session.add(execution)
+                session.commit()
+            else:
+                await pause(workflow_retry_delay(index))
+            try:
+                output = await self._bridge.execute(session, owner, prompt)
+            except Exception as exc:  # noqa: BLE001
+                last_error = str(exc)
+                logger.exception("Workflow %s 执行失败", workflow.id)
+                continue
             execution.status = ExecutionStatus.SUCCESS.value
             execution.output = output
-        except Exception as exc:  # noqa: BLE001
+            execution.error = None
+            break
+        else:
             execution.status = ExecutionStatus.FAILED.value
-            execution.error = str(exc)
-            logger.exception("Workflow %s 执行失败", workflow.id)
+            execution.error = f"已达到重试上限 {workflow_retry_limit()}：{last_error}"
 
-        # 4. 收尾
         execution.finished_at = datetime.now(UTC)
         if execution.started_at is not None:
             # SQLite 读回的 datetime 会丢失时区信息变为 naive，统一补回 UTC 再相减。
@@ -162,7 +207,6 @@ class WorkflowEngine:
         session.commit()
         session.refresh(execution)
 
-        # 5. webhook 回调（P2）
         if workflow.webhook_url and execution.status == ExecutionStatus.SUCCESS.value:
             await self._fire_webhook(workflow, execution)
 

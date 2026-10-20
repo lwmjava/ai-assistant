@@ -122,6 +122,17 @@ async def test_failure_creates_one_alert(persist_identity, monkeypatch):
     assert alert.trace_id, "告警应携带 trace_id"
     assert alert.workflow_name == "告警任务"
 
+    # 端到端关联：告警的 trace_id 应与执行日志的 trace_id 一致
+    from app.audit.models import WorkflowExecutionLog
+    with Session(engine) as s:
+        logs_for_exec = list(s.exec(
+            select(WorkflowExecutionLog).where(WorkflowExecutionLog.execution_id == execution.id)
+        ).all())
+    assert len(logs_for_exec) >= 1, "失败执行应有至少一条日志"
+    log_trace_ids = {log.trace_id for log in logs_for_exec}
+    assert alert.trace_id in log_trace_ids, \
+        f"告警 trace_id={alert.trace_id} 应与执行日志 trace_id 一致，实际日志 trace_ids={log_trace_ids}"
+
 
 # ── 核心：执行日志按 trace_id 关联 ──────────────────────────────
 @pytest.mark.asyncio
@@ -201,13 +212,26 @@ async def test_cross_tenant_isolation(persist_identity, monkeypatch):
     with Session(engine) as s:
         await WorkflowEngine(bridge=bridge).execute(s, wf_a, owner_a)
 
-    from app.workflow.execution_log import list_alerts
+    from app.audit.models import WorkflowExecutionLog
+    from app.workflow.execution_log import get_logs_by_trace_id, list_alerts
     with Session(engine) as s:
         alerts_for_a = list_alerts(s, tenant_id="iso-tenant-a")
         alerts_for_b = list_alerts(s, tenant_id="iso-tenant-b")
+        # 拿到租户 A 的执行日志 trace_id
+        logs_a = list(s.exec(
+            select(WorkflowExecutionLog).where(WorkflowExecutionLog.tenant_id == "iso-tenant-a")
+        ).all())
+        assert logs_a, "租户 A 应有执行日志"
+        trace_id_a = logs_a[0].trace_id
+        # 用租户 B 的 tenant_id 查询租户 A 的 trace_id → 应为空
+        logs_via_b = get_logs_by_trace_id(s, trace_id_a, tenant_id="iso-tenant-b")
+        # 用租户 A 的 tenant_id 查询 → 应非空
+        logs_via_a = get_logs_by_trace_id(s, trace_id_a, tenant_id="iso-tenant-a")
 
     assert any(a.workflow_id == wf_a.id for a in alerts_for_a), "本租户应查到告警"
     assert not any(a.workflow_id == wf_a.id for a in alerts_for_b), "他租户不应查到本租户告警"
+    assert len(logs_via_b) == 0, "他租户通过 trace_id 不应查到本租户日志"
+    assert len(logs_via_a) >= 1, "本租户通过 trace_id 应查到本租户日志"
 
 
 # ── 成功执行不产生告警，但有日志 ──────────────────────────────

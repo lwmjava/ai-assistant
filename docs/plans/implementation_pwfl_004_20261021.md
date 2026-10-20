@@ -59,6 +59,15 @@
 - `test_retry_exhausted_single_alert`：WORKFLOW_RETRY_MAX=2 时桥接调用 3 次，告警表中该 execution_id 仍只有 1 条。
 - `test_success_no_alert_but_has_logs`：成功执行产生 0 条告警、≥2 条日志。
 
+### 独立审查后修复（LOW-3 / LOW-4）
+
+- **LOW-3（计划漂移）**：`app/workflow/execution_log.py` 的 `get_logs_by_trace_id` 增加可选 `tenant_id` 关键字参数；有 tenant_id 时按租户过滤，None 时不加约束（与 `list_alerts` / `list_logs` 模式对齐），满足 AGENTS.md §8 数据访问租户校验要求。
+- **LOW-4（测试缺口）**：
+  - `test_failure_creates_one_alert` 补充断言：告警的 `trace_id` 与该执行的日志 `trace_id` 一致（端到端关联验证）。
+  - `test_cross_tenant_isolation` 补充 `get_logs_by_trace_id` 的跨租户断言：他租户 tenant_id 传入时查不到本租户日志，本租户 tenant_id 可查到。
+
+修复后重新验证：`pytest tests/test_workflow_execution_alert.py -v` 5 passed；`pytest -k workflow` 155 passed；`ruff check .` 退出 0；`mypy app/` 退出 0。
+
 ## 5. 明确没做的事（非目标 / 缺口）
 
 - **不接入外部告警平台**（邮件、Webhook、PagerDuty 等）——契约 non-goal。

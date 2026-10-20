@@ -38,13 +38,26 @@ def list_alerts(
     return session.exec(stmt).all()
 
 
-def get_logs_by_trace_id(session: Session, trace_id: str) -> Sequence[WorkflowExecutionLog]:
-    """按 trace_id 检索一次执行的全部日志，按创建时间正序。"""
+def get_logs_by_trace_id(
+    session: Session,
+    trace_id: str,
+    *,
+    tenant_id: str | None = None,
+) -> Sequence[WorkflowExecutionLog]:
+    """按 trace_id 检索一次执行的全部日志，按创建时间正序。
+
+    Args:
+        session: 数据库会话。
+        trace_id: 执行级 trace_id（必填）。
+        tenant_id: 租户隔离过滤；None 表示不过滤（系统管理员场景）。
+    """
     stmt = (
         select(WorkflowExecutionLog)
         .where(col(WorkflowExecutionLog.trace_id) == trace_id)
         .order_by(col(WorkflowExecutionLog.created_at).asc())
     )
+    if tenant_id is not None:
+        stmt = stmt.where(col(WorkflowExecutionLog.tenant_id) == tenant_id)
     return session.exec(stmt).all()
 
 

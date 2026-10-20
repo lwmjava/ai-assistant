@@ -263,6 +263,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | 工作流 | `GET` / `POST` | `/api/v1/workflows` | 工作流列表 / 创建（需 `WORKFLOW_ENABLED`） |
 | 工作流 | `GET` / `PUT` / `DELETE` | `/api/v1/workflows/{workflow_id}` | 工作流详情、更新、删除 |
 | 工作流 | `GET` | `/api/v1/workflows/{workflow_id}/executions` | 执行历史 |
+| 工作流 | `POST` | `/api/v1/workflows/{workflow_id}/executions/{execution_id}/cancel` | 协作取消本进程执行并等待清理；终态幂等 |
 | 工作流 | `POST` | `/api/v1/workflows/{workflow_id}/run` | 手动触发 |
 | 工作流 | `POST` | `/api/v1/workflows/{workflow_id}/toggle` | 启停开关 |
 | 审计 | `GET` | `/api/v1/admin/audit-logs` | 审计日志查询（系统管理员） |
@@ -306,7 +307,11 @@ python -m app.cli init
 
 从项目根目录运行 `init`，它为新 `.env` 生成随机 `JWT_SECRET_KEY`，不会打印密钥或创建数据库。需要其他配置时，从 `.env.example` 取对应键并填写自己的值，保留已经生成的 JWT 密钥。已有 `.env` 时 init 会拒绝覆盖；保留原文件并安全配置密钥。可用 `python -m app.cli init --env-file <新文件路径>` 生成另一份配置，或安装命令入口后使用 `ai-assistant init`。自定义输出文件不会自动改变应用固定读取项目根 `.env` 的行为；部署时应显式将其中的值注入环境。
 
-`pip install -r requirements.txt` 会安装调度依赖 `croniter`。`pip install -e ".[workflow]"` 也会。`WORKFLOW_ENABLED` 默认是 `false`；打开后，进程启动时创建调度任务。到点是否执行尚未完成。
+`pip install -r requirements.txt` 会安装调度依赖 `croniter`。`pip install -e ".[workflow]"` 也会。`WORKFLOW_ENABLED` 默认是 `false`；打开后，进程启动时创建调度任务，支持到点触发执行。调度的生产治理仍为 `Partial`，尚不支持跨进程取消和跨重启恢复。
+
+工作流创建与更新接口支持 `timeout_seconds`：严格整数 1–3600，默认 300 秒；更新省略时保留原值，显式 `null` 无效。总时限包含执行尝试和重试退避，达到时限后发起合作式取消，等待清理并以 `failed` / `WORKFLOW_TIMEOUT` 保存历史。取消接口沿用工作流写权限和租户隔离，成功返回原执行记录（`failed` / `WORKFLOW_CANCELLED`）；已完成记录原样返回，无本进程活动执行返回 409。活动执行尚未清理时删除工作流返回 409。手动执行始终使用创建者身份，创建者缺失时拒绝执行。
+
+超时和取消仅针对当前进程内合作式异步代码，不保证中断同步阻塞、撤销已完成的外部副作用或跨进程强杀；300 秒是发起取消的截止点，清理可能继续等待。成功后的 webhook 有独立时限，不追溯改变成功结果。升级或回滚前应等待当前活动执行排空，执行历史结构保持不变。
 
 Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[langgraph]"`（`langgraph>=1.0.0,<1.1`），再把 `AGENT_ORCHESTRATION` 设为 `langgraph`。这时只有明确要求多轮调研的问题才进入 Supervisor；不需要工具和知识库的问题只生成一次。没装这个包时，多轮请求回退五阶段管线。默认配置仍是 `self`。
 

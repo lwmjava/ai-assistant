@@ -3444,6 +3444,63 @@
         }
       }
     },
+    "/api/v1/workflows/{workflow_id}/executions/{execution_id}/cancel": {
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Cancel Workflow Execution",
+        "description": "协作取消当前进程的执行并等待收尾；终态幂等，无本进程任务返回409。",
+        "operationId": "cancel_workflow_execution_api_v1_workflows__workflow_id__executions__execution_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          },
+          {
+            "name": "execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Execution Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflows/{workflow_id}/toggle": {
       "post": {
         "tags": [
@@ -7533,6 +7590,13 @@
             "type": "boolean",
             "title": "Enabled",
             "default": true
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "maximum": 3600.0,
+            "minimum": 1.0,
+            "title": "Timeout Seconds",
+            "default": 300
           }
         },
         "type": "object",
@@ -7588,6 +7652,10 @@
             "type": "boolean",
             "title": "Enabled"
           },
+          "timeout_seconds": {
+            "type": "integer",
+            "title": "Timeout Seconds"
+          },
           "suspended_owner": {
             "type": "boolean",
             "title": "Suspended Owner"
@@ -7625,6 +7693,7 @@
           "prompt_template",
           "timezone",
           "enabled",
+          "timeout_seconds",
           "suspended_owner",
           "webhook_url",
           "created_at",
@@ -7710,6 +7779,12 @@
               }
             ],
             "title": "Enabled"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "maximum": 3600.0,
+            "minimum": 1.0,
+            "title": "Timeout Seconds"
           }
         },
         "type": "object",

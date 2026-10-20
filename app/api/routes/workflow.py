@@ -7,10 +7,12 @@
 执行身份遵循 PRD：以任务「创建者（owner）」身份运行；owner 失效时由引擎自动停用。
 """
 
+import math
 from datetime import datetime
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
@@ -23,6 +25,7 @@ from app.models.workflow import (
     Workflow,
     WorkflowExecution,
 )
+from app.workflow.control import cancel_execution, database_key, has_active_workflow
 from app.workflow.engine import WorkflowEngine
 from app.workflow.scheduler import schedule_mode
 
@@ -43,6 +46,13 @@ def _require_enabled() -> None:
 
 
 # ── 请求 / 响应模型 ──────────────────────────────
+def _safe_timeout_input(value: object) -> object:
+    """保留严格整数校验，避免校验错误响应包含不可序列化的非有限浮点。"""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    return value
+
+
 class WorkflowCreate(BaseModel):
     name: str
     cron_expr: str
@@ -51,6 +61,9 @@ class WorkflowCreate(BaseModel):
     timezone: str | None = None
     webhook_url: str | None = None
     enabled: bool = True
+    timeout_seconds: int = Field(default=300, strict=True, ge=1, le=3600)
+
+    _normalize_timeout = field_validator("timeout_seconds", mode="before")(_safe_timeout_input)
 
 
 class WorkflowUpdate(BaseModel):
@@ -61,6 +74,10 @@ class WorkflowUpdate(BaseModel):
     timezone: str | None = None
     webhook_url: str | None = None
     enabled: bool | None = None
+    # 不验证省略的默认值；显式 null 由非可空整数类型拒绝。
+    timeout_seconds: int = Field(default=cast(int, None), strict=True, ge=1, le=3600)
+
+    _normalize_timeout = field_validator("timeout_seconds", mode="before")(_safe_timeout_input)
 
 
 class WorkflowOut(BaseModel):
@@ -75,6 +92,7 @@ class WorkflowOut(BaseModel):
     prompt_template: str
     timezone: str
     enabled: bool
+    timeout_seconds: int
     suspended_owner: bool
     webhook_url: str | None
     created_at: datetime
@@ -142,6 +160,7 @@ async def create_workflow(
         timezone=payload.timezone or settings.WORKFLOW_DEFAULT_TIMEZONE,
         webhook_url=payload.webhook_url,
         enabled=payload.enabled,
+        timeout_seconds=payload.timeout_seconds,
     )
     session.add(wf)
     session.commit()
@@ -221,6 +240,8 @@ async def delete_workflow(
     wf = _get_owned(session, user, workflow_id)
     if wf is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工作流不存在或无权访问")
+    if has_active_workflow(wf.id, wf.tenant_id, database_key(session.get_bind())):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="工作流仍有活动执行，暂不能删除")
     session.delete(wf)
     session.commit()
     await audit_event(
@@ -262,8 +283,9 @@ async def run_workflow(
     wf = _get_owned(session, user, workflow_id)
     if wf is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工作流不存在或无权访问")
-    # owner 可能已从库移除（异常场景）→ 降级为当前触发者，引擎会做失效校验。
-    owner = session.get(User, wf.owner_id) or user
+    owner = session.get(User, wf.owner_id)
+    if owner is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="工作流创建者已失效，不能执行")
     engine = WorkflowEngine()
     execution = await engine.execute(session, wf, owner, triggered_by=TriggerSource.MANUAL.value)
     await audit_event(
@@ -279,6 +301,50 @@ async def run_workflow(
         },
     )
     return execution
+
+
+@router.post("/{workflow_id}/executions/{execution_id}/cancel", response_model=ExecutionOut)
+async def cancel_workflow_execution(
+    request: Request,
+    workflow_id: str,
+    execution_id: str,
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "write")),
+) -> WorkflowExecution:
+    """协作取消当前进程的执行并等待收尾；终态幂等，无本进程任务返回409。"""
+    wf = _get_owned(session, user, workflow_id)
+    if wf is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工作流不存在或无权访问")
+    execution = session.get(WorkflowExecution, execution_id)
+    if (execution is None or execution.workflow_id != wf.id
+            or execution.tenant_id != wf.tenant_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="执行记录不存在或无权访问")
+    if execution.status not in {"success", "failed"}:
+        try:
+            cancelled = await cancel_execution(
+                execution_id, wf.id, wf.tenant_id, database_key(session.get_bind())
+            )
+        except RuntimeError:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail="执行终态暂无法保存，请稍后查询") from None
+        if not cancelled:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="本进程无可取消的活动执行")
+    # 不读取旧请求的 identity map；执行所有者负责提交终态。
+    with Session(session.get_bind()) as fresh:
+        final = fresh.get(WorkflowExecution, execution_id)
+        if final is None or final.workflow_id != wf.id or final.tenant_id != wf.tenant_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="执行记录不存在或无权访问")
+        if final.status not in {"success", "failed"}:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail="执行仍在收尾，请稍后查询")
+        fresh.expunge(final)
+    await audit_event(
+        request, AuditAction.WORKFLOW_EXECUTE, user=user,
+        resource_type="workflow", resource_id=workflow_id,
+        details={"operation": "cancel", "execution_id": execution_id, "status": final.status},
+    )
+    return final
 
 
 @router.post("/{workflow_id}/toggle", response_model=WorkflowOut)

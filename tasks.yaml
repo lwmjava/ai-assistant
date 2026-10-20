@@ -5178,6 +5178,12 @@ tasks:
         - "tasks.yaml"
         - "docs/plans/"
         - "docs/reviews/"
+        - "app/models/workflow.py"
+        - "alembic/versions/"
+        - "docs/adr/0017-workflow-execution-cancellation.md"
+        - "docs/adr/README.md"
+        - "README.md"
+        - "docs/swagger.json"
       forbidden_paths:
         - ".env"
       deliverables:
@@ -5200,7 +5206,7 @@ tasks:
         - "pytest -k 'workflow'"
     execution:
       plan: "docs/plans/plan_pwfl_002_20261020.md"
-      progress: "2026-10-20用户授权实施、扩展docs/plans与docs/reviews并授权提交，不含推送。前置PWFL-001经用户接受及独立复核关闭。当前工作流基线59pass/exit0，Ruff/mypy219文件exit0；未改业务代码。计划已落盘，需新增Workflow超时字段及隔离迁移、取消生命周期ADR、README/Swagger契约同步；所需最小扩围未批准，按AGENTS第12节保持blocked，禁止范围外实施。"
+      progress: "2026-10-20用户批准计划最小扩围及生命周期；超时1–3600秒/默认300、单进程协作取消、终态failed/error、鉴权取消API、活动删除409、owner缺失拒绝、模型迁移及README/Swagger已实现。有效红测后修复非有限JSON错误响应500，创建/更新均422且无写入；实际Engine实例绑定隔离同URL内存库。独立入口最终44pass/exit0，无新增未修复P1/P2；报告docs/reviews/2026-10-20-pwfl-002-engineering-review.md。已知阻断：旧库auto_migrate直接stamp却缺timeout_seconds，真实入口失败；追加app/core/migration.py修复范围已向用户请求，未批准未改。前端四门exit0（167测试）；最终Ruff/mypy220文件exit0。最终全量/Ubuntu CI/最终独立人工审核/用户业务接受未验证，保持blocked。实现说明docs/plans/implementation_pwfl_002_20261020.md。已获本地提交授权，不含推送、合并、部署或真实库迁移。"
       owner: "个人开发者"
       nightly:
         eligible: true

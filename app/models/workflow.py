@@ -58,6 +58,8 @@ class Workflow(SQLModel, TimestampMixin, table=True):
     suspended_owner: bool = Field(default=False)
     # 执行完成后的回调 URL（P2）；为空则不回调。
     webhook_url: str | None = Field(default=None)
+    # 总执行时限包含重试与退避；到期后启动合作式取消。
+    timeout_seconds: int = Field(default=300, sa_column_kwargs={"server_default": "300"})
 
     executions: list["WorkflowExecution"] = Relationship(
         back_populates="workflow", cascade_delete=True

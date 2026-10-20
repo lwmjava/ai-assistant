@@ -17,7 +17,7 @@ import httpx
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.models.user import User
+from app.models.user import Tenant, User
 from app.models.workflow import (
     ExecutionStatus,
     TriggerSource,
@@ -25,6 +25,7 @@ from app.models.workflow import (
     WorkflowExecution,
 )
 from app.workflow.bridge import WorkflowBridge
+from app.workflow.control import ActiveExecution, database_key, finish, register
 
 logger = logging.getLogger(__name__)
 _RETRY_CEILING = 3
@@ -131,86 +132,120 @@ class WorkflowEngine:
         prompt_override: str | None = None,
         sleeper: Callable[[float], Awaitable[None]] | None = None,
     ) -> WorkflowExecution:
-        """执行工作流一次，失败时在同一条记录内按配置重试。
-
-        流程：
-        1. 创建 PENDING 执行记录；
-        2. 每次调用 bridge 前重新读取创建者，失效则停用并返回 FAILED；
-        3. 第一次之后按指数退避等待，再调用 bridge；
-        4. 置 SUCCESS / FAILED + output / error + finished_at + duration_ms；
-        5. 仅最终成功时回调 webhook；
-        6. 提交并返回。
-        """
-        pause = sleeper or asyncio.sleep
+        """以快照总时限执行；合作式取消完成清理后由本调用唯一写入终态。"""
+        workflow_id, tenant_id, owner_id = workflow.id, workflow.tenant_id, workflow.owner_id
+        timeout = workflow.timeout_seconds
+        if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 3600:
+            raise ValueError("工作流超时必须为1至3600秒的整数")
         prompt = prompt_override or workflow.prompt_template
         execution = WorkflowExecution(
-            workflow_id=workflow.id,
-            tenant_id=workflow.tenant_id,
-            triggered_by=triggered_by,
-            status=ExecutionStatus.PENDING.value,
-            input=prompt,
+            workflow_id=workflow_id, tenant_id=tenant_id, triggered_by=triggered_by,
+            status=ExecutionStatus.RUNNING.value, input=prompt, started_at=datetime.now(UTC),
         )
         session.add(execution)
         session.commit()
         session.refresh(execution)
+        execution_id = execution.id
+        started_at = execution.started_at
+        db_key = database_key(session.get_bind())
+        child = asyncio.create_task(self._attempts(
+            session, workflow_id, tenant_id, owner_id, owner.id, prompt, sleeper or asyncio.sleep,
+        ))
+        entry = ActiveExecution(workflow_id, tenant_id, db_key, child)
+        register(execution_id, entry)
+        timer = asyncio.get_running_loop().call_later(timeout, entry.stop, "WORKFLOW_TIMEOUT")
+        parent_cancelled = False
+        outcome: tuple[str, str | None, str | None] = ("failed", None, "WORKFLOW_CANCELLED")
+        try:
+            # shield 防止父调用的重复取消再次打断子任务 finally。
+            while True:
+                try:
+                    outcome = await asyncio.shield(child)
+                    break
+                except asyncio.CancelledError:
+                    current = asyncio.current_task()
+                    if current is not None and current.cancelling():
+                        parent_cancelled = True
+                    entry.stop("WORKFLOW_CANCELLED")
+                    if child.done():
+                        if not child.cancelled():
+                            try:
+                                outcome = child.result()
+                            except Exception:
+                                outcome = ("failed", None, "WORKFLOW_EXECUTION_FAILED")
+                        break
+                except Exception:
+                    logger.exception("Workflow %s 执行异常", workflow_id)
+                    outcome = ("failed", None, "WORKFLOW_EXECUTION_FAILED")
+                    break
+            if entry.reason is not None:
+                outcome = ("failed", None, entry.reason)
+            elif child.cancelled():
+                outcome = ("failed", None, "WORKFLOW_CANCELLED")
+            # 失败事务与未提交的尝试写入不能污染终态保存。
+            if outcome[0] != "success":
+                session.rollback()
+            row = session.get(WorkflowExecution, execution_id, populate_existing=True)
+            if row is None:
+                raise RuntimeError("工作流执行记录不存在")
+            row.status, row.output, row.error = outcome
+            row.finished_at = datetime.now(UTC)
+            if started_at is not None:
+                started = started_at if started_at.tzinfo else started_at.replace(tzinfo=UTC)
+                row.duration_ms = int((row.finished_at - started).total_seconds() * 1000)
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            execution = row
+            logger.info("Workflow execution finished workflow_id=%s execution_id=%s status=%s reason=%s",
+                        workflow_id, execution_id, row.status, entry.reason)
+        except BaseException:
+            entry.persistence_failed = True
+            session.rollback()
+            raise
+        finally:
+            timer.cancel()
+            finish(execution_id, entry)
+        if parent_cancelled:
+            raise asyncio.CancelledError
+        current_workflow = session.get(Workflow, workflow_id)
+        if current_workflow is not None and current_workflow.webhook_url and execution.status == "success":
+            await self._fire_webhook(current_workflow, execution)
+        return execution
 
-        attempts = workflow_retry_limit() + 1
+    async def _attempts(
+        self, session: Session, workflow_id: str, tenant_id: str, owner_id: str,
+        supplied_owner_id: str, prompt: str, pause: Callable[[float], Awaitable[None]],
+    ) -> tuple[str, str | None, str | None]:
+        """在同一执行中有限重试；每次真正调用前重新复核持久身份。"""
+        limit = workflow_retry_limit()
         last_error = ""
-        for index in range(attempts):
-            current = session.get(Workflow, workflow.id)
-            actor = session.get(User, owner.id)
-            if current is None or actor is None or not actor.is_active or actor.tenant_id != workflow.tenant_id:
+        for index in range(limit + 1):
+            if index:
+                await pause(workflow_retry_delay(index))
+            current = session.get(Workflow, workflow_id, populate_existing=True)
+            actor = session.get(User, owner_id, populate_existing=True)
+            tenant = session.get(Tenant, tenant_id, populate_existing=True)
+            if (current is None or current.tenant_id != tenant_id or current.owner_id != owner_id
+                    or supplied_owner_id != owner_id or actor is None or not actor.is_active
+                    or actor.tenant_id != tenant_id):
                 if current is not None:
                     current.enabled = False
                     current.suspended_owner = True
                     session.add(current)
-                execution.status = ExecutionStatus.FAILED.value
-                execution.error = "任务创建者已失效（禁用或移出租户），工作流已自动停用"
-                execution.finished_at = datetime.now(UTC)
-                session.add(execution)
-                session.commit()
-                session.refresh(execution)
-                logger.warning("Workflow %s 因 owner 失效已停用", workflow.id)
-                return execution
-            workflow = current
-            owner = actor
-            if index == 0:
-                execution.status = ExecutionStatus.RUNNING.value
-                execution.started_at = datetime.now(UTC)
-                session.add(execution)
-                session.commit()
-            else:
-                await pause(workflow_retry_delay(index))
+                    session.commit()
+                return "failed", None, "任务创建者已失效（禁用或移出租户），工作流已自动停用"
+            if tenant is None or not tenant.is_active:
+                return "failed", None, "WORKFLOW_TENANT_UNAVAILABLE"
             try:
-                output = await self._bridge.execute(session, owner, prompt)
+                output = await self._bridge.execute(session, actor, prompt)
             except Exception as exc:  # noqa: BLE001
                 last_error = str(exc)
-                logger.exception("Workflow %s 执行失败", workflow.id)
+                session.rollback()
+                logger.warning("Workflow %s attempt failed type=%s", workflow_id, type(exc).__name__)
                 continue
-            execution.status = ExecutionStatus.SUCCESS.value
-            execution.output = output
-            execution.error = None
-            break
-        else:
-            execution.status = ExecutionStatus.FAILED.value
-            execution.error = f"已达到重试上限 {workflow_retry_limit()}：{last_error}"
-
-        execution.finished_at = datetime.now(UTC)
-        if execution.started_at is not None:
-            # SQLite 读回的 datetime 会丢失时区信息变为 naive，统一补回 UTC 再相减。
-            started = execution.started_at
-            if started.tzinfo is None:
-                started = started.replace(tzinfo=UTC)
-            delta = execution.finished_at - started
-            execution.duration_ms = int(delta.total_seconds() * 1000)
-        session.add(execution)
-        session.commit()
-        session.refresh(execution)
-
-        if workflow.webhook_url and execution.status == ExecutionStatus.SUCCESS.value:
-            await self._fire_webhook(workflow, execution)
-
-        return execution
+            return "success", output, None
+        return "failed", None, f"已达到重试上限 {limit}：{last_error}"
 
     async def _fire_webhook(self, workflow: Workflow, execution: WorkflowExecution) -> None:
         """执行完成后回调 webhook（P2）；失败仅告警，不影响主结果。"""

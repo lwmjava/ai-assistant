@@ -54,6 +54,8 @@ ADR-0016：[有界知识库与工具组合](0016-bounded-knowledge-tool-composit
 
 ## 格式
 
+ADR-0017：[工作流执行超时与协作取消](0017-workflow-execution-cancellation.md)，Accepted，2026-10-20；用户批准PWFL-002具体实施计划及最小扩围。单进程合作取消、每任务持久化超时、唯一执行所有者收尾；不改执行历史表结构，不表示业务完成。
+
 每份 ADR 至少包含：背景、事实、选项、决定、后果、迁移、验证和回滚。模板见 `docs/governance/agent-harness-engineering.md` §17。
 
 ## 非目标

@@ -1,0 +1,62 @@
+{
+  "baseline_sha": "8cc3b06",
+  "input_manifest": "docs/reviews/2026-10-20-pwfl-002-inputs.json",
+  "frozen_inputs": 726,
+  "changed_inputs_after_checks": [],
+  "candidate": "HEAD plus manifest, WIP blocked",
+  "results": {
+    "related_final": {
+      "passed": 102,
+      "failed": 1,
+      "seconds": 27.42,
+      "exit_code": 1
+    },
+    "full_intermediate_not_final": {
+      "passed": 3137,
+      "failed": 1,
+      "skipped": 3,
+      "warnings": 4,
+      "seconds": 679.11,
+      "exit_code": 1
+    },
+    "ruff": {
+      "exit_code": 0
+    },
+    "mypy": {
+      "files": 220,
+      "exit_code": 0
+    },
+    "frontend": {
+      "typecheck_exit": 0,
+      "test_exit": 0,
+      "tests_passed": 167,
+      "lint_exit": 0,
+      "build_exit": 0
+    },
+    "independent_entry_final": {
+      "passed": 44,
+      "exit_code": 0
+    }
+  },
+  "pending": [
+    "app/core/migration.py scope authorization and legacy startup fix",
+    "final full pytest",
+    "final Ubuntu CI",
+    "final independent human audit",
+    "user business acceptance"
+  ],
+  "logs": {
+    "data/pwfl002-engine-red.txt": "85a33478f324be643b72ec5282d48fee1dc75a5e1da51ea00eef6685416f6678",
+    "data/pwfl002-engine-green2.txt": "1da4c44c3684637dc05f81f6628e3f5b2a3f75f4d77782cf840e8b593292fd06",
+    "data/pwfl002-related-final.txt": "cea5c4a980d89b4fe3e87002854881fd0dd593e267dd58fd6538b377f82429f1",
+    "data/pwfl002-full-01.txt": "f6586eb104646e34370740e00f9bfd0f16b425cf7dd51cb73c1d7af924888a75",
+    "data/pwfl002-ruff-final.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/pwfl002-mypy-final.txt": "df5f4b5322df16c9a209ea139a36970e7ab5eed86b60ae8a840fddc762c5094f",
+    "data/pwfl002-frontend-final-typecheck.txt": "8bccce1b2eea9a81b456e4e225ff2553f200160510898e15a0e20ce50e141d3c",
+    "data/pwfl002-frontend-final-test.txt": "1cefd44154fdb92eb7fb6b96cdba5da5bf364b1c2493cd55fe0252b470d38c65",
+    "data/pwfl002-frontend-final-lint.txt": "fec427e6da4f0db6e1d954ca97719ec27d0b9e582a73b4368a8487477c07ab52",
+    "data/pwfl002-frontend-final-build.txt": "848175f8550d8a0e1766be2574d18bf2ac3a5f0e0181d45842e8283a67451332",
+    "data/pwfl002-related-final2.txt": "5dc0774b5fee6d7f43a804c5700aadc41b01cf94ed78033eeeba54212a0861f7"
+  },
+  "final_formatting_note": "Independent test trailing blank line removed; final suite and Ruff rerun. Application/typecheck/frontend inputs unchanged."
+}

@@ -38,7 +38,7 @@
 | Tool Registry（名称/描述/Schema/函数） | `Partial` | `app/agents/tools/` | 权限、风险、超时、审计、版本未齐 |
 | 独立 Tool Executor | `Planned` | 治理规范 §3 | — |
 | YAML Skill 加载 | `Partial` | `app/agents/skills/`、`app/services/skill_service.py` | 成员可创建私有关键词技能并在对话中选用；系统管理员可跨租户管理并新增系统全局技能；工具、检索和升级由服务端固定；版本史和技能市场仍未做 |
-| Workflow 调度 | `Partial` | `app/workflow/`；`requirements.txt` 的 `croniter`；`pyproject.toml` extra `workflow` | 开关打开且已安装 `croniter` 时，调度任务能创建和取消。到点触发仍没有执行记录 |
+| Workflow 调度 | `Partial` | `app/workflow/`；`tests/test_workflow_schedule_integration.py`；`tests/test_workflow_schedule_contract.py` | 已有启停；当前修复按任务时区取最近到期时刻，复用原引擎及ChatService写cron执行历史，隔离集成验证可查询。重试、并发幂等、告警及跨重启精确slot尚未完成；最终门禁见本卡实现说明 |
 
 ## 3. RAG
 
@@ -107,4 +107,4 @@
 | `npm run typecheck` / `npm run build` | 2026-10-02：退出码 0 | 工作目录 `frontend/` |
 | `scripts/milvus_five_gates.py` | 2026-09-29：退出码 0，`all_passed true` | 嵌入 `text-embedding-v3`，1024 维。默认向量库仍是 local |
 
-更早的全量 pytest（2026-09-13：240 passed，2 skipped，1 failed）失败项是当时环境缺少 `croniter`。此后 `requirements.txt` 已列入该依赖，启停用例在装有该包的环境通过。到点触发仍没有执行记录。工作流调度保持 `Partial`。
+更早的全量 pytest（2026-09-13：240 passed，2 skipped，1 failed）失败项是当时环境缺少 `croniter`。此后 `requirements.txt` 已列入该依赖，启停用例在装有该包的环境通过。该历史时点到点触发没有执行记录。2026-10-20的修复已补真实定时入口、执行历史及边界测试，验证结果见 `docs/plans/implementation_flow_003_20261020.md`；重试、并发、告警和精确恢复仍未齐，工作流调度保持 `Partial`。

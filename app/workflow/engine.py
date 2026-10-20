@@ -7,7 +7,7 @@
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -61,6 +61,26 @@ def next_run_time(cron_expr: str, tz: str, after: datetime | None = None) -> dat
     if nxt.tzinfo is None:
         nxt = nxt.replace(tzinfo=zone)
     return nxt
+
+
+def latest_due_time(cron_expr: str, tz: str, now: datetime) -> datetime:
+    """返回不晚于 now 的最近 cron 时刻，统一使用 aware UTC。
+
+    候选语义沿用 croniter 的任务时区解析；微秒边界包含恰好到点的时刻。
+    """
+    croniter = _require_croniter()
+    zone = ZoneInfo(tz)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    now_utc = now.astimezone(UTC)
+    local_base = now_utc.astimezone(zone) + timedelta(microseconds=1)
+    candidate = croniter.croniter(cron_expr, local_base).get_prev(datetime)
+    if candidate.tzinfo is None:
+        candidate = candidate.replace(tzinfo=zone)
+    due = candidate.astimezone(UTC)
+    if due > now_utc:
+        raise ValueError("Cron candidate is later than the scan time")
+    return due
 
 
 class WorkflowEngine:

@@ -1,0 +1,70 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+____ test_schedule_changed_after_scan_does_not_execute_stale_due[changes0] ____
+
+scheduled = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\flow003-contract-eng01-red\test_s...')], <function scheduled.<locals>.add at 0x0000017348DF2160>, <function scheduled.<locals>.rows at 0x0000017348DF3EC0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000017348864110>
+changes = {'cron_expr': '0 13 * * *'}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("changes", [{"cron_expr": "0 13 * * *"}, {"timezone": "Asia/Shanghai"}])
+    async def test_schedule_changed_after_scan_does_not_execute_stale_due(scheduled, monkeypatch, changes):
+        database, _, calls, add, rows = scheduled
+        workflow = add(cron_expr="0 12 * * *")
+        original_watermark = scheduler._most_recent_execution_time
+    
+        def mutate_after_scan(workflow_id, tenant_id):
+            with Session(database) as session:
+                current = session.get(Workflow, workflow.id)
+                for field, value in changes.items():
+                    setattr(current, field, value)
+                session.add(current)
+                session.commit()
+            return original_watermark(workflow_id, tenant_id)
+    
+        monkeypatch.setattr(scheduler, "_most_recent_execution_time", mutate_after_scan)
+        await scheduler._tick()
+>       assert rows() == [], "a schedule edited after scan must not execute the stale due slot"
+E       AssertionError: a schedule edited after scan must not execute the stale due slot
+E       assert [WorkflowExec..., 20, 12, 0))] == []
+E         
+E         Left contains one more item: WorkflowExecution(id='a985d8b1b8e54282bc0c626406c7fc69', updated_at=datetime.datetime(2026, 10, 20, 12, 0), tenant_id=..., 12, 0), triggered_by='cron', input='scheduled input', error=None, finished_at=datetime.datetime(2026, 10, 20, 12, 0))
+E         Use -v to get more diff
+
+tests\test_workflow_schedule_contract.py:334: AssertionError
+____ test_schedule_changed_after_scan_does_not_execute_stale_due[changes1] ____
+
+scheduled = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\flow003-contract-eng01-red\test_s...')], <function scheduled.<locals>.add at 0x000001734A7A6340>, <function scheduled.<locals>.rows at 0x000001734A7A68E0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000017348864800>
+changes = {'timezone': 'Asia/Shanghai'}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("changes", [{"cron_expr": "0 13 * * *"}, {"timezone": "Asia/Shanghai"}])
+    async def test_schedule_changed_after_scan_does_not_execute_stale_due(scheduled, monkeypatch, changes):
+        database, _, calls, add, rows = scheduled
+        workflow = add(cron_expr="0 12 * * *")
+        original_watermark = scheduler._most_recent_execution_time
+    
+        def mutate_after_scan(workflow_id, tenant_id):
+            with Session(database) as session:
+                current = session.get(Workflow, workflow.id)
+                for field, value in changes.items():
+                    setattr(current, field, value)
+                session.add(current)
+                session.commit()
+            return original_watermark(workflow_id, tenant_id)
+    
+        monkeypatch.setattr(scheduler, "_most_recent_execution_time", mutate_after_scan)
+        await scheduler._tick()
+>       assert rows() == [], "a schedule edited after scan must not execute the stale due slot"
+E       AssertionError: a schedule edited after scan must not execute the stale due slot
+E       assert [WorkflowExec..., 20, 12, 0))] == []
+E         
+E         Left contains one more item: WorkflowExecution(id='6d765f5eed434d4dbfc40c6f4025d2c6', updated_at=datetime.datetime(2026, 10, 20, 12, 0), tenant_id=..., 12, 0), triggered_by='cron', input='scheduled input', error=None, finished_at=datetime.datetime(2026, 10, 20, 12, 0))
+E         Use -v to get more diff
+
+tests\test_workflow_schedule_contract.py:334: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_workflow_schedule_contract.py::test_schedule_changed_after_scan_does_not_execute_stale_due[changes0]
+FAILED tests/test_workflow_schedule_contract.py::test_schedule_changed_after_scan_does_not_execute_stale_due[changes1]
+2 failed, 29 deselected in 2.83s

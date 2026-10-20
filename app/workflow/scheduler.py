@@ -1,7 +1,7 @@
 """WorkflowScheduler：基于 asyncio 的轻量 cron 调度循环。
 
 在应用 lifespan 启动（``start_scheduler``）与关闭（``stop_scheduler``）。循环周期性
-扫描启用的工作流，按各自时区计算下一次触发时间，到点则触发执行（cron 来源）。
+扫描启用的工作流，按各自时区计算最近到期时刻，到点则触发执行（cron 来源）。
 单任务 / 单 tick 异常不影响其他任务与循环本身。
 
 croniter 未安装时调度器不启动（仅手动触发可用）；``WORKFLOW_ENABLED`` 关闭时同样不启动。
@@ -15,14 +15,14 @@ from sqlmodel import Session, col, select
 
 from app.core.config import settings
 from app.core.database import engine
-from app.models.user import User
-from app.models.workflow import TriggerSource, Workflow
-from app.workflow.engine import WorkflowEngine, next_run_time
+from app.models.user import Tenant, User
+from app.models.workflow import TriggerSource, Workflow, WorkflowExecution
+from app.workflow.engine import WorkflowEngine, latest_due_time
 
 logger = logging.getLogger(__name__)
 
 _task: asyncio.Task | None = None
-# 进程级「上次触发时间」缓存，避免同周期 / 重启后立即重复触发。
+# 进程级已消费时刻；数据库创建时间仅提供保守恢复，不保证跨重启恰好一次。
 _last_run: dict[str, datetime] = {}
 
 
@@ -61,39 +61,57 @@ async def _tick() -> None:
         ).all()
     for wf in workflows:
         try:
-            nxt = next_run_time(wf.cron_expr, wf.timezone)
-            last = _last_run.get(wf.id)
-            if last is None:
-                # 首轮基准：最近一次成功执行时间，否则取创建时间（不补跑历史）。
-                last = _most_recent_execution_time(wf.id) or wf.created_at
-            # SQLite 读回的 datetime 丢失时区信息，统一补回 UTC 再比较。
-            if last is not None and last.tzinfo is None:
-                last = last.replace(tzinfo=UTC)
-            if nxt <= now and last < nxt:
-                _last_run[wf.id] = nxt
+            due = latest_due_time(wf.cron_expr, wf.timezone, now)
+            if due < _as_utc(wf.created_at):
+                continue
+            consumed = [
+                _as_utc(value)
+                for value in (
+                    _last_run.get(wf.id),
+                    _most_recent_execution_time(wf.id, wf.tenant_id),
+                )
+                if value is not None
+            ]
+            if not consumed or due > max(consumed):
+                _last_run[wf.id] = due
                 await _trigger(wf)
-        except Exception:  # noqa: BLE001
-            logger.exception("Workflow %s 调度判定失败", wf.id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Workflow %s 调度失败（%s）", wf.id, type(exc).__name__)
 
 
-def _most_recent_execution_time(workflow_id: str) -> datetime | None:
-    """查询该工作流最近一次成功执行的结束时间（用于首轮触发基准）。"""
-    from app.models.workflow import ExecutionStatus, WorkflowExecution
+def _as_utc(value: datetime) -> datetime:
+    """SQLite 的 naive 时间沿用 UTC 存储约定。"""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _most_recent_execution_time(workflow_id: str, tenant_id: str) -> datetime | None:
+    """读取同租户 cron 全部状态的最近尝试创建时间，manual 不参与水位。"""
 
     with Session(engine) as session:
         row = session.exec(
-            select(WorkflowExecution)
-            .where(WorkflowExecution.workflow_id == workflow_id)
-            .where(WorkflowExecution.status == ExecutionStatus.SUCCESS.value)
-            .order_by(col(WorkflowExecution.finished_at).desc())
+            select(WorkflowExecution.created_at)
+            .where(col(WorkflowExecution.workflow_id) == workflow_id)
+            .where(col(WorkflowExecution.tenant_id) == tenant_id)
+            .where(col(WorkflowExecution.triggered_by) == TriggerSource.CRON.value)
+            .order_by(col(WorkflowExecution.created_at).desc())
             .limit(1)
         ).first()
-    return row.finished_at if row else None
+    return row
 
 
 async def _trigger(wf: Workflow) -> None:
     """加载 owner 并以 cron 来源触发一次执行；owner 失效则停用工作流。"""
     with Session(engine) as session:
+        current = session.get(Workflow, wf.id)
+        if current is None or not current.enabled or current.suspended_owner:
+            return
+        if (
+            current.cron_expr != wf.cron_expr
+            or current.timezone != wf.timezone
+            or _as_utc(current.created_at) != _as_utc(wf.created_at)
+        ):
+            return
+        wf = current
         owner = session.get(User, wf.owner_id)
         if owner is None:
             wf.enabled = False
@@ -101,6 +119,10 @@ async def _trigger(wf: Workflow) -> None:
             session.add(wf)
             session.commit()
             logger.warning("Workflow %s 的 owner 不存在，已停用", wf.id)
+            return
+        tenant = session.get(Tenant, wf.tenant_id)
+        if tenant is None or not tenant.is_active:
+            logger.warning("Workflow %s 的租户不可用，本次不执行", wf.id)
             return
         engine_svc = WorkflowEngine()
         await engine_svc.execute(session, wf, owner, triggered_by=TriggerSource.CRON.value)

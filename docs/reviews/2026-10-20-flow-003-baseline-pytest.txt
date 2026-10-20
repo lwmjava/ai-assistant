@@ -1,0 +1,26 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-8.4.2, pluggy-1.6.0 -- D:\DepTooL\anaconda3\envs\ai-assistant\python.exe
+cachedir: .pytest_cache
+rootdir: E:\culture\SmartCustomerServiceSystem\ai-assistant
+configfile: pyproject.toml
+plugins: anyio-4.14.2, langsmith-0.12.1, platformdirs-4.12.4, asyncio-0.25.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=function
+collecting ... collected 9 items
+
+tests/test_workflow.py::test_next_run_time_is_future_and_aware PASSED    [ 11%]
+tests/test_workflow.py::test_next_run_time_raises_without_croniter PASSED [ 22%]
+tests/test_workflow.py::test_bridge_executes_with_owner PASSED           [ 33%]
+tests/test_workflow.py::test_owner_inactive_suspends_workflow PASSED     [ 44%]
+tests/test_workflow.py::test_webhook_called_on_success PASSED            [ 55%]
+tests/test_workflow.py::test_create_and_manual_run_and_history PASSED    [ 66%]
+tests/test_workflow.py::test_crud_and_toggle PASSED                      [ 77%]
+tests/test_workflow.py::test_disabled_returns_503 PASSED                 [ 88%]
+tests/test_workflow.py::test_scheduler_runnable_and_start_stop PASSED    [100%]
+
+============================== warnings summary ===============================
+tests/test_workflow.py::test_bridge_executes_with_owner
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\tools\sandbox\sandbox.py:93: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    ast.NameConstant,  # Python 3.7 兼容
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 9 passed, 1 warning in 2.29s =========================

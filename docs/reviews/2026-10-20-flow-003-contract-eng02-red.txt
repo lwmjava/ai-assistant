@@ -1,0 +1,66 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_______ test_tenant_revocation_prevents_bridge_and_execution[inactive] ________
+
+scheduled = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\flow003-contract-eng02-red\test_t...')], <function scheduled.<locals>.add at 0x00000270F95C25C0>, <function scheduled.<locals>.rows at 0x00000270F95C3920>)
+mutation = 'inactive'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("mutation", ["inactive", "missing"])
+    async def test_tenant_revocation_prevents_bridge_and_execution(scheduled, mutation):
+        database, _, calls, add, rows = scheduled
+        add()
+        with Session(database) as session:
+            if mutation == "missing":
+                session.execute(delete(Tenant).where(Tenant.id == "tenant"))
+            else:
+                tenant = session.get(Tenant, "tenant")
+                tenant.is_active = False
+                session.add(tenant)
+            session.commit()
+        with Session(database) as session:
+            owner = session.get(User, "owner")
+            assert owner is not None and owner.is_active and owner.tenant_id == "tenant"
+        await scheduler._tick()
+>       assert rows() == [], "inactive or missing tenants must not create a cron execution"
+E       AssertionError: inactive or missing tenants must not create a cron execution
+E       assert [WorkflowExec..., 20, 12, 0))] == []
+E         
+E         Left contains one more item: WorkflowExecution(id='eb203cebe71e45b79ec9037b3e754faf', updated_at=datetime.datetime(2026, 10, 20, 12, 0), tenant_id=..., 12, 0), triggered_by='cron', input='scheduled input', error=None, finished_at=datetime.datetime(2026, 10, 20, 12, 0))
+E         Use -v to get more diff
+
+tests\test_workflow_schedule_contract.py:356: AssertionError
+________ test_tenant_revocation_prevents_bridge_and_execution[missing] ________
+
+scheduled = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\flow003-contract-eng02-red\test_t...')], <function scheduled.<locals>.add at 0x00000270FAFC91C0>, <function scheduled.<locals>.rows at 0x00000270F9627F60>)
+mutation = 'missing'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("mutation", ["inactive", "missing"])
+    async def test_tenant_revocation_prevents_bridge_and_execution(scheduled, mutation):
+        database, _, calls, add, rows = scheduled
+        add()
+        with Session(database) as session:
+            if mutation == "missing":
+                session.execute(delete(Tenant).where(Tenant.id == "tenant"))
+            else:
+                tenant = session.get(Tenant, "tenant")
+                tenant.is_active = False
+                session.add(tenant)
+            session.commit()
+        with Session(database) as session:
+            owner = session.get(User, "owner")
+            assert owner is not None and owner.is_active and owner.tenant_id == "tenant"
+        await scheduler._tick()
+>       assert rows() == [], "inactive or missing tenants must not create a cron execution"
+E       AssertionError: inactive or missing tenants must not create a cron execution
+E       assert [WorkflowExec..., 20, 12, 0))] == []
+E         
+E         Left contains one more item: WorkflowExecution(id='c535904884ce4404b20ecc6a77a555a7', updated_at=datetime.datetime(2026, 10, 20, 12, 0), tenant_id=..., 12, 0), triggered_by='cron', input='scheduled input', error=None, finished_at=datetime.datetime(2026, 10, 20, 12, 0))
+E         Use -v to get more diff
+
+tests\test_workflow_schedule_contract.py:356: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_workflow_schedule_contract.py::test_tenant_revocation_prevents_bridge_and_execution[inactive]
+FAILED tests/test_workflow_schedule_contract.py::test_tenant_revocation_prevents_bridge_and_execution[missing]
+2 failed, 31 deselected in 2.98s

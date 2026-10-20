@@ -1,0 +1,21 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_________________ test_due_tick_persists_real_cron_execution __________________
+
+scheduled = (Engine(sqlite:///E:\culture\SmartCustomerServiceSystem\ai-assistant\data\pytest-tmp\flow003-contract-red\test_due_tic... [], <function scheduled.<locals>.add at 0x00000236F0083F60>, <function scheduled.<locals>.rows at 0x00000236F0083EC0>)
+
+    @pytest.mark.asyncio
+    async def test_due_tick_persists_real_cron_execution(scheduled):
+        _, clock, calls, add, rows = scheduled
+        workflow = add()
+        await scheduler._tick()
+        records = rows()
+>       assert len(records) == 1, "at the scheduled boundary the real Engine must persist an execution"
+E       AssertionError: at the scheduled boundary the real Engine must persist an execution
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+tests\test_workflow_schedule_contract.py:72: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_workflow_schedule_contract.py::test_due_tick_persists_real_cron_execution
+1 failed in 2.40s

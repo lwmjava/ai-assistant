@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-21 Asia/Shanghai",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe - [document consistency assertions]",
+  "checks": [
+    "36 unique packages; 23 new / 9 direct / 4 extension",
+    "13 unique existing task contracts match backlog snapshots",
+    "PWFL-004 done not reopened; W01 new delta; A03 reuses V1C-006",
+    "36 cost rows component sums / totals 128-229; existing 38-68; new 90-161",
+    "36 benefit gates; static evidence hashes current across 55 files",
+    "first-wave 11 packages / 3 existing / 8 new; digital human excluded"
+  ],
+  "first_wave_remaining_person_days": [
+    42,
+    75
+  ],
+  "report_sha256": "804a26431e15bbdadaad12c60f4118dda3d5946c37babbf68c4345eb048bd4ef",
+  "assessment_sha256": "499f2ecfb2959fdb907c3d918fdcf99ba6b0f9c33c6c2987a173746762ab307e",
+  "business_tests": "not_run_document_only",
+  "source_runtime": "not_run",
+  "new_thresholds": "proposed_not_approved",
+  "task_queue": "unchanged"
+}

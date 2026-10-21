@@ -1,0 +1,18 @@
+{
+  "command": [
+    "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+    "-m",
+    "pytest",
+    "--basetemp=data/pytest-tmp/vdb-001-baseline-pytest",
+    "--junitxml=docs/reviews/vdb-001-baseline-pytest.xml"
+  ],
+  "exit_code": 1,
+  "elapsed_seconds": 790.98,
+  "environment": {
+    "ENV": "development",
+    "DATABASE_URL": "sqlite:///./data/vdb-001-baseline-pytest.db"
+  },
+  "interpreter": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+  "log": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\docs\\reviews\\vdb-001-baseline-pytest.log",
+  "scope": "offline check; conftest blocks workspace credentials and external network"
+}

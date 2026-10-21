@@ -1,0 +1,112 @@
+检测到未版本化的既有数据库，先标记到基线版本再执行增量迁移: revision=6f8d055bdc4a
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running stamp_revision  -> 6f8d055bdc4a
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [app.core.migration] 检测到 RAG 导入平台表已存在但 Alembic 修订落后，改为标记到 head: current=6f8d055bdc4a head=b5c8d3e0f271
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running stamp_revision 6f8d055bdc4a -> b5c8d3e0f271
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+FFFFF                                                                    [100%]
+================================== FAILURES ===================================
+_____________ test_remote_unavailable_cannot_pass_activation_gate _____________
+.workbuddy\tmp\review032_current\test_activation_gate.py:58: in test_remote_unavailable_cannot_pass_activation_gate
+    with pytest.raises((IndexIdentityError, RuntimeError)):
+E   Failed: DID NOT RAISE any of (<class 'app.rag.index_identity.IndexIdentityError'>, <class 'RuntimeError'>)
+---------------------------- Captured stderr call -----------------------------
+WARNI [app.rag.index_registry] embedding_index_chunk_count_mismatch name=ai_assistant_chunks__v1__563cd93b565a registered=0 actual=1
+
+------------------------------ Captured log call ------------------------------
+WARNING  app.rag.index_registry:index_registry.py:174 embedding_index_chunk_count_mismatch name=ai_assistant_chunks__v1__563cd93b565a registered=0 actual=1
+____________ test_incomplete_rebuild_cannot_retire_full_old_index _____________
+.workbuddy\tmp\review032_current\test_activation_gate.py:68: in test_incomplete_rebuild_cannot_retire_full_old_index
+    with pytest.raises(IndexIdentityError):
+E   Failed: DID NOT RAISE <class 'app.rag.index_identity.IndexIdentityError'>
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-10-21T06:27:31.726466+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__d04beb8ca9c9 backend=local model=old dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:31.726466+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__d04beb8ca9c9 backend=local model=old dim=2", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:31.734980+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__e4f93b90d7fa backend=local model=new dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:31.764585+00:00", "level": "WARNING", "logger": "app.rag.index_registry", "message": "embedding_index_chunk_count_mismatch name=local__v1__e4f93b90d7fa registered=0 actual=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:31.779636+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__e4f93b90d7fa backend=local model=new dim=2", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-21T06:27:31.726466+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__d04beb8ca9c9 backend=local model=old dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:31.734980+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__d04beb8ca9c9 backend=local model=old dim=2", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:31.734980+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__e4f93b90d7fa backend=local model=new dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:31.764585+00:00", "level": "WARNING", "logger": "app.rag.index_registry", "message": "embedding_index_chunk_count_mismatch name=local__v1__e4f93b90d7fa registered=0 actual=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:31.780636+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__e4f93b90d7fa backend=local model=new dim=2", "trace_id": "", "user_id": "", "tenant_id": ""}
+_______________ test_activation_uses_supplied_session_database ________________
+.workbuddy\tmp\review032_current\test_activation_gate.py:80: in test_activation_uses_supplied_session_database
+    activate_index(db, target.id, expected_identity=identity('new', 'local'))
+app\rag\index_registry.py:195: in activate_index
+    raise IndexIdentityError(
+E   app.rag.index_identity.IndexIdentityError: 索引 local__v1__e4f93b90d7fa 名下有分块，但抽样检索命中数为 0，拒绝激活（读了等于没读：向量维度异常、文档已下线或读路径未接通都会这样表现，激活后知识库静默退化为 no_hit，与空索引是同一类数据丢失）。已撤销本次切换，请检查重建结果后重试。
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-10-21T06:27:32.122590+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__d04beb8ca9c9 backend=local model=old dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.131317+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__d04beb8ca9c9 backend=local model=old dim=2", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.137900+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__e4f93b90d7fa backend=local model=new dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.516814+00:00", "level": "WARNING", "logger": "app.rag.index_registry", "message": "embedding_index_chunk_count_mismatch name=local__v1__e4f93b90d7fa registered=0 actual=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-21T06:27:32.122590+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__d04beb8ca9c9 backend=local model=old dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.131317+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_activated name=local__v1__d04beb8ca9c9 backend=local model=old dim=2", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.138408+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=local__v1__e4f93b90d7fa backend=local model=new dim=2 version=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.516814+00:00", "level": "WARNING", "logger": "app.rag.index_registry", "message": "embedding_index_chunk_count_mismatch name=local__v1__e4f93b90d7fa registered=0 actual=1", "trace_id": "", "user_id": "", "tenant_id": ""}
+___________ test_sql_recheck_rejects_foreign_tenant_id_from_remote ____________
+.workbuddy\tmp\review036_current\test_review_boundaries.py:42: in test_sql_recheck_rejects_foreign_tenant_id_from_remote
+    assert results == [], [(result.id, result.content) for result in results]
+E   AssertionError: [('c38fdcf5e1eb497181101209308d69bf', 'FOREIGN_EVIDENCE')]
+E   assert [ChunkResult(...hunk_id=None)] == []
+E     
+E     Left contains one more item: ChunkResult(id='c38fdcf5e1eb497181101209308d69bf', content='FOREIGN_EVIDENCE', source=None, document_id='7c252321c6284...id=None, chunk_kind='unknown', retrieval_origin='hit', expanded_from_chunk_id=None, score_inherited_from_chunk_id=None)
+E     Use -v to get more diff
+---------------------------- Captured stderr call -----------------------------
+{"ts": "2026-10-21T06:27:32.566075+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl SQLiteImpl.", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.566075+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume non-transactional DDL.", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.566075+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl SQLiteImpl.", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.569584+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume non-transactional DDL.", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.582321+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl SQLiteImpl.", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.582321+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume non-transactional DDL.", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.593851+00:00", "level": "INFO", "logger": "app.core.migration", "message": "数据库 schema 已是最新版本，无需迁移。", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.599634+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=ai_assistant_chunks__va7c413d9c58b43819ccc36b2719b04f7__6c9d6ac4bee6 backend=milvus model=boundary-probe dim=2 version=a7c413d9c58b43819ccc36b2719b04f7", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+{"ts": "2026-10-21T06:27:32.613122+00:00", "level": "INFO", "logger": "app.rag.resilience", "message": "rag_call_succeeded attempt=1 elapsed_ms=0 backend=milvus tenant=caller-6d886464324846d69f82a00e68a038ab outcome=ok", "trace_id": "", "user_id": "", "tenant_id": ""}
+
+------------------------------ Captured log call ------------------------------
+{"ts": "2026-10-21T06:27:32.566075+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl SQLiteImpl.", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.566075+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume non-transactional DDL.", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.569584+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl SQLiteImpl.", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.569584+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume non-transactional DDL.", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.582321+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl SQLiteImpl.", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.582321+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume non-transactional DDL.", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.593851+00:00", "level": "INFO", "logger": "app.core.migration", "message": "数据库 schema 已是最新版本，无需迁移。", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.599634+00:00", "level": "INFO", "logger": "app.rag.index_registry", "message": "embedding_index_registered name=ai_assistant_chunks__va7c413d9c58b43819ccc36b2719b04f7__6c9d6ac4bee6 backend=milvus model=boundary-probe dim=2 version=a7c413d9c58b43819ccc36b2719b04f7", "trace_id": "", "user_id": "", "tenant_id": ""}
+{"ts": "2026-10-21T06:27:32.613122+00:00", "level": "INFO", "logger": "app.rag.resilience", "message": "rag_call_succeeded attempt=1 elapsed_ms=0 backend=milvus tenant=caller-6d886464324846d69f82a00e68a038ab outcome=ok", "trace_id": "", "user_id": "", "tenant_id": ""}
+____________ test_real_embedding_rejects_unexpected_response_model ____________
+.workbuddy\tmp\review036_current\test_review_boundaries.py:69: in test_real_embedding_rejects_unexpected_response_model
+    with pytest.raises(ValueError):
+E   Failed: DID NOT RAISE <class 'ValueError'>
+=========================== short test summary info ===========================
+FAILED .workbuddy/tmp/review032_current/test_activation_gate.py::test_remote_unavailable_cannot_pass_activation_gate
+FAILED .workbuddy/tmp/review032_current/test_activation_gate.py::test_incomplete_rebuild_cannot_retire_full_old_index
+FAILED .workbuddy/tmp/review032_current/test_activation_gate.py::test_activation_uses_supplied_session_database
+FAILED .workbuddy/tmp/review036_current/test_review_boundaries.py::test_sql_recheck_rejects_foreign_tenant_id_from_remote
+FAILED .workbuddy/tmp/review036_current/test_review_boundaries.py::test_real_embedding_rejects_unexpected_response_model
+5 failed in 5.33s

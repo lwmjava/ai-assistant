@@ -1,0 +1,14 @@
+{
+  "baseline_sha": "ac494b386bccd00e5e0f66f1ec214664cdb3216d",
+  "scope": "preflight documentation only; no candidate business implementation",
+  "files": {
+    "tasks.yaml": "24c014070a796b78ef25628957b7f5f62dbf85573a86538380c12728aa7686e8",
+    "docs/plans/plan_vdb_001_20261021.md": "d1296a8d75dccee5883e71b7a7b8fb3421a474de33966f1b619e40059e78d0da",
+    "docs/plans/implementation_vdb_001_preflight_20261021.md": "fdf2e373ec3880d3465eb2c79dcdc088c61b1936744c6a916c2b53d3df8d9e9c",
+    "docs/reviews/2026-10-21-vdb-001-plan-review.md": "9a14e700efc322c3a26c3de528f2183b774487b063e126ae97bfa586bc01f139",
+    "docs/reviews/2026-10-21-vdb-001-dependency-admission.md": "778b82f0da8f2a8462889012c44acde2c667d946aa0337c57984288d0f4799c9",
+    "docs/reviews/run_vdb_001_checks_20261021.py": "61b054a349e21afb53f4bee092631ff68175c4bd9762ca6aa5464dcf4ceb895d",
+    "docs/reviews/validate_core_reuse_registration_20261021.py": "26f36347d2b93b4a43ef0e5b0ae9598d045231329f6a63fb2909ccab6383b047",
+    "docs/reviews/validate_reuse_convergence_20261021.py": "8c2d7f82dd90004bba0ec975b75df39910e50190e08c17de6c32193fe732762b"
+  }
+}

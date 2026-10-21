@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-21 Asia/Shanghai",
+  "status": "passed",
+  "exit_code": 0,
+  "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/reviews/validate_core_reuse_registration_20261021.py",
+  "baseline_head": "ac494b386bccd00e5e0f66f1ec214664cdb3216d",
+  "baseline_tasks_sha256": "2518efa6c70fc25789b3a89b2cf4edfc59a98560afe45ded081502fd6cfb5d4f",
+  "final_tasks_sha256": "483154230a385b611f25c4252a158f6fb4cd5787f59a2b93f3d254b8cf3f46d1",
+  "baseline_count": 192,
+  "final_count": 201,
+  "status_counts": {
+    "done": 141,
+    "backlog": 59,
+    "cancelled": 1
+  },
+  "new_cards": [
+    "EVAL-001",
+    "EVAL-002",
+    "EVAL-003",
+    "EVAL-004",
+    "EVAL-005",
+    "TRACE-001",
+    "VDB-001",
+    "VDB-002",
+    "VDB-003"
+  ],
+  "core_packages": 12,
+  "core_mapping": {
+    "S01": "VDB-001",
+    "S02": "VDB-002",
+    "S03": "VDB-003",
+    "R01": "EVAL-001",
+    "R02": "EVAL-002",
+    "R03": "EVAL-003",
+    "R04": "EVAL-004",
+    "R08": "EVAL-005",
+    "M01": "MEM-002",
+    "M02": "MEM-003",
+    "O01": "TRACE-001",
+    "F01": "FEED-001"
+  },
+  "scope_extended": [
+    "MEM-002",
+    "MEM-003"
+  ],
+  "metadata_only": [
+    "FEED-001"
+  ],
+  "unchanged_original_tasks": 189,
+  "protected_source_files_unchanged": 599,
+  "dependency_graph": "core closure and recursive completed prerequisites are acyclic and resolved",
+  "core_estimate_person_days": [
+    44,
+    79
+  ],
+  "business_tests": "not_run_document_only",
+  "candidate_binding": "HEAD plus final task/document inputs; no code implementation",
+  "files_sha256": {
+    "docs/plans/plan_core_reuse_task_split_20261021.md": "54273a840e33296978b6d2112329afd3b64b48a908ea10f5fd28ec1d60330f19",
+    "docs/plans/implementation_core_reuse_task_registration_20261021.md": "718685b4446daa47367a73c7da738a2e106ab5a117dcd4192252081394ce71f9",
+    "docs/plans/proposal_cross_project_reuse_20261021.md": "2bbc8ce398db72a2edac0573bf9d0d512211418e4207b2621d7f1e9b38031f85",
+    "docs/reviews/core_reuse_registration_spec_20261021.json": "cfe06287165ef0dcad1a1c5eb17ed2918521455bb486698fb382bdde3142c91a",
+    "docs/reviews/core_reuse_task_registration_baseline_20261021.json": "f781e818b02207c0e8c06aeab6baf7bfcdd62a2db02eafbbc14cd32dc7d66ab1",
+    "docs/reviews/validate_core_reuse_registration_20261021.py": "1dc47a9abcc27df65d4d09169618f26aa7129c5a293da251a14156684981e865"
+  }
+}

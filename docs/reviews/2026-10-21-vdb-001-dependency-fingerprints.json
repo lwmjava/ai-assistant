@@ -1,0 +1,20 @@
+{
+  "head": "ac494b386bccd00e5e0f66f1ec214664cdb3216d",
+  "files": {
+    "app/rag/index_registry.py": "b47a623ae34a8dd0486c0c8b9db468fcc9c7a6aa6f991be3aa4245b6910033ac",
+    "app/rag/vectorstore/milvus.py": "66bef32feca14f8e1b249e171ddb0285c80bf5de11fae20f0b4c932d2c2a9c48",
+    "scripts/rag_hybrid_embedding_check.py": "c793a83f0e26634d4657d37daa7db0c22939825e5dc0e5aeca182ef00913a3e7",
+    "tests/conftest.py": "f9aa8b7575da40ebc7dbf60edd83a597700cd7e7695ead07a5f7ec46e0bfd78d",
+    "tests/test_rag_015_milvus_switch.py": "7a8c0054794f727198b4603da4146221236cd10477f26471e5b59fb0cf50f85e",
+    "tests/test_rag_032_index_identity.py": "2783bb5e33363181a11eabd933aefdcfcfd96932ea771d7757fc5522a7445a9f",
+    "tests/test_rag_032_remote_rebuild.py": "af81a8b6f85d74bd6277349a23d1d927a63ef087a317a92d4a6b684d0ff5ca27",
+    "tests/test_rag_032_rebuild_cli.py": "e5cf9980042671a516c2fdbbbfbcd96ac1029fbc4f6397e6477286e73b42aab6",
+    "tests/test_rag_036_hybrid_semantics.py": "d664036b54d308b63552acfbc8eab7b9a50992ff8ada1b57bf458c5f946153d0",
+    "tests/test_chat_retrieval_lifecycle.py": "3f2e585f8184c4f4a095cce55ad959f75d79b5536f19c962f86ff6d112c3420a",
+    "tests/test_chat_retrieval_lifecycle_review.py": "34e95e507b2d50201b6c36ed5a56938cba7038954b2e033f46dd67bf36f462e7",
+    ".workbuddy/tmp/review032_current/test_activation_gate.py": "017f27ac35fdb3b443d05560d49e6d509e8ea1f768fb1bf49bd74a549c4e22cd",
+    ".workbuddy/tmp/review036_current/test_review_boundaries.py": "d247fba4e62c3dd85020a2d45cc0ecb8b3ac15803e6f6902480fe318b8f4a790",
+    "docs/reviews/2026-10-21-vdb-001-dependency-tests.txt": "682170e5a99eec278cb4fb98b03b0eea2fcacd6d4c1a7f3f824d2611dceac460",
+    "docs/reviews/2026-10-21-vdb-001-dependency-boundaries.txt": "75589bf2a40f16dd182300eb91b9eac22781d5dcd3008ca5a204ac2545aad871"
+  }
+}

@@ -1,6 +1,6 @@
 # 单实例生产编排
 
-此编排提供一个应用进程、PostgreSQL 和持久卷。默认向量库为 `local`，只启动 app/db；Milvus 为显式覆盖，仍为 `Partial`，不因配置存在成为生产验收通过。2026-10-17 的隔离启动证据见 `docs/reviews/2026-10-17-nfr-003-runtime.md`。数据持久化复读、可选 Milvus 实际启动和备份恢复仍未演练。
+此编排提供一个应用进程、PostgreSQL、内部 Milvus（etcd 与 MinIO）和持久卷。默认向量库为 `milvus`，仍为 `Partial`，不因配置存在成为生产验收通过。2026-10-17 的隔离启动证据只覆盖当时的 app/db，不能证明当前默认 Milvus 已经启动。数据持久化复读、真实 Milvus 启动和备份恢复仍未演练。
 
 ## 部署前配置
 
@@ -38,9 +38,9 @@ docker compose --env-file /secure/assistant.prod.env -p assistant-stage -f docke
 
 `config --quiet` 仅证明参数与 YAML 可展开，不证明服务启动，也不会输出展开后的密钥。不要发布普通 `config` 输出。`up --wait` 需要 Docker Engine 与镜像下载许可；启动完成后从实际部署客户端验证登录、首次改密和业务操作。隔离项目的启动、健康和依赖未就绪结果以验收记录为准，不能用配置展开代替。
 
-## 可选 Milvus
+## 默认 Milvus
 
-默认路径不启动或等待 Milvus，未启用的服务不计入 local 启动计时。启用前核对已有索引身份、真实模型/维度以及数据迁移和回滚授权；切换配置本身不会迁移 local 数据。
+默认生产编排启动并等待内部 Milvus、etcd 和 MinIO。应用镜像默认安装现有 Milvus 客户端。显式把 `RAG_VECTOR_STORE` 改回 `local` 只影响新的本地向量读写，不会把 Milvus 里的向量搬回来，也不会在 Milvus 故障时自动改走 local。切换前仍要核对索引身份、真实模型与维度。
 
 额外配置 `MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD`，均不得使用镜像默认凭据。Milvus 对象存储与 MinIO 使用同一组配置。覆盖文件沿用 Milvus 2.5.11、外部 etcd 和 MinIO，服务不发布宿主端口；Milvus Lite 只适用于开发。可选 `MILVUS_TOKEN` 按部署认证状态注入；当前覆盖未配置 Milvus 服务端认证，不得将内部端口额外开放到公网。
 
@@ -50,7 +50,7 @@ docker compose --env-file /secure/assistant.prod.env -p assistant-milvus-stage -
 docker compose --env-file /secure/assistant.prod.env -p assistant-milvus-stage -f docker-compose.prod.yml -f deploy/compose.milvus.prod.yml ps
 ```
 
-覆盖将镜像 `INSTALL_MILVUS` build 参数置为 true，仅安装现有 `milvus` extra，默认镜像保持关闭。app 等待数据库和 Milvus 健康，Milvus 等待 etcd/MinIO 健康。资源上限为初始限制，未证明满足容量或延迟指标。
+默认镜像 `INSTALL_MILVUS` 为 true，只安装现有 `milvus` extra，不升级客户端版本。app 等待数据库和 Milvus 健康，Milvus 等待 etcd/MinIO 健康。资源上限为初始限制，未证明满足容量或延迟指标。覆盖文件仍可与默认文件一起使用，它不会把向量库改回 local。
 
 ## 健康、故障和回滚
 

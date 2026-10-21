@@ -313,6 +313,25 @@ class MilvusVectorStore(VectorStore):
             output_fields=["id"],
         )[0]
 
+    def count_self_hits(
+        self,
+        index: EmbeddingIndex,
+        samples: list[tuple[str, list[float]]],
+        *,
+        limit: int,
+    ) -> int:
+        """在目标集合中检索样本向量，统计样本自身出现在结果里的次数。"""
+        from app.rag.index_registry import identity_of_row
+
+        identity = identity_of_row(index)
+        hits = 0
+        expr = f'{_INDEX_ID_FIELD} == "{index.id}"'
+        for sample_id, vector in samples:
+            found = self._remote_search(identity, index, expr, vector, limit)
+            if any(getattr(item, "entity", {}).get("id") == sample_id for item in found):
+                hits += 1
+        return hits
+
     async def hybrid_search(
         self,
         query_embedding: list[float],
@@ -371,8 +390,10 @@ class MilvusVectorStore(VectorStore):
         stmt = (
             select(DocumentChunk)
             .join(Document, col(Document.id) == col(DocumentChunk.document_id))
-            .where(DocumentChunk.id.in_(candidate_ids))  # type: ignore[attr-defined]
+            .where(col(DocumentChunk.id).in_(candidate_ids))
             .where(col(DocumentChunk.index_id) == target_index.id)
+            .where(col(DocumentChunk.tenant_id) == tenant_id)
+            .where(col(Document.tenant_id) == tenant_id)
         )
         stmt = stmt.where(col(Document.deleted_at).is_(None))
         # 集合里没有上传者字段，读范围只能在候选回查阶段生效：

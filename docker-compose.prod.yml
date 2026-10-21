@@ -1,4 +1,5 @@
-# 单实例生产配置；必须显式指定隔离的 --env-file，默认仅启动 app/db。
+# 单实例生产配置；必须显式指定隔离的 --env-file。
+# 默认包含应用、数据库和内部 Milvus（etcd + MinIO）。向量服务不发布宿主端口。
 services:
   db:
     image: postgres:16-alpine
@@ -22,7 +23,7 @@ services:
     build:
       context: .
       args:
-        INSTALL_MILVUS: "false"
+        INSTALL_MILVUS: "true"
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
     environment:
       ENV: production
@@ -37,7 +38,9 @@ services:
       EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:?必须提供Embedding服务地址}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:?必须提供Embedding模型}
       EMBEDDING_DIM: ${EMBEDDING_DIM:?必须提供Embedding维度}
-      RAG_VECTOR_STORE: local
+      RAG_VECTOR_STORE: milvus
+      MILVUS_URI: http://milvus:19530
+      MILVUS_TOKEN: ${MILVUS_TOKEN:-}
       RAG_ENABLED: "true"
       SERVE_FRONTEND: "true"
       AUTH_ENABLED: "true"
@@ -54,10 +57,79 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      milvus:
+        condition: service_healthy
     restart: unless-stopped
     cpus: "2.0"
     mem_limit: 2g
 
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: ["etcd", "--advertise-client-urls=http://etcd:2379", "--listen-client-urls=http://0.0.0.0:2379", "--data-dir=/etcd"]
+    volumes:
+      - etcddata:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 1g
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?必须提供MinIO访问账号}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?必须提供MinIO随机口令}
+    command: ["minio", "server", "/minio_data", "--console-address", ":9001"]
+    volumes:
+      - miniodata:/minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 1g
+
+  milvus:
+    image: milvusdb/milvus:v2.5.11
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_USE_EMBED: "false"
+      ETCD_ENDPOINTS: etcd:2379
+      COMMON_STORAGETYPE: minio
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?必须提供MinIO访问账号}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?必须提供MinIO随机口令}
+    volumes:
+      - milvusdata:/var/lib/milvus
+      - ./deploy/milvus/user.yaml:/milvus/configs/user.yaml:ro
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 15s
+      timeout: 20s
+      start_period: 90s
+      retries: 10
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 4g
+
 volumes:
   pgdata:
   appdata:
+  etcddata:
+  miniodata:
+  milvusdata:

@@ -5,7 +5,7 @@
 > 批准日期：2026-09-13；修订日期：2026-09-25  
 > 批准人：技术负责人（本仓库个人开发者）  
 > 风险：L2  
-> 默认 `RAG_VECTOR_STORE` 在第 5 节门槛通过前仍为 `local`；通过后再改为 `milvus`。
+> 2026-10-21 修订：默认 `RAG_VECTOR_STORE` 改为 `milvus`。未知值不得退回 `local`。显式 `local` 只用于离线评测和隔离测试。Milvus 仍为 `Partial`，真实 Standalone 闭环未完成前不得标成 `Implemented`。
 
 ## 1. 背景
 

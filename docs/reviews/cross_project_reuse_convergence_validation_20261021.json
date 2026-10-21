@@ -1,0 +1,74 @@
+{
+  "status": "passed",
+  "exit_code": 0,
+  "date": "2026-10-21 Asia/Shanghai",
+  "command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe docs/reviews/validate_reuse_convergence_20261021.py",
+  "target_head": "ac494b386bccd00e5e0f66f1ec214664cdb3216d",
+  "groups": {
+    "core": {
+      "count": 12,
+      "existing": 3,
+      "new": 9,
+      "cost": [
+        44,
+        79
+      ]
+    },
+    "later": {
+      "count": 16,
+      "existing": 7,
+      "new": 9,
+      "cost": [
+        54,
+        96
+      ]
+    },
+    "experiments": {
+      "count": 3,
+      "existing": 1,
+      "new": 2,
+      "cost": [
+        11,
+        20
+      ]
+    },
+    "conditional": {
+      "count": 1,
+      "existing": 1,
+      "new": 0,
+      "cost": [
+        4,
+        7
+      ]
+    },
+    "deferred": {
+      "count": 4,
+      "existing": 1,
+      "new": 3,
+      "cost": [
+        15,
+        27
+      ]
+    }
+  },
+  "dependency_graph": "acyclic; all core hard prerequisites in core",
+  "external_unfinished_hard_cards": 4,
+  "hard_external_cost": [
+    11,
+    20
+  ],
+  "source_evidence_files_checked": 55,
+  "report_sha256": "dc5f48fa7845bc623570e4e5503167dfd1335131dc7fe8982e5174b881a4c076",
+  "assessment_sha256": "499f2ecfb2959fdb907c3d918fdcf99ba6b0f9c33c6c2987a173746762ab307e",
+  "convergence_sha256": "27af9fd426203595a42a7093280fc32a28c5d59e971bc7bde469e7b004fee31a",
+  "validator_sha256": "991547d49cc355474bc70f0b0d5a909834ccc31efd60e82124db4dcb13b6adca",
+  "tasks_sha256": "2518efa6c70fc25789b3a89b2cf4edfc59a98560afe45ded081502fd6cfb5d4f",
+  "business_tests": "not_run_document_only",
+  "new_gates": "proposed_not_approved",
+  "previous_attempts": [
+    {
+      "exit_code": 1,
+      "cause": "Validator substring counting included subsection headings; fixed to line-start matching. No business test ran."
+    }
+  ]
+}

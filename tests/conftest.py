@@ -55,9 +55,20 @@ DotEnvSettingsSource._read_env_file = _read_isolated_env
 
 # 在测试导入应用前已设置好环境变量；此处显式建表，
 # 因为 TestClient 非上下文管理器使用时不会触发 lifespan 中的 init_db。
+from app.core.config import settings  # noqa: E402
 from app.core.database import init_db  # noqa: E402
 
 init_db()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_vector_store(monkeypatch: pytest.MonkeyPatch):
+    """隔离测试显式使用 local。
+
+    字段默认值仍是 milvus。用例若要验收默认选择，应读取模型字段或在函数体内
+    再改回 milvus；不要靠这个夹具证明默认行为。
+    """
+    monkeypatch.setattr(settings, "RAG_VECTOR_STORE", "local")
 
 
 @pytest.fixture(autouse=True)

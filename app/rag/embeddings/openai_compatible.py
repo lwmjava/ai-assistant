@@ -17,6 +17,7 @@ OpenAI 官方嵌入接口与 Ollama 暴露的 ``/v1/embeddings`` 接口格式一
 """
 
 import logging
+import math
 from collections.abc import Sequence
 
 import httpx
@@ -118,6 +119,16 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
             )
         resp.raise_for_status()
         payload = resp.json()
+        response_model = payload.get("model")
+        if response_model in (None, ""):
+            logger.info(
+                "rag_embedding_response_model_unverified backend=embedding requested_model=%s",
+                self.model,
+            )
+        elif response_model != self.model:
+            raise ValueError(
+                f"嵌入响应模型 {response_model!r} 与请求模型 {self.model!r} 不一致"
+            )
         data = payload["data"]
         # 接口可能乱序返回，按 batch 内 index 排序以保证与输入对齐。
         data_sorted = sorted(data, key=lambda d: d.get("index", 0))
@@ -140,6 +151,11 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
     def _validate_dimensions(self, vectors: list[list[float]]) -> None:
         """校验返回向量维度与配置一致，避免静默的检索错位。"""
         for vector in vectors:
+            if any(
+                not isinstance(item, int | float) or isinstance(item, bool) or not math.isfinite(item)
+                for item in vector
+            ):
+                raise ValueError("embedding contains invalid values")
             actual = len(vector)
             if actual != self.dim:
                 raise EmbeddingDimensionError(

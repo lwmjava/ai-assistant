@@ -103,9 +103,15 @@ def embed(settings, budget: Budget) -> list[list[float]]:
                 budget.finish(attempt, None, f"http_{response.status_code}")
             payload = response.json()
             usage = payload.get("usage", {}).get("prompt_tokens")
+            response_model = payload.get("model", "")
+            if response_model not in ("", settings.EMBEDDING_MODEL):
+                budget.finish(
+                    attempt, usage if type(usage) is int else None, "response_model_mismatch",
+                    response.headers.get("x-request-id", payload.get("id", "")), response_model,
+                )
             budget.finish(attempt, usage, "success" if type(usage) is int else "unknown_usage",
                           response.headers.get("x-request-id", payload.get("id", "")),
-                          payload.get("model", ""))
+                          response_model)
             data = sorted(payload["data"], key=lambda x: x["index"])
             vectors = [r["embedding"] for r in data]
             if len(vectors) != len(TEXTS) or any(len(v) != 1024 for v in vectors):

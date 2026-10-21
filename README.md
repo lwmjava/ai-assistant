@@ -27,7 +27,7 @@
 - **流式与非流式双模式**：支持 SSE 流式增量输出（逐字推送 + 阶段进度广播），也支持一次性返回。
 - **原生 MCP 协议**：作为 AI 与企业系统的「万能连接器」，将 MCP 服务器工具动态注入 Agent 工具箱。
 - **多 LLM 提供商**：对话和意图分流可以各接一家 OpenAI 兼容接口，主家失败后再试兜底那一家。开发环境没有可用密钥时降为 Mock，对话页会提示填写密钥并重启。
-- **灵活向量库**：默认 Local（SQLite + numpy，零额外依赖）。Milvus 为可选适配（Partial，ADR-0002：本阶段正式 Local，Milvus 实验）。升格须另开 ADR 并补摄取/检索/删除闭环证据。
+- **灵活向量库**：默认 Milvus。Local（SQLite + numpy）只用于显式离线评测和隔离测试，连接失败不会自动退回 Local。Milvus 仍是 Partial，真实服务闭环完成前不得写成生产可用。
 - **企业级安全**：JWT 双令牌（access + refresh）、RBAC 五级角色权限矩阵、多租户数据隔离。
 
 ## 架构概览
@@ -54,7 +54,7 @@ flowchart LR
     Tools --> MCP[MCP 工具注入]
 ```
 
-默认配置事实：`AGENT_ORCHESTRATION=self`，`RAG_BACKEND=native`，`RAG_VECTOR_STORE=local`，`RAG_ENABLED=true`，`SECURITY_BLOCK_ON_INJECTION=false`。正式向量库目标为 Milvus（ADR-0002，开发 Lite / 生产 2.4+）；第 5 节门槛通过前不改默认。Trace 以内存环形缓冲为主。无真实 Embedding 时 Mock 只能证明链路，不能证明检索质量。
+默认配置事实：`AGENT_ORCHESTRATION=self`，`RAG_BACKEND=native`，`RAG_VECTOR_STORE=milvus`，`RAG_ENABLED=true`，`SECURITY_BLOCK_ON_INJECTION=false`。显式 `local` 只用于离线评测和隔离测试。Milvus 仍是 Partial。Trace 以内存环形缓冲为主。无真实 Embedding 时 Mock 只能证明链路，不能证明检索质量。
 
 ### 最终目标架构（TARGET）
 
@@ -159,7 +159,7 @@ sequenceDiagram
 | 代码沙箱 | `Partial`：存在沙箱工具路径 | 代码动作必须经四层隔离，不得宿主执行 |
 | MCP / 工具 | `Partial`：工具与 MCP 可注入 | 完整 Tool Contract；经 Executor，不直连数据库 |
 | 测评 | `Partial`：rag-v0.1 Gold 与检索基线已有；未测真实 LLM 生成层 | 离线 RAG / Agent / Skill / Safety 评测 |
-| 向量库 | 默认 `local`（ADR-0002 Accepted）；Milvus 实验/`Partial` | 升格 Milvus 须另开 ADR，禁止口头升级为已生产 |
+| 向量库 | 默认 `milvus`，状态仍为 `Partial` | 显式 `local` 可离线评测；未完成真实服务闭环前禁止写成已生产 |
 
 状态术语与 `AGENTS.md` 一致：`Implemented` / `Partial` / `Planned` / `Deferred`。禁止把 `Planned` 写成已交付。
 
@@ -421,7 +421,7 @@ docker compose up -d --build
 # 服务默认监听 http://localhost:8000
 ```
 
-编排包含 PostgreSQL 和开发用 Milvus（单容器）。默认 `RAG_VECTOR_STORE` 仍是 `local`。只有显式改为 `milvus` 时，应用才连接 `http://milvus:19530`。这不表示向量库闭环门槛已经通过。
+编排包含 PostgreSQL 和开发用 Milvus。默认 `RAG_VECTOR_STORE` 是 `milvus`，应用连接 `http://milvus:19530`。这不表示向量库闭环已经通过，也不表示 Lite 可以替代这套服务。
 
 启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/v1/health` 仍是健康检查。第一次建管理员、注册和发消息，按上面「快速开始」的第 3 到第 5 步，页面分别是 `/setup`、`/login`、`/register` 和 `/chat`。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
 
@@ -481,7 +481,7 @@ docker compose up -d --build
 | `RAG_MEMORY_CONTEXT_CHARS` | 注入管线的记忆字符预算 | `2000` |
 | `RAG_CONTEXT_CHARS` | 注入管线的 RAG 字符预算 | `6000` |
 | `RAG_EFFECTIVE_DATE_FILTER` | ADR-0003 生效日期/预告检索 | `false` |
-| `RAG_VECTOR_STORE` | 向量库后端：`local` / `milvus` | `local` |
+| `RAG_VECTOR_STORE` | 向量库后端：`milvus` / `local` | `milvus` |
 | `RAG_UPLOAD_MAX_BYTES` | 知识库单文件上限（字节）。等于上限可以上传，超过返回 413 | `10485760`（10MB） |
 | `RAG_UPLOAD_ALLOWED_EXTENSIONS` | 允许的扩展名，逗号分隔、不带点 | `txt,md,json,xml,csv,doc,xls,ppt,docx,xlsx,pptx,pdf` |
 | `RAG_BACKEND` | 切分/检索策略：`native` / `langchain` / `llamaindex` | `native` |

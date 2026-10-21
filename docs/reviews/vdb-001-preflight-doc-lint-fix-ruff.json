@@ -1,0 +1,19 @@
+{
+  "command": [
+    "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+    "-m",
+    "ruff",
+    "check",
+    "."
+  ],
+  "exit_code": 1,
+  "elapsed_seconds": 0.25,
+  "environment": {
+    "ENV": "development",
+    "DATABASE_URL": "sqlite:///./data/vdb-001-preflight-doc-lint-fix-ruff.db",
+    "RUFF_CACHE_DIR": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\data\\vdb-001-preflight-doc-lint-fix-ruff-ruff-cache"
+  },
+  "interpreter": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+  "log": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\docs\\reviews\\vdb-001-preflight-doc-lint-fix-ruff.log",
+  "scope": "offline check; conftest blocks workspace credentials and external network"
+}

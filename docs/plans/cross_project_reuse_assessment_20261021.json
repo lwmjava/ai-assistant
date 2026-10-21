@@ -1,0 +1,2518 @@
+{
+  "schema_version": "1.0",
+  "assessment_status": "proposed_not_approved",
+  "date": "2026-10-21 Asia/Shanghai",
+  "rows": [
+    {
+      "id": "S01",
+      "module": "存储",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          2,
+          3
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "T01",
+      "method": "沿用目标MilvusVectorStore/get_vector_store；配置和部署重新接线",
+      "delta": "不复制来源Chroma；空库登记/权限/默认配置按目标实现",
+      "benefit_gate": "空库10轮摄取检索删除重解析全部通过；停服务明确unavailable；默认配置和实际后端一致",
+      "source_base": "target",
+      "source_paths": [
+        "app/rag/vectorstore/milvus.py",
+        "app/rag/vectorstore/factory.py",
+        "deploy/compose.milvus.prod.yml"
+      ],
+      "target_hotspots": [
+        "app/rag/vectorstore/",
+        "app/rag/index_registry.py",
+        "app/core/config.py",
+        "deploy/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "S02",
+      "module": "存储",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          2,
+          4
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          2,
+          4
+        ],
+        "design_docs_review": [
+          1,
+          1
+        ],
+        "total": [
+          5,
+          9
+        ]
+      },
+      "reuse_mode": "D",
+      "evidence": "T01",
+      "method": "以现有Milvus适配为基础，新增实例选择及持久化归属",
+      "delta": "来源无本项目Lite兜底实现；不复制为现成能力",
+      "benefit_gate": "当前锁定SDK/Python在目标平台完成10轮重启与读写；跨实例误读0；生产兜底触发0",
+      "source_base": "target",
+      "source_paths": [
+        "app/rag/vectorstore/milvus.py",
+        "app/rag/vectorstore/factory.py",
+        "deploy/compose.milvus.prod.yml"
+      ],
+      "target_hotspots": [
+        "app/rag/vectorstore/",
+        "app/rag/index_registry.py",
+        "app/core/config.py",
+        "deploy/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "S03",
+      "module": "存储",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          0,
+          0
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          2,
+          4
+        ]
+      },
+      "reuse_mode": "D",
+      "evidence": "T01",
+      "method": "编写真实Standalone/Lite组合验收和干净部署说明",
+      "delta": "不重写S01/S02测试，不重新估计其单项回归",
+      "benefit_gate": "两模式及不可用分支矩阵100%通过；同最终SHA的必要Linux/CI证据齐全",
+      "source_base": "target",
+      "source_paths": [
+        "app/rag/vectorstore/milvus.py",
+        "app/rag/vectorstore/factory.py",
+        "deploy/compose.milvus.prod.yml"
+      ],
+      "target_hotspots": [
+        "app/rag/vectorstore/",
+        "app/rag/index_registry.py",
+        "app/core/config.py",
+        "deploy/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "R01",
+      "module": "评测RAG",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1.5,
+          2.5
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          1,
+          2
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E03",
+      "method": "RAGEvalDashboard指标/趋势/逐例结构可适配；重建受权报告API",
+      "delta": "不复制来源指标定义与数据模型；沿用当前runner报告",
+      "benefit_gate": "三类现有报告各至少2份，新旧协议/缺测/失败样本显示与文件逐字段100%一致；越权展示0",
+      "source_base": "source",
+      "source_paths": [
+        "frontend/src/components/RAGEvalDashboard.tsx",
+        "frontend/src/components/RetrievalSettings.tsx",
+        "frontend/src/components/KnowledgePanel.tsx"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "R02",
+      "module": "评测RAG",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          2,
+          3
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          1.5,
+          2
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          5,
+          8
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E02",
+      "method": "借鉴create_test_set/upload_test_set与审核交互；复用目标Schema",
+      "delta": "数据版本/Gold审核/holdout隔离重做；吸收F01反馈候选关联但不自动入Gold",
+      "benefit_gate": "创建导入导出哈希一致；冻结/holdout写入拒绝100%；审核与来源记录完整；非法输入拒绝100%",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/rag_eval/_eval_run.py",
+        "app/knowledge/rag_eval/_test_sets.py",
+        "app/knowledge/rag_eval/_auto_generate.py",
+        "app/knowledge/rag_eval/_compare.py"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "R03",
+      "module": "评测RAG",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          3,
+          5
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          6,
+          11
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E02",
+      "method": "复用目标三个runner；来源run_eval仅借鉴操作流程",
+      "delta": "新增受权后台任务/预算/取消/重启状态，不能复制同步长请求",
+      "benefit_gate": "至少10组重复提交/取消/超限/重启/外部失败；越预算新增调用0；重复任务执行0；终态与报告100%对应",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/rag_eval/_eval_run.py",
+        "app/knowledge/rag_eval/_test_sets.py",
+        "app/knowledge/rag_eval/_auto_generate.py",
+        "app/knowledge/rag_eval/_compare.py"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "R04",
+      "module": "评测RAG",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          0.5,
+          1
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          3,
+          6
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E03",
+      "method": "适配RetrievalSettings对比交互与_compare结果展示",
+      "delta": "对比服务走现有backend；参数白名单与实例/索引绑定重做",
+      "benefit_gate": "至少20条固定问题同输入版本可复跑；来源与候选集合可解释；改变线上默认参数0次",
+      "source_base": "source",
+      "source_paths": [
+        "frontend/src/components/RAGEvalDashboard.tsx",
+        "frontend/src/components/RetrievalSettings.tsx",
+        "frontend/src/components/KnowledgePanel.tsx"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "R05",
+      "module": "评测RAG",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          2.5,
+          4
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E01",
+      "method": "cross_encoder_rerank可作候选，保留输入输出映射思路",
+      "delta": "模型加载/协议/超时/完整文本预算与评分解析需修正；只试一个候选",
+      "benefit_gate": "建议门槛：非holdout至少50条含困难/安全切片；Recall@1提高≥3pp且MRR提高≥0.02，Recall@5下降≤1pp；零容忍违规0；端到端p95增量≤20%且满足批准SLO；未满足不采纳",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/rag/rerankers/reranker.py",
+        "app/knowledge/rag/port.py"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "R06",
+      "module": "评测RAG",
+      "action": "原卡承接",
+      "existing_card": "PRAG-002",
+      "cost": {
+        "backend": [
+          2,
+          3
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E01",
+      "method": "适配apply_reranker调度，沿用目标VectorStore返回契约",
+      "delta": "UI参数实验归R04；本卡无新增frontend范围；仅按采纳候选接线",
+      "benefit_gate": "R05采纳决定落盘；off固定输入输出一致；100%无效/乱序/重复评分拒绝或受控回退；质量不低于批准候选、SLO通过",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/rag/rerankers/reranker.py",
+        "app/knowledge/rag/port.py"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "PRAG-002",
+        "title": "重排落地：开关、灰度与开销评估",
+        "status": "backlog",
+        "depends_on": [
+          "REL-004",
+          "NFR-002"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/rag/",
+            "app/core/config.py",
+            ".env.example",
+            "tests/",
+            "docs/evaluations/",
+            "tasks.yaml",
+            "docs/"
+          ],
+          "forbidden_paths": [
+            "evals/reports/rag-v0.1-baseline-20260919.json",
+            "app/rag/chunking/",
+            "app/rag/embeddings/",
+            ".env"
+          ],
+          "deliverables": [
+            "重排配置开关，默认关闭，可灰度启用",
+            "落地后的开销报告：重排引入的延迟与资源占用"
+          ],
+          "non_goals": [
+            "不重复跑 REL-004 已做的重排实验",
+            "不同时改切分、Embedding 或 Query Rewrite",
+            "不改混合检索的 RRF k",
+            "不用 holdout 调参",
+            "不在本卡内判定是否采纳，既有候选以 REL-004 不采纳为准；新候选需另获明确采纳决定"
+          ]
+        },
+        "acceptance": [
+          "重排开关可配置且默认关闭，可灰度启用",
+          "落地开销报告含重排引入的延迟与资源占用增量",
+          "关闭开关时行为与基线一致"
+        ]
+      }
+    },
+    {
+      "id": "R07",
+      "module": "评测RAG",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          0.5,
+          1
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          3,
+          6
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E02",
+      "method": "借鉴_extract_and_validate_json及候选题审核流程",
+      "delta": "文档授权/抽样/预算/来源和人工审核按目标重做",
+      "benefit_gate": "建议试点30题，人工判定可用≥70%，来源可定位100%；自动Gold升级0；未达收益则保留人工入集路径",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/rag_eval/_eval_run.py",
+        "app/knowledge/rag_eval/_test_sets.py",
+        "app/knowledge/rag_eval/_auto_generate.py",
+        "app/knowledge/rag_eval/_compare.py"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "R08",
+      "module": "评测RAG",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          0,
+          0
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          2,
+          4
+        ]
+      },
+      "reuse_mode": "D",
+      "evidence": "E02",
+      "method": "复用已有CI/runner和前面新增入口，编制组合验收",
+      "delta": "不新造第二评测器，不重复计前七包独立单测",
+      "benefit_gate": "UI→任务→实际业务入口→报告端到端矩阵100%通过；既有门禁判定100%一致，失败报告保持失败并阻断相应用途发布；不以本卡关闭宣称历史生成质量达标",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/rag_eval/_eval_run.py",
+        "app/knowledge/rag_eval/_test_sets.py",
+        "app/knowledge/rag_eval/_auto_generate.py",
+        "app/knowledge/rag_eval/_compare.py"
+      ],
+      "target_hotspots": [
+        "scripts/run_rag_baseline.py",
+        "scripts/run_rag_generation_eval.py",
+        "scripts/run_agent_chain_eval.py",
+        "app/rag/",
+        "app/api/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "M01",
+      "module": "记忆",
+      "action": "扩卡待批",
+      "existing_card": "MEM-002",
+      "cost": {
+        "backend": [
+          1.5,
+          2.5
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1,
+          1.5
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          3,
+          5
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "T02",
+      "method": "复用目标MemoryCompressor(existing_snapshot)，来源不提供同构可直接拷贝实现",
+      "delta": "持久快照涉及models/alembic尚不在原allowed_paths；需扩卡；默认先做当前请求复用边界",
+      "benefit_gate": "跨阈值/再追加/重启案例中旧消息重复压缩0次；追加只处理新增段；keep_recent正确100%；摘要权限不变",
+      "source_base": "target",
+      "source_paths": [
+        "app/memory/compressor.py",
+        "app/memory/manager.py",
+        "app/services/chat_service.py"
+      ],
+      "target_hotspots": [
+        "app/memory/",
+        "app/services/chat_service.py",
+        "app/models/",
+        "alembic/",
+        "frontend/src/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "MEM-002",
+        "title": "记忆增量压缩接线（existing_snapshot）",
+        "status": "backlog",
+        "depends_on": [],
+        "scope": {
+          "allowed_paths": [
+            "app/services/chat_service.py",
+            "app/memory/",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产数据"
+          ],
+          "deliverables": [
+            "_build_memory 传入 existing_snapshot，启用增量压缩",
+            "长会话后续请求复用快照而非全量重算"
+          ],
+          "non_goals": [
+            "不做跨会话记忆（§5.7 排 v1.5）",
+            "不做记忆检索",
+            "不改压缩算法"
+          ]
+        },
+        "acceptance": [
+          "长会话第二次请求基于快照而非全量重算",
+          "压缩结果正确保留最近消息（keep_recent）"
+        ]
+      }
+    },
+    {
+      "id": "M02",
+      "module": "记忆",
+      "action": "扩卡待批",
+      "existing_card": "MEM-003",
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1,
+          2
+        ],
+        "design_docs_review": [
+          1,
+          1
+        ],
+        "total": [
+          3,
+          5
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E04",
+      "method": "借鉴PII与namespace设计，治理规则由目标需求定义",
+      "delta": "原卡已有运行路径校验；API/数据字段如超allowed_paths需扩卡，不能文档代替实现",
+      "benefit_gate": "身份/租户/撤权/过期/删除四类及组合反例100%拒绝；授权范围/保留值须负责人批准后锁定",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/memory/store.py",
+        "app/knowledge/memory/port.py",
+        "app/knowledge/memory/extractor.py",
+        "app/knowledge/memory/pii.py"
+      ],
+      "target_hotspots": [
+        "app/memory/",
+        "app/services/chat_service.py",
+        "app/models/",
+        "alembic/",
+        "frontend/src/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "MEM-003",
+        "title": "记忆治理：谁能读/存多久/如何删/防串租户",
+        "status": "backlog",
+        "depends_on": [],
+        "scope": {
+          "allowed_paths": [
+            "docs/",
+            "app/memory/",
+            "app/security/",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产数据"
+          ],
+          "deliverables": [
+            "记忆治理规则：谁能读、存多久、如何删、如何防串租户",
+            "治理规则落文档并在记忆读写路径上有校验"
+          ],
+          "non_goals": [
+            "不实现跨会话记忆本身（§5.7 v1.5）",
+            "不重复 MEM-002 的接线工作"
+          ]
+        },
+        "acceptance": [
+          "四条治理规则（读权限/期限/删除/租户隔离）各有明确判定",
+          "规则在记忆读写路径上生效"
+        ]
+      }
+    },
+    {
+      "id": "M03",
+      "module": "记忆",
+      "action": "扩卡待批",
+      "existing_card": "MEM-004",
+      "cost": {
+        "backend": [
+          2.5,
+          4.5
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          1,
+          1.5
+        ],
+        "total": [
+          5,
+          9
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E04",
+      "method": "复用MemoryPort的store/search契约思路与读写接线",
+      "delta": "Chroma换成目标Milvus；主库表、Service/API/alembic须扩卡；v1.5提前另批",
+      "benefit_gate": "建议≥30条人工审核跨会话案例：记忆相关性precision@k≥90%；身份/删除/过期违规0；来源100%可追；预算和锁定SLO通过",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/memory/store.py",
+        "app/knowledge/memory/port.py",
+        "app/knowledge/memory/extractor.py",
+        "app/knowledge/memory/pii.py"
+      ],
+      "target_hotspots": [
+        "app/memory/",
+        "app/services/chat_service.py",
+        "app/models/",
+        "alembic/",
+        "frontend/src/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "MEM-004",
+        "title": "跨会话记忆实现（Deferred：v1.5 排期）",
+        "status": "backlog",
+        "depends_on": [],
+        "scope": {
+          "allowed_paths": [
+            "app/memory/",
+            "app/rag/",
+            "evals/",
+            "tests/",
+            "docs/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产数据"
+          ],
+          "deliverables": [
+            "v1.5 排期启动时：跨会话记忆的存储/检索/注入机制"
+          ],
+          "non_goals": [
+            "1.0 不实现（Deferred，v1.5 排期）",
+            "不与 MEM-003 治理卡合并实现（先治理后能力）",
+            "不用 Mock 数据当记忆质量证据"
+          ]
+        },
+        "acceptance": [
+          "进入 v1.5 排期后：跨会话记忆可存取/检索并在对话注入",
+          "1.0 阶段不实施（保持现状）"
+        ]
+      }
+    },
+    {
+      "id": "M04",
+      "module": "记忆",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1.5,
+          3
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          2,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E04",
+      "method": "适配ExtractedMemory、抽取/去重/状态变更思路",
+      "delta": "取消默认身份、旧namespace回退；推断不能自动转事实；冲突规则重新设计",
+      "benefit_gate": "建议≥50条陈述/推断/否定/纠正/冲突案例；抽取precision≥95%、召回≥80%；未授权长期写入0；冲突不静默覆盖",
+      "source_base": "source",
+      "source_paths": [
+        "app/knowledge/memory/store.py",
+        "app/knowledge/memory/port.py",
+        "app/knowledge/memory/extractor.py",
+        "app/knowledge/memory/pii.py"
+      ],
+      "target_hotspots": [
+        "app/memory/",
+        "app/services/chat_service.py",
+        "app/models/",
+        "alembic/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "M05",
+      "module": "记忆",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1.5,
+          2.5
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          1,
+          1.5
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E05",
+      "method": "借鉴PersonaPanel记忆管理流程，沿用目标页面与API风格",
+      "delta": "纠正版本、授权、导出与删除审计重做；不带入人设画像",
+      "benefit_gate": "所有管理操作覆盖成功/越权/并发/撤权；删除后检索注入命中0；存储/导出敏感字段断言通过100%",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/graphs/nodes/prepare_context.py",
+        "app/agent/graphs/nodes/finalize.py",
+        "frontend/src/components/PersonaPanel.tsx"
+      ],
+      "target_hotspots": [
+        "app/memory/",
+        "app/services/chat_service.py",
+        "app/models/",
+        "alembic/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "M06",
+      "module": "记忆",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          0,
+          0
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          2,
+          4
+        ]
+      },
+      "reuse_mode": "D",
+      "evidence": "E05",
+      "method": "借鉴来源记忆用例主题，复用目标ChatService全链路",
+      "delta": "不以来源Mock测试或模型自评当质量达标",
+      "benefit_gate": "M01–M05契约矩阵100%通过；跨会话质量达到锁定M03/M04门槛；越权/应忘未忘0；最终CI与版本绑定",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/graphs/nodes/prepare_context.py",
+        "app/agent/graphs/nodes/finalize.py",
+        "frontend/src/components/PersonaPanel.tsx"
+      ],
+      "target_hotspots": [
+        "app/memory/",
+        "app/services/chat_service.py",
+        "app/models/",
+        "alembic/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "A01",
+      "module": "Agent",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          3,
+          5
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          2,
+          3
+        ],
+        "design_docs_review": [
+          1,
+          2
+        ],
+        "total": [
+          6,
+          10
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E07",
+      "method": "借鉴InterruptState/HitlManager事件模型与状态转换",
+      "delta": "来源内存字典不能直接用；持久化审批/参数hash/幂等/重启授权重做",
+      "benefit_gate": "至少20组批准/拒绝/超时/重放/重启/撤权；未批准执行0、重复副作用0、参数变更冒用0；每次决策有审计",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/policy/hitl.py",
+        "app/agent/policy/tool_arg_policy.py",
+        "app/agent/agents/models.py",
+        "app/agent/agents/registry.py",
+        "frontend/src/components/AgentStudio.tsx"
+      ],
+      "target_hotspots": [
+        "app/agents/",
+        "app/services/agent_state_service.py",
+        "app/services/chat_service.py",
+        "app/models/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "A02",
+      "module": "Agent",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          0.5,
+          1
+        ],
+        "frontend": [
+          1.5,
+          2.5
+        ],
+        "verification": [
+          0.5,
+          1
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          3,
+          5
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E07",
+      "method": "借鉴审批事件交互；适配当前SSE与ActiveRun",
+      "delta": "权限/审批判定仅服务端；不重复SSE-001回放实现",
+      "benefit_gate": "刷新/断线/重复点击/拒绝/过期操作矩阵100%通过；页面状态与服务端一致；敏感参数回显0",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/policy/hitl.py",
+        "app/agent/policy/tool_arg_policy.py",
+        "app/agent/agents/models.py",
+        "app/agent/agents/registry.py",
+        "frontend/src/components/AgentStudio.tsx"
+      ],
+      "target_hotspots": [
+        "app/agents/",
+        "app/services/agent_state_service.py",
+        "app/services/chat_service.py",
+        "app/models/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "A03",
+      "module": "Agent",
+      "action": "扩卡待批",
+      "existing_card": "V1C-006",
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1.5,
+          3
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          3,
+          6
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E06",
+      "method": "成本档位路由只参考决策结构，复用目标计数与模型用途契约",
+      "delta": "合并到既有单变量优化；补allowed_paths和模型档位实验说明；不额外新增卡或默认上线",
+      "benefit_gate": "建议固定≥50条非holdout请求，平均费用或p95首响应至少一项改善≥15%，质量主指标下降≤1pp且既有门禁通过；零容忍0；否则不采纳",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/graphs/nodes/cascade.py",
+        "app/agent/graphs/nodes/verify_response.py",
+        "app/core/models/cost_router.py"
+      ],
+      "target_hotspots": [
+        "app/agents/",
+        "app/services/agent_state_service.py",
+        "app/services/chat_service.py",
+        "app/models/",
+        "frontend/src/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "V1C-006",
+        "title": "1.0收尾：测量并优化技能匹配与意图分流开销",
+        "status": "backlog",
+        "depends_on": [
+          "SKILL-003",
+          "PAGT-007",
+          "V1C-005"
+        ],
+        "scope": {
+          "deliverables": [
+            "分阶段延迟与模型调用次数基线",
+            "单变量优化与质量回归结论"
+          ],
+          "non_goals": [
+            "不为减少调用降低鉴权或安全检查",
+            "不预先决定合并模型决策或开启缓存"
+          ]
+        },
+        "acceptance": [
+          "记录技能匹配、路由、检索、工具和回答阶段耗时、模型用途、调用次数及测评版本。",
+          "按基线选择一项优化，比较首响应延迟与路由、技能、工具正确性；无收益则记录不采纳。",
+          "真实模型与Mock结果分开记录；取消、缓存、预算和重试回归不退化。"
+        ]
+      }
+    },
+    {
+      "id": "A04",
+      "module": "Agent",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          2.5,
+          4
+        ],
+        "frontend": [
+          1.5,
+          2.5
+        ],
+        "verification": [
+          1.5,
+          2.5
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          6,
+          10
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E07",
+      "method": "适配AgentDefinition/Registry和AgentStudio配置交互",
+      "delta": "权限交集/版本/持久化重做；不是复制另一套Runtime",
+      "benefit_gate": "受控角色可完成创建/启停/版本回退；私有/租户/系统可见性矩阵100%通过；工具授权扩大0；Supervisor回归通过",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/policy/hitl.py",
+        "app/agent/policy/tool_arg_policy.py",
+        "app/agent/agents/models.py",
+        "app/agent/agents/registry.py",
+        "frontend/src/components/AgentStudio.tsx"
+      ],
+      "target_hotspots": [
+        "app/agents/",
+        "app/services/agent_state_service.py",
+        "app/services/chat_service.py",
+        "app/models/",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "W01",
+      "module": "Workflow",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          1,
+          1.5
+        ],
+        "verification": [
+          0.5,
+          1
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          3,
+          5
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E09",
+      "method": "借鉴WorkflowHistory展示；直接复用目标已完成日志存储和查询函数",
+      "delta": "PWFL-004 done不重开；只新增租户受权日志/失败告警API与详情UI；不做外发规则平台",
+      "benefit_gate": "按execution/trace分页查询与库记录100%对应；跨租户读取0；与FLOW-005创建者告警类型明确区分",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/automation/engine.py",
+        "app/agent/automation/steps.py",
+        "frontend/src/components/WorkflowEditor.tsx",
+        "frontend/src/components/WorkflowHistory.tsx",
+        "frontend/src/components/WorkflowDAG.tsx"
+      ],
+      "target_hotspots": [
+        "app/workflow/",
+        "app/api/routes/workflow.py",
+        "frontend/src/pages/Workflows.tsx",
+        "tests/"
+      ]
+    },
+    {
+      "id": "W02",
+      "module": "Workflow",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          2,
+          3.5
+        ],
+        "frontend": [
+          1.5,
+          3
+        ],
+        "verification": [
+          1,
+          1.5
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          5,
+          9
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E09",
+      "method": "适配WorkflowEditor/WorkflowDAG；只映射已批准步骤",
+      "delta": "不复制_safe_eval，不新增步骤类型或运行时；W01 owns日志API",
+      "benefit_gate": "10个代表性定义编辑保存重载语义一致；循环/无效变量/越权步骤拒绝100%；失败节点与执行状态一致",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/automation/engine.py",
+        "app/agent/automation/steps.py",
+        "frontend/src/components/WorkflowEditor.tsx",
+        "frontend/src/components/WorkflowHistory.tsx",
+        "frontend/src/components/WorkflowDAG.tsx"
+      ],
+      "target_hotspots": [
+        "app/workflow/",
+        "app/api/routes/workflow.py",
+        "frontend/src/pages/Workflows.tsx",
+        "tests/"
+      ]
+    },
+    {
+      "id": "C01",
+      "module": "MCP",
+      "action": "原卡承接",
+      "existing_card": "PMCP-001",
+      "cost": {
+        "backend": [
+          1.5,
+          2.5
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1,
+          2
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          3,
+          5
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E08",
+      "method": "借鉴Gateway有限重连/连接生命周期；保留目标MCP接口",
+      "delta": "不新增协议/发现或页面；状态展示交O01，不扩原卡frontend",
+      "benefit_gate": "不响应/断连/取消/恢复反例全部有限结束；孤儿进程/挂起请求0；单server故障不阻断其他server",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/tools/mcp/gateway.py",
+        "app/agent/tools/mcp/permissions.py",
+        "app/agent/tools/mcp/config.py",
+        "frontend/src/components/McpPanel.tsx"
+      ],
+      "target_hotspots": [
+        "app/mcp/",
+        "app/agents/tools/",
+        "app/audit/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "PMCP-001",
+        "title": "MCP 连接超时、重连、心跳与优雅降级",
+        "status": "backlog",
+        "depends_on": [
+          "MCP-REQ-001",
+          "CLI-001"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/mcp/",
+            "app/core/config.py",
+            ".env.example",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产密钥"
+          ],
+          "deliverables": [
+            "连接与调用超时可配置，超时不阻塞主链路",
+            "断连可重连，单 server 故障不影响整体"
+          ],
+          "non_goals": [
+            "不实现服务发现",
+            "不改传输协议支持范围",
+            "不计入 v1.0.0 锁定清单"
+          ]
+        },
+        "acceptance": [
+          "模拟 server 无响应时请求在超时后返回",
+          "单 server 故障后其他工具仍可用"
+        ]
+      }
+    },
+    {
+      "id": "C02",
+      "module": "MCP",
+      "action": "原卡承接",
+      "existing_card": "PMCP-002",
+      "cost": {
+        "backend": [
+          1.5,
+          2.5
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1,
+          2
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          3,
+          5
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E08",
+      "method": "借鉴权限校验位置，复用目标工具契约/Executor",
+      "delta": "不复制名称推断read；审批API/UI归A01/A02，本卡只接受已批准受控调用",
+      "benefit_gate": "每级风险和身份矩阵100%通过；未知契约/越租户/未批准高风险调用0执行",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/tools/mcp/gateway.py",
+        "app/agent/tools/mcp/permissions.py",
+        "app/agent/tools/mcp/config.py",
+        "frontend/src/components/McpPanel.tsx"
+      ],
+      "target_hotspots": [
+        "app/mcp/",
+        "app/agents/tools/",
+        "app/audit/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "PMCP-002",
+        "title": "MCP 工具权限与风险分级接入",
+        "status": "backlog",
+        "depends_on": [
+          "MCP-REQ-001",
+          "PMCP-001",
+          "PAGT-002"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/mcp/",
+            "app/agents/tools/",
+            "tests/",
+            "AGENTS.md",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env"
+          ],
+          "deliverables": [
+            "MCP 工具纳入与内置工具一致的权限与风险分级",
+            "高风险调用默认保守"
+          ],
+          "non_goals": [
+            "不做人工审批界面",
+            "不改 MCP 传输层",
+            "不计入 v1.0.0 锁定清单"
+          ]
+        },
+        "acceptance": [
+          "MCP 工具与内置工具共用同一风险分级口径",
+          "L2 及以上默认不自动执行"
+        ]
+      }
+    },
+    {
+      "id": "C03",
+      "module": "MCP",
+      "action": "原卡承接",
+      "existing_card": "PMCP-003",
+      "cost": {
+        "backend": [
+          1,
+          1.5
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          0.5,
+          1
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          2,
+          3
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E08",
+      "method": "借鉴调用事件字段，沿用目标audit服务",
+      "delta": "无新审计页面；详情通过O01现有审计权限展示",
+      "benefit_gate": "成功/拒绝/失败/取消调用审计完整率100%；trace可关联；凭据和敏感参数命中0",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/tools/mcp/gateway.py",
+        "app/agent/tools/mcp/permissions.py",
+        "app/agent/tools/mcp/config.py",
+        "frontend/src/components/McpPanel.tsx"
+      ],
+      "target_hotspots": [
+        "app/mcp/",
+        "app/agents/tools/",
+        "app/audit/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "PMCP-003",
+        "title": "MCP 调用进入审计日志",
+        "status": "backlog",
+        "depends_on": [
+          "MCP-REQ-001",
+          "PMCP-002"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/mcp/",
+            "app/audit/",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env"
+          ],
+          "deliverables": [
+            "每次 MCP 调用产生一条审计记录，含工具名、参数摘要、结果与耗时"
+          ],
+          "non_goals": [
+            "不记录完整请求体中的敏感字段",
+            "不做审计查询界面",
+            "不计入 v1.0.0 锁定清单"
+          ]
+        },
+        "acceptance": [
+          "调用后可查询到对应审计记录",
+          "敏感字段不落入审计"
+        ]
+      }
+    },
+    {
+      "id": "C04",
+      "module": "MCP",
+      "action": "原卡承接",
+      "existing_card": "PMCP-004",
+      "cost": {
+        "backend": [
+          1.5,
+          2.5
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1,
+          2
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          3,
+          5
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E08",
+      "method": "借鉴配置引用字段；复用NFR-007批准的密钥能力",
+      "delta": "不复制明文保存；不独建密钥平台或额外轮换UI；轮换通过已批准密钥入口",
+      "benefit_gate": "配置/API/日志/审计明文凭据0；撤销后新调用拒绝；旧引用失败明确；NFR-007先完成",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/tools/mcp/gateway.py",
+        "app/agent/tools/mcp/permissions.py",
+        "app/agent/tools/mcp/config.py",
+        "frontend/src/components/McpPanel.tsx"
+      ],
+      "target_hotspots": [
+        "app/mcp/",
+        "app/agents/tools/",
+        "app/audit/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "PMCP-004",
+        "title": "MCP 凭据管理：不落明文配置",
+        "status": "backlog",
+        "depends_on": [
+          "NFR-007"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/mcp/",
+            "app/core/config.py",
+            "app/security/",
+            ".env.example",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产密钥"
+          ],
+          "deliverables": [
+            "MCP 凭据加密存储或走密钥管理接口",
+            "日志与审计中不出现凭据"
+          ],
+          "non_goals": [
+            "不引入第三方密钥托管服务",
+            "不改模型密钥之外的配置读取方式",
+            "不计入 v1.0.0 锁定清单"
+          ]
+        },
+        "acceptance": [
+          "配置文件中不含 MCP 明文凭据",
+          "日志样本无凭据"
+        ]
+      }
+    },
+    {
+      "id": "C05",
+      "module": "MCP",
+      "action": "原卡承接",
+      "existing_card": "PMCP-005",
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          0.5,
+          1
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          2,
+          4
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E08",
+      "method": "借鉴版本元数据，兼容判定按目标工具契约",
+      "delta": "不自动迁移server或新建版本管理页；只在现有mcp范围处理缓存/Schema",
+      "benefit_gate": "兼容/不兼容/未知版本案例100%明确处理；不兼容调用执行0；无静默参数降级",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/tools/mcp/gateway.py",
+        "app/agent/tools/mcp/permissions.py",
+        "app/agent/tools/mcp/config.py",
+        "frontend/src/components/McpPanel.tsx"
+      ],
+      "target_hotspots": [
+        "app/mcp/",
+        "app/agents/tools/",
+        "app/audit/",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "PMCP-005",
+        "title": "MCP 工具版本与兼容性声明",
+        "status": "backlog",
+        "depends_on": [
+          "PMCP-002"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/mcp/",
+            "tests/",
+            "AGENTS.md",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env"
+          ],
+          "deliverables": [
+            "工具声明版本，不兼容时给出明确提示而非静默失败"
+          ],
+          "non_goals": [
+            "不做版本自动迁移",
+            "不计入 v1.0.0 锁定清单"
+          ]
+        },
+        "acceptance": [
+          "版本不匹配时返回明确错误"
+        ]
+      }
+    },
+    {
+      "id": "P01",
+      "module": "PromptSkill",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1.5,
+          2.5
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          1,
+          1.5
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E10",
+      "method": "借鉴变体稳定分组/analytics及人工对照展示",
+      "delta": "不复制自动promote_winner与默认z检验采纳；版本沿用PROMPT-001",
+      "benefit_gate": "同实验输入/分组可复现100%；未经批准发布0；回滚恢复版本指纹；采纳需批准样本量和业务指标",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/prompts/ab_testing.py",
+        "app/agent/prompts/analytics.py",
+        "app/agent/skills/generator.py"
+      ],
+      "target_hotspots": [
+        "app/agents/version_registry.py",
+        "app/agents/skills/",
+        "app/services/skill_service.py",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "P02",
+      "module": "PromptSkill",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          1,
+          2
+        ],
+        "verification": [
+          0.5,
+          1.5
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          3,
+          6
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E10",
+      "method": "借鉴SkillGenerator草稿生成与JSON解析交互",
+      "delta": "转换目标YAML/schema并剥离执行代码；审核发布复用既有版本机制",
+      "benefit_gate": "建议20个需求草稿，结构校验100%、人工可用≥70%；无权限工具纳入0、自动发布0；收益不足不默认启用",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/prompts/ab_testing.py",
+        "app/agent/prompts/analytics.py",
+        "app/agent/skills/generator.py"
+      ],
+      "target_hotspots": [
+        "app/agents/version_registry.py",
+        "app/agents/skills/",
+        "app/services/skill_service.py",
+        "frontend/src/",
+        "tests/"
+      ]
+    },
+    {
+      "id": "O01",
+      "module": "观测",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          2,
+          3.5
+        ],
+        "frontend": [
+          1.5,
+          3
+        ],
+        "verification": [
+          1,
+          1.5
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          5,
+          9
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E11",
+      "method": "借鉴RunMetrics、TraceHistory/Replay、TokenBreakdown",
+      "delta": "新增持久/授权/保留契约；只是历史查看不是重新执行副作用；承接O02/C01等展示",
+      "benefit_gate": "重启查回脱敏记录100%；用量缺失显示未知而非0；阶段加总有口径；越租户0；历史查询不触发模型/工具",
+      "source_base": "source",
+      "source_paths": [
+        "app/core/observability/run_observability.py",
+        "app/core/observability/alerts.py",
+        "frontend/src/components/TraceHistory.tsx",
+        "frontend/src/components/TraceReplay.tsx",
+        "frontend/src/components/TokenBreakdown.tsx"
+      ],
+      "target_hotspots": [
+        "app/debug/trace.py",
+        "app/audit/",
+        "app/api/routes/admin_system.py",
+        "frontend/src/pages/Status.tsx",
+        "tests/"
+      ]
+    },
+    {
+      "id": "O02",
+      "module": "观测",
+      "action": "原卡承接",
+      "existing_card": "OPS-007",
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          0.5,
+          1.5
+        ],
+        "design_docs_review": [
+          0.5,
+          0.5
+        ],
+        "total": [
+          2,
+          4
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E11",
+      "method": "借鉴指标名称与阈值说明；复用目标结构化日志",
+      "delta": "原卡明确不做大盘/外部平台；这里只做基础指标端点和阈值文档，展示归O01",
+      "benefit_gate": "合成10组完成/失败/延迟事件，计数和分位数约定可复算；无高基数敏感标签；阈值说明可复现",
+      "source_base": "source",
+      "source_paths": [
+        "app/core/observability/run_observability.py",
+        "app/core/observability/alerts.py",
+        "frontend/src/components/TraceHistory.tsx",
+        "frontend/src/components/TraceReplay.tsx",
+        "frontend/src/components/TokenBreakdown.tsx"
+      ],
+      "target_hotspots": [
+        "app/debug/trace.py",
+        "app/audit/",
+        "app/api/routes/admin_system.py",
+        "frontend/src/pages/Status.tsx",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "OPS-007",
+        "title": "运行时指标与基础告警",
+        "status": "backlog",
+        "depends_on": [
+          "NFR-002"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/api/routes/",
+            "app/core/",
+            "docs/",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env"
+          ],
+          "deliverables": [
+            "存活、错误率、延迟的基础指标",
+            "告警阈值说明"
+          ],
+          "non_goals": [
+            "不接入外部监控平台",
+            "不做大盘与可视化"
+          ]
+        },
+        "acceptance": [
+          "指标端点可返回基础指标",
+          "文档中给出告警阈值建议"
+        ]
+      }
+    },
+    {
+      "id": "G01",
+      "module": "安全",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1.5,
+          3
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1,
+          2
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          3,
+          6
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E07",
+      "method": "借鉴validate_tool_args分层与反例，接到现有Executor",
+      "delta": "文件路径/URL实际访问时再次校验；不只复制字符串黑名单；不重做PAGT-002",
+      "benefit_gate": "锁定路径/URL/重定向/DNS/体积/Schema攻击矩阵100%拒绝；合法夹具100%成功；各入口无绕过",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/policy/hitl.py",
+        "app/agent/policy/tool_arg_policy.py",
+        "app/agent/agents/models.py",
+        "app/agent/agents/registry.py",
+        "frontend/src/components/AgentStudio.tsx"
+      ],
+      "target_hotspots": [
+        "app/agents/tools/executor.py",
+        "app/security/",
+        "app/rag/evidence.py",
+        "tests/"
+      ]
+    },
+    {
+      "id": "G02",
+      "module": "安全",
+      "action": "新增",
+      "existing_card": null,
+      "cost": {
+        "backend": [
+          1,
+          2
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          2.5,
+          4
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          4,
+          7
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E06",
+      "method": "verify_response只参考冲突分类与有限纠错结构",
+      "delta": "不重做RAG-027/043围栏，不默认Web外发；只做离线实验与采纳结论，生产落地另立项",
+      "benefit_gate": "建议至少50条含正确回答控制组：目标错误率相对降低≥20%，正确回答误改≤5%，质量门禁通过、零容忍0、p95增量≤20%；未满足停止",
+      "source_base": "source",
+      "source_paths": [
+        "app/agent/graphs/nodes/cascade.py",
+        "app/agent/graphs/nodes/verify_response.py",
+        "app/core/models/cost_router.py"
+      ],
+      "target_hotspots": [
+        "app/agents/tools/executor.py",
+        "app/security/",
+        "app/rag/evidence.py",
+        "tests/"
+      ]
+    },
+    {
+      "id": "F01",
+      "module": "反馈进化",
+      "action": "原卡承接",
+      "existing_card": "FEED-001",
+      "cost": {
+        "backend": [
+          0.5,
+          1
+        ],
+        "frontend": [
+          0.5,
+          1
+        ],
+        "verification": [
+          0.5,
+          1
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          2,
+          4
+        ]
+      },
+      "reuse_mode": "B",
+      "evidence": "E12",
+      "method": "借鉴反馈按钮/事件字段；复用目标对话权限与脱敏",
+      "delta": "原卡仅反馈CRUD和页面；失败候选快照/入集归R02，不扩成运营平台",
+      "benefit_gate": "所有者提交/查询/删除矩阵100%通过；未授权写入0；评论脱敏命中0；差评自动变Gold0",
+      "source_base": "source",
+      "source_paths": [
+        "app/bootstrap/eval/feedback_loop.py",
+        "app/scenarios/evolution/proposer.py"
+      ],
+      "target_hotspots": [
+        "app/evolution/",
+        "app/services/",
+        "app/api/",
+        "frontend/src/pages/Chat.tsx",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "FEED-001",
+        "title": "对话反馈：接口与表结构",
+        "status": "backlog",
+        "depends_on": [],
+        "scope": {
+          "allowed_paths": [
+            "app/models/",
+            "app/schemas/",
+            "app/api/",
+            "app/services/",
+            "frontend/src/",
+            "alembic/",
+            "tests/",
+            "docs/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产数据"
+          ],
+          "deliverables": [
+            "反馈相关表与迁移",
+            "失败反馈与有用/无用提交、查询、删除 API",
+            "对话页可提交；保存前脱敏"
+          ],
+          "non_goals": [
+            "不直接修改技能、Prompt 或模型",
+            "不做跨租户质量排行",
+            "语料快照运营闭环若超出本卡另开卡"
+          ]
+        },
+        "acceptance": [
+          "存在可复现的表结构与 OpenAPI 路径",
+          "所有者可提交失败反馈与有用/无用，并可删除自己的记录",
+          "库内评论经脱敏；未授权提交被拒绝"
+        ]
+      }
+    },
+    {
+      "id": "F02",
+      "module": "反馈进化",
+      "action": "原卡承接",
+      "existing_card": "EVO-002",
+      "cost": {
+        "backend": [
+          1.5,
+          3
+        ],
+        "frontend": [
+          0,
+          0
+        ],
+        "verification": [
+          1,
+          2
+        ],
+        "design_docs_review": [
+          0.5,
+          1
+        ],
+        "total": [
+          3,
+          6
+        ]
+      },
+      "reuse_mode": "C",
+      "evidence": "E12",
+      "method": "借鉴ProposalDraft和来源关联，复用目标Reflect/Distill",
+      "delta": "只产出可查候选；技能审核UI和发布版本复用P02，禁止自动发布与自动淘汰",
+      "benefit_gate": "显式开启后至少10个反思场景有候选或可解释拒绝；未经确认生效0；来源完整100%；EVO-001前置",
+      "source_base": "source",
+      "source_paths": [
+        "app/bootstrap/eval/feedback_loop.py",
+        "app/scenarios/evolution/proposer.py"
+      ],
+      "target_hotspots": [
+        "app/evolution/",
+        "app/services/",
+        "app/api/",
+        "frontend/src/pages/Chat.tsx",
+        "tests/"
+      ],
+      "current_task": {
+        "id": "EVO-002",
+        "title": "Reflect 改技能与待办提取",
+        "status": "backlog",
+        "depends_on": [
+          "EVO-001"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/evolution/",
+            "app/services/",
+            "app/api/",
+            "docs/",
+            "tasks.yaml",
+            "tests/"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产数据"
+          ],
+          "deliverables": [
+            "开关打开时反思可生成技能候选或待办",
+            "留下可查记录"
+          ],
+          "non_goals": [
+            "不在默认关闭时算完成",
+            "不自动无审上线技能"
+          ]
+        },
+        "acceptance": [
+          "一次对话后有技能候选或待办记录",
+          "需人工确认后才生效的路径写清"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "packages": 36,
+    "existing_direct": 9,
+    "existing_scope_extension": 4,
+    "new_cards": 23,
+    "total_remaining_person_days": [
+      128,
+      229
+    ],
+    "existing_remaining_person_days": [
+      38,
+      68
+    ],
+    "new_remaining_person_days": [
+      90,
+      161
+    ],
+    "original_estimate_withdrawn": [
+      139,
+      256
+    ],
+    "digital_human_cards": 0,
+    "optional_packages": 11
+  },
+  "thresholds_status": "All new numeric gates are proposals requiring approval before experiment; existing versioned gates remain authoritative in their declared scope.",
+  "evidence": {
+    "target_head": {
+      "exit_code": 0,
+      "stdout": "ac494b386bccd00e5e0f66f1ec214664cdb3216d",
+      "stderr": ""
+    },
+    "source_head": {
+      "exit_code": 0,
+      "stdout": "5d9b6e3477fb7996aff78e59afe968dd204e1a01",
+      "stderr": ""
+    },
+    "target_worktree": {
+      "exit_code": 0,
+      "stdout": "?? docs/plans/cross_project_reuse_assessment_20261021.json\n?? docs/plans/proposal_cross_project_reuse_20261021.md\n?? docs/plans/proposal_milvus_default_20261021.md\n?? docs/reviews/cross_project_reuse_inventory_20261021.json",
+      "stderr": "warning: unable to access 'C:\\Users\\123/.config/git/ignore': Permission denied\nwarning: unable to access 'C:\\Users\\123/.config/git/ignore': Permission denied"
+    },
+    "source_worktree": {
+      "exit_code": 0,
+      "stdout": "M app/agent/api/routes_agents.py\n M app/agent/api/routes_collab.py\n M app/agent/api/routes_runs.py\n M app/agent/api/routes_skills.py\n M app/agent/api/routes_workflows.py\n M app/agent/api/websocket.py\n M app/agent/automation/engine.py\n M app/agent/automation/scheduler.py\n M app/agent/automation/steps.py\n M app/agent/graphs/context.py\n M app/agent/graphs/hooks.py\n M app/agent/graphs/main_graph.py\n M app/agent/graphs/nodes/classify_intent.py\n M app/agent/graphs/nodes/finalize.py\n M app/agent/graphs/nodes/maybe_retrieve.py\n M app/agent/graphs/nodes/model_node.py\n M app/agent/graphs/nodes/prepare_context.py\n M app/agent/graphs/nodes/reflect.py\n M app/agent/graphs/nodes/self_correct.py\n M app/agent/graphs/nodes/synthesize.py\n M app/agent/graphs/nodes/task_plan.py\n M app/agent/graphs/nodes/tools_node.py\n M app/agent/graphs/nodes/trim_messages.py\n M app/agent/graphs/nodes/verify_response.py\n M app/agent/graphs/stages/merge.py\n M app/agent/graphs/stages/preflight.py\n M app/agent/graphs/supervisor_execution.py\n M app/agent/graphs/supervisor_nodes.py\n M app/agent/loop/store.py\n M app/agent/prompts/ab_testing.py\n M app/agent/prompts/templating.py\n M app/agent/runs/execution.py\n M app/agent/runs/preparation.py\n M app/agent/runs/supervisor.py\n M app/agent/streaming/activerun_port.py\n M app/agent/streaming/adapter.py\n M app/agent/tools/calculator.py\n M app/agent/tools/mcp/gateway.py\n M app/agent/tools/mcp/provider.py\n M app/agent/tools/proposals/advance.py\n M app/bootstrap/eval/feedback_loop.py\n M app/bootstrap/eval/trend.py\n M app/bootstrap/governance.py\n M app/bootstrap/lifespan/observability.py\n M app/core/api/routes_auth.py\n M app/core/api/routes_export.py\n M app/core/api/routes_health.py\n M app/core/config_loader.py\n M app/core/export/sft_exporter.py\n M app/core/notifications/manager.py\n M app/core/observability/memory_health.py\n M app/core/persistence/base_session.py\n M app/core/persistence/idempotency.py\n M app/core/persistence/memory_corrections.py\n M app/core/persistence/repositories/articles.py\n M app/core/persistence/repositories/conversations.py\n M app/core/persistence/repositories/experiments.py\n M app/core/persistence/repositories/knowledge_bases.py\n M app/core/persistence/repositories/search.py\n M app/core/security/rate_limit.py\n M app/core/tenants/manager.py\n M app/core/tenants/quota.py\n M app/knowledge/api/_migration.py\n M app/knowledge/articles/_extract.py\n M app/knowledge/memory/store.py\n M app/knowledge/rag/cleaning.py\n M app/knowledge/rag/dual_write.py\n M app/knowledge/rag/ingest.py\n M app/knowledge/rag/port.py\n M app/knowledge/rag/query_transform.py\n M app/knowledge/rag/retrievers/hybrid.py\n M app/knowledge/rag/splitters/semantic_splitter.py\n M app/knowledge/rag/stores/chroma.py\n M app/knowledge/rag_eval/_auto_generate.py\n M app/knowledge/rag_eval/_eval_run.py\n M app/scenarios/api/routes_coding_pipeline.py\n M app/scenarios/api/routes_diagrams.py\n M app/scenarios/api/routes_interview.py\n M app/scenarios/api/routes_media.py\n M app/scenarios/api/routes_sandbox.py\n M app/scenarios/api/routes_video_assets.py\n M app/scenarios/coding/code_generator.py\n M app/scenarios/coding/dependency_manager.py\n M app/scenarios/coding/manager.py\n M app/scenarios/coding/os_interactor.py\n M app/scenarios/coding/project_reader.py\n M app/scenarios/coding/quick_impl.py\n M app/scenarios/evolution/canary_controller.py\n M app/scenarios/interview/manager.py\n M app/scenarios/media/voice_clone.py\n M app/scenarios/pm/export_service.py\n M app/scenarios/pm/prototype_generator.py\n M app/scenarios/sandbox/demo/seeder.py\n M app/scenarios/sandbox/lab/config_merger.py\n M docs/interview/PythonDevelop/python-develop-interview-2026-08-29.md\n M docs/interview/PythonDevelop/python-develop-interview-2026-09-18.md\n M \"docs/product/\\345\\256\\236\\347\\216\\260\\350\\257\\264\\346\\230\\216\\344\\271\\246.md\"\n M \"docs/reviews/2026-08-05-\\351\\241\\271\\347\\233\\256\\345\\205\\250\\351\\235\\242\\347\\274\\272\\351\\231\\267\\350\\257\\204\\344\\274\\260.md\"\n M docs/reviews/review-verification-audit.md\n M mypy-baseline.txt\n M scripts/demo_data/rag_eval_mode_compare_sample.json\n D tests/e2e_smoke_test.py\n M tests/test_finetune_routes.py\n?? mypy-after-pyyaml.txt\n?? mypy-final.txt\n?? mypy-full-output.txt\n?? \"mypy\\344\\277\\256\\345\\244\\215\\346\\212\\245\\345\\221\\212_2026-10-15.md\"\n?? \"\\345\\205\\250\\351\\207\\217\\346\\265\\213\\350\\257\\225\\347\\273\\223\\346\\236\\234\\344\\270\\216\\346\\265\\213\\350\\257\\225\\346\\226\\207\\344\\273\\266\\346\\270\\205\\347\\220\\206\\346\\212\\245\\345\\221\\212_2026-10-15.md\"",
+      "stderr": "warning: unable to access 'C:\\Users\\123/.config/git/ignore': Permission denied\nwarning: unable to access 'C:\\Users\\123/.config/git/ignore': Permission denied"
+    },
+    "files": [
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "app/rag/vectorstore/milvus.py",
+        "sha256": "66bef32feca14f8e1b249e171ddb0285c80bf5de11fae20f0b4c932d2c2a9c48"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "app/rag/vectorstore/factory.py",
+        "sha256": "0d2566b78bb6223cbb732b0581917d908db9d1557a996c1377207e84985e09ac"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "deploy/compose.milvus.prod.yml",
+        "sha256": "0cd413bfa2960042e6bc32954f9fdee59f8895d0c451afda54128f6ba425d234"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/RAGEvalDashboard.tsx",
+        "sha256": "ae730e7d7c1d89d1ac28fac1c2d121c4dcaf7bf37a72bcb2c63b2969b02777e9"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/RetrievalSettings.tsx",
+        "sha256": "087d416f16a690db31367f74a9b9b0fcb9bfcf1574574617931d3379bffccc1e"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/KnowledgePanel.tsx",
+        "sha256": "0d61f76c0ebe702659565c3e1bbaedda2ff59686ed308038cb268cd3fc3ef39a"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/rag_eval/_eval_run.py",
+        "sha256": "21ee0b8fab2b27c6fae6443906a61c64c7a6ef2d6ecc565e0f68cd783007f7ab"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/rag_eval/_test_sets.py",
+        "sha256": "8b43b81fb95bca83d780c2b407bee69797d7aee75b262bb1b6665db573e409b3"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/rag_eval/_auto_generate.py",
+        "sha256": "003c582590b1f4bbd5e22a5ed1c72b9e2ff3ccffc8431e9fdc836fe6c428e929"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/rag_eval/_compare.py",
+        "sha256": "246b96cdd15c35dd5f58cb931c8e66891f45c3f7543af72d0dd56f24fbef4a3d"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/rag/rerankers/reranker.py",
+        "sha256": "c0de636dc6f4f5ea48669a27b49884db9521518467e80567dba834874580c464"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/rag/port.py",
+        "sha256": "1e41fdd1405b69af90f902fb953a173a3a65e1a733021e7439d1d6c7afbbb42e"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "app/memory/compressor.py",
+        "sha256": "42350e32c18edff0c1ad8d9f3b35048b261b8699c396dfd8c8be9c08bb85ee7d"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "app/memory/manager.py",
+        "sha256": "a0da60dbd2547820010ba77b3a181b8865268b08dea3ac138f3a69f3ebec0f5b"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "app/services/chat_service.py",
+        "sha256": "019cd984a1917b0c13aa93cd5ec3482c2e899520527fe772b4726dc0dd066805"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/memory/store.py",
+        "sha256": "f178a63d866fe48d0d275f73702abcb55d55ba661e48344f24849a3183710309"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/memory/port.py",
+        "sha256": "f94aa2b15f96145c316956c082cf6b03667b216db34d44867223af18201a910c"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/memory/extractor.py",
+        "sha256": "4e44f527995e24483d27404fbee56dba72aef4f0d18d12949399e8820e80f96c"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/knowledge/memory/pii.py",
+        "sha256": "f2ef59ab1d9fc94e6793c9b11e0cbc2421e268ffcd3efb4ab497768cc8797f07"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/graphs/nodes/prepare_context.py",
+        "sha256": "92122e5fd57b213ccfad2a9bca3df0c461f748c4fbb1e9e2d6950088dc9a62ae"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/graphs/nodes/finalize.py",
+        "sha256": "ff0f48f147fe4ad3a247b7401558994e3df8757a80e03e071fd038b807c375ca"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/PersonaPanel.tsx",
+        "sha256": "72c30812109627d71a2e8dbf704909a6a81526ec7f8e3ef68fd453f7bf4e81af"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/policy/hitl.py",
+        "sha256": "016d5c11c5f5f48a76f3b5f7441edd0347fa0f3e07219b12abd36432d09ab1a3"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/policy/tool_arg_policy.py",
+        "sha256": "611b43b1ff35aaf501dc6db47ffa608b7e3d5d31037881c8ebd4c0c5bd5b59e3"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/agents/models.py",
+        "sha256": "12b79122eced347fbd94e5da5028c8874150a02f55611f0e1785fc5995b781a4"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/agents/registry.py",
+        "sha256": "f656d0ab4543409f9a29eabd8736978a48b63f7d172a6b43b8528695bd3f3371"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/AgentStudio.tsx",
+        "sha256": "42deb45c6a8b56a36b96c0db927cb738eb27ad4f9efd375a7279d8ef2db7bd5a"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/graphs/nodes/cascade.py",
+        "sha256": "888138731576e7709b4efcb53875aa1fe37c0df54535aa37df068aed13b6aa65"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/graphs/nodes/verify_response.py",
+        "sha256": "7ccf385fc7d77fa73dbbd9b922a3cab13a2985d5bc3b1583e9b22c906da502fc"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/core/models/cost_router.py",
+        "sha256": "6eb00fed294cfef7d8f7a6598dff2761441769ec7e457fbc8cf509d3db4775f8"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/automation/engine.py",
+        "sha256": "c2e01a0625ce809cdd9168f1837ce969875d5834d5457c0a114c3a3877357482"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/automation/steps.py",
+        "sha256": "ae8e9fbe053871fdb26f9ab22f9bdea81d7b87625c21102ebe26af31c1563e7d"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/WorkflowEditor.tsx",
+        "sha256": "6e0b16fcf96520468a595b599ad6cda59dc543a7ec657763a84a65adbcd707fd"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/WorkflowHistory.tsx",
+        "sha256": "39e6ffd51fab5410196e07fdd392bd1e6d4626ee3b5da72516a274072e4d1ab0"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/WorkflowDAG.tsx",
+        "sha256": "ec9a60c898dcde25022691013a1f8a0638a851a45cf274fa4566f2d4aaae26c4"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/tools/mcp/gateway.py",
+        "sha256": "35bd5a5561d1decd0fc81f6ca11b1b3457a5efd695c70639eb58421c1bf10169"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/tools/mcp/permissions.py",
+        "sha256": "f551ab519cca895f5ff771e4be24e4c04f6bfddf93e991dc5669b15197d951c9"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/tools/mcp/config.py",
+        "sha256": "0fd554e99ca871f2e46c9af999bc1a2d850aa066011a4477d6f152df8d3c0f4f"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/McpPanel.tsx",
+        "sha256": "28d458f3802adb058d6a55cba57049141d48fa72056b2a7a831dae50a43899c3"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/prompts/ab_testing.py",
+        "sha256": "fd087829e02a91ca66a5a39b1088727e3705aadc3a143156a211981c75322923"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/prompts/analytics.py",
+        "sha256": "0369e90db3ef68d9e79d87f24117a1b9917d998c924ce0c3f0e80af6894c33ec"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/agent/skills/generator.py",
+        "sha256": "05897259505dff382058347f48715602366797c999f24deed7a013f2fdd50c75"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/core/observability/run_observability.py",
+        "sha256": "334fdfd849860c07da1a20f331a556a68942da4e21e63a87437ebd5f06af31d7"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/core/observability/alerts.py",
+        "sha256": "73b7650a4ba829fb6fd3e6d70abc9a3433e5d1ae4fefad45e051c9de54ea8776"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/TraceHistory.tsx",
+        "sha256": "bbcfbd0791f2872036e4d6b9299283200c68fd6c84673f319ef8d02145f7113a"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/TraceReplay.tsx",
+        "sha256": "314ba32a328235ced71fdc5b991d933c3d6c045a8762102c725335fdf264ef42"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "frontend/src/components/TokenBreakdown.tsx",
+        "sha256": "038c4aeb3975ec6acabea2ae879426ea9314270d3a4bf51ea389e67b7ca092d4"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/bootstrap/eval/feedback_loop.py",
+        "sha256": "d325014e7efead3563d5b2e5bb666f6f01930000dec3d771cc64397e76bbe6d3"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\personal-ai-assistant",
+        "path": "app/scenarios/evolution/proposer.py",
+        "sha256": "2cc65c2fde70df01c05a5b32330cf64fbd396ed4d2fb5913914b7d310451d44e"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "tasks.yaml",
+        "sha256": "2518efa6c70fc25789b3a89b2cf4edfc59a98560afe45ded081502fd6cfb5d4f"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "scripts/rag_gate_check.py",
+        "sha256": "43fbed5e57cbecab56dc099b6822b548f65a9148b1c41f214db1baa9d13d671c"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "scripts/agent_gate_check.py",
+        "sha256": "77d7ff58d3976bacc59c84bda6f82d3707130d834dd66ac7ead1d8377df5cd6d"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "evals/thresholds/rag-v0.1-generation-publish.json",
+        "sha256": "58f8fc0e6938e661a7980d9d7c510e66b6ffb7d7bace1c9b38776ddf7e2e6417"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "app/workflow/execution_log.py",
+        "sha256": "ec50be27cf387f058d6e3fa835e9dc3c11de43f9b584354dacd204feff8b97ad"
+      },
+      {
+        "root": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+        "path": "app/api/routes/workflow.py",
+        "sha256": "b5dff5ab8b7dcbf6ff6abb9cd54df3e9d6f10754d40a2ca31bb39668093a45ba"
+      }
+    ],
+    "runtime_validation": "not_run_static_document_assessment",
+    "completed_baselines": [
+      {
+        "id": "PWFL-004",
+        "title": "工作流失败告警与执行日志持久化",
+        "status": "done",
+        "remaining_delta_owner": "W01_new_API_UI_only"
+      },
+      {
+        "id": "FLOW-005",
+        "title": "创建者失效：可查询告警通知 tenant_admin",
+        "status": "done"
+      },
+      {
+        "id": "PWFL-003",
+        "title": "工作流并发控制与幂等",
+        "status": "done"
+      },
+      {
+        "id": "PROMPT-001",
+        "title": "Prompt / 模型版本可追踪（登记）",
+        "status": "done"
+      },
+      {
+        "id": "PAGT-002",
+        "title": "工具十要素契约：权限、风险分级、超时、幂等、审计",
+        "status": "done"
+      },
+      {
+        "id": "PAGT-006",
+        "title": "独立 Tool Executor + State Manager 层（随工具扩展落地）",
+        "status": "done"
+      },
+      {
+        "id": "SSE-001",
+        "title": "SSE 事件协议对齐 §5.1.4",
+        "status": "done"
+      },
+      {
+        "id": "RAG-027",
+        "title": "授权引用原文只读核验",
+        "status": "done"
+      },
+      {
+        "id": "RAG-035",
+        "title": "真实 RAG 生成与引用评测",
+        "status": "done"
+      },
+      {
+        "id": "RAG-043",
+        "title": "生成输出围栏与受限标识抑制",
+        "status": "done"
+      },
+      {
+        "id": "MEM-001",
+        "title": "超窗压缩回归（交付 D1）",
+        "status": "done"
+      }
+    ]
+  }
+}

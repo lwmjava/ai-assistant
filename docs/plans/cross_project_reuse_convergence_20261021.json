@@ -1,0 +1,818 @@
+{
+  "schema_version": "1.0",
+  "status": "proposed_scope_convergence_not_implementation_approval",
+  "date": "2026-10-21 Asia/Shanghai",
+  "groups": {
+    "core": [
+      "S01",
+      "S02",
+      "S03",
+      "R01",
+      "R02",
+      "R03",
+      "R04",
+      "R08",
+      "M01",
+      "M02",
+      "O01",
+      "F01"
+    ],
+    "later": [
+      "A01",
+      "A02",
+      "A04",
+      "W01",
+      "W02",
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "P01",
+      "P02",
+      "O02",
+      "G01",
+      "F02",
+      "R07"
+    ],
+    "experiments": [
+      "R05",
+      "A03",
+      "G02"
+    ],
+    "conditional": [
+      "R06"
+    ],
+    "deferred": [
+      "M03",
+      "M04",
+      "M05",
+      "M06"
+    ]
+  },
+  "hard": {
+    "S01": [],
+    "S02": [
+      "S01"
+    ],
+    "S03": [
+      "S01",
+      "S02"
+    ],
+    "R01": [],
+    "R02": [
+      "R01",
+      "F01"
+    ],
+    "R03": [
+      "R01",
+      "R02"
+    ],
+    "R04": [
+      "R01"
+    ],
+    "R05": [
+      "R04"
+    ],
+    "R06": [
+      "R05"
+    ],
+    "R07": [
+      "R02",
+      "R03"
+    ],
+    "R08": [
+      "R01",
+      "R02",
+      "R03",
+      "R04"
+    ],
+    "M01": [],
+    "M02": [],
+    "M03": [
+      "M02",
+      "S03"
+    ],
+    "M04": [
+      "M03"
+    ],
+    "M05": [
+      "M03"
+    ],
+    "M06": [
+      "M01",
+      "M02",
+      "M03",
+      "M04",
+      "M05"
+    ],
+    "A01": [],
+    "A02": [
+      "A01"
+    ],
+    "A03": [
+      "R03",
+      "O01"
+    ],
+    "A04": [],
+    "W01": [],
+    "W02": [
+      "W01"
+    ],
+    "C01": [],
+    "C02": [
+      "C01",
+      "A01",
+      "A02",
+      "G01"
+    ],
+    "C03": [
+      "C02"
+    ],
+    "C04": [],
+    "C05": [
+      "C01",
+      "C02"
+    ],
+    "P01": [
+      "R03"
+    ],
+    "P02": [
+      "R03"
+    ],
+    "O01": [],
+    "O02": [],
+    "G01": [],
+    "G02": [
+      "M06",
+      "R08"
+    ],
+    "F01": [],
+    "F02": [
+      "P02",
+      "R03"
+    ]
+  },
+  "soft": {
+    "S01": [
+      "O02"
+    ],
+    "R03": [
+      "O01"
+    ],
+    "R04": [
+      "S03"
+    ],
+    "R08": [
+      "S03",
+      "O01"
+    ],
+    "A01": [
+      "O01"
+    ],
+    "A04": [
+      "A02",
+      "P02"
+    ],
+    "W01": [
+      "O01"
+    ],
+    "O01": [
+      "O02"
+    ],
+    "G01": [
+      "A01"
+    ]
+  },
+  "externalHard": {
+    "C01": [
+      "MCP-REQ-001"
+    ],
+    "C02": [
+      "MCP-REQ-001"
+    ],
+    "C03": [
+      "MCP-REQ-001"
+    ],
+    "C04": [
+      "NFR-007"
+    ],
+    "F02": [
+      "EVO-001"
+    ]
+  },
+  "external": [
+    {
+      "id": "MCP-REQ-001",
+      "kind": "hard",
+      "remaining": [
+        1,
+        2
+      ],
+      "blocks": [
+        "C01",
+        "C02",
+        "C03"
+      ],
+      "why": "MCP启用与产品验收定义；不能由实现自行选择协议/风险语义",
+      "task_snapshot": {
+        "id": "MCP-REQ-001",
+        "title": "MCP 产品验收定义（补 PRD §5 章节）",
+        "status": "backlog",
+        "depends_on": [],
+        "scope": {
+          "allowed_paths": [
+            "docs/product/项目产品需求方案.md",
+            "docs/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产密钥",
+            "app/"
+          ],
+          "deliverables": [
+            "PRD 新增 MCP 章节，含四个可验收口径：调用超时默认值、权限/风险分级、审计字段、凭据存储要求",
+            "MCP 启用条件与配置口径：MCP_ENABLED 默认关，明确何时启用、启用手册"
+          ],
+          "non_goals": [
+            "不实现 MCP 代码",
+            "不定技术方案"
+          ]
+        },
+        "acceptance": [
+          "PRD 的 MCP 章节存在",
+          "超时、权限、审计、凭据四项各有一条可判定的验收标准",
+          "能作为 PMCP-001/002/003/004 的验收依据",
+          "PRD 写明 MCP 启用条件与 MCP_ENABLED 配置口径"
+        ]
+      }
+    },
+    {
+      "id": "NFR-006",
+      "kind": "hard_transitive",
+      "remaining": [
+        3,
+        5
+      ],
+      "blocks": [
+        "NFR-007"
+      ],
+      "why": "现有NFR-007的未完成前置，提交/CI密钥与依赖扫描",
+      "task_snapshot": {
+        "id": "NFR-006",
+        "title": "pre-commit 密钥扫描与依赖漏洞扫描",
+        "status": "backlog",
+        "depends_on": [
+          "NFR-001"
+        ],
+        "scope": {
+          "allowed_paths": [
+            ".pre-commit-config.yaml",
+            ".github/",
+            "pyproject.toml",
+            "docs/AI辅助开发迭代指导.md",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产密钥"
+          ],
+          "deliverables": [
+            "提交前扫描密钥与依赖漏洞",
+            "CI 中同步执行依赖漏洞检查"
+          ],
+          "non_goals": [
+            "不做自动修复",
+            "不阻断历史提交"
+          ]
+        },
+        "acceptance": [
+          "构造含测试密钥的提交被拦截",
+          "依赖漏洞检查在 CI 中运行"
+        ]
+      }
+    },
+    {
+      "id": "NFR-007",
+      "kind": "hard",
+      "remaining": [
+        4,
+        7
+      ],
+      "blocks": [
+        "C04"
+      ],
+      "why": "统一密钥能力；C04不得另建明文或平行加密方案",
+      "task_snapshot": {
+        "id": "NFR-007",
+        "title": "API Key 与模型密钥加密存储",
+        "status": "backlog",
+        "depends_on": [
+          "NFR-006"
+        ],
+        "scope": {
+          "allowed_paths": [
+            "app/core/config.py",
+            "app/security/",
+            "app/models/",
+            "alembic/",
+            ".env.example",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env",
+            "生产密钥"
+          ],
+          "deliverables": [
+            "密钥加密存储，读取时解密",
+            "已有明文密钥的迁移步骤与说明"
+          ],
+          "non_goals": [
+            "不引入第三方密钥托管服务",
+            "不改用户密码哈希方式"
+          ]
+        },
+        "acceptance": [
+          "配置与数据库中不含明文密钥",
+          "已有密钥可通过脚本完成迁移"
+        ]
+      }
+    },
+    {
+      "id": "EVO-001",
+      "kind": "hard",
+      "remaining": [
+        3,
+        6
+      ],
+      "blocks": [
+        "F02"
+      ],
+      "why": "Reflect/蒸馏真实运行底座，候选生成不能绕过",
+      "task_snapshot": {
+        "id": "EVO-001",
+        "title": "Reflect 与夜间蒸馏可锁定运行",
+        "status": "backlog",
+        "depends_on": [],
+        "scope": {
+          "allowed_paths": [
+            "app/evolution/",
+            "app/services/",
+            "app/core/config.py",
+            ".env.example",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env"
+          ],
+          "deliverables": [
+            "开关打开时，对话结束后能反思",
+            "夜间蒸馏按配置跑完并留下记录"
+          ],
+          "non_goals": [
+            "不把默认关闭算完成",
+            "不在本条把反思结果直接改成技能"
+          ]
+        },
+        "acceptance": [
+          "打开开关的一次对话有反思记录",
+          "一次按配置跑完的蒸馏有记录"
+        ]
+      }
+    },
+    {
+      "id": "NFR-011",
+      "kind": "soft",
+      "remaining": [
+        1,
+        2
+      ],
+      "blocks": [],
+      "why": "建议完善Embedding健康信息；不是核心12包或OPS-007的新增硬前置",
+      "task_snapshot": {
+        "id": "NFR-011",
+        "title": "检索可用性自检：health 暴露 Embedding 状态与模型维度",
+        "status": "backlog",
+        "depends_on": [],
+        "scope": {
+          "allowed_paths": [
+            "app/api/routes/health.py",
+            "app/rag/embeddings/",
+            "app/core/config.py",
+            "tests/",
+            "tasks.yaml"
+          ],
+          "forbidden_paths": [
+            ".env"
+          ],
+          "deliverables": [
+            "/health 增加 embedding 可用性字段，含 provider 与维度",
+            "评测与压测报告记录所用 Embedding 模型与维度"
+          ],
+          "non_goals": [
+            "不更换 Embedding 模型",
+            "不重做索引",
+            "不改生产 fail-fast 行为，该行为已实现"
+          ]
+        },
+        "acceptance": [
+          "进程已启动时 /health 输出 embedding 的 provider、模型、维度，以及当前是否为 Mock",
+          "生产缺 EMBEDDING_API_KEY 时保持启动失败，本卡不改这个行为",
+          "开发环境降级为 Mock 时 /health 标注该结果不可作为上线证据",
+          "压测与检索报告可追溯到模型与维度"
+        ]
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "id": "DEC-S",
+      "required_for": [
+        "S01",
+        "S02",
+        "S03"
+      ],
+      "text": "Milvus默认切换ADR/精确范围、Lite兼容环境与降级边界批准"
+    },
+    {
+      "id": "DEC-M",
+      "required_for": [
+        "M01",
+        "M02"
+      ],
+      "text": "MEM-002/003扩卡路径、治理保留与删除契约批准"
+    },
+    {
+      "id": "DEC-LTM",
+      "required_for": [
+        "M03",
+        "M04",
+        "M05",
+        "M06"
+      ],
+      "text": "MEM-004 v1.5暂缓如需提前须显式批准；主库/索引/权限设计批准"
+    },
+    {
+      "id": "DEC-EXP",
+      "required_for": [
+        "R05",
+        "A03",
+        "G02",
+        "R07",
+        "P02"
+      ],
+      "text": "相关样本/指标/模型费用与SLO于运行前批准锁定"
+    },
+    {
+      "id": "DEC-RERANK",
+      "required_for": [
+        "R06"
+      ],
+      "text": "R05有效新候选明确采纳；PRAG-002不能自行裁决"
+    },
+    {
+      "id": "DEC-HITL",
+      "required_for": [
+        "A01",
+        "A02"
+      ],
+      "text": "持久审批状态/幂等与工具风险边界ADR批准"
+    },
+    {
+      "id": "DEC-AGENT",
+      "required_for": [
+        "A04"
+      ],
+      "text": "Agent定义/Skill职责/可见性和授权交集ADR批准"
+    },
+    {
+      "id": "DEC-TRACE",
+      "required_for": [
+        "O01"
+      ],
+      "text": "Trace存储/字段脱敏/保留期/查询主体ADR批准"
+    },
+    {
+      "id": "DEC-ROUTE",
+      "required_for": [
+        "A03"
+      ],
+      "text": "V1C-006模型档位实验扩卡准入；不代表生产切路由"
+    },
+    {
+      "id": "DEC-EVAL",
+      "required_for": [
+        "R03",
+        "R04",
+        "R08"
+      ],
+      "text": "在线评测主体/数据授权、真实调用预算和数据外发范围批准；不由通用工具审批替代"
+    }
+  ],
+  "phases": [
+    {
+      "id": "D1",
+      "name": "Milvus运行底座",
+      "packages": [
+        "S01",
+        "S02",
+        "S03"
+      ],
+      "role": "开发者",
+      "outcome": "干净环境上传/检索/删除文档；Docker未起且符合空库/归属条件时使用Lite，能看到实际存储模式；异常明确",
+      "summary": {
+        "count": 3,
+        "existing": 0,
+        "new": 3,
+        "cost": [
+          11,
+          20
+        ]
+      }
+    },
+    {
+      "id": "D2",
+      "name": "证据可见与会话记忆修复",
+      "packages": [
+        "R01",
+        "M01",
+        "M02",
+        "F01",
+        "O01"
+      ],
+      "role": "有权查看的管理员、会话所有者",
+      "outcome": "查询RAG/Agent历史报告和脱敏运行详情；提交/删除反馈；长会话复用摘要；不承诺跨会话记忆",
+      "summary": {
+        "count": 5,
+        "existing": 3,
+        "new": 2,
+        "cost": [
+          17,
+          30
+        ]
+      }
+    },
+    {
+      "id": "D3",
+      "name": "最小在线评测闭环",
+      "packages": [
+        "R02",
+        "R03",
+        "R04",
+        "R08"
+      ],
+      "role": "被授权的评测维护者",
+      "outcome": "管理审核数据集、启动/取消受预算评测、比较检索策略、查看逐例失败；红色质量报告保持红色",
+      "summary": {
+        "count": 4,
+        "existing": 0,
+        "new": 4,
+        "cost": [
+          16,
+          29
+        ]
+      }
+    },
+    {
+      "id": "D4",
+      "name": "安全与运维增强",
+      "packages": [
+        "A01",
+        "A02",
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05",
+        "G01",
+        "W01",
+        "O02"
+      ],
+      "role": "有权审批者、租户管理员、运维维护者",
+      "outcome": "审批限定高风险动作并验证重放拒绝；查询工作流日志；受控MCP调用、凭据引用、版本拒绝和基础指标",
+      "summary": {
+        "count": 10,
+        "existing": 6,
+        "new": 4,
+        "cost": [
+          30,
+          52
+        ]
+      }
+    },
+    {
+      "id": "D5",
+      "name": "配置与生产力增强",
+      "packages": [
+        "A04",
+        "W02",
+        "P01",
+        "P02",
+        "R07",
+        "F02"
+      ],
+      "role": "被授权配置维护者",
+      "outcome": "编辑已有工作流步骤、管理受权Agent定义、对照Prompt、审核技能/试题/反思草稿；未经确认不生效",
+      "summary": {
+        "count": 6,
+        "existing": 1,
+        "new": 5,
+        "cost": [
+          24,
+          44
+        ]
+      }
+    },
+    {
+      "id": "DX",
+      "name": "按问题启动的实验",
+      "packages": [
+        "R05",
+        "A03",
+        "G02"
+      ],
+      "role": "评测维护者与业务审核者",
+      "outcome": "产出采纳/不采纳/证据不足结论，不能当成已上线功能",
+      "summary": {
+        "count": 3,
+        "existing": 1,
+        "new": 2,
+        "cost": [
+          11,
+          20
+        ]
+      }
+    },
+    {
+      "id": "DY",
+      "name": "明确采纳后的重排落地",
+      "packages": [
+        "R06"
+      ],
+      "role": "受控启用维护者",
+      "outcome": "仅在采纳授权下灰度启用已验证候选，可关闭回退",
+      "summary": {
+        "count": 1,
+        "existing": 1,
+        "new": 0,
+        "cost": [
+          4,
+          7
+        ]
+      }
+    },
+    {
+      "id": "DM",
+      "name": "暂缓的跨会话记忆分支",
+      "packages": [
+        "M03",
+        "M04",
+        "M05",
+        "M06"
+      ],
+      "role": "用户和授权维护者",
+      "outcome": "仅在排期批准后提供长期记忆管理、抽取、检索注入及遗忘；不是本阶段默认要求",
+      "summary": {
+        "count": 4,
+        "existing": 1,
+        "new": 3,
+        "cost": [
+          15,
+          27
+        ]
+      }
+    }
+  ],
+  "group_summary": {
+    "core": {
+      "count": 12,
+      "existing": 3,
+      "new": 9,
+      "cost": [
+        44,
+        79
+      ]
+    },
+    "later": {
+      "count": 16,
+      "existing": 7,
+      "new": 9,
+      "cost": [
+        54,
+        96
+      ]
+    },
+    "experiments": {
+      "count": 3,
+      "existing": 1,
+      "new": 2,
+      "cost": [
+        11,
+        20
+      ]
+    },
+    "conditional": {
+      "count": 1,
+      "existing": 1,
+      "new": 0,
+      "cost": [
+        4,
+        7
+      ]
+    },
+    "deferred": {
+      "count": 4,
+      "existing": 1,
+      "new": 3,
+      "cost": [
+        15,
+        27
+      ]
+    }
+  },
+  "external_summary": {
+    "hard_unfinished_cards": 4,
+    "hard_remaining": [
+      11,
+      20
+    ],
+    "soft_cards": 1,
+    "soft_remaining": [
+      1,
+      2
+    ],
+    "all36_plus_hard": [
+      139,
+      249
+    ],
+    "all36_plus_hard_plus_soft": [
+      140,
+      251
+    ],
+    "estimate_status": "proposed_static_remaining_not_measured",
+    "includes_production_operations": false,
+    "core_additional_hard_task_cost": [
+      0,
+      0
+    ]
+  },
+  "evidence": {
+    "target_head": "ac494b386bccd00e5e0f66f1ec214664cdb3216d",
+    "tasks_sha256": "2518efa6c70fc25789b3a89b2cf4edfc59a98560afe45ded081502fd6cfb5d4f",
+    "assessment_sha256": "499f2ecfb2959fdb907c3d918fdcf99ba6b0f9c33c6c2987a173746762ab307e",
+    "business_changes": false,
+    "runtime_tests": "not_run_document_only"
+  },
+  "high_uncertainty_probes": [
+    {
+      "package": "S02",
+      "person_day_cap_proposed": 1,
+      "stop_on": "锁定SDK/目标平台无法证明Lite契约可用",
+      "failure_action": "明确依赖/环境替代方案并审批，不退回local或无证据升级"
+    },
+    {
+      "package": "A01",
+      "person_day_cap_proposed": 1.5,
+      "stop_on": "副作用未知结果/幂等边界无法证明",
+      "failure_action": "未知结果人工核对，缩小支持工具范围，不承诺通用exactly-once"
+    },
+    {
+      "package": "M03",
+      "person_day_cap_proposed": 1,
+      "stop_on": "授权/删除/实例身份不闭合",
+      "failure_action": "保持暂缓，修订设计"
+    },
+    {
+      "package": "R03",
+      "person_day_cap_proposed": 1,
+      "stop_on": "runner取消/预算/终态无法通过受控接口闭环",
+      "failure_action": "修订任务适配层，保留只读报告交付"
+    }
+  ],
+  "shared_owners": {
+    "evaluation_report_contract": "R01",
+    "evaluation_dataset_and_feedback_candidates": "R02",
+    "evaluation_job_lifecycle": "R03",
+    "tool_approval_state": "A01",
+    "tool_approval_ui": "A02",
+    "memory_authorization": "M02",
+    "long_term_memory_storage": "M03",
+    "run_history_and_metrics_ui": "O01",
+    "basic_metrics_endpoint": "O02",
+    "workflow_log_base": "PWFL-004",
+    "workflow_log_api_ui": "W01",
+    "skill_draft_review": "P02",
+    "reflection_candidates": "F02",
+    "model_budget": "existing_llm_budget_contract"
+  },
+  "summary_notes": [
+    "No tasks.yaml or business implementation changes",
+    "Scope tiers and dependency edges are proposals, not implementation approval",
+    "Prior document validation reports are historical and not current report hashes",
+    "R08 core manifest is R01-R04 plus existing runners; later features own integration regression",
+    "Core plan adds R08 from existing 36, not package 37"
+  ]
+}

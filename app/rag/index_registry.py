@@ -14,9 +14,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
+from sqlalchemy.engine import Connection, Engine
 from sqlmodel import Session, col, select
 
 from app.models.rag import Document, DocumentChunk, EmbeddingIndex, IndexStatus
@@ -169,14 +171,6 @@ def activate_index(
             f"索引 {target.name} 名下没有任何分块，拒绝激活空索引"
             "（激活后知识库会表现为正常 no_hit，属于静默数据丢失）"
         )
-    if actual != target.chunk_count:
-        # 登记自报数与实际不一致时以实际为准并留痕，不让错误数字误导运维。
-        logger.warning(
-            "embedding_index_chunk_count_mismatch name=%s registered=%s actual=%s",
-            target.name, target.chunk_count, actual,
-        )
-        target.chunk_count = actual
-    now = _now()
     retired_rows = [
         row
         for row in session.exec(
@@ -187,6 +181,15 @@ def activate_index(
         ).all()
         if row.id != target.id
     ]
+    _require_complete_rebuild(session, target, retired_rows)
+    if actual != target.chunk_count:
+        # 覆盖已核对之后才用实际分块数更正登记。不完整重建不能靠改数字通过。
+        logger.warning(
+            "embedding_index_chunk_count_mismatch name=%s registered=%s actual=%s",
+            target.name, target.chunk_count, actual,
+        )
+        target.chunk_count = actual
+    now = _now()
     # 先落状态再校验检索：``hybrid_search`` 只认 active 索引，抽样必须在切换之后
     # 才能真正走一遍生产读路径。校验不通过时 _revert_switch 把它恢复原样。
     previous = _apply_switch(session, target, retired_rows, now)
@@ -210,6 +213,50 @@ def activate_index(
         target.name, target.backend, target.model, target.dim,
     )
     return target
+
+
+def _current_document_chunk_counts(session: Session, index_id: str) -> dict[str, int]:
+    """当前可见文档在指定索引上的分块数。已删除或非当前文档不计入覆盖。"""
+    rows = session.exec(
+        select(DocumentChunk.document_id)
+        .join(Document, col(Document.id) == col(DocumentChunk.document_id))
+        .where(
+            col(DocumentChunk.index_id) == index_id,
+            col(Document.deleted_at).is_(None),
+            col(Document.is_current).is_(True),
+        )
+    ).all()
+    counts: dict[str, int] = {}
+    for document_id in rows:
+        key = str(document_id)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _require_complete_rebuild(
+    session: Session,
+    target: EmbeddingIndex,
+    retired_rows: list[EmbeddingIndex],
+) -> None:
+    """即将退役的生效索引上，每篇当前文档都要在目标索引有不少于原来的分块。"""
+    target_counts: dict[str, int] | None = None
+    for old in retired_rows:
+        old_counts = _current_document_chunk_counts(session, old.id)
+        if not old_counts:
+            continue
+        if target_counts is None:
+            target_counts = _current_document_chunk_counts(session, target.id)
+        missing = [
+            document_id
+            for document_id, count in old_counts.items()
+            if target_counts.get(document_id, 0) < count
+        ]
+        if missing:
+            raise IndexIdentityError(
+                f"索引 {target.name} 没有完整覆盖即将退役的索引 {old.name}："
+                f"{len(missing)} 篇当前文档缺少足够分块（样例：{missing[:5]}）。"
+                "部分重建不能激活，原生效索引保持不变。"
+            )
 
 
 def _apply_switch(
@@ -266,33 +313,39 @@ def identity_of_row(row: EmbeddingIndex) -> EmbeddingIndexIdentity:
     )
 
 
-async def _probe_retrieval_hits(target: EmbeddingIndex) -> int:
-    """对每个采样分块，**用它自己的向量**做一次只读自检，返回能在 top-k 内命中自己的条数。
+def _session_engine(session: Session) -> Engine:
+    """取调用方会话绑定的引擎。连接对象先收回它所属的引擎，避免查到另一份库。"""
+    bind = session.get_bind()
+    if isinstance(bind, Connection):
+        return bind.engine
+    return bind
 
-    自匹配不需要调用嵌入接口，也不需要假设查询文本怎么切分：查不回来说明这批
-    向量根本不在当前读路径上（维度与索引登记不符、文档已下线、集合没接通等）。
 
-    实现方式（H-R1 / M-R2 / SQLite 写锁修复）：
+def _vector_is_probeable(vector: list, dim: int) -> bool:
+    """只接受维度相符、数值有限且不是零向量的样本。异常数值不能当成检索成功。"""
+    if len(vector) != dim:
+        return False
+    numeric = all(
+        isinstance(item, int | float) and not isinstance(item, bool) and math.isfinite(item)
+        for item in vector
+    )
+    if not numeric:
+        return False
+    return any(item != 0 for item in vector)
 
-    - 在**独立 Session** 内做**纯只读**查询，不跨线程共享主线程 Session，也不写
-      任何 active/retired 状态——写临时状态会与主事务的未提交写事务在 SQLite 上
-      撞 ``database is locked``；
-    - 不经过 ``get_vector_store`` / ``resolve_read_index_for``，直接按
-      ``target.id`` 过滤分块，JOIN Document 做可见性过滤（与
-      ``LocalVectorStore.hybrid_search`` 的候选集一致：``deleted_at IS NULL`` 且
-      ``is_current = True``）；
-    - 用 numpy 余弦相似度在内存矩阵上算 top-k，看 sample 自己是否排进前
-      ``RETRIEVAL_PROBE_TOP_K``。
 
-    业务语义与原 ``hybrid_search`` 自检等价：
-      - 有分块、文档在线、维度匹配 → hits >= 1 → 允许激活；
-      - 无分块 / 分块挂在离线文档上 / 维度漂移 → hits = 0 → 拒绝激活。
+async def _probe_retrieval_hits(target: EmbeddingIndex, bind: Engine) -> int:
+    """对采样分块做只读自检，返回能在 top-k 内命中自己的条数。
+
+    本地后端用调用方数据库里的向量做内存余弦自匹配。Milvus 后端必须连上目标
+    集合并检索这些向量；连接或检索失败时异常原样抛出，由激活入口撤销切换。
+
+    在独立 Session 内做只读查询，不跨线程共享主线程 Session，也不写
+    active/retired 状态。候选与本地检索一致：文档未删除且为当前版本。
     """
     import numpy as np
 
-    from app.core.database import engine
-
-    with Session(engine) as probe_session:
+    with Session(bind) as probe_session:
         rows = probe_session.exec(
             select(DocumentChunk)
             .join(Document, col(DocumentChunk.document_id) == col(Document.id))
@@ -305,16 +358,22 @@ async def _probe_retrieval_hits(target: EmbeddingIndex) -> int:
         if not rows:
             return 0
 
-        # 加载向量矩阵：只保留维度与登记 dim 一致的分块，与 LocalVectorStore 一致。
         embeddings: list[list[float]] = []
         chunk_ids: list[str] = []
         for chunk in rows:
             vec = _loads_list(chunk.embedding)
-            if vec and len(vec) == target.dim:
+            if _vector_is_probeable(vec, target.dim):
                 embeddings.append(vec)
                 chunk_ids.append(chunk.id)
         if not embeddings:
             return 0
+        if target.backend == "milvus":
+            from app.rag.vectorstore.milvus import MilvusVectorStore
+
+            samples = list(zip(chunk_ids, embeddings, strict=True))[:RETRIEVAL_PROBE_SAMPLE_SIZE]
+            return MilvusVectorStore(probe_session).count_self_hits(
+                target, samples, limit=RETRIEVAL_PROBE_TOP_K
+            )
 
         matrix = np.array(embeddings, dtype=np.float64)
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
@@ -322,12 +381,12 @@ async def _probe_retrieval_hits(target: EmbeddingIndex) -> int:
         matrix = matrix / norms
 
         # 抽样自检：取前 RETRIEVAL_PROBE_SAMPLE_SIZE 条在线分块。
-        samples = rows[:RETRIEVAL_PROBE_SAMPLE_SIZE]
+        samples = [
+            (chunk_id, vector)
+            for chunk_id, vector in zip(chunk_ids, embeddings, strict=True)
+        ][:RETRIEVAL_PROBE_SAMPLE_SIZE]
         hits = 0
-        for sample in samples:
-            vec = _loads_list(sample.embedding)
-            if not vec or len(vec) != target.dim:
-                continue
+        for sample_id, vec in samples:
             q = np.array(vec, dtype=np.float64)
             q_norm = np.linalg.norm(q)
             if q_norm == 0:
@@ -336,7 +395,7 @@ async def _probe_retrieval_hits(target: EmbeddingIndex) -> int:
             scores = matrix @ q
             top_indices = set(np.argsort(-scores)[:RETRIEVAL_PROBE_TOP_K].tolist())
             top_ids = {chunk_ids[i] for i in top_indices}
-            if sample.id in top_ids:
+            if sample_id in top_ids:
                 hits += 1
         return hits
 
@@ -359,16 +418,16 @@ def probe_retrieval_hits(session: Session, target: EmbeddingIndex) -> int:
     异步用例），此时 ``asyncio.run`` 会直接抛 RuntimeError，因此放到独立线程
     的新循环里跑；没有运行中的循环时直接在当前线程跑。
 
-    ``session`` 参数保留是为了与调用方 ``activate_index`` 的签名兼容；实际 probe
-    在独立 Session 内进行（见 :func:`_probe_retrieval_hits` 的 docstring），本函数
-    不再把传入的 Session 跨线程传递。
+    新 Session 使用调用方会话的数据库引擎，不读取进程全局引擎，也不把原 Session
+    交给另一个线程。
     """
+    bind = _session_engine(session)
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(_probe_retrieval_hits(target))
+        return asyncio.run(_probe_retrieval_hits(target, bind))
     with ThreadPoolExecutor(max_workers=1, thread_name_prefix="index-probe") as pool:
-        return pool.submit(asyncio.run, _probe_retrieval_hits(target)).result()
+        return pool.submit(asyncio.run, _probe_retrieval_hits(target, bind)).result()
 
 
 def resolve_write_index(

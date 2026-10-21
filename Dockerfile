@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制应用源码，再用前端构建阶段的产物覆盖，避免把 Node 留在最终镜像里。
 COPY . .
-ARG INSTALL_MILVUS=false
+ARG INSTALL_MILVUS=true
 RUN if [ "$INSTALL_MILVUS" = "true" ]; then pip install --no-cache-dir '.[milvus]'; \
     elif [ "$INSTALL_MILVUS" != "false" ]; then echo 'INSTALL_MILVUS must be true or false' >&2; exit 1; fi
 COPY --from=frontend /src/dist ./frontend/dist

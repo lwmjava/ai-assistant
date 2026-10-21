@@ -527,31 +527,24 @@ def test_activate_refuses_index_whose_chunks_are_unreachable_via_cli(
     runtime_provider["provider"] = new_provider
     target = ensure_index(session, identity_from_provider(new_provider))
     session.commit()
-    # 目标索引名下的分块挂在「已下线」文档上：名字之间存在，检索一条都出不来
-    tenant = f"cli-dead-{uuid.uuid4().hex[:8]}"
-    doc = Document(
-        id=f"d-{uuid.uuid4().hex[:8]}",
-        tenant_id=tenant,
-        user_id="u1",
-        title="下线文档",
-        source="s",
-        content_hash=f"h-{uuid.uuid4().hex[:8]}",
-        is_current=False,
-        chunk_count=1,
-    )
-    session.add(doc)
-    session.add(
-        DocumentChunk(
-            id=f"c-{uuid.uuid4().hex[:8]}",
-            tenant_id=tenant,
-            document_id=doc.id,
-            content="拿不到的内容",
-            source="s",
-            embedding=json.dumps([0.1] * 8),
-            tokens=json.dumps(["拿不到"]),
-            index_id=target.id,
+    # 当前文档已复制到目标索引，但向量维度对不上，检索一条都出不来。
+    old_chunks = session.exec(
+        select(DocumentChunk).where(col(DocumentChunk.index_id) == old_index.id)
+    ).all()
+    assert old_chunks
+    for source in old_chunks:
+        session.add(
+            DocumentChunk(
+                id=f"c-{uuid.uuid4().hex[:8]}",
+                tenant_id=source.tenant_id,
+                document_id=source.document_id,
+                content=source.content,
+                source=source.source,
+                embedding=json.dumps([0.1, 0.0]),
+                tokens=source.tokens,
+                index_id=target.id,
+            )
         )
-    )
     session.commit()
 
     rc, out, err = _cli(monkeypatch, capsys, ["activate", "--index-id", target.id])

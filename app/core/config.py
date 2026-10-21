@@ -227,7 +227,7 @@ class Settings(BaseSettings):
     RAG_EMBED_BATCH_DEADLINE_SECONDS: float = 20.0
 
     # ── 向量库与检索 ──
-    RAG_VECTOR_STORE: str = "local"  # local（SQLite + numpy）| milvus
+    RAG_VECTOR_STORE: str = "milvus"  # milvus | local（仅显式离线评测/隔离测试）
     RAG_CHUNK_SIZE: int = 500  # 分块字符数上限
     RAG_CHUNK_OVERLAP: int = 64  # 分块重叠字符数
     # 默认切分策略：structured | paragraph | sliding_window | token_aware |

@@ -8750,62 +8750,77 @@ tasks:
         auto_merge: false
         auto_deploy: false
 
-  - id: "FEED-001"
-    title: "对话反馈：接口与表结构"
-    status: "backlog"
-    priority: "P1"
-    target_date: ""
+  - id: FEED-001
+    title: 对话反馈：接口与表结构
+    status: backlog
+    priority: P1
+    target_date: ''
     depends_on: []
     context:
-      problem: "用户不能对失败尝试或助手回复提交有用/无用；缺少反馈表与接口。"
+      problem: 用户不能对失败尝试或助手回复提交有用/无用；缺少反馈表与接口。
       facts:
-        - claim: "2026-10-03 定为 1.0 要做，接口与表结构必交付。"
-          evidence: "docs/plans/plan_v1_undecided3_20261003.md；docs/product/项目产品需求方案.md §5.12"
-        - claim: "详细契约见 plan_chat_feedback.md。"
-          evidence: "docs/plans/plan_chat_feedback.md"
+      - claim: 2026-10-03 定为 1.0 要做，接口与表结构必交付。
+        evidence: docs/plans/plan_v1_undecided3_20261003.md；docs/product/项目产品需求方案.md §5.12
+      - claim: 详细契约见 plan_chat_feedback.md。
+        evidence: docs/plans/plan_chat_feedback.md
     scope:
       allowed_paths:
-        - "app/models/"
-        - "app/schemas/"
-        - "app/api/"
-        - "app/services/"
-        - "frontend/src/"
-        - "alembic/"
-        - "tests/"
-        - "docs/"
-        - "tasks.yaml"
+      - app/models/
+      - app/schemas/
+      - app/api/
+      - app/services/
+      - frontend/src/
+      - alembic/
+      - tests/
+      - docs/
+      - tasks.yaml
       forbidden_paths:
-        - ".env"
-        - "生产数据"
+      - .env
+      - 生产数据
       deliverables:
-        - "反馈相关表与迁移"
-        - "失败反馈与有用/无用提交、查询、删除 API"
-        - "对话页可提交；保存前脱敏"
+      - 反馈相关表与迁移
+      - 失败反馈与有用/无用提交、查询、删除 API
+      - 对话页可提交；保存前脱敏
       non_goals:
-        - "不直接修改技能、Prompt 或模型"
-        - "不做跨租户质量排行"
-        - "语料快照运营闭环若超出本卡另开卡"
+      - 不直接修改技能、Prompt 或模型
+      - 不做跨租户质量排行
+      - 语料快照运营闭环若超出本卡另开卡
     acceptance:
-        - "存在可复现的表结构与 OpenAPI 路径"
-        - "所有者可提交失败反馈与有用/无用，并可删除自己的记录"
-        - "库内评论经脱敏；未授权提交被拒绝"
+    - 存在可复现的表结构与 OpenAPI 路径
+    - 所有者可提交失败反馈与有用/无用，并可删除自己的记录
+    - 库内评论经脱敏；未授权提交被拒绝
     risk:
-      level: "L1"
-      side_effect: "chat-feedback-schema"
-      rollback: "回退迁移与路由；删除反馈表数据需人工确认。"
+      level: L1
+      side_effect: chat-feedback-schema
+      rollback: 回退迁移与路由；删除反馈表数据需人工确认。
     evaluation:
       cases:
-        - "提交有用/无用与失败反馈各一次"
-        - "非所有者提交返回 404 或不授权"
+      - 提交有用/无用与失败反馈各一次
+      - 非所有者提交返回 404 或不授权
       commands:
-        - "pytest -k feedback -v"
+      - pytest -k feedback -v
     execution:
-      owner: "个人开发者"
+      owner: 个人开发者
       nightly:
         eligible: false
         production_access: false
         auto_merge: false
         auto_deploy: false
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#feed-001
+      reuse_package: F01
+      delivery_stage: D2
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      progress: 2026-10-21用户要求按核心12包开始拆分；本次只登记范围/依赖与计划，业务未实施，具体ADR、基线和最终回归待完成。
+      estimate_person_days:
+      - 2
+      - 4
+      design_preconditions:
+      - 沿用docs/plans/plan_chat_feedback.md及既有原卡契约；反馈候选入集只由EVAL-002实现，不扩本卡CRUD边界
 
   - id: "RAG-016"
     title: "父块展开：命中子块追加父块（方案 A）"
@@ -9080,103 +9095,188 @@ tasks:
         auto_merge: false
         auto_deploy: false
 
-  - id: "MEM-002"
-    title: "记忆增量压缩接线（existing_snapshot）"
-    status: "backlog"
-    priority: "P1"
-    target_date: ""
-    depends_on: []
+  - id: MEM-002
+    title: 记忆增量压缩接线（existing_snapshot）
+    status: backlog
+    priority: P1
+    target_date: ''
+    depends_on:
+    - MEM-003
     context:
-      problem: "chat_service._build_memory 每次从 DB 读全部消息且未传 existing_snapshot，compressor 已写好的增量压缩从未启用，长会话每次请求重算全部历史。"
+      problem: chat_service._build_memory 每次从 DB 读全部消息且未传 existing_snapshot，compressor 已写好的增量压缩从未启用，长会话每次请求重算全部历史。
       facts:
-        - claim: "compressor 已有增量压缩能力，但调用侧未接 existing_snapshot。"
-          evidence: "app/memory/compressor.py；app/services/chat_service.py"
-        - claim: "本卡来自 9 域评审 §2.9，低成本修正。"
-          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.3"
+      - claim: compressor 已有增量压缩能力，但调用侧未接 existing_snapshot。
+        evidence: app/memory/compressor.py；app/services/chat_service.py
+      - claim: 本卡来自 9 域评审 §2.9，低成本修正。
+        evidence: docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.3
     scope:
       allowed_paths:
-        - "app/services/chat_service.py"
-        - "app/memory/"
-        - "tests/"
-        - "tasks.yaml"
+      - app/services/chat_service.py
+      - app/memory/
+      - tests/
+      - tasks.yaml
+      - docs/plans/
+      - docs/reviews/
+      - docs/adr/0022-memory-snapshot-governance.md
+      - docs/adr/README.md
+      - docs/product/项目产品需求方案.md
+      - README.md
+      - app/services/memory_snapshots.py
+      - app/services/memory_policy.py
+      - app/models/memory_snapshot.py
+      - app/models/__init__.py
+      - app/models/conversation.py
+      - app/core/database.py
+      - alembic/versions/
+      - app/api/routes/chat.py
+      - app/core/config.py
+      - .env.example
+      - docs/ai-prompts/evals/memory-snapshot-lifecycle-v1.yaml
       forbidden_paths:
-        - ".env"
-        - "生产数据"
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
       deliverables:
-        - "_build_memory 传入 existing_snapshot，启用增量压缩"
-        - "长会话后续请求复用快照而非全量重算"
+      - _build_memory 传入 existing_snapshot，启用增量压缩
+      - 长会话后续请求复用快照而非全量重算
+      - 同一会话摘要快照持久化、消息处理边界/版本绑定与重启复用；由Service持库会话
+      - 复用MEM-003治理规则，错误快照拒绝或安全重算，不跨会话检索
       non_goals:
-        - "不做跨会话记忆（§5.7 排 v1.5）"
-        - "不做记忆检索"
-        - "不改压缩算法"
+      - 不做跨会话记忆（§5.7 排 v1.5）
+      - 不做记忆检索
+      - 不改压缩算法
+      - 不在Agent层直连数据库，不改变压缩算法或模型
+      - 不删除重要数据；本次只准备测试隔离与向前迁移脚本，不实际迁移现有库
     acceptance:
-      - "长会话第二次请求基于快照而非全量重算"
-      - "压缩结果正确保留最近消息（keep_recent）"
+    - 长会话第二次请求基于快照而非全量重算
+    - 压缩结果正确保留最近消息（keep_recent）
+    - 同会话后续请求及重启复用有效快照，旧消息不重复压缩；编辑/删除/权限/版本失效不得读旧快照
+    - 快照持久化由Service编排，摘要失败回退不泄露未授权内容；最终公共链全量回归与必要平台证据齐全
     risk:
-      level: "L1"
-      side_effect: "memory-incremental-wired"
-      rollback: "回退接线提交。"
+      level: L1
+      side_effect: memory-incremental-wired
+      rollback: 回退接线提交。
     evaluation:
       cases:
-        - "长会话快照复用与最近消息保留"
+      - 长会话快照复用与最近消息保留
       commands:
-        - "pytest -k \"memory\""
+      - pytest -k "memory"
     execution:
-      owner: "个人开发者"
+      owner: 个人开发者
       nightly:
         eligible: false
         production_access: false
         auto_merge: false
         auto_deploy: false
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#mem-002
+      reuse_package: M01
+      delivery_stage: D2
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      progress: 2026-10-21用户要求按核心12包开始拆分；本次只登记范围/依赖与计划，业务未实施，具体ADR、基线和最终回归待完成。
+      estimate_person_days:
+      - 3
+      - 5
+      design_preconditions:
+      - Proposed ADR-0022锁定快照边界、版本/消息游标、冲突、权限和失败模型后实施；MEM-003先完成适用规则
+      - 已批准扩卡登记models/alembic/service等必要路径；具体迁移Schema与保留期未在本次拍板
 
-  - id: "MEM-003"
-    title: "记忆治理：谁能读/存多久/如何删/防串租户"
-    status: "backlog"
-    priority: "P2"
-    target_date: ""
+  - id: MEM-003
+    title: 记忆治理：谁能读/存多久/如何删/防串租户
+    status: backlog
+    priority: P1
+    target_date: ''
     depends_on: []
     context:
-      problem: "记忆授权、期限、删除、租户隔离治理完全空白；跨会话记忆排期时若能力先于治理上线，会重蹈 MCP 的坑。"
+      problem: 记忆授权、期限、删除、租户隔离治理完全空白；跨会话记忆排期时若能力先于治理上线，会重蹈 MCP 的坑。
       facts:
-        - claim: "记忆治理空白，差距表第 3 表列出谁能读、存多久、如何删、防串租户四项。"
-          evidence: "docs/product/企业级上线差距-2026-10-02.md"
-        - claim: "本卡来自 9 域评审 §2.9；排期在 agent/rag/prompt/沙箱/mcp/workflow 之后，但属核心能力，定位为打标后第一批（跨会话记忆排期启动即开）。"
-          evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.4"
+      - claim: 记忆治理空白，差距表第 3 表列出谁能读、存多久、如何删、防串租户四项。
+        evidence: docs/product/企业级上线差距-2026-10-02.md
+      - claim: 本卡来自 9 域评审 §2.9；排期在 agent/rag/prompt/沙箱/mcp/workflow 之后，但属核心能力，定位为打标后第一批（跨会话记忆排期启动即开）。
+        evidence: docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_review_split_20261004.md §1.4
     scope:
       allowed_paths:
-        - "docs/"
-        - "app/memory/"
-        - "app/security/"
-        - "tests/"
-        - "tasks.yaml"
+      - docs/
+      - app/memory/
+      - app/security/
+      - tests/
+      - tasks.yaml
+      - docs/plans/
+      - docs/reviews/
+      - docs/adr/0022-memory-snapshot-governance.md
+      - docs/adr/README.md
+      - docs/product/项目产品需求方案.md
+      - README.md
+      - app/services/memory_snapshots.py
+      - app/services/memory_policy.py
+      - app/models/memory_snapshot.py
+      - app/models/__init__.py
+      - app/models/conversation.py
+      - app/core/database.py
+      - alembic/versions/
+      - app/api/routes/chat.py
+      - app/services/chat_service.py
+      - app/core/config.py
+      - .env.example
+      - docs/ai-prompts/evals/memory-snapshot-lifecycle-v1.yaml
       forbidden_paths:
-        - ".env"
-        - "生产数据"
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
       deliverables:
-        - "记忆治理规则：谁能读、存多久、如何删、如何防串租户"
-        - "治理规则落文档并在记忆读写路径上有校验"
+      - 记忆治理规则：谁能读、存多久、如何删、如何防串租户
+      - 治理规则落文档并在记忆读写路径上有校验
+      - 治理覆盖当前会话历史/摘要和后续会话快照的读写、失效、撤权与删除边界；提供MEM-002复用的策略接口
+      - 在当前对话记忆入口实际执行主体/租户/会话校验；长期记忆仅定义预留契约，不提前实现
       non_goals:
-        - "不实现跨会话记忆本身（§5.7 v1.5）"
-        - "不重复 MEM-002 的接线工作"
+      - 不实现跨会话记忆本身（§5.7 v1.5）
+      - 不重复 MEM-002 的接线工作
+      - 不提前MEM-004，不新增长期画像/抽取/检索，不重复快照持久化实现
+      - 不擅自选择未批准保留天数或静默删除当前数据库内容
     acceptance:
-      - "四条治理规则（读权限/期限/删除/租户隔离）各有明确判定"
-      - "规则在记忆读写路径上生效"
+    - 四条治理规则（读权限/期限/删除/租户隔离）各有明确判定
+    - 规则在记忆读写路径上生效
+    - 身份/租户/会话归属、过期/撤权/删除规则有测试及实际入口接线；不是仅文档治理
+    - 保留值、失效范围与回滚先在ADR锁定；MEM-002消费同一策略，不存在平行授权通道
     risk:
-      level: "L2"
-      side_effect: "memory-governance"
-      rollback: "回退治理规则与校验提交。"
+      level: L2
+      side_effect: memory-governance
+      rollback: 回退治理规则与校验提交。
     evaluation:
       cases:
-        - "读权限、期限、删除、跨租户隔离校验"
+      - 读权限、期限、删除、跨租户隔离校验
       commands:
-        - "pytest -k \"memory or tenant\""
+      - pytest -k "memory or tenant"
     execution:
-      owner: "个人开发者"
+      owner: 个人开发者
       nightly:
         eligible: false
         production_access: false
         auto_merge: false
         auto_deploy: false
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#mem-003
+      reuse_package: M02
+      delivery_stage: D2
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      progress: 2026-10-21用户要求按核心12包开始拆分；本次只登记范围/依赖与计划，业务未实施，具体ADR、基线和最终回归待完成。
+      estimate_person_days:
+      - 3
+      - 5
+      design_preconditions:
+      - 与MEM-002共享Proposed ADR-0022，规则/接口在快照实现前确定；新保留期数值需对应方案确认
 
   - id: "PROMPT-001"
     title: "Prompt / 模型版本可追踪（登记）"
@@ -10928,3 +11028,857 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+
+  - id: VDB-001
+    title: Milvus 成为默认向量后端并打通空库摄取
+    status: in_progress
+    priority: P1
+    depends_on:
+    - RAG-015
+    - RAG-032
+    - RAG-036
+    - V1C-001
+    context:
+      problem: 当前默认local走数据库+NumPy；已有Milvus适配但不能把默认字符串修改等同可运行交付。
+      facts:
+      - claim: app/core/config.py默认local；已有MilvusVectorStore、索引身份登记和Compose片段，Milvus仍Partial。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；app/rag/vectorstore/；app/rag/index_registry.py；app/rag/index_identity.py
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - app/rag/vectorstore/
+      - app/rag/index_registry.py
+      - app/rag/index_identity.py
+      - app/rag/ingestion.py
+      - app/rag/service.py
+      - app/models/rag.py
+      - app/core/config.py
+      - app/core/database.py
+      - app/main.py
+      - app/services/chat_retrieval.py
+      - app/api/routes/health.py
+      - app/api/routes/admin_system.py
+      - pyproject.toml
+      - Dockerfile
+      - docker-compose.yml
+      - docker-compose.prod.yml
+      - deploy/compose.milvus.prod.yml
+      - deploy/check_compose_defaults.py
+      - deploy/milvus/
+      - .env.example
+      - tests/
+      - scripts/milvus_switch_check.py
+      - scripts/milvus_five_gates.py
+      - scripts/check_production_compose.py
+      - scripts/rag_hybrid_embedding_check.py
+      - app/rag/embeddings/openai_compatible.py
+      - docs/adr/0002-official-vectorstore.md
+      - docs/adr/README.md
+      - docs/workflows/production-compose.md
+      - README.md
+      - AGENTS.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      - docs/product/项目产品需求方案.md
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 运行默认Milvus，空库首次上传即可登记索引、写入与检索
+      - 开发部署/依赖/健康状态与实际后端一致；local仅供显式离线评测/隔离测试，不自动兜底
+      non_goals:
+      - 不迁移或清空现有测试库
+      - 不引入Chroma、重排、查询改写或新稀疏召回架构
+      - 不在本卡实现Lite兜底；不删除冻结local评测
+    acceptance:
+    - 默认配置实际选择Milvus；未知配置/连接故障不静默退回local
+    - 真实Standalone下空库摄取、检索、删除、重解析、租户与索引身份校验通过
+    - 普通非检索请求不因无关Milvus故障失败；检索故障明确unavailable，不冒充no_hit
+    - 当前混合候选窗口限制和回滚有记录，必要最终版本检查通过
+    risk:
+      level: L1
+      side_effect: 开发环境可逆配置/存储/接口接线；仅按任务契约实施
+      rollback: 回退本卡默认与接线配置；保留数据和local离线实现，不宣称两库数据可自动互相接管
+    evaluation:
+      cases:
+      - 默认配置实际选择Milvus；未知配置/连接故障不静默退回local
+      - 真实Standalone下空库摄取、检索、删除、重解析、租户与索引身份校验通过
+      - 普通非检索请求不因无关Milvus故障失败；检索故障明确unavailable，不冒充no_hit
+      - 当前混合候选窗口限制和回滚有记录，必要最终版本检查通过
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#vdb-001
+      reuse_package: S01
+      delivery_stage: D1
+      estimate_person_days:
+      - 4
+      - 7
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 先修订ADR-0002并锁定具体默认/依赖/初始化方案；方向已授权无需重选向量库
+      - 现有SDK变更、新依赖或破坏性数据动作如确需发生须单独明确
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21已批准三文件扩围。准入反例已纳入tests/test_vdb_001_admission.py并修复租户回查、激活覆盖/绑定/远端探针和响应模型核验；默认配置与生产编排改为milvus，隔离测试仍显式local。说明见docs/plans/implementation_vdb_001_admission_20261021.md。真实Standalone、全量pytest、Linux/CI和独立审查未完成，保持in_progress。
+      implementation_plan: docs/plans/plan_vdb_001_20261021.md
+      admission_evidence:
+      - docs/reviews/2026-10-21-vdb-001-dependency-admission.md
+      - docs/reviews/2026-10-21-vdb-001-plan-review.md
+      blocked_by:
+      - 完整pytest基线退出1（79失败、3134通过、3跳过），原因尚未全部隔离；真实Milvus和Linux最终版本证据未取得。
+  - id: VDB-002
+    title: 开发环境 Milvus Lite 启动兜底与实例归属
+    status: backlog
+    priority: P1
+    depends_on:
+    - VDB-001
+    context:
+      problem: 本机Standalone未启动时需要开发可用路径，自动逐请求换库会产生数据归属混乱。
+      facts:
+      - claim: 当前pymilvus固定2.5.11并使用ORM接口；Lite/Windows兼容未实测，两实例不共享数据。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；app/rag/vectorstore/；app/rag/index_registry.py；app/rag/index_identity.py
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - app/rag/vectorstore/
+      - app/rag/index_registry.py
+      - app/rag/index_identity.py
+      - app/rag/cache.py
+      - app/models/rag.py
+      - app/core/config.py
+      - app/core/database.py
+      - app/main.py
+      - app/api/routes/health.py
+      - app/api/routes/admin_system.py
+      - app/schemas/admin.py
+      - alembic/versions/
+      - pyproject.toml
+      - .env.example
+      - tests/
+      - docs/adr/0019-milvus-lite-runtime-selection.md
+      - docs/adr/0002-official-vectorstore.md
+      - docs/adr/README.md
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 可验证的Lite兼容矩阵和开发启动兜底
+      - 持久化实例归属、索引/缓存隔离、实际模式及兜底原因可见
+      non_goals:
+      - 不逐请求换库，不运行中故障自动降级，不生产兜底
+      - 不双写/同步/自动重建、不静默切回Standalone、不清空旧实例
+      - 不未经批准升级SDK或把WSL可用冒充原生Windows通过
+    acceptance:
+    - 真实Lite摄取/检索/删除/重解析及重启持久化；服务可用时优先Standalone
+    - 仅连接不可达/未就绪可启动兜底；配置/身份/Schema/凭据错误明确拒绝
+    - 进程内模式固定，跨重启不因Docker恢复静默换库；归属不一致拒绝而非空命中
+    - 生产与显式远程服务地址禁止本机Lite兜底；真实平台与Linux证据齐全
+    risk:
+      level: L1
+      side_effect: 开发环境可逆配置/存储/接口接线；仅按任务契约实施
+      rollback: 关闭开发启动兜底、回退模式选择；保留Lite文件及索引登记；禁止自动删除或合并两库
+    evaluation:
+      cases:
+      - 真实Lite摄取/检索/删除/重解析及重启持久化；服务可用时优先Standalone
+      - 仅连接不可达/未就绪可启动兜底；配置/身份/Schema/凭据错误明确拒绝
+      - 进程内模式固定，跨重启不因Docker恢复静默换库；归属不一致拒绝而非空命中
+      - 生产与显式远程服务地址禁止本机Lite兜底；真实平台与Linux证据齐全
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#vdb-002
+      reuse_package: S02
+      delivery_stage: D1
+      estimate_person_days:
+      - 5
+      - 9
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - Proposed ADR-0019只预留路径，实施前锁定实例选择、持久化字段和兼容范围
+      - 建议1人日兼容探针属于本卡预算；失败停止并提出环境/依赖替代，不降低门禁
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+  - id: VDB-003
+    title: 默认 Milvus 与 Lite 模式组合验收
+    status: backlog
+    priority: P1
+    depends_on:
+    - VDB-001
+    - VDB-002
+    context:
+      problem: 单卡测试不能替代默认部署/两模式/故障路径的最终组合证据。
+      facts:
+      - claim: 已有历史Milvus五门证据，但不覆盖本批默认/Lite最终输入。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - tests/
+      - scripts/milvus_switch_check.py
+      - scripts/milvus_five_gates.py
+      - scripts/check_production_compose.py
+      - deploy/check_compose_defaults.py
+      - docs/workflows/production-compose.md
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 真实Standalone/Lite组合矩阵与最终版本证据
+      - 启动/停止/故障/回滚手册及可复现实验报告
+      non_goals:
+      - 不代替前两卡独立单测、不顺带修未授权业务
+      - 不发付费模型请求，不清现有库，不自动合并部署
+    acceptance:
+    - 默认/空库/双模式/归属/不可用/非检索隔离组合全部按锁定契约通过
+    - 同最终提交Ubuntu必要CI与适用Linux测试通过；缺证据保持in_review或blocked
+    - 明确Mock仅证明链路，记录SDK、服务版本、机器、命令、退出码和指纹
+    risk:
+      level: L0
+      side_effect: 验收使用独立临时测试库/集合并可能生成脱敏报告，不写重要数据
+      rollback: 本卡只回退验收脚本和文档；不得更改已保存业务数据
+    evaluation:
+      cases:
+      - 默认/空库/双模式/归属/不可用/非检索隔离组合全部按锁定契约通过
+      - 同最终提交Ubuntu必要CI与适用Linux测试通过；缺证据保持in_review或blocked
+      - 明确Mock仅证明链路，记录SDK、服务版本、机器、命令、退出码和指纹
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#vdb-003
+      reuse_package: S03
+      delivery_stage: D1
+      estimate_person_days:
+      - 2
+      - 4
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 前两卡交付及最终输入冻结后实施；外部CI推送权限按对应明确授权处理
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+  - id: EVAL-001
+    title: 受权评测报告查询与结果页面
+    status: backlog
+    priority: P1
+    depends_on:
+    - RAG-017
+    - RAG-035
+    - PAGT-007
+    context:
+      problem: 评测以文件/CI为主，缺受权报告列表、趋势和失败切片页面。
+      facts:
+      - claim: 已有RAG检索/生成及Agent runner与版本化报告；现前端无统一评测页面。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；app/api/routes/evaluation.py；app/api/router.py；app/services/evaluation_reports.py
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - app/api/routes/evaluation.py
+      - app/api/router.py
+      - app/services/evaluation_reports.py
+      - app/schemas/evaluation.py
+      - app/core/security.py
+      - frontend/src/pages/Evaluations.tsx
+      - frontend/src/api/evaluations.ts
+      - frontend/src/types/api.ts
+      - frontend/src/App.tsx
+      - frontend/src/components/layout/AppLayout.tsx
+      - frontend/src/lib/permissions.ts
+      - tests/
+      - frontend/src/
+      - docs/product/项目产品需求方案.md
+      - docs/swagger.json
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 只读报告API、稳定数据协议与有权列表/详情/趋势/失败切片
+      - 旧协议/缺测/失败状态和模型/数据/源码版本按真实口径显示
+      non_goals:
+      - 不重写评测器，不启动模型调用
+      - 不暴露任意文件路径下载，不把全局报告默认授予所有租户
+      - 不替代被测RAG/Agent质量发布结论
+    acceptance:
+    - 三类报告的数值/缺测/版本/失败切片与原始输入一致；不支持协议明确拒绝
+    - 报告归属未知时默认拒绝；未授权/跨租户访问不泄露正文或报告存在性
+    - 前后端契约与四项前端门禁通过，未将缺测显示为0或失败显示为通过
+    risk:
+      level: L1
+      side_effect: 开发环境可逆配置/存储/接口接线；仅按任务契约实施
+      rollback: 回退新路由和页面，保留原始报告/runner/CI
+    evaluation:
+      cases:
+      - 三类报告的数值/缺测/版本/失败切片与原始输入一致；不支持协议明确拒绝
+      - 报告归属未知时默认拒绝；未授权/跨租户访问不泄露正文或报告存在性
+      - 前后端契约与四项前端门禁通过，未将缺测显示为0或失败显示为通过
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#eval-001
+      reuse_package: R01
+      delivery_stage: D2
+      estimate_person_days:
+      - 4
+      - 7
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 实施计划先锁定报告读取主体、全局基线与租户运行结果分域、协议适配及脱敏；角色值不由前端决定
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+  - id: EVAL-002
+    title: 评测数据集版本审核与反馈候选管理
+    status: backlog
+    priority: P1
+    depends_on:
+    - EVAL-001
+    - FEED-001
+    context:
+      problem: 缺受控数据集管理与反馈进入回归候选的统一入口，直接改Gold会破坏证据。
+      facts:
+      - claim: 已有evals版本化数据与Schema，反馈CRUD由FEED-001负责，尚无受控入集页面。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；app/models/evaluation.py；app/models/__init__.py；app/core/database.py
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - app/models/evaluation.py
+      - app/models/__init__.py
+      - app/core/database.py
+      - alembic/versions/
+      - app/api/routes/evaluation.py
+      - app/services/evaluation_datasets.py
+      - app/schemas/evaluation.py
+      - frontend/src/
+      - tests/
+      - tests/eval/validation.py
+      - docs/product/项目产品需求方案.md
+      - docs/swagger.json
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 数据集创建/导入/导出/版本/等级/审核闭环
+      - 已授权反馈转待审回归候选，保留来源与审核记录
+      non_goals:
+      - 不覆盖冻结数据、阈值、holdout或官方基线
+      - 不自动升Gold，不实现试题模型生成
+      - 不重复FEED-001反馈CRUD，不扩展成训练语料运营平台
+    acceptance:
+    - 有效数据导入导出语义及哈希规则一致，非法Schema/版本/权限拒绝
+    - 冻结/holdout不可通过页面变成调参数据；AI生成默认非Gold
+    - 反馈候选能追溯原证据和审核，删除/撤权/租户隔离按批准契约生效
+    risk:
+      level: L1
+      side_effect: 开发环境可逆配置/存储/接口接线；仅按任务契约实施
+      rollback: 关闭新增管理入口并回退代码；保留原数据版本，数据删除另获授权
+    evaluation:
+      cases:
+      - 有效数据导入导出语义及哈希规则一致，非法Schema/版本/权限拒绝
+      - 冻结/holdout不可通过页面变成调参数据；AI生成默认非Gold
+      - 反馈候选能追溯原证据和审核，删除/撤权/租户隔离按批准契约生效
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#eval-002
+      reuse_package: R02
+      delivery_stage: D3
+      estimate_person_days:
+      - 5
+      - 8
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 先锁定数据集版本/不可变范围/审核主体及反馈快照授权和保留契约；不处理真实客户数据
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+  - id: EVAL-003
+    title: 受预算在线评测任务执行与取消
+    status: backlog
+    priority: P1
+    depends_on:
+    - EVAL-001
+    - EVAL-002
+    context:
+      problem: 缺从页面启动的受权评测生命周期；直接同步长调用会阻塞并失去取消与预算。
+      facts:
+      - claim: 三个现有runner可复用；无已批准统一后台评测任务存储/调用接口。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；app/models/evaluation.py；app/models/__init__.py；app/core/database.py
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - app/models/evaluation.py
+      - app/models/__init__.py
+      - app/core/database.py
+      - alembic/versions/
+      - app/api/routes/evaluation.py
+      - app/services/evaluation_jobs.py
+      - app/services/evaluation_reports.py
+      - app/schemas/evaluation.py
+      - app/main.py
+      - app/core/config.py
+      - app/llm/budget.py
+      - app/llm/counters.py
+      - scripts/run_rag_baseline.py
+      - scripts/run_rag_generation_eval.py
+      - scripts/run_agent_chain_eval.py
+      - frontend/src/
+      - tests/
+      - docs/adr/0020-evaluation-job-lifecycle.md
+      - docs/adr/README.md
+      - docs/product/项目产品需求方案.md
+      - docs/swagger.json
+      - .env.example
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 后台任务受权启动/状态/取消/有限并发/幂等/重启终态
+      - 复用runner与计数预算，任务/报告/输入版本可追溯
+      non_goals:
+      - 不任意shell拼接运行脚本，不新建第二Agent运行时
+      - 不默认付费、生产外发或通知，不调整质量门槛
+    acceptance:
+    - 重复提交、超限、取消、重启和外部失败有确定终态；未批准预算新增调用0
+    - 任务数据/报告/主体/模型用途绑定，失败保留失败，不隐式重试扩大调用
+    - 后台会话生命周期与权限复核正确，原官方门禁和前后端回归不退化
+    risk:
+      level: L2
+      side_effect: 受权评测任务可能调用外部模型；无预算批准不得调用
+      rollback: 停止接收新任务、受控收尾后回退服务；保留任务和报告证据，不清理运行数据
+    evaluation:
+      cases:
+      - 重复提交、超限、取消、重启和外部失败有确定终态；未批准预算新增调用0
+      - 任务数据/报告/主体/模型用途绑定，失败保留失败，不隐式重试扩大调用
+      - 后台会话生命周期与权限复核正确，原官方门禁和前后端回归不退化
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#eval-003
+      reuse_package: R03
+      delivery_stage: D3
+      estimate_person_days:
+      - 6
+      - 11
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 先锁定Proposed ADR-0020与任务/runner接口；建议1人日生命周期探针属于本卡预算
+      - 真实模型、数据外发和费用信封须批准；本次登记不含调用授权
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+  - id: EVAL-004
+    title: 受控检索策略对照与候选分析页面
+    status: backlog
+    priority: P1
+    depends_on:
+    - EVAL-001
+    context:
+      problem: 单次检索难比较候选/排序/来源/耗时，易把不同版本实验当改进。
+      facts:
+      - claim: 已有知识库单次检索与混合后端，来源项目有对比交互可借鉴。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；app/api/routes/evaluation.py；app/services/evaluation_comparison.py；app/schemas/evaluation.py
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - app/api/routes/evaluation.py
+      - app/services/evaluation_comparison.py
+      - app/schemas/evaluation.py
+      - app/rag/backend/base.py
+      - app/rag/backend/native.py
+      - app/rag/service.py
+      - app/rag/retriever.py
+      - frontend/src/
+      - tests/
+      - docs/product/项目产品需求方案.md
+      - docs/swagger.json
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 候选/排序/来源/耗时/输入身份配对对照API和页面
+      - 实验参数不污染线上默认配置，报告实际支持的策略
+      non_goals:
+      - 不在本卡新增重排/查询改写/向量库/稀疏架构
+      - 不修改RRF融合常数默认值，不用holdout调参
+      - 不为对比接口另建绕过RagService的授权通道
+    acceptance:
+    - 同输入与固定后端/数据身份可复现，跨身份混比拒绝
+    - 候选被正确映射到来源和版本；耗时口径明确，实验不改变后续线上请求默认
+    - 只暴露实际支持的策略；未授权读取、任意参数和预算外调用拒绝
+    risk:
+      level: L1
+      side_effect: 开发环境可逆配置/存储/接口接线；仅按任务契约实施
+      rollback: 关闭比较入口并回退适配，现有单次检索和默认排序保持
+    evaluation:
+      cases:
+      - 同输入与固定后端/数据身份可复现，跨身份混比拒绝
+      - 候选被正确映射到来源和版本；耗时口径明确，实验不改变后续线上请求默认
+      - 只暴露实际支持的策略；未授权读取、任意参数和预算外调用拒绝
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#eval-004
+      reuse_package: R04
+      delivery_stage: D3
+      estimate_person_days:
+      - 3
+      - 6
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 先锁定可比较参数矩阵；如当前后端不支持某策略须提出方案，不伪造空对比或悄改算法
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+  - id: EVAL-005
+    title: 最小评测平台组合与业务验收
+    status: backlog
+    priority: P1
+    depends_on:
+    - EVAL-001
+    - EVAL-002
+    - EVAL-003
+    - EVAL-004
+    context:
+      problem: 页面/API/runner各自通过不代表整条链路与门禁一致。
+      facts:
+      - claim: 核心清单尚未实现；算法增强不属于本批验收条件。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - tests/
+      - frontend/src/
+      - docs/checklists/
+      - docs/ai-prompts/evals/
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 核心平台端到端、权限、失败/预算与最终版本验收报告
+      - D3用户操作说明及明确未实现能力
+      non_goals:
+      - 不等待未批准重排、生成题目或长期记忆
+      - 不以平台交付宣称既有生成质量达标
+      - 不重开done卡，不在验收卡偷偷修业务
+    acceptance:
+    - 核心清单端到端矩阵通过；report与runner门禁判定一致，红色报告保持失败
+    - 所有必要最终后端/前端/适用Linux/同SHA CI检查完整，缺证据不得done
+    - 真实调用若未获授权/未运行须保留待验收，不用Mock替代质量结论
+    risk:
+      level: L0
+      side_effect: 验收使用独立临时测试库/集合并可能生成脱敏报告，不写重要数据
+      rollback: 回退验收脚本/说明，不删除已生成报告或业务数据
+    evaluation:
+      cases:
+      - 核心清单端到端矩阵通过；report与runner门禁判定一致，红色报告保持失败
+      - 所有必要最终后端/前端/适用Linux/同SHA CI检查完整，缺证据不得done
+      - 真实调用若未获授权/未运行须保留待验收，不用Mock替代质量结论
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#eval-005
+      reuse_package: R08
+      delivery_stage: D3
+      estimate_person_days:
+      - 2
+      - 4
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 锁定验收数据/角色/真实调用授权与最终指纹；后续新增功能各自承担集成回归
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+  - id: TRACE-001
+    title: 受权持久运行历史与脱敏 Trace 详情
+    status: backlog
+    priority: P1
+    depends_on:
+    - SSE-001
+    - PAGT-006
+    context:
+      problem: 内存Trace重启丢失，现有流式阶段/Plan无法替代受权历史查询。
+      facts:
+      - claim: TraceCollector以内存为主；已有SSE回放、状态检查点和前端阶段展示。
+        evidence: docs/plans/proposal_cross_project_reuse_20261021.md；app/debug/trace.py；app/services/run_history.py；app/services/chat_service.py
+      must_read:
+      - AGENTS.md
+      - docs/AI辅助开发迭代指导.md
+      - docs/governance/agent-harness-engineering.md
+      - docs/plans/plan_core_reuse_task_split_20261021.md
+      - docs/plans/proposal_cross_project_reuse_20261021.md
+    scope:
+      allowed_paths:
+      - app/debug/trace.py
+      - app/services/run_history.py
+      - app/services/chat_service.py
+      - app/services/supervisor_tools.py
+      - app/services/agent_state_service.py
+      - app/agents/pipeline.py
+      - app/agents/supervisor.py
+      - app/agents/tools/executor.py
+      - app/models/run_history.py
+      - app/models/__init__.py
+      - app/core/database.py
+      - alembic/versions/
+      - app/api/routes/run_history.py
+      - app/api/router.py
+      - app/schemas/run_history.py
+      - app/core/security.py
+      - app/core/config.py
+      - app/main.py
+      - frontend/src/
+      - tests/
+      - docs/adr/0021-run-history-storage-visibility.md
+      - docs/adr/README.md
+      - docs/product/项目产品需求方案.md
+      - docs/swagger.json
+      - .env.example
+      - README.md
+      - docs/plans/
+      - docs/reviews/
+      - tasks.yaml
+      forbidden_paths:
+      - .env
+      - 生产数据
+      - data/ai_assistant.db
+      - evals/reports/rag-v0.1-baseline-20260919.json
+      - evals/thresholds/
+      deliverables:
+      - 受权持久化运行历史、脱敏事件与节点详情查询
+      - 历史/Token/耗时页面，复用现有SSE/检查点和共享指标口径
+      non_goals:
+      - 不通过历史回放重新执行工具或模型
+      - 不保存原始敏感Prompt/凭据，不承诺多实例活跃任务恢复
+      - 不重复SSE-001，不把尚未实现OPS-007标成已具备
+    acceptance:
+    - 重启后可按身份/租户/会话查询保留范围内记录；越权拒绝且不泄露存在性
+    - 脱敏、截断、过期/删除契约生效；缺用量显示未知而非0
+    - 历史查看不产生模型/工具调用；阶段计时口径和真实usage来源可追溯
+    - 同最终输入的公共链全量后端、前端、适用Linux/CI检查通过
+    risk:
+      level: L2
+      side_effect: 开发环境可逆配置/存储/接口接线；仅按任务契约实施
+      rollback: 关闭新历史写读入口，回退接线；保留现有消息/状态和已落记录，物理删除另授权
+    evaluation:
+      cases:
+      - 重启后可按身份/租户/会话查询保留范围内记录；越权拒绝且不泄露存在性
+      - 脱敏、截断、过期/删除契约生效；缺用量显示未知而非0
+      - 历史查看不产生模型/工具调用；阶段计时口径和真实usage来源可追溯
+      - 同最终输入的公共链全量后端、前端、适用Linux/CI检查通过
+      commands:
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m ruff check .
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m mypy app/
+      - D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest
+      notes: 以上为未来必要命令，不代表本轮执行或通过；专项命令和前端/平台检查在单卡计划锁定。
+    execution:
+      owner: 个人开发者
+      plan: docs/plans/plan_core_reuse_task_split_20261021.md#trace-001
+      reuse_package: O01
+      delivery_stage: D2
+      estimate_person_days:
+      - 5
+      - 9
+      admission:
+        implementation_plan: 本拆分计划已落盘；修改业务前须补本卡具体接口/状态/模型/字段/回滚与精确命令，完成基线和必要设计审查。已授权方向不重复裁决。
+        baseline: 记录实际HEAD/分支/已有改动、隔离测试库与适用命令/环境/退出码；业务基线失败不可隔离时停止。
+        verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
+        authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
+        quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
+      design_preconditions:
+      - 先锁定Proposed ADR-0021，批准读取角色/字段/保留期/删除语义；不使用未批准数值默认
+      nightly:
+        eligible: false
+        production_access: false
+        auto_merge: false
+        auto_deploy: false
+      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。

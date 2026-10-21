@@ -288,6 +288,31 @@ def _chunk(
     return row
 
 
+def _mirror_chunk(
+    session: Session,
+    source: DocumentChunk,
+    index_id: str,
+    *,
+    embedding: list[float] | None = None,
+) -> DocumentChunk:
+    """把同一篇当前文档的分块复制到目标索引，供完整覆盖后的切换用例使用。"""
+    vector = embedding if embedding is not None else json.loads(source.embedding or "[]")
+    row = DocumentChunk(
+        id=f"c-{uuid4().hex[:8]}",
+        tenant_id=source.tenant_id,
+        document_id=source.document_id,
+        content=source.content,
+        source=source.source,
+        embedding=json.dumps(vector),
+        tokens=source.tokens,
+        index_id=index_id,
+    )
+    session.add(row)
+    session.commit()
+    _CREATED.append((row.id, source.document_id))
+    return row
+
+
 @pytest.mark.asyncio
 async def test_search_only_returns_chunks_of_the_active_index(db: Session) -> None:
     """切到新索引后，旧索引名下的分块必须退出检索——这正是「阻断混用」。"""
@@ -305,7 +330,7 @@ async def test_search_only_returns_chunks_of_the_active_index(db: Session) -> No
 
     # 切到新索引（模拟换模型后重建）
     new = ensure_index(db, _identity("model-b", 8))
-    _chunk(db, index_id=new.id, text="甲", tenant=old_chunk.tenant_id)
+    _mirror_chunk(db, old_chunk, new.id)
     activate_index(db, new.id)
     hits = await store.hybrid_search(
         [0.1] * 8,
@@ -562,9 +587,9 @@ def test_activate_rejects_any_identity_field_drift(db: Session, field: str) -> N
 
 def test_rollback_restores_the_previous_index(db: Session) -> None:
     old = resolve_write_index(db, _identity("model-a", 8))
-    _chunk(db, index_id=old.id)
+    source = _chunk(db, index_id=old.id)
     new = ensure_index(db, _identity("model-b", 8))
-    _chunk(db, index_id=new.id)
+    _mirror_chunk(db, source, new.id)
     activate_index(db, new.id)
     activate_index(db, old.id)
     assert active_index(db).id == old.id
@@ -1303,9 +1328,9 @@ def test_activate_is_accepted_when_target_chunks_are_reachable(db: Session) -> N
     0 命中的索引照样能激活，激活后表现为正常 no_hit——与空索引是同类静默丢失。
     """
     old = resolve_write_index(db, _identity("model-a", 8))
-    _chunk(db, index_id=old.id)
+    source = _chunk(db, index_id=old.id)
     target = ensure_index(db, _identity("model-b", 8))
-    _chunk(db, index_id=target.id, text="乙")
+    _mirror_chunk(db, source, target.id)
 
     activate_index(db, target.id)
 
@@ -1318,19 +1343,9 @@ def test_activate_is_accepted_when_target_chunks_are_reachable(db: Session) -> N
 def test_activate_refuses_index_whose_chunks_are_unreachable(db: Session) -> None:
     """M-09 反例：名下有分块、但检索一条都命中不了 → 拒绝激活且**原样撤销切换**。"""
     old = resolve_write_index(db, _identity("model-a", 8))
-    _chunk(db, index_id=old.id)
+    source = _chunk(db, index_id=old.id)
     target = ensure_index(db, _identity("model-b", 8))
-    _chunk(db, index_id=target.id, text="乙")
-    # 目标分块挂在已下线文档上：行数存在，检索一条都出不来
-    row = db.exec(
-        select(DocumentChunk).where(col(DocumentChunk.index_id) == target.id)
-    ).first()
-    assert row is not None
-    doc = db.get(Document, row.document_id)
-    assert doc is not None
-    doc.is_current = False
-    db.add(doc)
-    db.commit()
+    _mirror_chunk(db, source, target.id, embedding=[0.1] * 4)
 
     with pytest.raises(IndexIdentityError) as exc:
         activate_index(db, target.id)
@@ -1355,9 +1370,9 @@ def test_revert_switch_restores_retired_timestamp(db: Session) -> None:
     审计上这一截就丢了。
     """
     old = resolve_write_index(db, _identity("model-a", 8))
-    _chunk(db, index_id=old.id)
+    source = _chunk(db, index_id=old.id)
     target = ensure_index(db, _identity("model-b", 8))
-    _chunk(db, index_id=target.id, text="乙")
+    _mirror_chunk(db, source, target.id, embedding=[0.1] * 4)
     from datetime import UTC, datetime
 
     retired_at = datetime.now(UTC)
@@ -1365,16 +1380,6 @@ def test_revert_switch_restores_retired_timestamp(db: Session) -> None:
     target.retired_at = retired_at
     target.activated_at = retired_at
     db.add(target)
-    db.commit()
-    # 让检索校验必然失败：目标分块挂在已下线文档上
-    row = db.exec(
-        select(DocumentChunk).where(col(DocumentChunk.index_id) == target.id)
-    ).first()
-    assert row is not None
-    doc = db.get(Document, row.document_id)
-    assert doc is not None
-    doc.is_current = False
-    db.add(doc)
     db.commit()
 
     with pytest.raises(IndexIdentityError):
@@ -1418,9 +1423,9 @@ async def test_activate_in_running_event_loop_uses_threadpool_probe(db: Session)
     此时 ``asyncio.get_running_loop()`` 非 None，probe 走 ThreadPoolExecutor 分支。
     """
     old = resolve_write_index(db, _identity("model-a", 8))
-    _chunk(db, index_id=old.id, text="甲")
+    source = _chunk(db, index_id=old.id, text="甲")
     target = ensure_index(db, _identity("model-b", 8))
-    _chunk(db, index_id=target.id, text="乙")
+    _mirror_chunk(db, source, target.id)
 
     # 在异步上下文里调用同步的 activate_index：probe 会检测到运行中的事件循环，
     # 并通过 ThreadPoolExecutor 在独立线程 + 独立 Session 里跑抽样检索。
@@ -1491,9 +1496,9 @@ def test_probe_temporary_active_state_does_not_leak(db: Session) -> None:
     Session 事务（flush 不 commit，退出时回滚），绝不能泄漏到主库。
     """
     old = resolve_write_index(db, _identity("model-a", 8))
-    _chunk(db, index_id=old.id, text="甲")
+    source = _chunk(db, index_id=old.id, text="甲")
     target = ensure_index(db, _identity("model-b", 8))
-    _chunk(db, index_id=target.id, text="乙")
+    _mirror_chunk(db, source, target.id)
 
     activate_index(db, target.id)
 

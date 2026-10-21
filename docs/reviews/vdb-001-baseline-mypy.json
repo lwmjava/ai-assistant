@@ -1,0 +1,17 @@
+{
+  "command": [
+    "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+    "-m",
+    "mypy",
+    "app/"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 12.12,
+  "environment": {
+    "ENV": "development",
+    "DATABASE_URL": "sqlite:///./data/vdb-001-baseline-mypy.db"
+  },
+  "interpreter": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+  "log": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant\\docs\\reviews\\vdb-001-baseline-mypy.log",
+  "scope": "offline check; conftest blocks workspace credentials and external network"
+}

@@ -68,7 +68,7 @@
 - 默认 Agent 编排：`AGENT_ORCHESTRATION=self`
 - 可选编排：`langgraph`
 - 默认 RAG：`RAG_BACKEND=native`
-- 默认向量库：`RAG_VECTOR_STORE=local`（闭环门槛通过前）
+- 默认向量库：`RAG_VECTOR_STORE=milvus`。显式 `local` 只用于离线评测和隔离测试，未知值或连接失败不退回 local。Milvus 仍为 `Partial`，真实 Standalone 闭环完成前不得标成 `Implemented`。
 - 正式向量库目标：Milvus（开发 Lite / 生产 2.4+，ADR-0002）；当前实现仍为 `Partial`
 - 默认 RAG 对话注入：`RAG_ENABLED=true`。无真实 Embedding 时，开发环境用 Mock，只能证明链路，不能证明检索质量。生产环境缺少 Embedding 密钥时检索会失败。
 - 默认 Prompt Injection 行为：检测但不阻断，`SECURITY_BLOCK_ON_INJECTION=false`
@@ -449,6 +449,6 @@ A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Re
 
 `OPS-004` 必须先于 `OPS-003`：先有恢复指标，演练才有合格线。`NFR-011` 不改生产缺密钥时的启动失败行为，只在进程已启动时让 `/health` 写出 provider、模型、维度与是否为 Mock。`NFR-009` 的检索延迟必须用真实 Embedding 测，Mock 结果不得写成达标。
 
-资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）。五条门槛已有 2026-09-29 的核对证据；默认配置仍是 `local`，Milvus 仍为 `Partial`。
+资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）。五条门槛已有 2026-09-29 的核对证据；默认配置现为 `milvus`，Milvus 仍为 `Partial`。
 
 运行环境核对（2026-10-05）：实际解释器为 `D:\DepTooL\anaconda3\envs\ai-assistant\python.exe`；此前 `D:\install` 路径不存在。YAML 与 pytest 在此环境验证；mypy 1.14.1 已安装并完成版本验证；安装不等于类型检查通过，检查结论以实际命令输出为准。

@@ -2,13 +2,9 @@
 
 > 适用于 Cursor Cloud Agent、Codex Cloud Task 或受控的本地后台 Agent。目标是夜间交付一个可审核的任务切片，不是让 AI 无人监督地完成、合并或发布整个企业项目。
 
-固定必读：
+阅读入口统一按 `../../AGENTS.md` 第2节：当前卡/直接依赖与适用规则，其他背景按需展开。夜间还必须读取本文准入及 `../checklists/morning-review-checklist.md`；白天批准、风险限制与次日独立审查不变。
 
-- `../../AGENTS.md`
-- `../AI辅助开发迭代指导.md`
-- `../governance/agent-harness-engineering.md`
-- `../../tasks.yaml`
-- `../checklists/morning-review-checklist.md`
+记录形式与评审退出按AGENTS.md第9节；不为每个步骤新建文档，技术审核不冒充人工业务接受。
 
 ## 1. 运行原则
 

@@ -2,7 +2,7 @@
 
 > 状态：项目级 AI 协作唯一入口  
 > 适用工具：Cursor、Codex、Claude Code、Trae、WorkBuddy、ChatGPT 及其他 AI Coding Agent  
-> 最后更新：2026-10-14
+> 最后更新：2026-10-22
 > 项目模式：Brownfield，基于现有实现渐进治理
 
 所有 AI Agent 在分析、修改、测试、评审或发布本项目时，必须先读取本文件。本文件取代原 `AGENT.md`；不得再维护第二份同级规则。
@@ -18,32 +18,29 @@
 
 发生冲突时，不得自行猜测。先给出冲突、证据、影响和需要谁决定。
 
-## 2. 每次任务的必读入口
+## 2. 每次任务的最小上下文
 
-基础必读：
+本节是阅读路由的唯一来源；目录和其他文档中的索引不表示全文必读。
 
-- `AGENTS.md`
-- `docs/AI辅助开发迭代指导.md`
-- `docs/governance/agent-harness-engineering.md`
-- `tasks.yaml`
-- 与任务有关的 `.cursor/rules/*.mdc`
+基础读取：
 
-按任务追加：
+- 本文件及与改动文件匹配的 `.cursor/rules/*.mdc`。
+- `tasks.yaml` 的全局策略、当前任务、直接依赖的状态/验收/未决问题摘要。先按 ID 定位，不通读历史卡；有相关证据失效或未闭合前置时再展开依赖。
+- 当前任务对应的实现、配置和测试；修改前核对 Git 状态、基线与用户已有改动。
 
-- 产品需求：`docs/product/项目产品需求方案.md`
-- 设计方案：`docs/product/项目设计方案.md`（历史稿，先读 As-Is 矩阵）
-- 当前能力矩阵：`docs/product/as-is-capability-matrix.md`
-- ADR：`docs/adr/`（已批准记录以目录 README 为索引；包含权限、VectorStore、生效日期、Skill、RAG 预算、清洗补偿、引用核验与索引身份；Accepted 不等于已实现，不得把目录存在或 Proposed 草稿当成已决策）
-- 已批准计划：`docs/plans/`
-- 评审结论：`docs/reviews/`。评审不要写入 `docs/plans/`
-- AI 提示词：`docs/ai-prompts/`
-- 开发流程：`docs/workflows/`
-- 审查门禁：`docs/checklists/`
-- 文档模板：`docs/templates/`
-- 类型检查复盘：`docs/reviews/2026-09-29-mypy类型错误复盘.md`（改 SQLModel 查询或 mypy 相关代码时阅读）
-- 真实实现、配置、测试和 Git 历史
+按触发条件追加相关章节，已在当前上下文读过且未变化的内容不重复读取：
 
-文档是约束和意图，代码与运行证据说明当前事实。二者不一致时应报告漂移，不得静默选一方。
+| 触发条件 | 入口 |
+|---|---|
+| 产品范围或用户行为决策 | `docs/product/项目产品需求方案.md`；设计历史稿先对照 `docs/product/as-is-capability-matrix.md` |
+| Harness/Agent/RAG/MCP/状态/权限边界变化 | `docs/governance/agent-harness-engineering.md` 相关章节、`docs/adr/README.md` 中适用的已批准 ADR |
+| 推进背景、评测数据方法或历史设计 | `docs/AI辅助开发迭代指导.md` 相关章节，核对标注日期 |
+| 当前卡已有计划/评审/未决结论 | 卡中指定的具体文件；`docs/plans/`、`docs/reviews/` 只作按需检索目录 |
+| SQLModel 查询、mypy或子进程异常类型处理 | `docs/reviews/2026-09-29-mypy类型错误复盘.md` |
+| 发布、事故或夜间无人值守 | `docs/workflows/` 中对应工作流及适用检查清单；夜间固定准入要求继续有效 |
+| 编写任务记录或规格 | `docs/templates/` 中适用模板，按第9节裁剪，无须逐份填写 |
+
+文档约束与代码运行事实不一致时报告漂移。Accepted ADR 不代表已实现；历史卡的通用 must_read 清单按本节解释，明确的任务专属要求仍有效。只读问答与未要求落盘的调查/审查不强制建卡或新增文档。
 
 ## 3. 当前项目事实
 
@@ -235,34 +232,40 @@ Skill 必须包含 Purpose、Preconditions、Workflow、Tools、RAG、Constraint
 
 ## 9. AI 开发工作流
 
-每项任务按以下顺序：
+### 9.1 范围与交付单位
 
-```text
-读取规则和上下文
-→ 核对代码事实
-→ 分离事实/假设/决策
-→ 说明目标、Non-goals、影响范围和风险
-→ 输出 Implementation Plan
-→ 获得要求的确认
-→ 先写失败测试或 Evaluation Case
-→ 最小实现
-→ 分层验证
-→ 独立审查和防漂移
-→ 人工业务验收
-→ 更新文档和 tasks.yaml
-```
+一次推进一个边界清晰的任务；用户明确授权模块/批次时，先落盘卡清单、依赖、允许范围和终点，再按依赖连续执行。不得自行推进全部 backlog 或合并各卡 allowed_paths 为无限授权。优先围绕可演示的用户结果拆分；模块存在或子卡 done 数量不代表主链可用。
 
-每次只推进 `tasks.yaml` 中一个边界清晰的任务。禁止顺手扩大范围。
+同一事项已获有效授权，不重复请用户确认。范围内常规可逆实现与缺陷修复连续推进；第12节的新冲突、范围外修改、架构/权限/数据/费用等决策仍须升级。发布与生产授权不由开发授权替代。
 
-把一批任务拆进 `tasks.yaml` 之后，必须在 `docs/plans/` 落一份拆分计划。计划写清每条任务的问题、交付、非目标和验收，并链回 `tasks.yaml`。不得只把拆分留在对话里。
+### 9.2 按影响选择记录与审查
 
-实现其中一条任务之前，必须先把该任务的实现计划落盘：目标、现状、方案、非目标、验收。拆分计划里该任务一节已经写全这些内容时，沿用该节，不必再写第二份计划。计划未落盘不得改业务代码。
+| 类型 | 实施前与交付记录 | 审查 |
+|---|---|---|
+| 纯说明/规则、只读调查 | 必要时在现有文档记录目标、边界和验证；不为问答建卡 | 范围、引用、语法与一致性核对 |
+| 普通可逆任务，未触及下行复杂边界 | 卡内结构化字段或一份交付记录写目标、现状、方案、非目标、验收；实施后原位补实际结果 | 自审最终diff与相关调用方；明确要求独立审查时执行 |
+| 权限/租户、公共执行链、跨系统副作用、持久化/迁移、架构或其他L2/L3变更 | 复用或补齐落盘计划、失败边界、回滚与必要ADR | 独立于实现者的审查，覆盖适用真实入口与反例；自审不能冒充独立审查 |
 
-实现完成后，必须在 `docs/plans/` 另写实现说明。说明写功能实际完成了什么：谁可以做什么、成功和失败时的行为、代码位置、验证命令与结果，以及明确没做的事。不得把计划里尚未实现的项写成已完成。
+按影响与风险判断，不能以少于50行或工时短豁免复杂变更。夜间任务按专门准入与次日审查执行。上述分级不豁免第10节任何已触发检查。
 
-Git 提交说明只写实现了什么功能，或修复了什么问题。不要写入需求编号、任务编号、ADR 编号，也不要写依据哪份文档。具体格式见 `CONTRIBUTING.md` 与 `tasks.yaml` 的 `commit_message_policy`。
+业务实施前计划必须可追溯地落盘：普通任务可写在卡内；已有批准计划内容完整时直接引用。批次拆分在 `docs/plans/` 保留一份共享计划，每卡写明问题、方案、交付、非目标与验收。没有新增问题时不重复编写同内容。
 
-夜间无人值守必须遵守 `docs/workflows/nightly-autonomous-development.md`，只能处理通过 `nightly_ready` 准入的 L0 或已批准 L1 任务；不得自动合并或部署。
+实施后在同一交付记录补充：谁可以做什么、成功/失败行为、实际文件、验证命令及结果、未做项与回滚。可在已有计划末尾追加“实际实现与验收”，或用卡内字段记录；不再强制另建实现说明和关闭对账文件。正式独立评审结论归 `docs/reviews/`，交付记录引用它，不在各处复制。
+
+### 9.3 实施、评审与退出
+
+核对规则/事实与基线 → 记录方案及必要决策 → 新行为的失败测试或Evaluation → 最小实现 → 适用验证 → 按风险审查 → 业务接受与状态同步。
+
+- 确定性逻辑用有效单元/契约测试；非确定性行为用版本化Evaluation。只对适用失败边界设计反例，不给无关任务机械增加数值、并发或全系统E2E用例。
+- 评审以原始契约、最终diff、调用方和证据为依据，不要求凑发现数。范围内P1/P2业务缺陷未修复不得关闭；无关改进不阻塞本卡，也不顺手实现。
+- 缺陷及修复方案在原记录更新，修复后验证受影响范围；适用独立审查时由原审查者复核。阻断项闭合且必要证据齐全时结束；只有新相关改动、新失败或新证据才重开，不强制再换Agent做一轮“最终审核”。
+- 技术验证、独立审查与业务接受分别标记。AI审查不得称为人工审核；用户明确委托自动操作验收时记录授权、实际场景和结果；主观业务判断或未委托的必需业务接受仍交用户决定。
+- 相关输入/环境未变、检查仍适用且有版本绑定的证据可引用复用；更换审查者或补说明不构成重跑理由。证据失效时按第10节重验。
+- 可复现缺陷应转成正式tests/evals回归；临时探针或报告不能替代持续验证。
+
+Git 提交说明只写实现功能或修复问题，不写任务/需求/ADR编号或文档依据，见 `CONTRIBUTING.md` 与 `tasks.yaml` 的 `commit_message_policy`。
+
+夜间无人值守遵守 `docs/workflows/nightly-autonomous-development.md`，只处理通过 `nightly_ready` 的 L0 或已批准 L1，不自动合并或部署。
 
 ## 10. 测试与 Evaluation
 
@@ -328,19 +331,15 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 
 ## 11. 文档与证据
 
-文档入口：
+阅读路由见第2节，工作流与记录形式见第9节。任务状态以 `tasks.yaml` 为准，批准决定以对应ADR/批准记录为准；当前能力核对代码与版本化运行证据。不得在规则文件复制完成流水账或无日期的能力快照。
 
-- 项目推进：`docs/AI辅助开发迭代指导.md`
-- Harness 治理：`docs/governance/agent-harness-engineering.md`
-- 产品和设计：`docs/product/`
-- Prompt：`docs/ai-prompts/`
-- Workflow：`docs/workflows/`
-- Checklist：`docs/checklists/`
-- 模板：`docs/templates/`
-- 任务契约：`tasks.yaml`
-- 拆分计划与实现说明：`docs/plans/`
-- 评审结论：`docs/reviews/`。评审不要写入 `docs/plans/`
-- 类型检查复盘：`docs/reviews/2026-09-29-mypy类型错误复盘.md`
+### 文件归属与证据保存
+
+- `docs/` 保存人读说明及必要配套资源；OpenAPI JSON、图片、架构HTML可留。文件用途比扩展名更重要。
+- 新增可复用执行/维护/导出工具归 `scripts/`；正式回归归 `tests/` 并核对默认发现和CI入口；版本化评测数据/长期基线复用 `evals/`。
+- 一次性探针、重复日志、覆盖率与中间指纹优先存现有被忽略的 `data/validation/<run-id>/`，使用唯一运行目录。CI产物注明保留方式；必须长期追溯的证据不能只留会过期的CI链接，按交付契约归档并记录摘要。
+- `docs/reviews/` 默认只新增评审结论及必要附件，不再按卡复制检查执行器。存量代码/JSON被导入或引用时，先核对调用方再迁移；不得批量删除历史证据或冻结基线。
+- 台账只更新当前状态、未决缺口和证据链接；过程日志进入交付记录。新卡复用全局策略，不复制整套门禁；不以“每卡10行”牺牲范围和验收。
 
 以下变更必须同步：
 
@@ -352,7 +351,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 | RAG/Embedding/Chunk/VectorStore/Citation | ADR、Evaluation、索引兼容和回滚 |
 | Harness/状态/HITL/MCP 边界 | ADR、流程、测试和运行手册 |
 | 前端 API/交互 | 前后端契约、类型检查和构建 |
-| 任务拆分或单任务实现 | `docs/plans/` 中的拆分计划与实现说明 |
+| 任务拆分或单任务实现 | 第9节规定的一份交付记录；批次共享计划链回任务卡 |
 | 非功能需求、运维与发布（`NFR`/`OPS` 族） | 需求文档第六章、`tasks.yaml` 的 `NFR`/`OPS` 族、运行手册与备份恢复步骤 |
 | 评审 | `docs/reviews/` 中的评审结论，不写入 `docs/plans/` |
 
@@ -391,64 +390,17 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 - Prompt/模型/Tool/Skill/RAG/索引版本可追踪。
 - 权限、租户、Guardrail、HITL 和失败路径已验证。
 - 文档、ADR、Evaluation 和 `tasks.yaml` 同步。
-- 拆分计划已落盘；该任务的实现说明已落盘，并写明功能完成了什么。
+- 第9节适用的计划与实际结果已落盘，可在同一记录中；写明功能完成了什么及未做项。
 - 发布/回滚方式明确。
 - 未验证项和风险已明确记录，未伪装为完成。
 
-## 14. 当前推进顺序
+## 14. 有效决定与推进入口
 
-2026-10-06 RAG 裁决补记：用户批准按 `docs/plans/plan_rag_remaining_order_20261006.md` 第8节建议实施，批准范围见第9节；引用核验遵 ADR-0007，索引身份与切换遵 ADR-0008，预算/来源/评测与摘要生命周期遵 ADR-0005 第9节。方向已批准不重复裁决；具体费用/质量数值、未核对模型能力、真实重要数据重建和生产启用仍需对应证据与明确授权。CI/OPS 前置、Query Rewrite/重排/资源 ACL 的进入条件保持。本次同步时 RAG/PRAG 共46卡（23 done / 23 backlog），批准登记不关闭业务卡；下文旧数量为其所标日期的历史清点，不覆盖最新 tasks.yaml。默认 local、Milvus Partial、资源 ACL Planned 不变。
+当前任务与依赖只查 `tasks.yaml`，不复制历史计数；日历背景按需查 `docs/plans/plan_delivery_2027-03-25.md`。历史任务证据保留在原计划/评审文件。
 
-已完成：
-
-```text
-GOV-001 治理文件项目化
-→ RAG-001 文档事实对账
-→ RAG-002 知识库权限 ADR
-→ RAG-003 正式 VectorStore ADR
-→ RAG-004 Evaluation Case Schema 与 Silver/Adversarial
-→ 独立校验和人工 Gold v0.1
-→ RAG-005 RAG baseline
-→ RAG-006 P0 权限/安全/Context/VectorStore 修复
-→ RAG-007 单变量实验：RRF 融合常数 k
-→ RAG-008 BM25 全 0 时稀疏路不进 RRF
-→ RAG-009 单次评测结束时恢复 RAG_HYBRID_RRF_K
-→ RAG-010 补记生效日期全量载入、工具名边界和 critique 预算
-```
-
-`tasks.yaml` 中 `GOV-001`～`RAG-013`、`INST-001`～`INST-003`、`TEN-001`～`TEN-003`、`QA-001`～`QA-004`、`AUTH-001`～`AUTH-004`、`INV-001`～`INV-003`、`ADM-001`～`ADM-004`、`CHAT-001`～`CHAT-005`、`ROUTE-001`～`ROUTE-002`、`SAND-001`～`SAND-002`、`SEC-001`～`SEC-004`、`EVD-001`～`EVD-004` 已完成。SEC-004 的清点见 `docs/plans/record_delivery_16.md`：第 1–16 项均已完成，约定范围的 80% 达到。Milvus 五条于 2026-09-29 通过，记录见 `docs/plans/implementation_evd_004_index_params.md`。默认向量库仍是 `local`，Milvus 不标成 `Implemented`。B3 至 D4 任务卡均已完成。`FLOW-001` 已完成：调度任务能创建和取消，说明见 `docs/plans/implementation_flow_001.md`。到点触发仍没有执行记录，工作流调度保持 `Partial`。`MEM-001` 已完成：默认窗口下 25 条只滑窗、31 条压缩并保留最后 5 条，说明见 `docs/plans/implementation_mem_001.md`。对话入口仍不读取记忆配置。`FLOW-002` 已完成：工作流页能区分空列表、引擎未启用和失败原因，说明见 `docs/plans/implementation_flow_002.md`。C6 四条的实现计划见 `docs/plans/plan_sec_c6.md`。`AGT-001`、`AGT-002`、`AGT-003` 已完成，Agent 链路基础修复计划见 `docs/plans/plan_agent_chain_fix.md`。
-
-按企业上线标准补充的 38 张卡已并入 `tasks.yaml`。1.0 锁定第 4 节缺口于 2026-10-03 追加 28 张 `backlog` 卡，对照见 `docs/plans/plan_v1_section4_card_ids_20261003.md`。同日又按差距表第 2 表与需求正文追加 8 张，对照见 `docs/plans/plan_v1_other_chapters_card_ids_20261003.md`。同日第 2 表三项未定裁决后追加 `FEED-001`（会话反馈进 1.0；专家团与四种模式打标后），见 `docs/plans/plan_v1_undecided3_20261003.md`。当前共 147 条（70 done / 0 ready / 76 backlog / 1 cancelled）。`SKILL-001` 与 `SKILL-002` 已完成：成员可创建私有技能，系统管理员可跨租户管理并新增系统全局技能，技能页是带筛选的表格。说明见 `docs/plans/implementation_skill_001.md` 与 `docs/plans/implementation_skill_002.md`。`SUP-001` 已完成：显式打开且已安装 extra 时，Supervisor 能分派并在完成后给出脱敏摘要；默认编排仍是五阶段管线。说明见 `docs/plans/implementation_sup_001.md`。`SUP-002` 已完成：Supervisor 路径在回复出现时展示完成后的子任务摘要，默认五阶段对话不出现该区块。说明见 `docs/plans/implementation_sup_002.md`。`CLI-001` 已完成：空库可以迁移到当前版本，并用环境变量中的密码创建系统管理员；已有系统管理员、密码短于 8 位或重叠创建时拒绝。说明见 `docs/plans/implementation_cli_001.md`。`QUOTA-001` 已完成：系统管理员可设置租户的消息条数和源文件字节上限；超限时不新增用户消息或源文件。说明见 `docs/plans/implementation_quota_001.md`。`EXPORT-001` 已完成：当前租户的租户管理员可下载本租户对话原文；其他角色被拒绝，审计写入后才开始返回文件。对话页可点选下载。说明见 `docs/plans/implementation_export_001.md` 与 `docs/plans/implementation_export_chat_button.md`。`LIMIT-001` 已完成：打开限流后，打满桶时对话页显示倒计时并禁用发送；默认开关仍关闭，计数只在本进程。说明见 `docs/plans/implementation_limit_001.md`。D4 四条的实现计划见 `docs/plans/plan_d4.md`。`REL-001` 已完成：已注册的 `/api` 路由都出现在 OpenAPI 中并带有说明，流式对话标明 `text/event-stream`，README 端点表里的路径都能在 OpenAPI 里找到。说明见 `docs/plans/implementation_rel_001.md`。`REL-002` 已完成：README 写明用标准库备份默认 SQLite；临时库恢复后健康检查为 ok，修订号与源库相同，开发库未被改写。说明见 `docs/plans/implementation_rel_002.md`。`REL-003` 已完成记录：ruff 与 mypy 退出码为 1，前端类型检查和构建为 0，pytest 在汇总前卡住，进程退出码 4294967295。发布结论是未达到发布合格。说明见 `docs/plans/implementation_rel_003.md`。`REL-004` 已完成：词面覆盖重排在调参集上 Recall@1 持平、MRR 下降、越权案例仍为 0，不采纳。本地检索顺序未改。说明见 `docs/plans/implementation_rel_004.md`。D4 四条已记录。38 张企业卡仍不在本计划里重拆或实现。
-
-| 族 | 任务 | 定位 |
-|---|---|---|
-| `NFR-001`～`NFR-011` | 非功能需求 | CI、结构化日志、PostgreSQL 生产验证、密钥与依赖扫描、密钥加密存储、审计保留、性能压测、生产编排、反向代理与 SSE、备份脚本、`/health` 暴露 Embedding 状态 |
-| `PAGT-001`～`PAGT-005` | Agent 工具打磨 | web_search 与 file_ops 读能力、工具十要素契约、调用预算、Plan 可编排、Skill 版本回归 |
-| `PWFL-001`～`PWFL-004` | 工作流打磨 | 重试、超时与取消、并发与幂等、失败告警与日志持久化 |
-| `PRAG-001`、`PRAG-003`、`PRAG-004` | RAG 打磨 | 越权核对、Citation 产品化、低分阈值与拒答。`PRAG-002` 重排落地保留 backlog，新的采纳证据获批准前不可启动 |
-| `PMCP-001`～`PMCP-005` | MCP 打磨 | 超时重连心跳、权限与风险分级、调用审计、凭据管理、版本兼容 |
-| `ERR-001` | 统一错误码 | 端到端验收 |
-| `OPS-001`～`OPS-007` | 运维与发布 | 多实例外部化、并发幂等、升级回滚演练、RTO/RPO、数据合规删除、依赖许可审计、指标与告警 |
-| `QA-005` | 测试修复 | 既有 8 个失败项归因与修复 |
-
-依赖关系见 `docs/plans/新增38卡与现有18任务依赖关系说明.md`，评审结论见 `docs/reviews/`。执行顺序由 `depends_on` 决定，不是文件位置。
-
-A3 完成后按交付排期进入阶段 B，不把切分、Embedding、独立 Reranker、Query Rewrite 排成连续数月的 RAG 深耕。独立重排只做一轮，由 `REL-004` 承担；`PRAG-002` 只在其结论采纳后做落地（开关、灰度、开销），不重复跑实验。`REL-004` 已记录不采纳，`PRAG-002` 于 2026-10-04 恢复 backlog；当前候选不采纳，新的明确采纳决定落盘前不可启动。Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。总排期见 `docs/plans/plan_delivery_2027-03-25.md`：
-
-```text
-阶段 A 知识库治理（RAG-011 → RAG-012 → RAG-013）
-→ 阶段 B 最小安装点
-→ 阶段 C MVP（2026-12-25 达到约定范围的 80%）
-→ 阶段 D 完整交付（2027-03-25 达到约定范围的 100%）
-→ 阶段 E 生产就绪（D4 之后，不在原交付排期内）
-```
-
-阶段 E 分三组：E1 运行时与数据（`NFR-005` PostgreSQL 生产验证、`OPS-001` 多实例状态外部化、`OPS-002` 并发与幂等）；E2 安全合规（`NFR-006` 密钥与依赖扫描、`NFR-007` 密钥加密存储、`NFR-008` 审计保留 90 天、`OPS-005` 数据合规删除、`OPS-006` 依赖许可审计）；E3 性能与发布（`NFR-009` 五项性能压测、`NFR-003` 生产编排、`NFR-004` 反向代理与 SSE、`NFR-010` 备份脚本、`OPS-004` RTO/RPO 定义、`OPS-003` 升级回滚演练、`OPS-007` 指标与告警）。
-
-1.0 之后的测评大盘分级见 `docs/reviews/2026-10-01-1.0后测评大盘分级.md`。该页未进入 `tasks.yaml`。交付第 20 项任务卡已于 2026-10-02 完成。开工时按该页顺序一次只加一条任务卡。
-
-`OPS-004` 必须先于 `OPS-003`：先有恢复指标，演练才有合格线。`NFR-011` 不改生产缺密钥时的启动失败行为，只在进程已启动时让 `/health` 写出 provider、模型、维度与是否为 Mock。`NFR-009` 的检索延迟必须用真实 Embedding 测，Mock 结果不得写成达标。
-
-资源级 ACL 仍为 `Planned`。详细任务以 `tasks.yaml` 为准。不得用 Mock 或 holdout 宣称质量提升。正式向量库目标为 Milvus（ADR-0002，2026-09-25 修订）。五条门槛已有 2026-09-29 的核对证据；默认配置现为 `milvus`，Milvus 仍为 `Partial`。
-
-运行环境核对（2026-10-05）：实际解释器为 `D:\DepTooL\anaconda3\envs\ai-assistant\python.exe`；此前 `D:\install` 路径不存在。YAML 与 pytest 在此环境验证；mypy 1.14.1 已安装并完成版本验证；安装不等于类型检查通过，检查结论以实际命令输出为准。
+- 2026-10-06已批准的RAG方向与范围见 `docs/plans/plan_rag_remaining_order_20261006.md` 第8、9节；引用核验、索引身份与预算/来源/摘要生命周期分别沿用ADR-0007、0008、0005第9节。方向不重复裁决；具体费用/质量数值、未核对模型能力、真实重要数据重建和生产启用仍须证据与授权。
+- CI/OPS前置与资源ACL进入条件保持。`PRAG-002`须有新的明确采纳决定才启动；`REL-004`历史结论为不采纳。Query Rewrite进入条件沿用Recall@5跌破0.90，不能用holdout调参。
+- `OPS-004`先于`OPS-003`；`NFR-011`不改变生产缺密钥的启动失败行为；`NFR-009`检索性能须用真实Embedding，Mock不作达标依据。
+- 正式向量库目标及当前默认为Milvus；显式local仅用于离线评测/隔离测试。Milvus仍为Partial，资源ACL仍为Planned；历史五条脚本通过不代表当前生产闭环。
+- 1.0后测评大盘仅在开展该方向时读取 `docs/reviews/2026-10-01-1.0后测评大盘分级.md`；未登记项不能自动实施。
+- 开发治理与产品运行时Harness分别评价。接下来三个自然获授权的业务任务，在现有交付记录记开工/可验收/接受时间、等待与重复验证耗时、首次接受及验收后7天缺陷/重开；未知写未知，不新建报表平台，不为试验自动启动任务，不以代码行数或done比例证明提速。

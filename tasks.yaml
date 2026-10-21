@@ -7,9 +7,7 @@ project:
   branch_baseline: "main"
   rules:
     - "AGENTS.md"
-    - ".cursor/rules/"
-    - "docs/governance/agent-harness-engineering.md"
-    - "docs/AI辅助开发迭代指导.md"
+  # 以下为按需索引；阅读路由与门禁只由 AGENTS.md 解释。
   product_docs:
     - "docs/product/项目产品需求方案.md"
     - "docs/product/项目设计方案.md"
@@ -30,6 +28,10 @@ project:
     frontend_install: "cd frontend; npm ci"
     frontend_typecheck: "cd frontend; npm run typecheck"
     frontend_build: "cd frontend; npm run build"
+  reading_policy: "按AGENTS.md第2节读取全局策略、当前卡与直接依赖摘要；历史must_read仅作按需索引，任务专属要求保留。"
+  delivery_record_policy: "按AGENTS.md第9节分级；新卡保留ID/目标/状态/依赖/范围/验收/风险/交付记录链接，复用全局策略；同一记录写计划与实际结果，不复制过程日志或按固定行数裁剪。"
+  review_policy: "普通任务自审，复杂边界或明确要求时独立审查；阻断项闭合即退出，无新证据不重复最终审核；技术审查不冒充人工业务接受。"
+  artifact_policy: "按AGENTS.md第11节区分文档、scripts、tests、evals及临时产物；存量引用先核对再迁移，不删除历史证据。"
   evidence_policy: "事实引用代码、配置、测试、Trace、数据或已批准文档；假设必须标记并给出验证动作。"
   regression_gate_policy: "任务关闭与提交前执行 AGENTS.md 第10节强制回归：公共路径全量pytest、适用Linux检查、最终输入指纹/提交SHA绑定；必要检查失败、缺失或过期不得关闭业务任务。纯文档治理按文档契约验证，不代表业务CI通过。"
   source_comment_policy: "每次改代码都必须遵守：源代码、测试、前端和迁移脚本里的注释与文档字符串只描述当前行为。不得写入任务编号、ADR 编号、需求或设计文档名称、修订日期，以及依据哪份文档实现的说明。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
@@ -53,6 +55,38 @@ risk_policy:
   L3: "退款、删除、合同、财务、权限提升或不可逆敏感操作；必须人工审批"
 
 tasks:
+  - id: "GOV-003"
+    title: "精简开发治理的上下文、交付记录与评审流程"
+    status: "done"
+    priority: "P1"
+    depends_on: ["GOV-001", "GOV-002"]
+    scope:
+      allowed_paths:
+        - "AGENTS.md"
+        - "tasks.yaml"
+        - ".cursor/rules/00-global.mdc"
+        - "docs/reviews/2026-10-22-harness效能审计与规则引用整改建议.md"
+        - "docs/plans/plan_harness_workflow_simplification_20261022.md"
+        - "docs/AI辅助开发迭代指导.md"
+        - "docs/governance/agent-harness-engineering.md"
+        - "docs/workflows/end-to-end-development.md"
+        - "docs/workflows/bugfix-and-incident.md"
+        - "docs/workflows/nightly-autonomous-development.md"
+        - "docs/checklists/anti-drift-checklist.md"
+        - "docs/checklists/review-and-release-checklist.md"
+        - "docs/templates/definition-of-done-template.md"
+        - "docs/templates/work-breakdown-and-schedule-template.md"
+        - "docs/ai-prompts/skills/task-card-delivery/"
+        - "docs/ai-prompts/skills/module-batch-delivery/"
+      non_goals: ["不改业务/测试/配置/CI", "不迁移删除历史文件", "不改变已有业务卡状态或验收", "不提交推送部署"]
+    acceptance:
+      - "审计区分事实与假设；入口和交付技能统一按需阅读、分级记录、评审退出与产物归属。"
+      - "旧201卡语义及AGENTS第10节保持；YAML、引用、范围和流程案例一致性验证通过。"
+    risk: {level: "L1", side_effect: "后续AI开发流程改变；不改变产品运行时或验证门槛"}
+    execution:
+      plan: "docs/plans/plan_harness_workflow_simplification_20261022.md"
+      progress: "2026-10-22按用户授权完成规则文档整改；文档契约、旧201卡不变、受保护门禁、引用/YAML及技能格式检查通过。实施与验证见同一交付记录；实际效能和跨宿主行为未验证，不关闭任何业务卡。"
+
   - id: "V1C-001"
     title: "1.0收尾：按执行路径准备知识库检索依赖"
     status: "done"
@@ -11031,7 +11065,7 @@ tasks:
 
   - id: VDB-001
     title: Milvus 成为默认向量后端并打通空库摄取
-    status: in_review
+    status: done
     priority: P1
     depends_on:
     - RAG-015
@@ -11141,17 +11175,15 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-22本机全量pytest 3273 passed/3 skipped/退出码0，真实Standalone prepare与重启后重试验证通过。提交7307402的Ubuntu CI run 39634465447三项成功。保持in_review。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
+      progress: 2026-10-22用户明确授权关闭；技术验收沿用7307402及真实Standalone/Linux Lite最终输入证据，后续仅文档变化。业务接受与关闭授权已补齐，非生产质量或发布结论。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
       implementation_plan: docs/plans/plan_vdb_001_20261021.md
       admission_evidence:
       - docs/reviews/2026-10-21-vdb-001-dependency-admission.md
       - docs/reviews/2026-10-21-vdb-001-plan-review.md
-      blocked_by:
-      - 2026-10-22四项证据已补：本机全量、真实Standalone、Linux Lite，以及7307402的CI run 39634465447成功。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
-      - 未受权关闭，保持in_review。
+      blocked_by: []
   - id: VDB-002
     title: 开发环境 Milvus Lite 启动兜底与实例归属
-    status: in_review
+    status: done
     priority: P1
     depends_on:
     - VDB-001
@@ -11246,14 +11278,12 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-22 Linux容器内真实Lite prepare、Standalone恢复后仍保持Lite的verify、丢失文件拒绝均退出码0。Windows原生Lite仍不支持。7307402的Ubuntu CI已成功。保持in_review。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
+      progress: 2026-10-22用户明确授权关闭；技术验收沿用7307402及真实Standalone/Linux Lite最终输入证据，后续仅文档变化。业务接受与关闭授权已补齐，非生产质量或发布结论。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
       implementation_plan: docs/plans/plan_vdb_002_20261021.md
-      blocked_by:
-      - 2026-10-22真实Lite与7307402的Ubuntu CI已通过，见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
-      - 未受权关闭，保持in_review。
+      blocked_by: []
   - id: VDB-003
     title: 默认 Milvus 与 Lite 模式组合验收
-    status: in_review
+    status: done
     priority: P1
     depends_on:
     - VDB-001
@@ -11332,11 +11362,9 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-22本机全量、真实Standalone、Linux Lite与提交7307402的Ubuntu CI run 39634465447均已通过。未改成done。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
+      progress: 2026-10-22用户明确授权关闭；技术验收沿用7307402及真实Standalone/Linux Lite最终输入证据，后续仅文档变化。业务接受与关闭授权已补齐，非生产质量或发布结论。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
       implementation_plan: docs/plans/plan_vdb_003_20261021.md
-      blocked_by:
-      - 2026-10-22四项证据已通过，见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
-      - 未受权关闭，三卡保持in_review。
+      blocked_by: []
   - id: EVAL-001
     title: 受权评测报告查询与结果页面
     status: backlog

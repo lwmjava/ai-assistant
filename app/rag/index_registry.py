@@ -82,8 +82,16 @@ def active_index(session: Session, backend: str | None = None) -> EmbeddingIndex
 
 def ensure_index(session: Session, identity: EmbeddingIndexIdentity) -> EmbeddingIndex:
     """按身份取索引，不存在则登记为 ``preparing``。不自动激活。"""
+    from app.rag.vectorstore.runtime import assert_runtime_available
+
+    if identity.backend == "milvus":
+        assert_runtime_available()
     found = find_by_identity(session, identity)
     if found is not None:
+        if identity.backend == "milvus":
+            from app.rag.vectorstore.runtime import verify_index_storage
+
+            verify_index_storage(session, found.id)
         return found
     row = EmbeddingIndex(
         name=index_name(identity),
@@ -100,6 +108,11 @@ def ensure_index(session: Session, identity: EmbeddingIndexIdentity) -> Embeddin
     )
     session.add(row)
     session.flush()
+    from app.rag.vectorstore.runtime import current_runtime, remember_index_storage
+
+    choice = current_runtime()
+    if choice is not None and identity.backend == "milvus":
+        remember_index_storage(session, row.id, choice.instance_id)
     logger.info(
         "embedding_index_registered name=%s backend=%s model=%s dim=%s version=%s",
         row.name, row.backend, row.model, row.dim, row.index_version,
@@ -154,6 +167,10 @@ def activate_index(
     target = session.get(EmbeddingIndex, index_id)
     if target is None:
         raise IndexIdentityError(f"索引 {index_id} 不存在，无法激活")
+    if target.backend == "milvus":
+        from app.rag.vectorstore.runtime import verify_index_storage
+
+        verify_index_storage(session, target.id)
     if target.status == IndexStatus.FAILED.value:
         raise IndexIdentityError(
             f"索引 {target.name} 状态为 failed，不得激活；"
@@ -449,6 +466,10 @@ def resolve_write_index(
             f"当前嵌入身份 {identity.key()} 与生效索引 {active.name} 的身份 "
             f"{active.identity_key} 不一致，拒绝写入（需重建新索引后再显式切换）"
         )
+    if active.backend == "milvus":
+        from app.rag.vectorstore.runtime import verify_index_storage
+
+        verify_index_storage(session, active.id)
     return active
 
 
@@ -479,6 +500,10 @@ def resolve_read_index_for(
     - 给了 ``identity`` 且与 active 登记不符：抛 :class:`IndexIdentityError`，
       这就是「同维异模型查询」的拒绝点。
     """
+    from app.rag.vectorstore.runtime import assert_runtime_available
+
+    if (backend or current_backend()) == "milvus":
+        assert_runtime_available()
     active = active_index(session, backend)
     if active is None:
         if not has_any_chunk(session, tenant_id):
@@ -488,6 +513,10 @@ def resolve_read_index_for(
             "不能按当前模型检索未知向量（ADR-0008 禁止自动认定兼容）。"
             "请先执行 adopt（有证据地登记）或 rebuild（重建）后再检索。"
         )
+    if active.backend == "milvus":
+        from app.rag.vectorstore.runtime import verify_index_storage
+
+        verify_index_storage(session, active.id)
     if identity is not None and not identity_matches_row(identity, active):
         raise IndexIdentityError(
             f"当前嵌入身份 {identity.key()} 与生效索引 {active.name} 的身份 "
@@ -528,6 +557,10 @@ def adopt_legacy_chunks(
     ``commit=False`` 用于写入事务内部：登记随业务提交一起落库，避免中途提交半个
     事务（与 :func:`activate_index` 的 ``commit`` 参数语义一致）。
     """
+    if index.backend == "milvus":
+        from app.rag.vectorstore.runtime import verify_index_storage
+
+        verify_index_storage(session, index.id)
     evidence = (evidence or "").strip()
     if not evidence:
         raise IndexIdentityError(

@@ -256,6 +256,26 @@ class EmbeddingIndex(SQLModel, TimestampMixin, table=True):
     retired_at: datetime | None = Field(default=None)
 
 
+class VectorRuntimeBinding(SQLModel, TimestampMixin, table=True):
+    """本机已经选定的 Milvus 实例。一个库只保留一行。"""
+
+    __tablename__ = "rag_vector_runtime"
+
+    id: str = Field(default="active", primary_key=True)
+    mode: str = Field(index=True)
+    uri: str = Field(default="")
+    reason: str = Field(default="")
+
+
+class IndexStorageBinding(SQLModel, TimestampMixin, table=True):
+    """模式及规范化位置摘要。不把旧模式记录自动认领到新实例。"""
+
+    __tablename__ = "rag_index_storage"
+
+    index_id: str = Field(primary_key=True)
+    storage_instance: str = Field(index=True)
+
+
 class OperationConfirmation(SQLModel, TimestampMixin, table=True):
     """跨租户敏感操作的一次性确认记录。"""
 

@@ -58,6 +58,8 @@ class VectorProbeStatus(BaseModel):
 
     status: str
     backend: str
+    runtime: str = ""
+    fallback_reason: str = ""
 
 
 class SystemChecks(BaseModel):

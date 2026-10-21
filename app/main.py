@@ -46,6 +46,10 @@ async def lifespan(app: FastAPI):
         )
     # 1. 数据库建表
     init_db()
+    from app.rag.vectorstore.runtime import initialize_milvus_runtime
+
+    with Session(engine) as session:
+        initialize_milvus_runtime(session)
 
     # 2. 初始管理员引导
     with Session(engine) as session:

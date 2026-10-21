@@ -161,7 +161,10 @@ def identity_matches_row(identity: EmbeddingIndexIdentity, row: object) -> bool:
 
 def current_backend() -> str:
     """当前配置生效的向量库后端名。"""
-    return "milvus" if settings.RAG_VECTOR_STORE.strip().lower() == "milvus" else "local"
+    name = settings.RAG_VECTOR_STORE.strip().lower()
+    if name not in {"milvus", "local"}:
+        raise ValueError("未知向量库配置，只接受 local 或 milvus")
+    return name
 
 
 def identity_from_provider(

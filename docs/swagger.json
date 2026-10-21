@@ -7563,6 +7563,16 @@
           "backend": {
             "type": "string",
             "title": "Backend"
+          },
+          "runtime": {
+            "type": "string",
+            "title": "Runtime",
+            "default": ""
+          },
+          "fallback_reason": {
+            "type": "string",
+            "title": "Fallback Reason",
+            "default": ""
           }
         },
         "type": "object",

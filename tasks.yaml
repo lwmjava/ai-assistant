@@ -11031,7 +11031,7 @@ tasks:
 
   - id: VDB-001
     title: Milvus 成为默认向量后端并打通空库摄取
-    status: in_progress
+    status: in_review
     priority: P1
     depends_on:
     - RAG-015
@@ -11141,16 +11141,17 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21已批准三文件扩围。准入反例已纳入tests/test_vdb_001_admission.py并修复租户回查、激活覆盖/绑定/远端探针和响应模型核验；默认配置与生产编排改为milvus，隔离测试仍显式local。说明见docs/plans/implementation_vdb_001_admission_20261021.md。真实Standalone、全量pytest、Linux/CI和独立审查未完成，保持in_progress。
+      progress: 2026-10-21默认Milvus准入修复后，经用户授权继续修复验收问题。启动故障隔离、空库正式搜索已修；真实Standalone及Linux63、独立第三轮复核通过。冻结全量与最终CI待验，保持in_review。历史准入说明docs/plans/implementation_vdb_001_admission_20261021.md；本轮实现docs/plans/implementation_vdb_acceptance_fixes_20261021.md，复验docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
       implementation_plan: docs/plans/plan_vdb_001_20261021.md
       admission_evidence:
       - docs/reviews/2026-10-21-vdb-001-dependency-admission.md
       - docs/reviews/2026-10-21-vdb-001-plan-review.md
       blocked_by:
-      - 完整pytest基线退出1（79失败、3134通过、3跳过），原因尚未全部隔离；真实Milvus和Linux最终版本证据未取得。
+      - 2026-10-21用户授权修复后，启动隔离和正式空库搜索已修；三卡专项63通过、真实Standalone及Linux63通过，独立第三轮无剩余P1/P2。复验见docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
+      - 冻结全量pytest正在执行；未提交工作区尚无最终SHA的Ubuntu必要CI，保持in_review，不关闭。
   - id: VDB-002
     title: 开发环境 Milvus Lite 启动兜底与实例归属
-    status: backlog
+    status: in_review
     priority: P1
     depends_on:
     - VDB-001
@@ -11178,6 +11179,7 @@ tasks:
       - app/api/routes/health.py
       - app/api/routes/admin_system.py
       - app/schemas/admin.py
+      - docs/swagger.json
       - alembic/versions/
       - pyproject.toml
       - .env.example
@@ -11244,10 +11246,14 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+      progress: 2026-10-21已修复Lite持久选择限制与完整实例归属，补领域入口统一核验、目录/SDK/探活/失败隔离。真实Linux Lite全链与63专项通过，独立第三轮无剩余P1/P2；Windows原生Lite仍未支持。用户批准Swagger精确扩围，两字段同步及45契约回归通过。最终全量/CI待验，保持in_review；实现与复验见本轮统一说明。
+      implementation_plan: docs/plans/plan_vdb_002_20261021.md
+      blocked_by:
+      - 2026-10-21已修persisted限制、完整实例绑定、各领域入口绕过、SDK配置分类、Lite目录/探活/异常隔离；真实Linux Lite全链、持久化、丢文件拒绝和Linux63通过，未冒称Windows原生Lite支持。
+      - 用户已明确批准docs/swagger.json精确扩围并同步两个管理状态字段。前置VDB-001及本卡最终全量/同SHA Ubuntu CI仍待完成，保持in_review，见docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
   - id: VDB-003
     title: 默认 Milvus 与 Lite 模式组合验收
-    status: backlog
+    status: in_review
     priority: P1
     depends_on:
     - VDB-001
@@ -11326,7 +11332,11 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+      progress: 2026-10-21修复后已用独立Linux容器完成真实Standalone/Lite组合与重启持久化、缺目录/丢文件拒绝，Linux63及独立第三轮63通过。259真实输入与宿主一致，当前全量执行中；最终SHA Ubuntu CI和关闭审核未具备，保持in_review，不宣称前两卡全部闭合。复验docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
+      implementation_plan: docs/plans/plan_vdb_003_20261021.md
+      blocked_by:
+      - 2026-10-21修复后真实Standalone/Lite五段验收、最终Linux63、独立第三轮63及所有入口反例通过；真实259输入与宿主一致，合成Embedding仅证明链路。见docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
+      - 冻结全量pytest正在执行，最终SHA Ubuntu必要CI及关闭前最终独立审核仍待；前两卡保持in_review，不把前置缺口写成全部闭合。
   - id: EVAL-001
     title: 受权评测报告查询与结果页面
     status: backlog

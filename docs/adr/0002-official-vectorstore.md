@@ -106,3 +106,7 @@ Milvus 闭环（对应第 5 节；未配置则 skip，skip 不算通过）：
 ## 10. 2026-10-08 混合候选语义补证
 
 Local 对过滤后的全部有效块计算 Dense/BM25；Milvus 对远端 Dense 窗口经 SQL 可见性过滤后的候选计算 BM25。二者不等价，窗口外词面命中可遗漏，过滤可能耗尽候选。全零 BM25 在两库均不贡献稀疏排名；正分仍沿用既有 RRF。这是现有行为边界与缺陷修复，不批准新增独立稀疏召回架构。证据与尚未闭合的索引重建前置见 [混合语义实现说明](../plans/implementation_rag_036_hybrid_semantics.md)。默认 local、Milvus Partial 保持，固定向量和小规模真实Embedding切片不代表生产质量提升。
+
+## 11. 2026-10-21 默认后端与验收修复
+
+用户已授权VDB-001默认Milvus及VDB-002启动选择，并要求修复三卡验收问题。当前源码默认`milvus`，`local`仅显式离线/隔离使用；本节替代历史章节对“当前默认local”的描述，不追改历史证据。未知后端和连接失败不回退local，向量启动选择失败不阻止普通非检索API服务。启动固定、持久实例归属与保守历史隔离见[ADR-0019](0019-milvus-lite-runtime-selection.md)。Milvus仍为Partial；真实服务、最终全量和Linux/CI等证据逐卡验收，默认字符串改变不是完成证明。

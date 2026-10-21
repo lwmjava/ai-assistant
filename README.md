@@ -421,7 +421,9 @@ docker compose up -d --build
 # 服务默认监听 http://localhost:8000
 ```
 
-编排包含 PostgreSQL 和开发用 Milvus。默认 `RAG_VECTOR_STORE` 是 `milvus`，应用连接 `http://milvus:19530`。这不表示向量库闭环已经通过，也不表示 Lite 可以替代这套服务。
+编排包含 PostgreSQL 和开发用 Milvus。默认 `RAG_VECTOR_STORE` 是 `milvus`，应用连接 `http://milvus:19530`。开发环境只在本机服务启动时不可达才会改用 Lite 文件，并且选定后不会自动切回。生产环境和远程地址不会使用 Lite。这不表示向量库闭环已经通过。
+
+向量实例选择失败时，普通API仍启动，健康检查返回503并标记`runtime=unavailable`，检索和摄取明确失败；核对配置后重启恢复。已有Lite登记也必须满足当前开发环境、兜底开关、本机地址、运行库和文件路径限制，不会因关闭开关自动换到Standalone。索引绑定具体实例位置摘要，改端点/文件或无法核验历史归属时拒绝读写，不自动认领或迁移数据。
 
 启动后打开 `http://localhost:8000`，看到的是镜像内已构建的控制台，由同一个 API 进程提供。`/api/v1/health` 仍是健康检查。第一次建管理员、注册和发消息，按上面「快速开始」的第 3 到第 5 步，页面分别是 `/setup`、`/login`、`/register` 和 `/chat`。本机热更新请在 `frontend/` 下执行 `npm run dev`，那个地址不是这条安装路径。
 

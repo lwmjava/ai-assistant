@@ -438,6 +438,10 @@ class Settings(BaseSettings):
     # ── Milvus（可选，仅当 RAG_VECTOR_STORE=milvus 时使用）──
     MILVUS_URI: str = "http://localhost:19530"
     MILVUS_TOKEN: str = ""
+    # 开发环境启动时，仅本机服务不可达才允许改用 Lite 文件。生产环境忽略该开关。
+    MILVUS_LITE_FALLBACK: bool = True
+    MILVUS_LITE_PATH: str = "data/milvus-lite/dev.db"
+    MILVUS_STARTUP_PROBE_TIMEOUT_SECONDS: float = 2.0
     MILVUS_COLLECTION: str = "ai_assistant_chunks"
     MILVUS_INDEX_TYPE: str = "AUTOINDEX"  # 向量索引类型，IVF_* 时检索参数带 nprobe
     MILVUS_NPROBE: int = 16  # IVF_* 索引的查询聚类数，仅对该类索引生效

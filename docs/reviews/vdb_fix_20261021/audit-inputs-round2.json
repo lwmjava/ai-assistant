@@ -1,0 +1,50 @@
+[
+  {
+    "path": "app/main.py",
+    "sha256": "9fb7a65a9cf216a7d05802353fb4e2184e48568d3e56397decf57b0c0c2f92af"
+  },
+  {
+    "path": "app/rag/vectorstore/runtime.py",
+    "sha256": "177677f15b453ee259c3b3bd4f95bf7004ab1be080c5f95c8156bb53f5974623"
+  },
+  {
+    "path": "app/rag/index_identity.py",
+    "sha256": "f874521de04c84ad91602f754150e450bc56b1b2c11b4c91d2bfee78b392838e"
+  },
+  {
+    "path": "app/rag/index_registry.py",
+    "sha256": "ceb817dd4a75657b2e7bf4c65c4d99c02031ddaa659ed352ca045d5f15ffb5b4"
+  },
+  {
+    "path": "app/rag/vectorstore/milvus.py",
+    "sha256": "d69e69e7590d5777eb399d4d06c54bd976353ed9c47652d3a4d3bb60f352d012"
+  },
+  {
+    "path": "app/rag/cache.py",
+    "sha256": "0cf605317c1e432ef7a86824d39c7b4bbdd0369acb251d1aa909430439d46b28"
+  },
+  {
+    "path": "app/api/routes/health.py",
+    "sha256": "96943713133ca9949b09af6a8b185a5c5c86b88a29dc87ba0fb67fb7ef61b596"
+  },
+  {
+    "path": "tests/test_vdb_acceptance_fixes.py",
+    "sha256": "ab3b00582af920d65e2a98dade8da57b57a942ed3b5e820a09160320c97d1ddf"
+  },
+  {
+    "path": "tests/test_vdb_002_runtime.py",
+    "sha256": "5c5b90c274bc2d794500c023a00fed087aadb570295fbbb8c953b04395a4f360"
+  },
+  {
+    "path": "tests/test_vdb_003_combination.py",
+    "sha256": "b211c2d7d4d5b85d1e05abb4c2775a5bc938db88f6df47e35e80cac584ffd3c1"
+  },
+  {
+    "path": "tests/test_vdb_real_modes.py",
+    "sha256": "4ba502abfcb5984a7bdefbc6e896542499b365f8a3ff4ac0e7ca7f1ba34a4c79"
+  },
+  {
+    "path": "docs/swagger.json",
+    "sha256": "667fd1a55a5dedcb5155893207ed326f307108fdf99da907464396d75fccb886"
+  }
+]

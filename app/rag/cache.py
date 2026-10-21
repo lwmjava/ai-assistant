@@ -23,6 +23,13 @@ from app.services.cache_scope import AuthorizedCacheScope
 retrieval_cache = BoundedCache()
 
 
+def _storage_mode() -> str:
+    from app.rag.vectorstore.runtime import current_runtime
+
+    choice = current_runtime()
+    return choice.instance_id if choice is not None else ""
+
+
 def _implementation(value: object) -> str:
     """Standard implementations share across requests; custom instances stay isolated."""
     cls = type(value)
@@ -133,6 +140,7 @@ class CachedRagBackend(RagBackend):
                 self.tokenizer(query),
                 getattr(self.backend, "_rrf_k", None),
                 _embedding_options(self.embedding),
+                _storage_mode(),
             )
         )
         cached = retrieval_cache.get(key)

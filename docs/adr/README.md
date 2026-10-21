@@ -12,7 +12,7 @@ ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-c
 | 编号 | 文件 | 状态 | 决定 | 任务 |
 |---|---|---|---|---|
 | ADR-0001 | `0001-knowledge-base-permission.md` | Accepted | 默认 tenant；可选 uploader 检索隔离；控制面权限按第 4 节；引用核验见 ADR-0007；资源 ACL 为 Planned | `RAG-002`、`RAG-026/027` |
-| ADR-0002 | `0002-official-vectorstore.md` | Accepted | 正式目标 Milvus、当前默认 Local；Milvus 仍 Partial；冻结评测保持 Local；索引切换见 ADR-0008 | `RAG-003`、`RAG-015/032/036` |
+| ADR-0002 | `0002-official-vectorstore.md` | Accepted | 正式目标及当前源码默认 Milvus，仍 Partial；冻结评测保持 Local；索引切换见 ADR-0008，启动及实例绑定见 ADR-0019 | `RAG-003`、`RAG-015/032/036`、`VDB-001/002` |
 | ADR-0003 | `0003-effective-date-versioning.md` | Accepted | 默认只检索已生效的当前版本；带未来日期的查询才打开 scheduled 预告 | `RAG-006` |
 | ADR-0004 | `0004-skill-scope-and-admin.md` | Accepted | 私有技能只对创建者生效；系统管理员可跨租户管理；系统全局技能启用后所有人可见可选用 | `SKILL-001` |
 | ADR-0006 | [0006-rag-cleaning-and-retention-compensation.md](0006-rag-cleaning-and-retention-compensation.md) | Accepted | 保守清洗、原始快照和到期清理补偿 | `RAG-014` |
@@ -21,7 +21,7 @@ ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-c
 | ADR-0010 | [0010-agent-runtime-state-boundary.md](0010-agent-runtime-state-boundary.md) | Accepted | 独立 Tool Executor（校验/超时/有限重试/审计/结果归一化）+ StateManager 包装 AgentState；新表 `agent_run_states` 持久化 checkpoint；新表位置在 `app/models/`、待扩展 allowed_paths 批准 | `PAGT-006` |
 | ADR-0011 | [0011-structured-sequential-agent-plan.md](0011-structured-sequential-agent-plan.md) | Accepted | 固定顺序 Plan v1、显式前向执行依赖、逐步状态与恢复；旧文本显式回滚。自动证据不等于人工业务验收 | `PAGT-004` |
 
-权限过滤与生效日期过滤实现在 `RAG-006`。本阶段不切换默认向量库。  
+权限过滤与生效日期过滤实现在 `RAG-006`。默认切换的最新批准与实际状态见ADR-0002第11节及VDB三卡验收；不以历史阶段表述覆盖当前源码。  
 `RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后才改变检索候选集。
 
 ADR-0012：[SSE ActiveRun 生命周期与断线回放](0012-sse-active-run-lifecycle.md)，Accepted，2026-10-15 用户批准单进程任务所有权、有界事件回放与鉴权查询/取消；实现与验收以 SSE-001 证据为准。
@@ -64,3 +64,5 @@ ADR-0017：[工作流执行超时与协作取消](0017-workflow-execution-cancel
 - 不把 Proposed 草稿当成已交付能力。
 
 ADR-0018：[工作流单进程准入与周期幂等](0018-workflow-concurrency-idempotency.md)，Accepted，2026-10-20；用户批准共享容量、周期消费语义及最小扩围，批准不代表已实现。
+
+ADR-0019：[开发环境 Milvus Lite 启动选择](0019-milvus-lite-runtime-selection.md)，Accepted，2026-10-21；只锁定启动一次的实例选择和归属拒绝。Windows 上尚未证明 Lite 运行库可用。

@@ -42,10 +42,32 @@ for _tool_name, _availability in (
     logger.info("optional_tool name=%s status=%s reason=%s", _tool_name, _tool_state["status"], _tool_state["reason"])
 
 
+def _runtime_mode() -> str:
+    from app.rag.vectorstore.runtime import current_runtime, runtime_failure
+
+    if runtime_failure() is not None:
+        return "unavailable"
+    choice = current_runtime()
+    return choice.mode if choice is not None else ""
+
+
+def _runtime_reason() -> str:
+    from app.rag.vectorstore.runtime import current_runtime, runtime_failure
+
+    if runtime_failure() is not None:
+        return runtime_failure() or ""
+    choice = current_runtime()
+    return choice.reason if choice is not None else ""
+
+
 def _configured_vector_backend() -> str:
-    """返回当前生效的向量库名称：仅 milvus 走外部服务，其余为本地库。"""
-    name = settings.RAG_VECTOR_STORE.strip().lower()
-    return "milvus" if name == "milvus" else "local"
+    """未知配置显式显示unknown，不把配置错误冒充本地库健康。"""
+    from app.rag.index_identity import current_backend
+
+    try:
+        return current_backend()
+    except ValueError:
+        return "unknown"
 
 
 def _database_status() -> str:
@@ -57,17 +79,26 @@ def _database_status() -> str:
 
 def _probe_milvus() -> None:
     """连接当前配置的 Milvus，并读取服务版本以确认链路可用。"""
+    from app.rag.vectorstore.runtime import assert_runtime_available
+
+    assert_runtime_available()
     from pymilvus import connections, utility
 
     alias = "health"
+    from app.rag.vectorstore.runtime import current_runtime
+
+    choice = current_runtime()
     connections.connect(
         alias=alias,
-        uri=settings.MILVUS_URI,
+        uri=choice.uri if choice is not None else settings.MILVUS_URI,
         token=settings.MILVUS_TOKEN or None,
         timeout=2,
     )
     try:
-        utility.get_server_version(using=alias)
+        if choice is not None and choice.mode == "lite":
+            utility.list_collections(using=alias, timeout=2)
+        else:
+            utility.get_server_version(using=alias)
     finally:
         connections.disconnect(alias)
 
@@ -75,6 +106,8 @@ def _probe_milvus() -> None:
 def _vector_store_status() -> tuple[str, str]:
     """确认当前配置的向量库可连通。本地库与应用库同库，只做一次只读探测。"""
     backend = _configured_vector_backend()
+    if backend == "unknown":
+        raise ValueError("未知向量库配置")
     if backend == "milvus":
         _probe_milvus()
         return "ok", backend
@@ -199,6 +232,8 @@ def health_check() -> JSONResponse:
             "vector_store": {
                 "status": vector_status,
                 "backend": backend,
+                "runtime": _runtime_mode(),
+                "fallback_reason": _runtime_reason(),
                 "reason": index_view["reason"],
                 "embedding_index": index_view,
             },

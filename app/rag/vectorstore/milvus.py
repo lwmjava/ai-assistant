@@ -51,6 +51,10 @@ class MilvusUnavailableError(RuntimeError):
     """未安装 pymilvus 或无法连接 Milvus 时抛出。"""
 
 
+class _EmptyIndexError(IndexUnavailableError):
+    """统一resolver已确认无索引且没有分块；仅检索允许空命中。"""
+
+
 class MilvusVectorStore(VectorStore):
     """基于 Milvus 的向量库实现（稠密检索 + 主库 BM25 融合）。"""
 
@@ -71,7 +75,7 @@ class MilvusVectorStore(VectorStore):
             self.session, identity, tenant_id=tenant_id, backend="milvus"
         )
         if index is None:
-            raise IndexUnavailableError(
+            raise _EmptyIndexError(
                 "Milvus 后端没有生效的 embedding 索引，无法确定操作哪个集合；"
                 "请先登记并激活索引（rebuild/activate）。"
             )
@@ -83,6 +87,9 @@ class MilvusVectorStore(VectorStore):
         index: EmbeddingIndex | None = None,
     ):
         target_index = index if index is not None else self._resolve_index(identity)
+        from app.rag.vectorstore.runtime import verify_index_storage
+
+        verify_index_storage(self.session, target_index.id)
         if self._collection is not None and self._collection_name == target_index.name:
             return self._collection
         try:
@@ -99,9 +106,11 @@ class MilvusVectorStore(VectorStore):
                 "请执行 `pip install pymilvus` 或改用本地向量库（RAG_VECTOR_STORE=local）。"
             ) from exc
 
+        from app.rag.vectorstore.runtime import resolved_uri
+
         connections.connect(
             alias="default",
-            uri=settings.MILVUS_URI,
+            uri=resolved_uri() or settings.MILVUS_URI,
             token=settings.MILVUS_TOKEN or None,
         )
         name = target_index.name
@@ -202,6 +211,9 @@ class MilvusVectorStore(VectorStore):
             raise IndexIdentityError("远端写入目标必须是已登记的 active/preparing Milvus 索引")
         if identity is None or not identity_matches_row(identity, target):
             raise IndexIdentityError("远端写入目标与当前模型完整身份不匹配")
+        from app.rag.vectorstore.runtime import verify_index_storage
+
+        verify_index_storage(self.session, target.id)
         return target
 
     def validate_add(
@@ -344,9 +356,11 @@ class MilvusVectorStore(VectorStore):
         read_scope: ReadScope | None = None,
         identity: EmbeddingIndexIdentity | None = None,
     ) -> list[ChunkResult]:
-        # 身份核对必须在取候选之前：没有生效索引 → IndexUnavailableError，
-        # 身份不符 → IndexIdentityError（同维异模型靠维度发现不了）。
-        target_index = self._resolve_index(identity, tenant_id=tenant_id)
+        # 仅统一resolver确认的空库是no_hit；未知存量/错实例/故障仍失败。
+        try:
+            target_index = self._resolve_index(identity, tenant_id=tenant_id)
+        except _EmptyIndexError:
+            return []
         expr = (
             f'tenant_id == "{tenant_id}"'
             f' and {_INDEX_ID_FIELD} == "{target_index.id}"'

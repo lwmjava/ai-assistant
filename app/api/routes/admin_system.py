@@ -3,7 +3,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user
-from app.api.routes.health import STARTED_AT, _check, _configured_vector_backend, _database_status, _vector_store_status
+from app.api.routes.health import (
+    STARTED_AT,
+    _check,
+    _configured_vector_backend,
+    _database_status,
+    _runtime_mode,
+    _runtime_reason,
+    _vector_store_status,
+)
 from app.core.config import settings
 from app.core.security import Role
 from app.models.user import User
@@ -40,6 +48,11 @@ def system_status(_: User = Depends(_require_system_admin)) -> SystemStatusOut:
         started_at=STARTED_AT,
         checks=SystemChecks(
             database=ProbeStatus(status=database),
-            vector_store=VectorProbeStatus(status=vector_status, backend=backend),
+            vector_store=VectorProbeStatus(
+                status=vector_status,
+                backend=backend,
+                runtime=_runtime_mode(),
+                fallback_reason=_runtime_reason(),
+            ),
         ),
     )

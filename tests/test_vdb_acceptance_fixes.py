@@ -1,5 +1,7 @@
 """Acceptance regressions through lifecycle and index operation boundaries."""
 
+import sys
+import types
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -228,7 +230,11 @@ def test_wrong_instance_legacy_adoption_does_not_modify_index(session):
 
 
 def test_sdk_configuration_error_never_selects_lite():
-    from pymilvus.exceptions import ConnectionConfigException
+    class ConnectionConfigException(Exception):  # noqa: N818 - 名称必须与 pymilvus 异常一致
+        """与 pymilvus 2.5.11 的配置异常同名，分类只看类型名和消息。"""
+
+        def __init__(self, message: str) -> None:
+            super().__init__(message)
 
     error = ConnectionConfigException(message='invalid connection configuration')
     kind = runtime.classify_probe_error(error)
@@ -251,9 +257,18 @@ async def test_empty_milvus_search_is_no_hit_without_connecting(session, monkeyp
     connect.assert_not_called()
 
 
-def test_lite_prepare_creates_parent_before_sdk_and_rejects_lost_persisted_file(tmp_path, monkeypatch):
-    from pymilvus import connections, utility
+def _install_fake_pymilvus(monkeypatch, *, connect, disconnect, list_collections, get_server_version=None):
+    """CI 不安装可选的 pymilvus。注入同名模块，让导入发生在被测函数内部。"""
+    module = types.ModuleType('pymilvus')
+    module.connections = types.SimpleNamespace(connect=connect, disconnect=disconnect)
+    module.utility = types.SimpleNamespace(
+        list_collections=list_collections,
+        get_server_version=get_server_version or (lambda **_: 'v2.5.11'),
+    )
+    monkeypatch.setitem(sys.modules, 'pymilvus', module)
 
+
+def test_lite_prepare_creates_parent_before_sdk_and_rejects_lost_persisted_file(tmp_path, monkeypatch):
     path = tmp_path / 'new-parent' / 'nested' / 'probe.db'
     choice = runtime.RuntimeChoice('lite', str(path), 'startup_fallback:unreachable')
     calls = []
@@ -262,9 +277,12 @@ def test_lite_prepare_creates_parent_before_sdk_and_rejects_lost_persisted_file(
         assert path.parent.is_dir()
         calls.append(kwargs['uri'])
 
-    monkeypatch.setattr(connections, 'connect', connect)
-    monkeypatch.setattr(connections, 'disconnect', lambda _: None)
-    monkeypatch.setattr(utility, 'list_collections', lambda **_: [])
+    _install_fake_pymilvus(
+        monkeypatch,
+        connect=connect,
+        disconnect=lambda _: None,
+        list_collections=lambda **_: [],
+    )
     runtime.prepare_lite_runtime(choice, persisted=False)
     assert calls == [str(path)]
     with pytest.raises(runtime.RuntimeSelectionError):
@@ -273,17 +291,18 @@ def test_lite_prepare_creates_parent_before_sdk_and_rejects_lost_persisted_file(
 
 
 def test_lite_health_uses_supported_readonly_probe(monkeypatch):
-    from pymilvus import connections, utility
-
     from app.api.routes.health import _probe_milvus
 
     runtime._LOCKED = runtime.RuntimeChoice('lite', 'data/synthetic-lite.db', 'ready')
-    monkeypatch.setattr(connections, 'connect', lambda **_: None)
-    monkeypatch.setattr(connections, 'disconnect', lambda _: None)
     version = Mock(side_effect=NotImplementedError('Lite GetVersion unsupported'))
     listed = Mock(return_value=[])
-    monkeypatch.setattr(utility, 'get_server_version', version)
-    monkeypatch.setattr(utility, 'list_collections', listed)
+    _install_fake_pymilvus(
+        monkeypatch,
+        connect=lambda **_: None,
+        disconnect=lambda _: None,
+        list_collections=listed,
+        get_server_version=version,
+    )
     _probe_milvus()
     version.assert_not_called()
     listed.assert_called_once()
@@ -295,8 +314,6 @@ def test_lite_import_or_cleanup_failure_is_isolated_without_persisting(
 ):
     import builtins
 
-    from pymilvus import connections
-
     monkeypatch.setattr(settings, 'RAG_VECTOR_STORE', 'milvus')
     monkeypatch.setattr(settings, 'ENV', 'development')
     monkeypatch.setattr(settings, 'MILVUS_URI', 'http://127.0.0.1:19530')
@@ -304,16 +321,23 @@ def test_lite_import_or_cleanup_failure_is_isolated_without_persisting(
     monkeypatch.setattr(settings, 'MILVUS_LITE_FALLBACK', True)
     monkeypatch.setattr(runtime, 'probe_configured_server', lambda *a: runtime.ProbeReport('unreachable'))
     monkeypatch.setattr(runtime, 'lite_package_installed', lambda: True)
-    monkeypatch.setattr(connections, 'connect', Mock(side_effect=OSError('synthetic connect error')))
-    monkeypatch.setattr(connections, 'disconnect', Mock(side_effect=RuntimeError('synthetic cleanup error')))
-    original = builtins.__import__
+    if missing_sdk:
+        original = builtins.__import__
 
-    def import_module(name, *args, **kwargs):
-        if missing_sdk and name == 'pymilvus':
-            raise ModuleNotFoundError('synthetic missing SDK')
-        return original(name, *args, **kwargs)
+        def import_module(name, *args, **kwargs):
+            if name == 'pymilvus' or name.startswith('pymilvus.'):
+                raise ModuleNotFoundError('synthetic missing SDK')
+            return original(name, *args, **kwargs)
 
-    monkeypatch.setattr(builtins, '__import__', import_module)
+        monkeypatch.setattr(builtins, '__import__', import_module)
+        monkeypatch.delitem(sys.modules, 'pymilvus', raising=False)
+    else:
+        _install_fake_pymilvus(
+            monkeypatch,
+            connect=Mock(side_effect=OSError('synthetic connect error')),
+            disconnect=Mock(side_effect=RuntimeError('synthetic cleanup error')),
+            list_collections=lambda **_: [],
+        )
     runtime.initialize_milvus_runtime(session)
     assert runtime.runtime_failure() is not None
     assert runtime.current_runtime() is None

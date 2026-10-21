@@ -11141,14 +11141,14 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21默认Milvus准入修复后，经用户授权继续修复验收问题。启动故障隔离、空库正式搜索已修；真实Standalone及Linux63、独立第三轮复核通过。冻结全量与最终CI待验，保持in_review。历史准入说明docs/plans/implementation_vdb_001_admission_20261021.md；本轮实现docs/plans/implementation_vdb_acceptance_fixes_20261021.md，复验docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
+      progress: 2026-10-22本机全量pytest 3273 passed/3 skipped/退出码0，真实Standalone prepare与重启后重试验证通过。Ubuntu CI待本次提交推送后的结果。保持in_review。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
       implementation_plan: docs/plans/plan_vdb_001_20261021.md
       admission_evidence:
       - docs/reviews/2026-10-21-vdb-001-dependency-admission.md
       - docs/reviews/2026-10-21-vdb-001-plan-review.md
       blocked_by:
-      - 2026-10-21用户授权修复后，启动隔离和正式空库搜索已修；三卡专项63通过、真实Standalone及Linux63通过，独立第三轮无剩余P1/P2。复验见docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
-      - 冻结全量pytest正在执行；未提交工作区尚无最终SHA的Ubuntu必要CI，保持in_review，不关闭。
+      - 2026-10-22本机全量与真实Standalone已补证，见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
+      - 旧提交c826836的Ubuntu Backend pytest失败已由可选pymilvus导入修复，需新提交的CI结果。保持in_review。
   - id: VDB-002
     title: 开发环境 Milvus Lite 启动兜底与实例归属
     status: in_review
@@ -11246,11 +11246,11 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21已修复Lite持久选择限制与完整实例归属，补领域入口统一核验、目录/SDK/探活/失败隔离。真实Linux Lite全链与63专项通过，独立第三轮无剩余P1/P2；Windows原生Lite仍未支持。用户批准Swagger精确扩围，两字段同步及45契约回归通过。最终全量/CI待验，保持in_review；实现与复验见本轮统一说明。
+      progress: 2026-10-22 Linux容器内真实Lite prepare、Standalone恢复后仍保持Lite的verify、丢失文件拒绝均退出码0。Windows原生Lite仍不支持。Ubuntu CI待新提交。保持in_review。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
       implementation_plan: docs/plans/plan_vdb_002_20261021.md
       blocked_by:
-      - 2026-10-21已修persisted限制、完整实例绑定、各领域入口绕过、SDK配置分类、Lite目录/探活/异常隔离；真实Linux Lite全链、持久化、丢文件拒绝和Linux63通过，未冒称Windows原生Lite支持。
-      - 用户已明确批准docs/swagger.json精确扩围并同步两个管理状态字段。前置VDB-001及本卡最终全量/同SHA Ubuntu CI仍待完成，保持in_review，见docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
+      - 2026-10-22真实Lite已在Linux容器按当前runtime/health/index_identity重跑，见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
+      - Ubuntu CI仍待包含测试修复的新提交。保持in_review。
   - id: VDB-003
     title: 默认 Milvus 与 Lite 模式组合验收
     status: in_review
@@ -11332,11 +11332,11 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21修复后已用独立Linux容器完成真实Standalone/Lite组合与重启持久化、缺目录/丢文件拒绝，Linux63及独立第三轮63通过。259真实输入与宿主一致，当前全量执行中；最终SHA Ubuntu CI和关闭审核未具备，保持in_review，不宣称前两卡全部闭合。复验docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
+      progress: 2026-10-22本机全量、真实Standalone与Linux Lite已按当前文件补证。Ubuntu CI待新提交结果，不宣称三张卡关闭。见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
       implementation_plan: docs/plans/plan_vdb_003_20261021.md
       blocked_by:
-      - 2026-10-21修复后真实Standalone/Lite五段验收、最终Linux63、独立第三轮63及所有入口反例通过；真实259输入与宿主一致，合成Embedding仅证明链路。见docs/reviews/2026-10-21-vdb-001-003-reacceptance.md。
-      - 冻结全量pytest正在执行，最终SHA Ubuntu必要CI及关闭前最终独立审核仍待；前两卡保持in_review，不把前置缺口写成全部闭合。
+      - 2026-10-22真实双模式与本机全量见docs/reviews/2026-10-22-vdb-local-four-gaps.md。
+      - 同最终提交的Ubuntu Backend pytest尚未产生新结果。三卡保持in_review。
   - id: EVAL-001
     title: 受权评测报告查询与结果页面
     status: backlog

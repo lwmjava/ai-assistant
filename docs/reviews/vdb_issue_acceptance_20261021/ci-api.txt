@@ -1,0 +1,22 @@
+gh was not on PATH. git remote -v:
+origin https://github.com/lwmjava/ai-assistant.git (fetch)
+origin https://github.com/lwmjava/ai-assistant.git (push)
+
+HEAD c8268368b5ecdda6351efaacae216f47f33b4dea equals origin/milvus-default-vector-store.
+
+GitHub API substitute for: gh run list --commit c8268368b5ecdda6351efaacae216f47f33b4dea
+GET /repos/lwmjava/ai-assistant/actions/runs?head_sha=c8268368b5ecdda6351efaacae216f47f33b4dea
+total_count=1
+run CI status=completed conclusion=failure sha=c8268368b5ecdda6351efaacae216f47f33b4dea
+url=https://github.com/lwmjava/ai-assistant/actions/runs/39619518045
+
+jobs:
+Agent official baseline completed success
+https://github.com/lwmjava/ai-assistant/actions/runs/39619518045/job/119288902184
+Backend (ruff / mypy / pytest) completed failure
+https://github.com/lwmjava/ai-assistant/actions/runs/39619518045/job/119288902523
+steps: Ruff success, Mypy success, Pytest failure, RAG baseline gate skipped
+annotation: Process completed with exit code 1.
+Frontend (typecheck / vitest / eslint / build) queued, conclusion empty
+https://github.com/lwmjava/ai-assistant/actions/runs/39619518045/job/119288902728
+started=2026-10-21T14:44:37Z

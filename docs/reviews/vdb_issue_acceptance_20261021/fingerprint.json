@@ -1,0 +1,79 @@
+{
+  "manifests": [
+    {
+      "manifest": "docs/reviews/vdb_fix_20261021/final-frozen-inputs.sha256.json",
+      "exists": true,
+      "count": 740,
+      "drift": 4,
+      "missing": 0,
+      "drift_sample": [
+        "app/api/routes/health.py",
+        "app/rag/index_identity.py",
+        "app/rag/vectorstore/runtime.py",
+        "tests/test_vdb_acceptance_fixes.py"
+      ],
+      "missing_sample": []
+    },
+    {
+      "manifest": "docs/reviews/vdb_fix_20261021/real-bound-inputs.json",
+      "exists": true,
+      "count": 259,
+      "drift": 4,
+      "missing": 0,
+      "drift_sample": [
+        "app/api/routes/health.py",
+        "app/rag/index_identity.py",
+        "app/rag/vectorstore/runtime.py",
+        "tests/test_vdb_acceptance_fixes.py"
+      ],
+      "missing_sample": []
+    },
+    {
+      "manifest": "docs/reviews/vdb_fix_20261021/real-final-inputs.json",
+      "exists": true,
+      "count": 224,
+      "drift": 3,
+      "missing": 0,
+      "drift_sample": [
+        "app/api/routes/health.py",
+        "app/rag/index_identity.py",
+        "app/rag/vectorstore/runtime.py"
+      ],
+      "missing_sample": []
+    },
+    {
+      "manifest": "docs/reviews/vdb_fix_20261021/reviewer-inputs-round3.json",
+      "exists": true,
+      "count": 11,
+      "drift": 3,
+      "missing": 0,
+      "drift_sample": [
+        "app/rag/vectorstore/runtime.py",
+        "app/api/routes/health.py",
+        "tests/test_vdb_acceptance_fixes.py"
+      ],
+      "missing_sample": []
+    }
+  ],
+  "pytest_log": {
+    "exists": true,
+    "bytes": 2511,
+    "mtime": 1792588611.212956,
+    "lines": 31,
+    "has_summary": false,
+    "tail": [
+      "........................................................................ [ 43%]",
+      "........................................................................ [ 46%]",
+      "........................................................................ [ 48%]",
+      "........................................................................ [ 50%]",
+      "........................................................................ [ 52%]",
+      "........................................................................ [ 54%]",
+      "........................................................................ [ 57%]",
+      "........................................................................ [ 59%]",
+      "........................................................................ [ 61%]",
+      "........................................................................ [ 63%]",
+      "........................................................................ [ 65%]",
+      "........................................................................ [ 68%]"
+    ]
+  }
+}

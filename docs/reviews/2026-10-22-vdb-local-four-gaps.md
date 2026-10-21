@@ -29,6 +29,12 @@
 
 同一 Linux 容器、同一份当前代码。`127.0.0.1:19530` 无监听时 `prepare` 因 `ConnectionRefusedError` 选择 Lite，退出码 0。随后把该回环端口转发到已恢复的 Standalone，确认 TCP 已连通，再跑新进程 `verify`，模式仍是 Lite，退出码 0。`missing-file` 退出码 0，拒绝创建空替身。日志在 `docs/reviews/vdb_local_repair_20261022/`。
 
-## 尚未由本机完成的一项
+## Ubuntu CI
 
-Ubuntu Backend pytest 要等本次提交推送后的 GitHub Actions。通过前三张卡保持 `in_review`。
+提交 `7307402a9e5f471dccd2bd0ee3a5509d0a8a48c7` 的运行 [39634465447](https://github.com/lwmjava/ai-assistant/actions/runs/39634465447) 已完成且结论为成功：
+
+- Backend：Ruff、mypy、pytest、RAG baseline gate 均为成功。作业 [119341108986](https://github.com/lwmjava/ai-assistant/actions/runs/39634465447/job/119341108986)。
+- Frontend：类型检查、Vitest、ESLint、构建均为成功。
+- Agent official baseline：成功。
+
+三张卡的四项证据已经补上。状态仍保持 `in_review`，本次没有把它们改成完成。

@@ -82,3 +82,6 @@
 ## 验收缺陷修复补记
 
 2026-10-21用户批准README最小扩围后，已同步GET /api/v1/workflows/alerts与WorkflowAlertOut的Swagger及README，并增加运行时契约对账测试。已补真实浏览器登录、同租户告警显示/刷新保持、跨租户不互见的隔离端到端验收；原第4节未走浏览器为此前交付时点的历史限制，本次截图和实际步骤见implementation_workflow_alert_review_fixes_20261021.md。最终全量/CI证据仍按本轮交付报告，不据旧日志关闭新候选。
+
+
+关闭登记（2026-10-21）：用户明确接受并要求关闭；同业务候选11f36aa的Ubuntu Backend/Frontend/Agent official CI均success，当前737输入与最终完整回归匹配，关闭前独立163项通过。对应任务已done，详情见docs/reviews/2026-10-21-workflow-three-cards-close.md。上文待验收内容保留为历史时点记录，不代表当前仍有该阻断；原非目标与残余边界保持。

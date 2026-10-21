@@ -35,3 +35,6 @@ IAB中ui-admin-a登录→工作流页，显示任务A、原创建者synthetic-ow
 
 
 最终本地检查已齐：737输入重算变化0，完整3213pass/3skip/4warnings，Ruff/mypy与前端四门退出0；最终独立报告及CI/业务接受状态见修复交付对账。此前中断/过期全量不当作通过证据。
+
+
+关闭登记（2026-10-21）：用户明确接受并要求关闭；同业务候选11f36aa的Ubuntu Backend/Frontend/Agent official CI均success，当前737输入与最终完整回归匹配，关闭前独立163项通过。对应任务已done，详情见docs/reviews/2026-10-21-workflow-three-cards-close.md。上文待验收内容保留为历史时点记录，不代表当前仍有该阻断；原非目标与残余边界保持。

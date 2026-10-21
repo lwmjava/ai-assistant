@@ -5218,7 +5218,7 @@ tasks:
 
   - id: "PWFL-003"
     title: "工作流并发控制与幂等"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -5279,7 +5279,7 @@ tasks:
         失败边界：数值非法值与1/1000；同wf并发N次/同due终态再触发/下个due；不同wf可到cap但不超；容量满零记录与Bridge、释放后重试；跨租户/Engine/线程事件循环；不同有效输入不误合并；首commit失败/终态commit失败/Task建立异常；取消finally未完成不释放；原重试、超时、取消、cron水位/manual不消费cron回归。使用真实HTTP/_tick/Engine及隔离SQLite，版本化Smoke/Adversarial workflow-concurrency-idempotency-v1，非Gold。
         验证：先有效红测，再最小实现；公共路径全量pytest、Ruff/mypy、API契约变化前端四门；独立入口反例及另一Agent最终审核，最终输入指纹。最终Ubuntu CI与用户业务接受未齐不能done。回滚先排空活动执行再撤代码，不重放历史，不操作真实库。
         只读独立scope_review确认方案满足原契约；cron并行化非必须项。尚需用户批准上述具体周期/拒绝语义及最小扩围。获批后先在docs/plans落正式实现计划，再写ADR和业务代码；本execution提案不替代正式落盘计划。
-      progress: "2026-10-20批准方案与最小扩围后实现共享进程容量、活动任务互斥、cron精确周期去重和删除原子保留；计划/ADR/实现说明已落盘。独立入口发现的refresh与delete两项P2修复后144项工作流通过，fresh最终审核技术通过、实际58项通过，报告docs/reviews/2026-10-20-pwfl-003-human-audit-1.md。Ruff/mypy及前端四门exit0；最终全量3194passed/3skipped/4warnings/855.25秒/exit0，733项输入指纹变化0。最终同SHA Ubuntu CI及用户业务接受未验证，保持in_review；无推送。证据见docs/reviews/2026-10-20-pwfl-003-acceptance.md。"
+      progress: "2026-10-21用户明确接受并要求关闭；已独立核验候选11f36aa76e6eebaa6efe0313dfc86fc9d29fc1eb的CI运行39544372233及Ubuntu Backend/Frontend/Agent official三job均success。最终737输入与23日志图指纹匹配；本地全量3213pass/3skip，关闭前独立163项通过。关闭对账docs/reviews/2026-10-21-workflow-three-cards-close.md；保留原非目标与残余边界，不代表合并/部署授权。"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -5289,7 +5289,7 @@ tasks:
 
   - id: "PWFL-004"
     title: "工作流失败告警与执行日志持久化"
-    status: "in_review"
+    status: "done"
     priority: "P2"
     target_date: ""
     depends_on:
@@ -5327,8 +5327,8 @@ tasks:
       commands:
         - "pytest -k 'workflow'"
     progress:
-      status: "in_review"
-      note: "2026-10-21验收发现异常原文进入新增表，用户要求修复；已改受控原因码/摘要，六类安全与API文档对账红7fail→绿18pass，独立49项及5额外探针、fresh最终37项通过。737输入冻结；最终全量3213passed/3skipped/4warnings/724.71秒/exit0；Ruff/mypy/前端四门exit0。原始Execution.error与历史数据未改。修复交付docs/reviews/2026-10-21-workflow-alert-fixes-delivery.md；最终独立技术审核通过；最终同提交CI/业务接受未验证，保持in_review。"
+      status: "done"
+      note: "2026-10-21用户明确接受并要求关闭；已独立核验候选11f36aa76e6eebaa6efe0313dfc86fc9d29fc1eb的CI运行39544372233及Ubuntu Backend/Frontend/Agent official三job均success。最终737输入与23日志图指纹匹配；本地全量3213pass/3skip，关闭前独立163项通过。关闭对账docs/reviews/2026-10-21-workflow-three-cards-close.md；保留原非目标与残余边界，不代表合并/部署授权。"
     execution:
       owner: "个人开发者"
       nightly:
@@ -8920,10 +8920,10 @@ tasks:
 
   - id: "FLOW-005"
     title: "创建者失效：可查询告警通知 tenant_admin"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
-    progress: "2026-10-21用户要求修复验收缺陷并批准README最小扩围；README/Swagger与运行时告警API已同步，正式契约测试通过。真实隔离FastAPI/SQLite与JWT浏览器验收：本租户可见告警且刷新保留，另一租户仅见其告警，截图已归档。最终全量3213passed/3skipped/4warnings/724.71秒/exit0；Ruff/mypy/前端四门exit0，最终独立技术审核通过；最终同提交CI/业务接受未验证，保持in_review；见docs/reviews/2026-10-21-workflow-alert-fixes-delivery.md。"
+    progress: "2026-10-21用户明确接受并要求关闭；已独立核验候选11f36aa76e6eebaa6efe0313dfc86fc9d29fc1eb的CI运行39544372233及Ubuntu Backend/Frontend/Agent official三job均success。最终737输入与23日志图指纹匹配；本地全量3213pass/3skip，关闭前独立163项通过。关闭对账docs/reviews/2026-10-21-workflow-three-cards-close.md；保留原非目标与残余边界，不代表合并/部署授权。"
     depends_on:
       - "FLOW-002"
     context:

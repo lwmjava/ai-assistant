@@ -87,3 +87,6 @@
 ## 验收后安全修复
 
 2026-10-21用户要求修复验收缺陷：新增日志仅保存受控status/reason，告警error_message由内部reason映射到稳定错误码，不复制异常原文。分类优先识别内部重试耗尽前缀，避免下游错误正文伪造timeout/cancel。原WorkflowExecution.error的既有存储不在新表修复范围，历史告警不会自动清理；不宣称全系统异常字段已脱敏。新正式Adversarial用例覆盖Bearer、API Key、含凭据URL、用户输入回显与伪造错误码。模型注释同步为终态后两条摘要，不再声称存在每次尝试日志。最终结果以修复交付报告为准。
+
+
+关闭登记（2026-10-21）：用户明确接受并要求关闭；同业务候选11f36aa的Ubuntu Backend/Frontend/Agent official CI均success，当前737输入与最终完整回归匹配，关闭前独立163项通过。对应任务已done，详情见docs/reviews/2026-10-21-workflow-three-cards-close.md。上文待验收内容保留为历史时点记录，不代表当前仍有该阻断；原非目标与残余边界保持。

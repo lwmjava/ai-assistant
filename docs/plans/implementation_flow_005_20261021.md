@@ -1,7 +1,7 @@
 # FLOW-005 实现说明：创建者失效 → 本租户可查询告警
 
 > 日期：2026-10-21
-> 状态：in_review（等待用户 2026-10-22 业务与代码验收；不自行标 done）
+> 状态：in_review（本轮修复已通过本地验证，最终CI与用户业务接受待完成；不自行标done）
 > 基线：HEAD=`962b49b`，分支 `codex/flow-003-scheduled-execution`
 > 解释器：`D:\DepTooL\anaconda3\envs\ai-assistant\python.exe`；测试库 `data/test_ai_assistant.db`
 
@@ -77,3 +77,8 @@
 ## 5. 回滚
 
 回退本卡提交即可；`workflow_owner_alerts` 表残留不影响既有功能（旧代码不读不写）。
+
+
+## 验收缺陷修复补记
+
+2026-10-21用户批准README最小扩围后，已同步GET /api/v1/workflows/alerts与WorkflowAlertOut的Swagger及README，并增加运行时契约对账测试。已补真实浏览器登录、同租户告警显示/刷新保持、跨租户不互见的隔离端到端验收；原第4节未走浏览器为此前交付时点的历史限制，本次截图和实际步骤见implementation_workflow_alert_review_fixes_20261021.md。最终全量/CI证据仍按本轮交付报告，不据旧日志关闭新候选。

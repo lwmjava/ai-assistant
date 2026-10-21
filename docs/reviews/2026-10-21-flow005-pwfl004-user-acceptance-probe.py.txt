@@ -1,0 +1,69 @@
+import asyncio
+import json
+import runpy
+import sys
+import uuid
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd()))
+runpy.run_path("tests/conftest.py")
+from sqlmodel import Session, SQLModel, create_engine, select
+from app.audit.models import WorkflowExecutionAlert, WorkflowExecutionLog
+from app.models.user import Tenant, User
+from app.models.workflow import Workflow, WorkflowExecution
+from app.workflow.engine import WorkflowEngine
+from app.main import app
+
+async def main():
+    bind = create_engine(f"sqlite:///./data/accept-alerts-probe-{uuid.uuid4().hex}.db")
+    SQLModel.metadata.create_all(bind)
+    with Session(bind) as s:
+        s.add(Tenant(id="probe-tenant", name="probe-tenant"))
+        s.add(User(id="probe-owner", tenant_id="probe-tenant", username="probe-owner", hashed_password=""))
+        wf=Workflow(id="probe-workflow", tenant_id="probe-tenant", owner_id="probe-owner", name="synthetic job",
+                    cron_expr="* * * * *", prompt_template="synthetic", timeout_seconds=1)
+        s.add(wf); s.commit()
+    marker="SYNTHETIC_CREDENTIAL_NOT_REAL_7e9a"
+    class Failure:
+        async def execute(self, session, owner, prompt):
+            raise RuntimeError("Authorization: Bearer " + marker)
+    with Session(bind) as s:
+        row=await WorkflowEngine(Failure()).execute(s,s.get(Workflow,"probe-workflow"),s.get(User,"probe-owner"))
+        failed_id=row.id
+    with Session(bind) as s:
+        alerts=list(s.exec(select(WorkflowExecutionAlert)).all())
+        logs=list(s.exec(select(WorkflowExecutionLog)).all())
+        leaked_alerts=sum(marker in (a.error_message or "") for a in alerts)
+        leaked_logs=sum(marker in x.message for x in logs)
+    result={"privacy":{"expected_synthetic_credential_occurrences":0,"actual_alert_fields":leaked_alerts,
+                       "actual_log_fields":leaked_logs,"pass":leaked_alerts+leaked_logs==0},
+            "failure_alert":{"execution_id":failed_id,"count":len(alerts),"log_count":len(logs),
+                             "trace_linked":len({a.trace_id for a in alerts}|{x.trace_id for x in logs})==1}}
+    entered=asyncio.Event()
+    class Timeout:
+        async def execute(self, session, owner, prompt):
+            entered.set()
+            await asyncio.Event().wait()
+    with Session(bind) as s:
+        task=asyncio.create_task(WorkflowEngine(Timeout()).execute(s,s.get(Workflow,"probe-workflow"),s.get(User,"probe-owner")))
+        await entered.wait()
+        with Session(bind) as fresh:
+            running=fresh.exec(select(WorkflowExecution).where(WorkflowExecution.status=="running")).one()
+            active_id=running.id
+            during=list(fresh.exec(select(WorkflowExecutionLog).where(WorkflowExecutionLog.execution_id==active_id)).all())
+        row=await task
+        timed_out_id=row.id
+    with Session(bind) as fresh:
+        alerts=list(fresh.exec(select(WorkflowExecutionAlert).where(WorkflowExecutionAlert.execution_id==timed_out_id)).all())
+        logs=list(fresh.exec(select(WorkflowExecutionLog).where(WorkflowExecutionLog.execution_id==timed_out_id)).all())
+        result["timeout"]={"alerts":len(alerts),"logs":len(logs),"reason":alerts[0].reason if alerts else None,
+                           "running_log_count":len(during)}
+    exported=json.loads(Path("docs/swagger.json").read_text(encoding="utf-8"))
+    route="/api/v1/workflows/alerts"
+    result["api_contract"]={"runtime_has_owner_alert_route":route in app.openapi()["paths"],
+                            "swagger_export_has_owner_alert_route":route in exported["paths"],
+                            "readme_mentions_owner_alert_route":"workflows/alerts" in Path("README.md").read_text(encoding="utf-8")}
+    result["candidate_sha"]="3acd233d370ad50339c0cce616bf0243fd25c58d"
+    Path("data/accept-alerts-probe-20261021.json").write_text(json.dumps(result,indent=2)+"\n",encoding="utf-8")
+    print(json.dumps(result,indent=2))
+    bind.dispose()
+asyncio.run(main())

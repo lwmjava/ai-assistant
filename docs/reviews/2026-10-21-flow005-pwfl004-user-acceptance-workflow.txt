@@ -1,0 +1,14 @@
+........................................................................ [ 46%]
+........................................................................ [ 92%]
+...........                                                              [100%]
+============================== warnings summary ===============================
+app\agents\tools\sandbox\sandbox.py:93
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\app\agents\tools\sandbox\sandbox.py:93: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    ast.NameConstant,  # Python 3.7 兼容
+
+tests/test_workflow_timeout_cancel.py::test_cancellation_rolls_back_failed_transaction
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\tests\test_workflow_timeout_cancel.py:207: SAWarning: New instance <Workflow at 0x1d97bc48b90> with identity key (<class 'app.models.workflow.Workflow'>, ('1459c277105947f3b3b61aabd12897d7',), None) conflicts with persistent instance <Workflow at 0x1d97bc4b2f0>
+    session.flush()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+155 passed, 3053 deselected, 2 warnings in 43.36s

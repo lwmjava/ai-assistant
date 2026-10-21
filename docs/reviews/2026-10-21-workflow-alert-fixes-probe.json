@@ -1,0 +1,26 @@
+{
+  "privacy": {
+    "expected_synthetic_credential_occurrences": 0,
+    "actual_alert_fields": 0,
+    "actual_log_fields": 0,
+    "pass": true
+  },
+  "failure_alert": {
+    "execution_id": "a26ae632195549e5b07a5c70c5e80e93",
+    "count": 1,
+    "log_count": 2,
+    "trace_linked": true
+  },
+  "timeout": {
+    "alerts": 1,
+    "logs": 2,
+    "reason": "timeout",
+    "running_log_count": 0
+  },
+  "api_contract": {
+    "runtime_has_owner_alert_route": true,
+    "swagger_export_has_owner_alert_route": true,
+    "readme_mentions_owner_alert_route": true
+  },
+  "candidate_sha": "3acd233d370ad50339c0cce616bf0243fd25c58d"
+}

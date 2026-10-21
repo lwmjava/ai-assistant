@@ -219,7 +219,7 @@ class WorkflowEngine:
                     )
                     self._write_failure_alert(
                         session, tenant_id, workflow, execution_id, trace_id,
-                        reason="setup_error", error_message="WORKFLOW_EXECUTION_FAILED",
+                        reason="setup_error",
                     )
             except BaseException:
                 if entry is not None:
@@ -274,18 +274,18 @@ class WorkflowEngine:
             # 终端 commit 后统一写日志（开始 + 结束）与失败告警。
             # 不在中间做额外 commit，避免干扰既有事务计数测试。
             final_level = "info" if row.status == "success" else "error"
+            final_reason = self._classify_failure_reason(row.error) if row.status == "failed" else "none"
             self._write_exec_logs(
                 session, tenant_id, workflow_id, execution_id, trace_id,
                 entries=[
                     ("info", f"执行开始 triggered_by={triggered_by}"),
-                    (final_level, f"执行结束 status={row.status} error={row.error or ''}"),
+                    (final_level, f"执行结束 status={row.status} reason={final_reason}"),
                 ],
             )
             if row.status == "failed":
                 self._write_failure_alert(
                     session, tenant_id, workflow, execution_id, trace_id,
                     reason=self._classify_failure_reason(row.error),
-                    error_message=row.error,
                 )
             # 日志/告警的 commit 会过期 row，需再次 refresh 使返回对象属性可用。
             session.refresh(row)
@@ -408,7 +408,7 @@ class WorkflowEngine:
     @staticmethod
     def _write_failure_alert(
         session: Session, tenant_id: str, workflow: Workflow, execution_id: str,
-        trace_id: str, *, reason: str, error_message: str | None,
+        trace_id: str, *, reason: str,
     ) -> None:
         """写一条执行失败告警；写入失败不阻断主流程（吞异常 + log）。"""
         try:
@@ -419,7 +419,14 @@ class WorkflowEngine:
                 execution_id=execution_id,
                 trace_id=trace_id,
                 reason=reason,
-                error_message=(error_message or "")[:500],
+                error_message={
+                    "retry_exhausted": "WORKFLOW_RETRY_EXHAUSTED",
+                    "timeout": "WORKFLOW_TIMEOUT",
+                    "owner_invalid": "WORKFLOW_OWNER_INVALID",
+                    "tenant_unavailable": "WORKFLOW_TENANT_UNAVAILABLE",
+                    "cancelled": "WORKFLOW_CANCELLED",
+                    "setup_error": "WORKFLOW_EXECUTION_FAILED",
+                }.get(reason, "WORKFLOW_EXECUTION_FAILED"),
                 detail="工作流执行最终失败",
             ))
             session.commit()
@@ -430,19 +437,14 @@ class WorkflowEngine:
     @staticmethod
     def _classify_failure_reason(error: str | None) -> str:
         """根据 WorkflowExecution.error 字段分类失败原因。"""
-        if not error:
-            return "bridge_error"
-        if "WORKFLOW_TIMEOUT" in error:
-            return "timeout"
-        if "创建者已失效" in error:
-            return "owner_invalid"
-        if "WORKFLOW_TENANT_UNAVAILABLE" in error:
-            return "tenant_unavailable"
-        if "已达到重试上限" in error:
+        if error and error.startswith("已达到重试上限 "):
             return "retry_exhausted"
-        if "WORKFLOW_CANCELLED" in error:
-            return "cancelled"
-        return "bridge_error"
+        return {
+            "WORKFLOW_TIMEOUT": "timeout",
+            "任务创建者已失效（禁用或移出租户），工作流已自动停用": "owner_invalid",
+            "WORKFLOW_TENANT_UNAVAILABLE": "tenant_unavailable",
+            "WORKFLOW_CANCELLED": "cancelled",
+        }.get(error or "", "bridge_error")
 
     async def _fire_webhook(self, workflow: Workflow, execution: WorkflowExecution) -> None:
         """执行完成后回调 webhook（P2）；失败仅告警，不影响主结果。"""

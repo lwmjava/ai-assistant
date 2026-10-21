@@ -1,0 +1,8 @@
+.....................................................................    [100%]
+============================== warnings summary ===============================
+tests/test_workflow_timeout_cancel.py::test_cancellation_rolls_back_failed_transaction
+  E:\culture\SmartCustomerServiceSystem\ai-assistant\tests\test_workflow_timeout_cancel.py:207: SAWarning: New instance <Workflow at 0x1c2d01cdbd0> with identity key (<class 'app.models.workflow.Workflow'>, ('0f79ca678e6f49cfbc79bbe83a1979b6',), None) conflicts with persistent instance <Workflow at 0x1c2d01cdd10>
+    session.flush()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+69 passed, 1 warning in 20.80s

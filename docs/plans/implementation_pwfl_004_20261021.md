@@ -1,13 +1,13 @@
 # PWFL-004 实现说明：工作流失败告警与执行日志持久化
 
 > 日期：2026-10-21
-> 状态：in_review（等待用户 2026-10-22 业务与代码验收；不自行标 done）
+> 状态：in_review（本轮修复已通过本地验证，最终CI与用户业务接受待完成；不自行标done）
 > 基线：HEAD=`12ef449`（含 FLOW-005 提交 `523e2c0`），分支 `codex/flow-003-scheduled-execution`
 > 解释器：`D:\DepTooL\anaconda3\envs\ai-assistant\python.exe`；测试库 `data/test_ai_assistant.db`
 
 ## 1. 实际完成了什么
 
-一次工作流执行最终失败时，落库一条可查询告警记录；同时每次执行生成一个执行级 trace_id，所有执行日志（开始 + 结束）关联该 trace_id，可按 trace_id 检索完整轨迹。
+一次工作流执行最终失败时，落库一条可查询告警记录；同时每次执行生成一个执行级 trace_id，所有执行日志（开始 + 结束）关联该 trace_id，可按 trace_id 检索终态后保存的执行摘要；不是实时或逐次 attempt 的完整轨迹。
 
 ### 谁可以做什么
 - **系统管理员 / 租户管理员**：通过数据层查询函数（`app/workflow/execution_log.py`）按租户、工作流、执行 ID、trace_id 查询失败告警与执行日志。
@@ -82,3 +82,8 @@
 ## 6. 回滚
 
 回退本卡提交即可；`workflow_execution_alerts`、`workflow_execution_logs` 表残留不影响既有功能（旧代码不读不写）。
+
+
+## 验收后安全修复
+
+2026-10-21用户要求修复验收缺陷：新增日志仅保存受控status/reason，告警error_message由内部reason映射到稳定错误码，不复制异常原文。分类优先识别内部重试耗尽前缀，避免下游错误正文伪造timeout/cancel。原WorkflowExecution.error的既有存储不在新表修复范围，历史告警不会自动清理；不宣称全系统异常字段已脱敏。新正式Adversarial用例覆盖Bearer、API Key、含凭据URL、用户输入回显与伪造错误码。模型注释同步为终态后两条摘要，不再声称存在每次尝试日志。最终结果以修复交付报告为准。

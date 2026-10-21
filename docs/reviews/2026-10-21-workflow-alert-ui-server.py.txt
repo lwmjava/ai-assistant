@@ -1,0 +1,35 @@
+import asyncio
+import os
+import runpy
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()))
+os.environ["DATABASE_URL"]="sqlite:///./data/workflow-alert-ui-20261021.db"
+os.environ["SERVE_FRONTEND"]="true"
+os.environ["WORKFLOW_ENABLED"]="true"
+os.environ["PYTHONUTF8"]="1"
+runpy.run_path("tests/conftest.py")
+from sqlmodel import Session
+from app.core.database import engine
+from app.core.security import hash_password
+from app.models.user import User,Tenant
+from app.models.workflow import Workflow
+from app.workflow.engine import WorkflowEngine
+from app.main import app
+import uvicorn
+async def seed():
+    with Session(engine) as s:
+        if s.get(User,"ui-admin-a") is not None:
+            return
+        for tenant in ("ui-tenant-a","ui-tenant-b"):
+            s.add(Tenant(id=tenant,name=tenant))
+        for identity,tenant,role in [("ui-admin-a","ui-tenant-a","tenant_admin"),("ui-admin-b","ui-tenant-b","tenant_admin"),("ui-system","ui-tenant-a","system_admin")]:
+            s.add(User(id=identity,tenant_id=tenant,username=identity,hashed_password=hash_password("SyntheticTestOnly42!"),role=role,is_active=True))
+        for suffix in ("a","b"):
+            s.add(User(id=f"ui-owner-{suffix}",tenant_id=f"ui-tenant-{suffix}",username=f"synthetic-owner-{suffix}",hashed_password="",is_active=False))
+            s.add(Workflow(id=f"ui-job-{suffix}",owner_id=f"ui-owner-{suffix}",tenant_id=f"ui-tenant-{suffix}",name=f"隔离验收任务{suffix.upper()}",cron_expr="* * * * *",prompt_template="synthetic"))
+        s.commit()
+        for suffix in ("a","b"):
+            await WorkflowEngine().execute(s,s.get(Workflow,f"ui-job-{suffix}"),s.get(User,f"ui-owner-{suffix}"))
+asyncio.run(seed())
+uvicorn.run(app,host="127.0.0.1",port=8769,lifespan="off")

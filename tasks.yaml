@@ -5328,7 +5328,7 @@ tasks:
         - "pytest -k 'workflow'"
     progress:
       status: "in_review"
-      note: "执行失败告警模型(workflow_execution_alerts)+执行日志模型(workflow_execution_logs)已落库；引擎在终端commit后统一写开始+结束日志与失败告警；trace_id执行级uuid贯穿；查询函数app/workflow/execution_log.py。实现说明 docs/plans/implementation_pwfl_004_20261021.md；5个新测试+pytest -k workflow 155 passed、全量3205 passed/3 skipped/0 failed；ruff/mypy退出0。等待用户2026-10-22业务与代码验收。"
+      note: "2026-10-21验收发现异常原文进入新增表，用户要求修复；已改受控原因码/摘要，六类安全与API文档对账红7fail→绿18pass，独立49项及5额外探针、fresh最终37项通过。737输入冻结；最终全量3213passed/3skipped/4warnings/724.71秒/exit0；Ruff/mypy/前端四门exit0。原始Execution.error与历史数据未改。修复交付docs/reviews/2026-10-21-workflow-alert-fixes-delivery.md；最终独立技术审核通过；最终同提交CI/业务接受未验证，保持in_review。"
     execution:
       owner: "个人开发者"
       nightly:
@@ -8923,7 +8923,7 @@ tasks:
     status: "in_review"
     priority: "P1"
     target_date: ""
-    progress: "实现说明 docs/plans/implementation_flow_005_20261021.md；pytest -k suspended_owner 6 passed、全量 3200 passed/0 failed（--basetemp 全新，Windows 固定 run 目录清理为基线既有问题）、ruff=0、mypy=0、前端 typecheck/test/lint/build=0；等用户 2026-10-22 业务与代码验收。"
+    progress: "2026-10-21用户要求修复验收缺陷并批准README最小扩围；README/Swagger与运行时告警API已同步，正式契约测试通过。真实隔离FastAPI/SQLite与JWT浏览器验收：本租户可见告警且刷新保留，另一租户仅见其告警，截图已归档。最终全量3213passed/3skipped/4warnings/724.71秒/exit0；Ruff/mypy/前端四门exit0，最终独立技术审核通过；最终同提交CI/业务接受未验证，保持in_review；见docs/reviews/2026-10-21-workflow-alert-fixes-delivery.md。"
     depends_on:
       - "FLOW-002"
     context:
@@ -8944,6 +8944,7 @@ tasks:
         - "tests/"
         - "docs/"
         - "tasks.yaml"
+        - "README.md"
       forbidden_paths:
         - ".env"
         - "生产数据"

@@ -1,0 +1,108 @@
+{
+  "baseline_sha": "3acd233d370ad50339c0cce616bf0243fd25c58d",
+  "candidate": "HEAD plus 737 frozen inputs",
+  "platform": "Windows-11-10.0.22621-SP0",
+  "interpreter": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+  "python": "3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]",
+  "dependencies": {
+    "pytest": "8.4.2",
+    "ruff": "0.8.4",
+    "mypy": "1.14.1",
+    "sqlmodel": "0.0.22",
+    "sqlalchemy": "2.0.36",
+    "pydantic": "2.10.4",
+    "httpx": "0.28.1",
+    "alembic": "1.14.1",
+    "langgraph": "1.0.10"
+  },
+  "settings": {
+    "DATABASE_URL": "sqlite:///./data/workflow-alert-fixes-final-20261021.db",
+    "PYTHONUTF8": "1",
+    "ENV": "development",
+    "AUTH_ENABLED": true,
+    "AGENT_ORCHESTRATION": "self",
+    "RAG_ENABLED": true,
+    "RAG_BACKEND": "native",
+    "RAG_VECTOR_STORE": "local",
+    "WORKFLOW_ENABLED": "default false; workflow fixtures enable",
+    "external_credentials": "stripped by conftest",
+    "extra": "dev/langgraph installed; pytest8.4.2 differs from CI dev pin8.3.4"
+  },
+  "results": {
+    "ruff": 0,
+    "mypy": 0,
+    "mypy_source_files": 222,
+    "frontend_typecheck": 0,
+    "frontend_test": 0,
+    "frontend_lint": 0,
+    "frontend_build": 0,
+    "vitest_files": 18,
+    "vitest_tests": 167,
+    "full_pytest": {
+      "passed": 3213,
+      "skipped": 3,
+      "warnings": 4,
+      "duration_seconds": 724.71,
+      "exit_code": 0,
+      "collected": 3216
+    },
+    "post_success_fix_related": {
+      "passed": 19,
+      "duration_seconds": 3.06,
+      "exit_code": 0
+    },
+    "fresh_final_independent": {
+      "passed": 37,
+      "duration_seconds": 6.66,
+      "exit_code": 0
+    },
+    "entry_independent": {
+      "passed": 49,
+      "duration_seconds": 10.37,
+      "exit_code": 0,
+      "extra_probes": 5
+    }
+  },
+  "interrupted_run": "first full log has no exit code/summary; not used as passing evidence",
+  "logs": {
+    "data/alert-review-fixes-red-20261021.txt": "92b2bd8d350cf7faa2572540f17b1a33c8be8f47460a2940cf58625708ab541b",
+    "data/alert-review-fixes-green-20261021.txt": "1a7f820989ee0fd3c98001e3e9da33c623664597fed8081d1d34aa79a35426f5",
+    "data/workflow-alert-fixes-ruff-20261021.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/workflow-alert-fixes-mypy-20261021.txt": "4af4772e4953c88e0f9ee995cc8360bfca34004d83def2649cf9ace15c7b83a9",
+    "data/workflow-alert-fixes-original-probe-20261021.txt": "d5ea2c31ee42e2924fb596a6b77d305e0ca8f6e00f5f5a828f8734117647da8f",
+    "data/workflow-alert-fixes-frontend-typecheck-20261021.txt": "8bccce1b2eea9a81b456e4e225ff2553f200160510898e15a0e20ce50e141d3c",
+    "data/workflow-alert-fixes-frontend-test-20261021.txt": "65f80a5fd117553564997c93c929f8e7581a72e3d2d10a5995649621c2728f77",
+    "data/workflow-alert-fixes-frontend-lint-20261021.txt": "fec427e6da4f0db6e1d954ca97719ec27d0b9e582a73b4368a8487477c07ab52",
+    "data/workflow-alert-fixes-frontend-build-20261021.txt": "aa4e0e5aedf2e22c9104625168f112ffad663d3cca023f33dda0958955064120",
+    "docs/reviews/2026-10-21-workflow-alert-ui-tenant-a.png": "60bf936172aa219a3af817c59c0c72eb6f742f5a091c90a34bc910fd354f1d5a",
+    "docs/reviews/2026-10-21-workflow-alert-ui-tenant-b.png": "0b1187c324ecbc8685827887759c2b6256a320d0fe66ae589be9831e9a898aa8",
+    "docs/reviews/2026-10-21-workflow-alert-ui-tenant-b-ax.txt": "969c9a503f8b4340c2ec833279c9757237e08ec9741d1c8c7d581cecb4d11692",
+    "docs/reviews/2026-10-21-workflow-alert-ui-server.py.txt": "8c9e232a1297c7c5f448b12e6c85e8e9590d3be9fdd86690aba7386bdf43842c",
+    "data/workflow-alert-success-red-20261021.txt": "2bae4ac5c933bd9223b13d9b4c639fe16ba99dd0aa292c691fad8e8373da6fea",
+    "data/workflow-alert-success-green-20261021.txt": "100ebe90f390248aa1d3a8f67d8f25718ab7b7da726df7a7d8c54f161b592b87",
+    "data/workflow-alert-fixes-final-20261021.txt": "632eb1871b2de3143922128cba33001baa5c2137ba056f3b7d0cbf9f58cc6cb0",
+    "docs/reviews/2026-10-21-workflow-alert-fixes-full-final.txt": "632eb1871b2de3143922128cba33001baa5c2137ba056f3b7d0cbf9f58cc6cb0",
+    "docs/reviews/2026-10-21-workflow-alert-fixes-ruff-final.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "docs/reviews/2026-10-21-workflow-alert-fixes-mypy-final.txt": "4af4772e4953c88e0f9ee995cc8360bfca34004d83def2649cf9ace15c7b83a9",
+    "docs/reviews/2026-10-21-workflow-alert-fixes-frontend-typecheck.txt": "303685991612ebedb76003d49cd897b8c2ca4f5750870af62a6e5f09e052fbf5",
+    "docs/reviews/2026-10-21-workflow-alert-fixes-frontend-test.txt": "65f80a5fd117553564997c93c929f8e7581a72e3d2d10a5995649621c2728f77",
+    "docs/reviews/2026-10-21-workflow-alert-fixes-frontend-lint.txt": "fec427e6da4f0db6e1d954ca97719ec27d0b9e582a73b4368a8487477c07ab52",
+    "docs/reviews/2026-10-21-workflow-alert-fixes-frontend-build.txt": "aa4e0e5aedf2e22c9104625168f112ffad663d3cca023f33dda0958955064120"
+  },
+  "discarded_runs": [
+    "first full interrupted without summary/exit code",
+    "full-retry stopped after success-summary source/test changed; obsolete inputs"
+  ],
+  "final_full_command": "D:/DepTooL/anaconda3/envs/ai-assistant/python.exe -m pytest --basetemp=data/pytest-tmp/workflow-alert-fixes-final-20261021 -o faulthandler_timeout=120",
+  "status": "in_review; local checks and browser E2E passed; final same-SHA Ubuntu CI and user business acceptance unverified",
+  "skips": [
+    "Windows symlink privilege unavailable",
+    "POSIX 0600 semantics require Linux",
+    "Windows open-file replacement semantics require Linux"
+  ],
+  "archive_format": "Trailing empty lines normalized in archived text logs only; original data logs retained.",
+  "frozen_input_verification": {
+    "count": 737,
+    "changed": 0
+  }
+}

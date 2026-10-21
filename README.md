@@ -261,6 +261,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 | MCP | `GET` | `/api/v1/mcp/servers` | 已配置的 MCP 服务器 |
 | MCP | `GET` | `/api/v1/mcp/tools` | 已连接 MCP 工具列表 |
 | 工作流 | `GET` / `POST` | `/api/v1/workflows` | 工作流列表 / 创建（需 `WORKFLOW_ENABLED`） |
+| 工作流 | `GET` | `/api/v1/workflows/alerts` | 创建者失效告警；同租户可见，系统管理员可跨租户查看 |
 | 工作流 | `GET` / `PUT` / `DELETE` | `/api/v1/workflows/{workflow_id}` | 工作流详情、更新、删除 |
 | 工作流 | `GET` | `/api/v1/workflows/{workflow_id}/executions` | 执行历史 |
 | 工作流 | `POST` | `/api/v1/workflows/{workflow_id}/executions/{execution_id}/cancel` | 协作取消本进程执行并等待清理；终态幂等 |

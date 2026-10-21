@@ -1,0 +1,48 @@
+Browser tab: 1, Title: "ai-assistant 控制台", URL: "http://127.0.0.1:8769/workflows".
+1 AXWebArea ai-assistant 控制台, URL: 127.0.0.1:8769/workflows
+	2 container root
+		27 container 主导航
+			28 text ai-assistant
+			29 text 企业 AI 助手控制台
+			30 button 关闭导航
+			31 container
+				32 link Description: 对话, Value: 127.0.0.1:8769/chat
+				33 link Description: 知识库, Value: 127.0.0.1:8769/knowledge
+				34 link Description: 工具与 MCP, Value: 127.0.0.1:8769/tools
+				35 link Description: 工作流, Value: 127.0.0.1:8769/workflows
+				36 link Description: 技能, Value: 127.0.0.1:8769/skills
+				37 link Description: 邀请, Value: 127.0.0.1:8769/invitations
+			38 text 权限由后端角色矩阵裁定，界面仅隐藏当前角色不可访问的能力。
+		39 container
+			40 button 打开导航
+				41 image
+			42 button 切换到深色主题
+			43 pop up button (collapsed) Secondary Actions: Expand
+		44 container
+			45 heading 定时工作流, Value: 1
+				46 text 定时工作流
+			47 text 以 cron 周期调用 Agent 执行 Prompt 模板，任务以创建者身份运行并留存执行历史。
+			48 button 新建任务
+			49 container
+				50 text 1  个定时任务因创建者失效已自动停用
+			51 content list
+				52 container
+					53 text 《 隔离验收任务B 》 创建者已被禁用 原创建者： synthetic-owner-b 2026/10/21 01:33
+			54 content list
+				55 container
+					56 heading 隔离验收任务B, Value: 3
+						57 text 隔离验收任务B
+					58 text 创建者失效
+					59 text * * * * * Asia/Shanghai
+					60 container
+						61 switch Description: 已停用, Value: 0
+						62 text 已停用
+					63 text synthetic
+					64 button 立即运行
+					65 button 执行历史
+					66 button 编辑
+					67 button 删除
+			68 text 创建、更新、删除与手动执行均写入审计日志。
+		26 container 通知
+
+The focused UI element is 1 AXWebArea ai-assistant 控制台, URL: 127.0.0.1:8769/workflows

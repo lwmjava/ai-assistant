@@ -1,0 +1,81 @@
+
+> ai-assistant-console@0.1.0 build
+> tsc -b && vite build
+
+vite v5.4.8 building for production...
+transforming...
+✓ 1967 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                       1.32 kB │ gzip:  0.75 kB
+dist/assets/plus-jakarta-sans-vietnamese-600-normal-CC6hLFtX.woff2    4.13 kB
+dist/assets/space-grotesk-vietnamese-700-normal-CCX1ne2N.woff2        4.18 kB
+dist/assets/plus-jakarta-sans-vietnamese-500-normal-DV0RQ-PV.woff2    4.24 kB
+dist/assets/space-grotesk-vietnamese-400-normal-Xz5Iioar.woff2        4.27 kB
+dist/assets/space-grotesk-vietnamese-500-normal-DsSuWkZ0.woff2        4.29 kB
+dist/assets/space-grotesk-vietnamese-600-normal-kaJl8cRq.woff2        4.30 kB
+dist/assets/plus-jakarta-sans-vietnamese-400-normal-C8e2rZwZ.woff     5.57 kB
+dist/assets/plus-jakarta-sans-vietnamese-600-normal-DeS4BEfh.woff     5.73 kB
+dist/assets/plus-jakarta-sans-vietnamese-500-normal-B82lGh9n.woff     5.76 kB
+dist/assets/space-grotesk-vietnamese-700-normal-BWtyAlKv.woff         5.77 kB
+dist/assets/space-grotesk-vietnamese-600-normal-BtsXhQw6.woff         5.89 kB
+dist/assets/space-grotesk-vietnamese-500-normal-DzztwWdx.woff         5.90 kB
+dist/assets/space-grotesk-vietnamese-400-normal-da0p_TGu.woff         5.90 kB
+dist/assets/plus-jakarta-sans-latin-ext-400-normal-DoLIX7aW.woff2    10.50 kB
+dist/assets/plus-jakarta-sans-latin-ext-500-normal-CPn9LCJy.woff2    10.87 kB
+dist/assets/plus-jakarta-sans-latin-ext-600-normal-CnFlO-3n.woff2    10.96 kB
+dist/assets/space-grotesk-latin-ext-700-normal-CXJ4FkXv.woff2        11.56 kB
+dist/assets/space-grotesk-latin-ext-500-normal-CMeIqUb3.woff2        11.79 kB
+dist/assets/space-grotesk-latin-ext-400-normal-D7frRTMg.woff2        11.86 kB
+dist/assets/plus-jakarta-sans-latin-400-normal-BEreAzRs.woff2        11.88 kB
+dist/assets/space-grotesk-latin-ext-600-normal-CrM0J1V4.woff2        11.92 kB
+dist/assets/plus-jakarta-sans-latin-600-normal-DZHTH_YQ.woff2        12.23 kB
+dist/assets/plus-jakarta-sans-latin-500-normal-QJgU3aHP.woff2        12.38 kB
+dist/assets/space-grotesk-latin-700-normal-DUDKB872.woff2            12.78 kB
+dist/assets/space-grotesk-latin-600-normal-BUu1NTlP.woff2            13.21 kB
+dist/assets/space-grotesk-latin-500-normal-DtUIId4r.woff2            13.32 kB
+dist/assets/space-grotesk-latin-400-normal-C0oqmF7T.woff2            13.38 kB
+dist/assets/plus-jakarta-sans-latin-ext-400-normal-BsqZKeor.woff     15.34 kB
+dist/assets/plus-jakarta-sans-latin-ext-600-normal-CB6G-JUj.woff     15.64 kB
+dist/assets/plus-jakarta-sans-latin-ext-500-normal-B3NWVrCc.woff     15.64 kB
+dist/assets/plus-jakarta-sans-latin-400-normal-B430qp47.woff         15.88 kB
+dist/assets/plus-jakarta-sans-latin-600-normal-BGO7_dKe.woff         16.23 kB
+dist/assets/space-grotesk-latin-ext-700-normal-DWId6XrS.woff         16.24 kB
+dist/assets/plus-jakarta-sans-latin-500-normal-8oBgpzDE.woff         16.28 kB
+dist/assets/space-grotesk-latin-ext-600-normal-BUOKTQkp.woff         16.50 kB
+dist/assets/space-grotesk-latin-ext-500-normal-C2OxGUGH.woff         16.56 kB
+dist/assets/space-grotesk-latin-ext-400-normal-Crgx7zTe.woff         16.59 kB
+dist/assets/space-grotesk-latin-700-normal-XTACPmcu.woff             16.62 kB
+dist/assets/space-grotesk-latin-600-normal-63WU3uO9.woff             17.07 kB
+dist/assets/space-grotesk-latin-500-normal-Btx04WmO.woff             17.18 kB
+dist/assets/space-grotesk-latin-400-normal-ChcWOco_.woff             17.20 kB
+dist/assets/index-O5eG_gtW.css                                       67.04 kB │ gzip: 19.94 kB
+dist/assets/plus-BrgBsfG1.js                                          0.32 kB │ gzip:  0.25 kB
+dist/assets/trash-2-CLUqb_mT.js                                       0.53 kB │ gzip:  0.35 kB
+dist/assets/shield-off-C-LIRGay.js                                    0.57 kB │ gzip:  0.39 kB
+dist/assets/Pager-Bu_yRUDr.js                                         0.58 kB │ gzip:  0.39 kB
+dist/assets/PageHeader-B1SUEELx.js                                    0.63 kB │ gzip:  0.36 kB
+dist/assets/TenantCreate-9wuLnMPr.js                                  1.43 kB │ gzip:  0.97 kB
+dist/assets/tenants-CNbTQa0C.js                                       1.44 kB │ gzip:  0.51 kB
+dist/assets/Status-DBka1vqR.js                                        1.82 kB │ gzip:  1.12 kB
+dist/assets/UserCreate-5jkkao87.js                                    2.20 kB │ gzip:  1.31 kB
+dist/assets/Modal-BWYpbTls.js                                         2.76 kB │ gzip:  1.32 kB
+dist/assets/Invitations-DO-Eq_os.js                                   2.77 kB │ gzip:  1.25 kB
+dist/assets/Feedback-CgkeZj62.js                                      2.99 kB │ gzip:  1.44 kB
+dist/assets/Tools-DO9E7kSd.js                                         7.45 kB │ gzip:  2.96 kB
+dist/assets/Users-CaJ0YqPD.js                                         8.24 kB │ gzip:  3.22 kB
+dist/assets/Audit-CeEWwuPl.js                                         8.44 kB │ gzip:  3.36 kB
+dist/assets/Tenants-BM7tWVHa.js                                       8.84 kB │ gzip:  3.58 kB
+dist/assets/Skills-Db3w2UBV.js                                       10.46 kB │ gzip:  3.57 kB
+dist/assets/Workflows-DFR7fYDK.js                                    16.06 kB │ gzip:  6.25 kB
+dist/assets/Knowledge-_D94XrjA.js                                    23.47 kB │ gzip:  8.73 kB
+dist/assets/Chat-BR0csU3A.js                                         47.82 kB │ gzip: 17.41 kB
+dist/assets/markdown-C9AR9Wj8.js                                    157.93 kB │ gzip: 48.01 kB
+dist/assets/react-4pSfMjFg.js                                       164.45 kB │ gzip: 53.65 kB
+dist/assets/index-GA0zNUUN.js                                       205.94 kB │ gzip: 62.01 kB
+✓ built in 6.62s
+npm notice
+npm notice New major version of npm available! 10.9.3 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

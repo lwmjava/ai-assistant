@@ -3196,6 +3196,37 @@
         ]
       }
     },
+    "/api/v1/workflows/alerts": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "List Workflow Alerts",
+        "description": "创建者失效告警列表：本租户可见；系统管理员跨租户，其余按租户隔离。",
+        "operationId": "list_workflow_alerts_api_v1_workflows_alerts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowAlertOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Workflow Alerts Api V1 Workflows Alerts Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/workflows/{workflow_id}": {
       "get": {
         "tags": [
@@ -7541,6 +7572,75 @@
         ],
         "title": "VectorProbeStatus",
         "description": "向量库连通结果，并标明当前用的是本地库还是 Milvus。"
+      },
+      "WorkflowAlertOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "workflow_name": {
+            "type": "string",
+            "title": "Workflow Name"
+          },
+          "owner_id": {
+            "type": "string",
+            "title": "Owner Id"
+          },
+          "owner_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Username"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "workflow_id",
+          "workflow_name",
+          "owner_id",
+          "owner_username",
+          "reason",
+          "detail",
+          "created_at"
+        ],
+        "title": "WorkflowAlertOut",
+        "description": "创建者失效告警（FLOW-005）：tenant_admin 可查询，不外发。"
       },
       "WorkflowCreate": {
         "properties": {

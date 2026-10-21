@@ -179,7 +179,8 @@ class WorkflowExecutionLog(SQLModel, TimestampMixin, table=True):
     """工作流执行日志条目（PWFL-004）。
 
     同一执行的所有日志共享同一 ``trace_id``，可按 trace_id 检索完整执行轨迹。
-    日志在关键节点写入：开始、每次尝试、结束；成功执行也会落日志，但不产生告警。
+    日志在终态保存后统一写入开始与结束摘要；不记录每次尝试或实时进度。
+    成功执行也会落日志，但不产生告警。
     """
 
     __tablename__ = "workflow_execution_logs"

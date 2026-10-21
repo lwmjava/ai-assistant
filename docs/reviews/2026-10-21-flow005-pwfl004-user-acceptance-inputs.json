@@ -1,0 +1,53 @@
+{
+  "candidate_sha": "3acd233d370ad50339c0cce616bf0243fd25c58d",
+  "platform": "Windows-11-10.0.22621-SP0",
+  "python": "3.12.0 | packaged by conda-forge | (main, Oct  3 2023, 08:26:13) [MSC v.1935 64 bit (AMD64)]",
+  "interpreter": "D:\\DepTooL\\anaconda3\\envs\\ai-assistant\\python.exe",
+  "versions": {
+    "pytest": "8.4.2",
+    "ruff": "0.8.4",
+    "mypy": "1.14.1",
+    "sqlmodel": "0.0.22",
+    "sqlalchemy": "2.0.36",
+    "pydantic": "2.10.4",
+    "httpx": "0.28.1"
+  },
+  "inputs": {
+    "app/workflow/engine.py": "e0639d76bad4fab7d9878edd91970626736f8a006752636258eb22063cef9249",
+    "app/workflow/scheduler.py": "59c99b85bd4c676e6694eaaafd2575337dcf0139b5547d6f1a3953d4e20556b0",
+    "app/workflow/execution_log.py": "ec50be27cf387f058d6e3fa835e9dc3c11de43f9b584354dacd204feff8b97ad",
+    "app/audit/models.py": "1a002ef9abf7d0b044c0a4d65be86aa08c44d15d18caecf78e160310824e7c01",
+    "app/api/routes/workflow.py": "b5dff5ab8b7dcbf6ff6abb9cd54df3e9d6f10754d40a2ca31bb39668093a45ba",
+    "app/core/database.py": "4f3139d3d53f543b1ea95abe50a1c49ac39f1b9d6fe33d6b1b05ed3d86c2b57a",
+    "frontend/src/pages/Workflows.tsx": "674dd2e80c332535eca917c819570dd0a5a6ae8f2e967e94cd51d35da10d129d",
+    "frontend/src/api/workflows.ts": "1e903df7110d0ea244d2e72d93c73bd45afc374893f2acef896f080148622d73",
+    "frontend/src/types/api.ts": "7012a2df01be3fcbd57c1aca416a33c14efe57a0aac90635f504614bd06b4cea",
+    "tests/test_workflow_owner_alert.py": "18974b79b3c424c0d63d8905f43af4d987b779e5588bb27729a00dffb8e6eca5",
+    "tests/test_workflow_execution_alert.py": "4c3ad3982c05f350d4a71f03f3574bdf5e4ce696738cce645796740d414f28bf",
+    "README.md": "061c233a855696d5b9f0216676830812c6e8f2724fd5310a0690da3f9df4c430",
+    "docs/swagger.json": "c4e5680b84f472d4d0a39268c07a4ec6afb23727846be686451147c1af62a065",
+    "pyproject.toml": "2873378e1d2dd888554e12754247184b760ee1550eae658ef122c535088135c1",
+    "frontend/package.json": "5d26514692e1f56fb3743af0d0b4c9ee417c45499f566a00bc0098871c29f67c",
+    "frontend/package-lock.json": "2b5d251a3602cfd3835c577346e225a7a152c07c511d80baea78fc20e59983c2"
+  },
+  "test_database": "sqlite:///./data/accept-flow005-pwfl004-20261021.db",
+  "external_model_requests": false,
+  "unrelated_untracked": [
+    "docs/plans/proposal_cross_project_reuse_20261021.md",
+    "docs/plans/proposal_milvus_default_20261021.md",
+    "docs/reviews/cross_project_reuse_inventory_20261021.json"
+  ],
+  "log_sha256": {
+    "data/accept-flow005-pwfl004-20261021.txt": "77ce0866d425fc8234b65b3ff1a4e46279346cef067a6fb521c7081989235d12",
+    "data/accept-alerts-workflow-20261021.txt": "da2fceb02e42e1d23321b9aa31f176f6eb4ca719ca506ed93e42ff46b0cada1b",
+    "data/accept-alerts-probe-20261021.txt": "bfa6ee6743c70b51e805fcaca24d9d5c1db92e1531f10b4600dd310c90bfbe3e",
+    "data/accept-alerts-ruff-20261021.txt": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+    "data/accept-alerts-mypy-20261021.txt": "4af4772e4953c88e0f9ee995cc8360bfca34004d83def2649cf9ace15c7b83a9",
+    "data/accept-alerts-frontend-typecheck-20261021.txt": "8bccce1b2eea9a81b456e4e225ff2553f200160510898e15a0e20ce50e141d3c",
+    "data/accept-alerts-frontend-test-20261021.txt": "39724ca221feb03305fb49211518220b220a09adc4a2e1e50165f803ba8115dd",
+    "data/accept-alerts-frontend-lint-20261021.txt": "fec427e6da4f0db6e1d954ca97719ec27d0b9e582a73b4368a8487477c07ab52",
+    "data/accept-alerts-frontend-build-20261021.txt": "ce66f263810d4da344b05fe2215aa420e26a814aef062a58d8bdd3bb4c7437a7"
+  },
+  "probe_source_sha256": "32907da0275729684b02548aa9c90f13a72cb1630441777a2cfe5ad064fd6241",
+  "input_changes_after_verification": []
+}

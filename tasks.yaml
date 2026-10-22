@@ -8786,7 +8786,7 @@ tasks:
 
   - id: FEED-001
     title: 对话反馈：接口与表结构
-    status: in_review
+    status: done
     priority: P1
     target_date: ''
     depends_on: []
@@ -8851,7 +8851,7 @@ tasks:
         authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
         quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
       implementation_plan: docs/plans/implementation_feed_001.md
-      progress: 2026-10-22用户在对话页看过点赞/点踩后明确说任务卡可以关闭，业务接受按此记录。状态保持 in_review：生产异常不再记成 stopped、以及点踩改为先填说明之后，没有重跑全量 pytest、Ruff、mypy 和前端四项；此前全量 v4 的 3329 passed/3 skipped 不覆盖这些改动。本机没有可用 Linux，同一提交的 Ubuntu CI 也还没有。不写 done。见 docs/plans/implementation_feed_001.md、docs/reviews/2026-10-22-feed-001-independent-review.md。
+      progress: 2026-10-22用户在对话页看过点赞/点踩后授权关闭。同一提交1973299843658674eda258f05312653a8ec00469的Ubuntu CI run39732094037三项均成功：Backend job119669226236（含Ruff、mypy、pytest、RAG baseline gate）、Frontend job119669225945、Agent official baseline job119669226201。用户明确不做本地全量重跑；关闭前本地只重跑反馈、聊天和活动运行，188 passed，改动文件Ruff/mypy通过，前端相关18 passed且类型检查通过。语料快照不在本卡。见docs/plans/implementation_feed_001.md。
       estimate_person_days:
       - 2
       - 4

@@ -73,4 +73,6 @@ Linux环境补查：提权只读WSL列表成功，仅docker-desktop；docker inf
 
 同日只读审查发现生产循环异常后的 `aclose()` 会把尝试写成 `stopped`。修复为只有 `CancelledError` 记 `stopped`，`GeneratorExit` 保留已确定结果。新增 `test_consumer_failure_close_stays_api_error`。修复前该用例失败；修复后反馈三份测试加 `tests/test_sse_active_runs_review.py` 为 43 passed、1 warning、退出码 0，隔离库 `sqlite:///./data/feed001-p2-fix.db`。全量 pytest、Linux 与同一提交 CI 尚未对这个修复重跑，任务不关闭。
 
-2026-10-22用户在对话页使用点赞/点踩后说任务卡可以关闭。业务接受按该授权记录：成功回复用点赞/点踩，点踩可填写补充说明。对话页随后把文字按钮改成小图标，点踩先打开说明再保存。该界面改动和上述失败分类修复之后，没有重跑全量 pytest、Ruff、mypy、前端四项，也没有 Linux 或同一提交 Ubuntu CI。因此台账保持 in_review，不写 done。
+2026-10-22用户在对话页使用点赞/点踩后说任务卡可以关闭。业务接受按该授权记录：成功回复用点赞/点踩，点踩可填写补充说明。对话页随后把文字按钮改成小图标，点踩先打开说明再保存。用户明确不做本地全量重跑。关闭前本地重跑反馈、聊天和活动运行：188 passed、2 warnings、34.56秒、退出码0，隔离库sqlite:///./data/feed001-scoped-20261022.db；改动后端文件Ruff与mypy通过；前端相关18 passed，类型检查通过。
+
+同一提交1973299843658674eda258f05312653a8ec00469的Ubuntu CI [run 39732094037](https://github.com/lwmjava/ai-assistant/actions/runs/39732094037)三项均成功：Backend job119669226236（Ruff、mypy、pytest、RAG baseline gate）、Frontend job119669225945、Agent official baseline job119669226201。该作业成功即包含完整pytest步骤，用作同一最终提交的Linux证据。语料快照、自动清理和真实模型质量评价不在本卡。任务关闭为done。验收后7天缺陷与重开尚未发生。

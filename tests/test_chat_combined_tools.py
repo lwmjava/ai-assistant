@@ -371,8 +371,7 @@ async def test_outer_service_close_at_call_stops_before_execution(composition, m
             await iterator.aclose()
     with Session(engine) as fresh:
         answers = fresh.exec(select(Message).where(col(Message.role) == "assistant")).all()
-        assert len(answers) == 1 and answers[0].status == "stopped"
-        assert "1140" not in answers[0].content
+        assert answers == []  # No output: cancellation must not create an empty assistant message.
         assert not allowed_tools(fresh.exec(select(AuditLog)).all())
 
 

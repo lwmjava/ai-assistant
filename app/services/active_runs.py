@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.security import Role
 from app.models.conversation import Conversation, Message
 from app.models.user import Tenant, User
+from app.services.chat_feedback import FeedbackAccessError, FeedbackConflictError, FeedbackService
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,13 @@ class ActiveRunManager:
         run = ActiveRun(identity, (user.id, user.tenant_id, user.role, user.token_version), bind,
                         conversation_id=conversation_id)
         self._authorize(run, user)
+        with Session(bind) as attempt_session:
+            try:
+                FeedbackService(attempt_session).begin(user, identity)
+            except FeedbackAccessError as exc:
+                raise RunAccessError("运行不存在或无权访问") from exc
+            except FeedbackConflictError as exc:
+                raise RunConflictError("运行编号已存在，请查询原尝试") from exc
         self.runs[identity] = run
         run.task = asyncio.create_task(self._produce(run, producer))
         return run
@@ -142,6 +150,7 @@ class ActiveRunManager:
             fields = {**fields, "ts": time.time()}
         if name == "error":
             fields = {"code": "generation_failed", "message": "运行失败，请稍后重试", "retryable": False, **fields}
+            fields["attempt_id"] = run.run_id
         data = json.dumps({**fields, "run_id": run.run_id}, ensure_ascii=False)
         size = len(data.encode("utf-8")) + len(name.encode("utf-8")) + 64
         if size > MAX_EVENT_BYTES:
@@ -178,7 +187,7 @@ class ActiveRunManager:
                 self._authorize(run, current)
                 after = number
                 yield event
-            if run.status != "running" and after >= run.sequence:
+            if run.finished_at is not None and after >= run.sequence:
                 return
             try:
                 await asyncio.wait_for(wakeup.wait(), timeout=HEARTBEAT_SECONDS)
@@ -217,6 +226,8 @@ class ActiveRunManager:
             return "error", {"code": "rate_limited", "message": "请求过于频繁，请稍后再试",
                              "retryable": False, "retry_after_seconds": retry_after}
         if name == "error":
+            if metadata and metadata.get("code") == "no_response":
+                return name, {"code": "no_response", "message": "长时间没有输出，请稍后重试", "retryable": False}
             return name, safe_error_metadata(metadata)
         parsed = json.loads(raw) if raw else {}
         return name, parsed if isinstance(parsed, dict) else {"items": parsed}
@@ -235,7 +246,7 @@ class ActiveRunManager:
                             hashed_password="", role=Role.SYSTEM_ADMIN.value, token_version=0)
             if user is None:
                 raise RunAccessError("运行不存在或无权访问")
-            stream = producer(session, user)
+            stream = FeedbackService(session).track_stream(user, run.run_id, producer(session, user), started=True)
             async for event in stream:
                 self._authorize(run)
                 if event.type == "conversation":
@@ -317,12 +328,19 @@ class ActiveRunManager:
                 run.finished_at = time.monotonic()
                 self.emit(run, "run.finished", {"status": "cancelled"})
                 run.ready.set()
+            if run.status == "cancelled":
+                # A task cancelled before its first coroutine step cannot run its finally block.
+                with Session(run.bind) as session:
+                    FeedbackService(session).finish(run.run_id, "stopped")
 
     async def shutdown(self) -> None:
         tasks = [run.task for run in self.runs.values() if run.task is not None and not run.task.done()]
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
+        for run in self.runs.values():
+            with Session(run.bind) as session:
+                FeedbackService(session).finish(run.run_id, "stopped")
         self.runs.clear()
 
 

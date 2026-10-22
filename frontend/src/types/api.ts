@@ -126,6 +126,12 @@ export interface ChatAttachmentSummary {
 }
 
 export interface MessageOut {
+  attempt_id?: string | null
+  attempt_outcome?: string | null
+  feedback_submitted?: boolean
+  feedback_id?: string | null
+  rating?: 'up' | 'down' | null
+  rating_id?: string | null
   id: string
   role: string
   content: string
@@ -150,6 +156,8 @@ export interface ChatRequest {
 }
 
 export interface ChatResponse {
+  attempt_id?: string | null
+  assistant_message_id?: string | null
   conversation_id: string
   reply: string
   model: string | null

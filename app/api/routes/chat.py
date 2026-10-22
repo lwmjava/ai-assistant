@@ -22,6 +22,7 @@ from app.agents.tools.base import ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.api.deps import audit_event, get_db, require_permission
 from app.api.errors import PublicHTTPError, error_responses, public_events, public_response
+from app.api.feedback_tracking import track_chat_response
 from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.log_context import get_trace_id
@@ -42,10 +43,12 @@ from app.services.chat_attachments import (
     AttachmentValidationError,
     attachment_summaries,
 )
+from app.services.chat_feedback import FeedbackService
 from app.services.chat_service import ChatService, ModelUnavailableError
 from app.services.quota import QuotaExceededError
 
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def run_lifespan(_app):
@@ -109,6 +112,9 @@ class ChatResponse(BaseModel):
     """非流式对话响应。"""
 
     conversation_id: str
+    attempt_id: str | None = None
+    assistant_message_id: str | None = None
+    user_message_id: str | None = None
     message_id: str | None = Field(default=None, description="本次执行对应的用户消息 ID")
     reply: str
     model: str | None = None
@@ -150,6 +156,12 @@ class MessageOut(BaseModel):
     skill_names: list[str] = []
     # complete：正常写完。stopped：生成已停下，正文不是完整回复。
     status: str = "complete"
+    attempt_id: str | None = None
+    attempt_outcome: str | None = None
+    feedback_submitted: bool = False
+    feedback_id: str | None = None
+    rating: str | None = None
+    rating_id: str | None = None
 
 
 class ConversationDetail(ConversationOut):
@@ -254,7 +266,7 @@ def _conv_out(conv: Conversation) -> ConversationOut:
     )
 
 
-def _conv_detail(conv: Conversation) -> ConversationDetail:
+def _conv_detail(conv: Conversation, session: Session | None = None, user: User | None = None) -> ConversationDetail:
     messages = [
         MessageOut(
             id=m.id,
@@ -270,6 +282,9 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
         )
         for m in sorted(conv.messages, key=lambda x: x.created_at)
     ]
+    if session is not None and user is not None:
+        metadata = FeedbackService(session).message_metadata(user, conv)
+        messages = [message.model_copy(update=metadata.get(message.id, {})) for message in messages]
     base = _conv_out(conv).model_dump()
     base["messages"] = messages
     return ConversationDetail(**base)
@@ -282,6 +297,7 @@ def _conv_detail(conv: Conversation) -> ConversationDetail:
     404: {"description": "恢复会话或消息不存在或无权访问"},
     409: {"description": "执行仍在进行、快照不可恢复或当前编排不支持恢复"},
 })
+@track_chat_response
 async def chat(
     req: ChatRequest,
     current_user: User = Depends(require_permission("conversations", "write")),
@@ -338,6 +354,7 @@ async def chat(
                404: {"description": "会话或消息不存在或无权访问"},
                409: {"description": "目标不再是最后助手消息或会话正在执行"}},
 )
+@track_chat_response
 async def regenerate_message(
     conversation_id: str, message_id: str,
     current_user: User = Depends(require_permission("conversations", "write")),
@@ -502,7 +519,7 @@ def get_conversation(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
         )
-    return _conv_detail(conv)
+    return _conv_detail(conv, session, current_user)
 
 
 @router.patch("/conversations/{conversation_id}", response_model=ConversationOut)

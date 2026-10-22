@@ -128,3 +128,33 @@ Docker守护进程不可用，Linux相关测试未执行；未提交/推送本�
 2026-10-22冻结输入完整pytest-v3结束：3304 passed / 3 skipped / 4 warnings，758.08秒，退出0；比基线3273 passed增加31条本卡回归。既有三项skip及四项warning未隐藏，也不据此宣称Linux通过。此后仅补文档/台账/截图，不变更源码/测试/配置/依赖/评测输入。
 
 独立审查NO_FINDINGS、后端Ruff/mypy与专项31条、前端typecheck/Vitest172条/ESLint/build、实际页面smoke、范围/YAML/OpenAPI/565项指纹及diff检查已通过。技术结果分层记录：本地验证通过，AI独立审查通过，Linux/同最终SHA Ubuntu CI未完成，人工业务接受未登记，任务in_review。未执行本卡Git提交/推送/合并/部署。
+
+### 2026-10-22 Ubuntu CI失败调查
+
+用户提供[Backend job 119601539366](https://github.com/lwmjava/ai-assistant/actions/runs/39710843032/job/119601539366)，GitHub连接器已读取完整日志、step与同run jobs。检查提交00ea6ee691f0df1c178de5c05729fd810e81bf2c，分支codex/eval-001-report-query；当前工作区调查前干净。此前“未提交/未推送”是实现交付时点，当前该提交已存在并被CI检出，不归因其提交操作给本次调查。
+
+Ubuntu24.04.5 / Python3.12.15。Backend Ruff、mypy及不带筛选pytest通过：3284 passed / 4 skipped / 5 warnings、344.09秒。与Windows数量不同，依赖/平台可选测试不等同；不改skip或降低门禁。Frontend job119601539416的四项全通过，Agent official baseline job119601539195通过。
+
+唯一失败step是RAG baseline gate。CI显式native/structured/local、有效期过滤false，使用真实Embedding密钥（日志已掩码，未读取凭据）。02:27:24Z与02:27:44Z各出现attempt=1、约15239/15247ms的ConnectTimeout后retry。之后索引13篇/37块已建成；案例检索阶段堆栈停在TLSStream.wrap→ssl_object.do_handshake→transport_stream.receive。共享检索预算8秒到期，取消HTTP请求并抛DeadlineExceededError，baseline命令退出1；未生成可用于质量gate的完整结果，后续rag_gate_check未执行。
+
+结论分级：已证实真实Embedding请求的连接/TLS阶段超时导致本次baseline失败；不是Milvus调用、页面解析、鉴权测试或数值质量gate失败。尚不能确认具体网络/服务端原因，也不能证明是偶发；无证据表明加长时限能解决。该提交未修改RAG后端、Embedding、baseline runner或CI配置。
+
+未修改业务代码、8秒预算、重试策略、质量阈值或CI配置；不切Mock。建议先在相同SHA重跑失败Backend job一次，以验证是否可复现。该job会重建隔离评测库并调用真实Embedding，原卡准入未授权真实付费模型调用，故先请求用户明确授权，再执行一次重跑；不自动重试到绿。
+
+当前Linux全量测试证据已取得，但Backend整体失败，最终必要CI未全绿；任务仍in_review，不关闭EVAL-001或启动依赖它的EVAL-002。调查只改本文和tasks.yaml，通过YAML及git diff --check，不重复无行为变化的本地业务回归。
+
+### 单次Backend重跑授权与派发
+
+2026-10-22用户明确回复“授权这次重跑”，范围为同一提交00ea6ee的失败Backend job单次重跑及其真实Embedding调用。已通过GitHub连接器对job119601539366请求rerun，返回success=true；未重跑Frontend/Agent，不改代码、8秒时限、阈值或模型配置，不自动追加重试。结果待查询完成，当前仍in_review。
+
+### 单次Backend重跑结果
+
+[重跑Backend job119608102936](https://github.com/lwmjava/ai-assistant/actions/runs/39710843032/job/119608102936)已success。日志检出提交00ea6ee691f0df1c178de5c05729fd810e81bf2c，未改业务输入；Ruff、mypy、完整pytest（3284 passed / 4 skipped / 5 warnings，351.46秒）及真实Embedding的RAG baseline gate均通过。2026-10-22 02:50:18Z（北京时间10:50:18）日志明确“RAG 基线门禁通过”，后续清理完成。此处仅记门禁结论，不将数值写成新的质量提升或生产SLO。
+
+同run最新jobs查询：Frontend job119608104741、Agent official baseline job119608136235均success。只请求了指定Backend单次rerun，没有发起额外失败重跑。上一次ConnectTimeout/TLS超时未在此次重现；这支持暂时连接异常的判断，不证明具体云网络/服务端原因，也不宣称长期稳定。
+
+此前缺少的同SHA Ubuntu Backend CI证据现已补齐，包括文件系统读路径相关测试。当前源码/测试/配置/依赖/评测输入仍是该提交；本轮只同步说明和台账，未提交、合并或部署。技术验收与AI独立审查已具证据，人工业务接受尚未登记；保留in_review，未自动关闭EVAL-001。FEED-001仍是EVAL-002的未完成依赖，不顺带启动。
+
+### 业务接受与关闭
+
+2026-10-22用户明确回复“验收通过关闭任务，然后开始实现FEED-001”。EVAL-001业务接受与关闭授权齐全，tasks.yaml同步done。技术证据沿用00ea6ee及CI run39710843032成功Backend job119608102936、成功Frontend/Agent和既有独立审查；后续仅文档/台账变化。未合并、部署或自动启动EVAL-002。关闭日期已知，接受具体时分及验收后7天缺陷/重开尚未知。

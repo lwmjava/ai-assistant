@@ -7,6 +7,7 @@ import { MessagesSquare, PanelLeft, Sparkles } from 'lucide-react'
 import { Composer } from '@/components/chat/Composer'
 import { ConversationList } from '@/components/chat/ConversationList'
 import { MessageList } from '@/components/chat/MessageList'
+import { AttemptFeedbackControls } from '@/components/chat/FeedbackControls'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
@@ -89,6 +90,8 @@ export default function ChatPage() {
   const qc = useQueryClient()
   const toast = useToast()
   const role = useAuthStore((s) => s.user?.role)
+  const currentUser = useAuthStore((s) => s.user)
+  const [failedAttemptId, setFailedAttemptId] = useState<string | null>(null)
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [input, setInput] = useState('')
@@ -277,6 +280,7 @@ export default function ChatPage() {
     setOnceInterrupted(false)
     setLoadReplyNote(null)
     setSendNotice(null)
+    setFailedAttemptId(null)
     setInput('')
     lastSentRef.current = text
     reset()
@@ -343,6 +347,8 @@ export default function ChatPage() {
       }
       setPending([])
       if (err instanceof ApiError) {
+        const failure = err.payload as { attempt_id?: unknown } | null
+        if (typeof failure?.attempt_id === 'string') setFailedAttemptId(failure.attempt_id)
         const seconds = retryAfterSeconds(err.payload)
         if (seconds !== undefined) applyRetry(seconds)
       }
@@ -689,6 +695,7 @@ export default function ChatPage() {
             <WelcomeHero onPick={(text) => setInput(text)} />
           ) : (
             <MessageList
+              feedbackEnabled={!cannotSend && detailQuery.data?.user_id === currentUser?.id && detailQuery.data?.tenant_id === currentUser?.tenant_id}
               messages={messages}
               streamingSources={snapshot.sources}
               streamingCodeResults={snapshot.codeResults}
@@ -719,6 +726,9 @@ export default function ChatPage() {
               className="mx-auto max-w-4xl px-3 sm:px-6"
             />
           )}
+          {!cannotSend && !snapshot.streaming && !snapshot.interrupted && !snapshot.stoppedByUser &&
+            (failedAttemptId || (snapshot.error && snapshot.runId)) &&
+            <AttemptFeedbackControls key={failedAttemptId ?? snapshot.runId} attemptId={(failedAttemptId ?? snapshot.runId)!} />}
         </div>
 
         <div className="shrink-0 border-t border-border/60 bg-bg/60 p-3 backdrop-blur sm:p-4">

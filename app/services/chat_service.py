@@ -485,6 +485,9 @@ class ChatService:
             session.info["agent_resume_snapshot"] = snapshot
             message_id = original.id
         session.info["agent_message_id"] = message_id
+        feedback_ready = session.info.get("feedback_message_ready")
+        if feedback_ready is not None:
+            feedback_ready.set()
         return conv, message_id
 
     def prepare_chat_attachments(
@@ -790,7 +793,7 @@ class ChatService:
                 close_events = getattr(events, "aclose", None)
                 if close_events is not None:
                     await close_events()
-            if stopped and not assistant_saved:
+            if stopped and not assistant_saved and collected:
                 # 只用已经交给页面的 token。不用 state.answer，避免把未展示的后文写进去。
                 # 另开会话写入：客户端断开时，请求上的会话可能已经解除绑定。
                 answer = "".join(collected)

@@ -7,12 +7,14 @@ import { Bot, UserRound } from 'lucide-react'
 
 import { StageTracker } from './StageTracker'
 import { SubtaskSummary } from './SubtaskSummary'
+import { FeedbackControls } from './FeedbackControls'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/cn'
 import { attachmentSize } from '@/lib/chat-attachments'
 import type { CodeResult, MessageOut, SourceRef, SubtaskSummary as SubtaskItem } from '@/types/api'
 
 export interface MessageListProps {
+  feedbackEnabled?: boolean
   messages: MessageOut[]
   /** 流式中的助手文本（未落库，作为临时气泡渲染）。 */
   streamingText: string
@@ -203,6 +205,7 @@ function SourceNotes({ sources }: { sources?: SourceRef[] }) {
 }
 
 export function MessageList({
+  feedbackEnabled = false,
   messages,
   streamingText,
   streamingSources = [],
@@ -275,6 +278,7 @@ export function MessageList({
               </ul>}
             </div>
           )}
+          {feedbackEnabled && <FeedbackControls key={`${m.id}-${m.attempt_id}-${m.feedback_id}-${m.rating_id}-${m.rating}`} message={m} />}
         </Bubble>
       ))}
 

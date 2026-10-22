@@ -4848,6 +4848,385 @@
           }
         }
       }
+    },
+    "/api/v1/chat/attempts/{attempt_id}": {
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Get Attempt",
+        "operationId": "get_attempt_api_v1_chat_attempts__attempt_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Attempt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/feedback": {
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Post Feedback",
+        "operationId": "post_feedback_api_v1_chat_feedback_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailureFeedbackIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "List Feedback",
+        "operationId": "list_feedback_api_v1_chat_feedback_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/ratings": {
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Post Rating",
+        "operationId": "post_rating_api_v1_chat_ratings_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageRatingIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "List Ratings",
+        "operationId": "list_ratings_api_v1_chat_ratings_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/feedback/{record_id}": {
+      "delete": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Delete Feedback",
+        "operationId": "delete_feedback_api_v1_chat_feedback__record_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/ratings/{record_id}": {
+      "delete": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Delete Rating",
+        "operationId": "delete_rating_api_v1_chat_ratings__record_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4896,6 +5275,76 @@
         ],
         "title": "AttachmentOut",
         "description": "历史仅显示附件摘要，不返回图片或文档正文。"
+      },
+      "AttemptOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "user_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Message Id"
+          },
+          "assistant_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assistant Message Id"
+          },
+          "outcome": {
+            "type": "string",
+            "title": "Outcome"
+          },
+          "feedback_submitted": {
+            "type": "boolean",
+            "title": "Feedback Submitted",
+            "default": false
+          },
+          "feedback_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "user_message_id",
+          "assistant_message_id",
+          "outcome"
+        ],
+        "title": "AttemptOut"
       },
       "AuditLogOut": {
         "properties": {
@@ -5155,6 +5604,39 @@
           "conversation_id": {
             "type": "string",
             "title": "Conversation Id"
+          },
+          "attempt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
+          "assistant_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assistant Message Id"
+          },
+          "user_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Message Id"
           },
           "message_id": {
             "anyOf": [
@@ -6049,6 +6531,136 @@
         ],
         "title": "ExecutionOut"
       },
+      "FailureFeedbackIn": {
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Attempt Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "api_error",
+              "no_response"
+            ],
+            "title": "Kind"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "attempt_id",
+          "kind"
+        ],
+        "title": "FailureFeedbackIn"
+      },
+      "FeedbackOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "attempt_id": {
+            "type": "string",
+            "title": "Attempt Id"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "user_id",
+          "attempt_id",
+          "conversation_id",
+          "kind",
+          "comment",
+          "created_at"
+        ],
+        "title": "FeedbackOut"
+      },
+      "FeedbackPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "FeedbackPage"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -6547,6 +7159,66 @@
             "type": "string",
             "title": "Status",
             "default": "complete"
+          },
+          "attempt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
+          "attempt_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Outcome"
+          },
+          "feedback_submitted": {
+            "type": "boolean",
+            "title": "Feedback Submitted",
+            "default": false
+          },
+          "feedback_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Id"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "rating_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating Id"
           }
         },
         "type": "object",
@@ -6559,6 +7231,62 @@
         ],
         "title": "MessageOut",
         "description": "消息概要。"
+      },
+      "MessageRatingIn": {
+        "properties": {
+          "assistant_message_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Assistant Message Id"
+          },
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "off_topic",
+                  "factual",
+                  "format",
+                  "citation",
+                  "incomplete",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "assistant_message_id",
+          "rating"
+        ],
+        "title": "MessageRatingIn"
       },
       "ProbeStatus": {
         "properties": {
@@ -6697,6 +7425,116 @@
         ],
         "title": "QuotaUpdate",
         "description": "一次写全两个上限。空值表示不限制，0 表示不能再新增。"
+      },
+      "RatingOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "attempt_id": {
+            "type": "string",
+            "title": "Attempt Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "assistant_message_id": {
+            "type": "string",
+            "title": "Assistant Message Id"
+          },
+          "rating": {
+            "type": "string",
+            "title": "Rating"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "user_id",
+          "attempt_id",
+          "conversation_id",
+          "assistant_message_id",
+          "rating",
+          "reason_code",
+          "comment",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RatingOut"
+      },
+      "RatingPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RatingOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "RatingPage"
       },
       "RefreshRequest": {
         "properties": {

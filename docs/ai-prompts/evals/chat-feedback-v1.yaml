@@ -1,0 +1,21 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored deterministic synthetic cases; not Gold or real model quality evidence"
+execution: "pytest tests/test_chat_feedback.py tests/test_chat_feedback_api.py tests/test_chat_feedback_migration.py tests/test_sse_active_runs.py tests/test_sse_active_runs_review.py"
+cases:
+  - id: owner_and_tenant
+    expected: "Only the active owner may submit; another owner, cross-tenant user and administrator acting for another owner are rejected."
+  - id: durable_idempotency
+    expected: "Concurrent failure submissions return one durable record with the first comment; duplicate attempt IDs never execute again."
+  - id: comment_privacy
+    expected: "InputFilter then LogSanitizer sanitize comments before storage; invalid request responses never echo raw comments."
+  - id: successful_rating
+    expected: "Only a complete assistant message bound to a successful attempt accepts up/down; updates retain one row and deletion permits resubmission."
+  - id: failure_state
+    expected: "Only matching server-confirmed api_error/no_response accepts failure feedback; pending, success and explicit cancellation reject it."
+  - id: lifecycle_compatibility
+    expected: "Disconnect does not cancel the producer; replay does not execute again; explicit cancellation remains stopped."
+  - id: first_output_budget
+    expected: "The first-output budget starts when the user message persists, including before any stream event; timeout records no_response."
+  - id: migration_safety
+    expected: "Fresh migration and create_all plus incremental migration succeed; downgrade refuses to delete nonempty feedback tables."

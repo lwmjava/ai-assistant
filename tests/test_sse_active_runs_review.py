@@ -377,3 +377,19 @@ def test_http_heartbeat_wire_contains_timestamp(wire_client, monkeypatch):
         assert heartbeat["run_id"]
         assert isinstance(heartbeat.get("ts"), str | int | float)
         assert heartbeat["ts"]
+
+async def test_immediate_cancel_finalizes_durable_attempt(run_context):
+    from app.models.feedback import ChatAttempt
+
+    context = run_context
+    calls = []
+
+    async def producer(session, user):
+        calls.append(user.id)
+        yield token("must not execute")
+
+    run = context.manager.create(context.user, context.engine, producer)
+    await context.manager.cancel(run, context.user)
+    assert calls == []
+    with Session(context.engine) as session:
+        assert session.get(ChatAttempt, run.run_id).outcome == "stopped"

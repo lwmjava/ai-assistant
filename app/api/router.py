@@ -11,6 +11,7 @@ from app.api.routes import (
     chat,
     evaluation,
     export,
+    feedback,
     health,
     invitations,
     mcp,
@@ -35,3 +36,4 @@ api_router.include_router(admin_users.router)
 api_router.include_router(admin_system.router)
 api_router.include_router(invitations.router)
 api_router.include_router(evaluation.router)
+api_router.include_router(feedback.router)

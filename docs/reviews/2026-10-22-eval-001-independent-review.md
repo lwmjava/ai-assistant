@@ -29,3 +29,5 @@ PASS: in-memory authorization matrix, null/zero handling, redaction, unknown ret
 全量回归在本结论落盘时仍运行；Linux相关测试与同最终提交Ubuntu CI待补。不能用本审查替代这些门禁；本卡保持in_review。
 
 2026-10-22补记：审查后仅补文档，最终完整pytest-v3为3304 passed / 3 skipped / 4 warnings、退出0，输入指纹未变。Linux与最终提交CI仍待补，不改变独立结论。页面证据见[生成报告截图](2026-10-22-eval-001-generation-page.png)。
+
+2026-10-22 CI补记：用户授权后同提交00ea6ee的[Backend重跑](https://github.com/lwmjava/ai-assistant/actions/runs/39710843032/job/119608102936)全部成功（pytest3284 passed/4 skipped及真实Embedding baseline gate通过）；Frontend与Agent成功。Linux/最终源码提交CI证据缺口已补，人工业务接受尚未登记。无新业务源码变更，不追加重复独立审查。

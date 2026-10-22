@@ -939,7 +939,7 @@ mypy app/
 
 本项目基于 [Apache License 2.0](LICENSE) 开源。
 
-## 只读评测报告（Partial）
+## 只读评测报告（Implemented）
 
 控制台 `/evaluations` 提供已登记报告列表、指标历史、详情和失败切片；不运行模型或评测器，不作质量发布结论。后端接口：
 
@@ -951,4 +951,14 @@ mypy app/
 
 服务端白名单位于 `app/services/evaluation_reports.py` 的 `REPORT_ENTRIES`。首批显式登记四份仓库历史报告，覆盖检索、生成、Agent；租户运行结果须由维护者审核归属后显式登记，不从文件名或报告内的评测用例tenant_id推断所有者。没有注册/上传/执行接口，不允许任意路径下载。缺文件显示不可用，未知/坏协议显示不支持，缺测为null，不填零；调用成功不等于质量通过。旧检索报告没有门禁结论时不推断通过；Agent各用例成功也不冒充官方gate通过。
 
-API仅投影指标、受限版本元信息及失败标识；不返回query、回答、Prompt、工具参数、原始错误或绝对路径。历史表保留协议/数据/模型信息与缺测，不计算跨口径提升。Linux和最终Ubuntu CI仍待验证，当前不宣称Implemented。契约和回滚见[交付记录](docs/plans/implementation_eval_001.md)。
+API仅投影指标、受限版本元信息及失败标识；不返回query、回答、Prompt、工具参数、原始错误或绝对路径。历史表保留协议/数据/模型信息与缺测，不计算跨口径提升。同源码提交的Linux/Ubuntu CI已通过，2026-10-22用户业务验收通过；本节只读报告能力为Implemented，不代表统一评测管理能力全部完成。契约和回滚见[交付记录](docs/plans/implementation_eval_001.md)。
+
+### 对话反馈 API
+
+对话页的所有者可对成功回复点赞或点踩。点赞立即保存；点踩先填写选填的原因和补充说明，再一起保存。说明框打开时再点一次点踩即撤销。服务端确认的接口失败或长时间无输出使用反馈图标提交问题反馈。断线重连沿用原运行，显式停止不算失败反馈；历史消息没有成功尝试关联时不显示评价入口。
+
+- `GET /api/v1/chat/attempts/{id}`：查询本人尝试及反馈状态。
+- `POST/GET /api/v1/chat/feedback`、`DELETE /api/v1/chat/feedback/{id}`：失败反馈提交、分页查询及删除。
+- `POST/GET /api/v1/chat/ratings`、`DELETE /api/v1/chat/ratings/{id}`：回复评价提交、分页查询及删除。
+
+评论选填，最多500字，保存前脱敏。重复失败反馈保留首次评论；重复回复评价更新原记录。提交必须为本人同租户记录；租户管理员可查询本租户，系统管理员查询须显式指定租户，管理员不能代评。分页上限50；反馈不会自动修改模型或进入评测集。隔离验收命令：`pytest tests/test_chat_feedback.py tests/test_chat_feedback_api.py tests/test_chat_feedback_migration.py`。实现与待验收项见 `docs/plans/implementation_feed_001.md`。

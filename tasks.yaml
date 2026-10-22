@@ -8786,7 +8786,7 @@ tasks:
 
   - id: FEED-001
     title: 对话反馈：接口与表结构
-    status: backlog
+    status: in_review
     priority: P1
     target_date: ''
     depends_on: []
@@ -8808,6 +8808,7 @@ tasks:
       - tests/
       - docs/
       - tasks.yaml
+      - README.md
       forbidden_paths:
       - .env
       - 生产数据
@@ -8849,7 +8850,8 @@ tasks:
         verification: 按AGENTS.md第10节：公共路径/全局配置全量pytest；后端Ruff/mypy、适用前端四项、平台Linux与最终SHA CI；必要证据缺失不得done。
         authorization: 2026-10-21用户明确要求开始实施、先拆任务；本轮授权登记核心12包及MEM-002/003范围扩展，不含真实付费模型/数据外发、生产变更、数据删除或Git发布。
         quality: 沿用现有版本门禁；报告内新的数值/SLO/保留期与费用建议仍待对应实施方案批准，不能用Mock声称质量达标。
-      progress: 2026-10-21用户要求按核心12包开始拆分；本次只登记范围/依赖与计划，业务未实施，具体ADR、基线和最终回归待完成。
+      implementation_plan: docs/plans/implementation_feed_001.md
+      progress: 2026-10-22用户在对话页看过点赞/点踩后明确说任务卡可以关闭，业务接受按此记录。状态保持 in_review：生产异常不再记成 stopped、以及点踩改为先填说明之后，没有重跑全量 pytest、Ruff、mypy 和前端四项；此前全量 v4 的 3329 passed/3 skipped 不覆盖这些改动。本机没有可用 Linux，同一提交的 Ubuntu CI 也还没有。不写 done。见 docs/plans/implementation_feed_001.md、docs/reviews/2026-10-22-feed-001-independent-review.md。
       estimate_person_days:
       - 2
       - 4
@@ -11367,7 +11369,7 @@ tasks:
       blocked_by: []
   - id: EVAL-001
     title: 受权评测报告查询与结果页面
-    status: in_review
+    status: done
     priority: P1
     depends_on:
     - RAG-017
@@ -11458,7 +11460,7 @@ tasks:
         auto_merge: false
         auto_deploy: false
       implementation_plan: docs/plans/implementation_eval_001.md
-      progress: 2026-10-22用户采用读取矩阵后实施API/页面；31条专项、Ruff/mypy、前端四项（172条测试）和隔离页面冒烟通过。授权后Codex只读独立审查NO_FINDINGS、退出0。最终全量3304 passed/3 skipped/退出0；Linux/最终Ubuntu CI待补，不关闭。见docs/plans/implementation_eval_001.md。
+      progress: 2026-10-22用户采用读取矩阵后实施API/页面；31条专项、Ruff/mypy、前端四项（172条测试）和隔离页面冒烟通过。授权后Codex只读独立审查NO_FINDINGS、退出0。本地全量3304 passed/3 skipped/退出0；用户授权单次重跑后00ea6ee的Ubuntu CI run39710843032/job119608102936成功：Ruff/mypy/pytest（3284 passed/4 skipped）和真实Embedding RAG gate通过，Frontend/Agent也成功；技术证据齐；2026-10-22用户明确业务验收通过并授权关闭，状态done。见docs/plans/implementation_eval_001.md。
   - id: EVAL-002
     title: 评测数据集版本审核与反馈候选管理
     status: backlog

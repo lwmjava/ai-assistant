@@ -34,6 +34,10 @@
 
 未做项：独立审查；本地全量 pytest；最终 SHA Ubuntu CI（含 Agent official）；付费真实模型复验；提交/推送；业务接受。身份/租户/撤销入口本轮无代码改动，未单列重跑。EVAL-001 规划中的 `0020-evaluation-job-lifecycle.md` 尚未落盘，本卡使用已批准的 `0020-native-tool-proposals.md` 同号不同文件，未改 EVAL-001。回滚：回退上述 options/客户端/行动与评测接线及 Prompt，不改数据库、不重放工具。任务保持 in_review，不得 done。
 
+## 关闭
+
+2026-10-22用户确认 GitHub CI 通过后关闭。候选 `ee928e2433835cb336e5046769dff638f7ed40bb`，[run 39774801032](https://github.com/lwmjava/ai-assistant/actions/runs/39774801032)：Backend / Frontend / Agent official / RAG official 均为 success。Agent official 即官方评测复验。不代表合并或生产发布。
+
 ## CI 缓存回归（1858e16）
 
 Ubuntu run 39768108317：Agent official 通过（工具指标 1.0）；Backend 失败于 `test_cache_acceptance_default_chatservice_actual_http_count`，第二次相同对话 HTTP 7→8。原因是行动阶段只要广告 tools 就整段跳过缓存，纯文本草稿也无法复用。修正为 schema 进入缓存键，仅 native `tool_calls` 响应不落盘。

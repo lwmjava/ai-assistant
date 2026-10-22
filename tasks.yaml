@@ -71,7 +71,7 @@ tasks:
 
   - id: "VAL-001"
     title: "验证执行隔离、审核顺序与CI兼容调整"
-    status: "in_progress"
+    status: "done"
     priority: "P0"
     depends_on: ["GOV-003", "NFR-001"]
     scope:
@@ -81,11 +81,11 @@ tasks:
     risk: {level: "L1", side_effect: "测试进程与CI执行配置改变", rollback: "回退执行器接线，保留日志与旧阻断链"}
     execution:
       plan: "docs/plans/proposal_validation_delivery_efficiency_20261022.md#val-001本地验证规则与ci兼容调整"
-      progress: "2026-10-22本地全量20261022T081057-88d6a61997db退出0：3362 passed/3 skipped（Linux文件系统）、Ruff与mypy通过，约14分钟。NFR-011/FE-001已按新规则试用并记入同一方案第13节；Linux/最终CI未做，VAL-001保持in_progress。"
+      progress: "2026-10-22用户明确关闭。兼容阶段交付：隔离执行器、规则与审核材料、保留旧Backend RAG并新增独立RAG job。本地full 20261022T081057-88d6a61997db退出0（3362 passed/3 skipped）。最终提交ee928e2433835cb336e5046769dff638f7ed40bb，run39774801032：Backend/Frontend/Agent official/RAG official均为success。未核验远程required checks；Backend RAG与独立job仍并存。不代表合并或生产发布。回滚为回退执行器与ci.yml接线。"
 
   - id: "TOOL-001"
     title: "行动阶段改用原生结构化工具调用"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     depends_on: []
     scope:
@@ -95,7 +95,7 @@ tasks:
     risk: {level: "L1", side_effect: "行动阶段LLM请求形状变化；受控执行链与内部信封保持"}
     execution:
       plan: "docs/plans/implementation_native_tool_calls_20261022.md"
-      progress: "2026-10-22已接线原生tools并完成专项：宽专项602/1后修复评测空信封，随后54 passed；ruff/mypy退出0。未做独立审查、全量pytest、最终SHA CI、付费official。保持in_review，不得done。"
+      progress: "2026-10-22用户确认GitHub CI通过后关闭。最终提交ee928e2433835cb336e5046769dff638f7ed40bb，run39774801032：Backend job119810948201、Frontend job119810947996、Agent official job119810947994、RAG official job119810947566均为success。行动阶段原生函数调用已接线；文本草稿可缓存，native tool_calls不落盘。不代表合并或生产发布。"
 
   - id: "GOV-003"
     title: "精简开发治理的上下文、交付记录与评审流程"
@@ -6831,7 +6831,7 @@ tasks:
 
   - id: "NFR-011"
     title: "检索可用性自检：health 暴露 Embedding 状态与模型维度"
-    status: "in_progress"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -6881,7 +6881,7 @@ tasks:
     execution:
       owner: "个人开发者"
       plan: "docs/plans/proposal_validation_delivery_efficiency_20261022.md#nfr-011试用"
-      progress: "2026-10-22试用：/health checks.embedding 只读身份；targeted 14 passed、pytest -k health 25 passed、Ruff/mypy 0。生产缺密钥 fail-fast 未改。无完整pytest/Linux/CI，保持in_progress。"
+      progress: "2026-10-22用户完成health embedding字段业务验收后关闭。/health checks.embedding 只读身份；targeted 14 passed、pytest -k health 25 passed、Ruff/mypy 0。生产缺密钥 fail-fast 未改。最终提交ee928e2433835cb336e5046769dff638f7ed40bb，Backend CI success。本机health 200：configured/text-embedding-v3/1024、quality_evidence=false、connectivity_verified=false。向量库degraded不在本卡。不代表合并或生产发布。"
       nightly:
         eligible: true
         production_access: false
@@ -7829,7 +7829,7 @@ tasks:
 
   - id: "FE-001"
     title: "非系统角色管理页进入 403 页"
-    status: "in_progress"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7866,7 +7866,7 @@ tasks:
     execution:
       owner: "个人开发者"
       plan: "docs/plans/proposal_validation_delivery_efficiency_20261022.md#fe-001试用"
-      progress: "2026-10-22试用：统一403页；前端四项20261022T085324-3a6536cc424c退出0（181 passed）。未改权限矩阵。无登录member的浏览器403走查，保持in_progress。"
+      progress: "2026-10-22用户明确完成业务验收后关闭。统一403页，未改权限矩阵。本地前端四项20261022T085324-3a6536cc424c退出0（181 passed）。最终提交ee928e2433835cb336e5046769dff638f7ed40bb的Frontend job119810947996 success。不代表合并或生产发布。"
       nightly:
         eligible: false
         production_access: false

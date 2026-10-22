@@ -455,6 +455,8 @@ $env:PYTHONUTF8='1'
 
 3 项 skip 均为 Windows 上预期的 Linux 文件系统用例：`test_init_refuses_symlink_without_touching_target`、`test_init_file_permissions_are_private`、`test_write_failure_does_not_delete_replacement_file`。没有失败，没有同源 PermissionError 洪泛。这是本机 Windows 全量，不能替代 Linux 或最终 SHA 的 Ubuntu CI。NFR-011、FE-001 尚未开工。VAL-001 保持 `in_progress`。
 
+2026-10-22 用户明确关闭 VAL-001。最终提交 `ee928e2433835cb336e5046769dff638f7ed40bb`，run `39774801032`：Backend、Frontend、Agent official、RAG official 均为 success。远程 required checks 仍未核验；Backend RAG 与独立 job 仍并存。不代表合并或生产发布。
+
 ### NFR-011 试用（2026-10-22）
 
 用户确认试用可开始后，按新规则只跑专项，不另写计划/实现/关闭文件。墙钟约 16:45—16:51（Asia/Shanghai）。检查 3 次：Ruff、mypy、隔离专项；另按卡片命令补了一次 `pytest -k health`。实现者自审覆盖 health/factory 与现有 health 调用方，未外发独立审查（L1）。没有新增计划、实现说明或关闭文件。
@@ -470,6 +472,8 @@ $env:PYTHONUTF8='1'
 
 解释器 conda `ai-assistant` Python 3.12.0，平台 win32。HEAD 仍为 `b4efcc5d3e4493c12a73338c1fdca7fb848931be`，工作区 dirty。未跑完整 pytest、Linux 或 GitHub CI；未改生产 fail-fast；未调用真实 Embedding。本机已启动进程的 `/api/v1/health` 含 `checks.embedding`（configured / quality_evidence=false / connectivity_verified=false），未出现密钥或 Base URL。NFR-011 保持 `in_progress`，不能 done。
 
+后续补充：实现已随 `dc13445` 进入 `ee928e2`，该 SHA 的 Ubuntu Backend CI success。Milvus 改连 `127.0.0.1:29530` 后本机 `/health` 为 200，`checks.embedding` 仍为 configured / `text-embedding-v3` / 1024、`quality_evidence=false`、`connectivity_verified=false`。向量库 degraded（历史分块无生效索引）不在本卡。2026-10-22 用户完成 health embedding 字段业务验收后关闭。
+
 ### FE-001 试用（2026-10-22）
 
 紧接 NFR-011。墙钟约 16:51—16:54（Asia/Shanghai）。检查 1 次隔离前端四项（typecheck/test/lint/build）。实现者自审覆盖路由守卫、管理页拒绝分支与权限函数，未改 `permissions.ts` 矩阵。没有新增计划、实现说明或关闭文件。
@@ -483,4 +487,4 @@ $env:PYTHONUTF8='1'
 | frontend lint | 0 | 3.735 秒 | 通过 |
 | frontend build | 0 | 11.672 秒 | 通过 |
 
-运行目录 `data/validation/20261022T085324-3a6536cc424c`。浏览器：未登录打开 `/users` 回到 `/login`。没有可用的已登录 member 会话，未在真实浏览器点开 403 页；该路径由 SSR 路由测试覆盖。未改后端授权。FE-001 保持 `in_progress`，不能 done。
+运行目录 `data/validation/20261022T085324-3a6536cc424c`。浏览器：未登录打开 `/users` 回到 `/login`。没有可用的已登录 member 会话，未在真实浏览器点开 403 页；该路径由 SSR 路由测试覆盖。未改后端授权。2026-10-22用户明确完成业务验收后关闭；最终提交 Frontend CI success。

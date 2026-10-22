@@ -70,7 +70,7 @@ class SystemChecks(BaseModel):
 
 
 class SystemStatusOut(BaseModel):
-    """系统管理员看到的运行状态。不包含人数或调用量。"""
+    """系统管理员看到的运行状态：健康探测 + 本进程指标。"""
 
     status: str
     app: str
@@ -78,3 +78,6 @@ class SystemStatusOut(BaseModel):
     env: str
     started_at: datetime
     checks: SystemChecks
+    online_users: int = 0
+    storage_bytes: int = 0
+    api_request_count: int = 0

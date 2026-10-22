@@ -61,11 +61,43 @@ def test_register_joins_default_tenant_and_hides_password() -> None:
 
 def test_register_rejects_duplicate_username() -> None:
     client = _client()
-    first = client.post("/api/v1/auth/register", json={"username": "ada", "password": PASSWORD})
+    first = client.post(
+        "/api/v1/auth/register",
+        json={"username": "ada", "password": PASSWORD, "email": "ada@example.com"},
+    )
     assert first.status_code == 201
-    again = client.post("/api/v1/auth/register", json={"username": "ada", "password": PASSWORD})
+    again = client.post(
+        "/api/v1/auth/register",
+        json={"username": "ada", "password": PASSWORD, "email": "ada2@example.com"},
+    )
     assert again.status_code == 409
     assert again.json()["detail"] == "用户名已存在"
+
+
+def test_register_requires_email_and_rejects_duplicate_email() -> None:
+    client = _client()
+    missing = client.post("/api/v1/auth/register", json={"username": "no-mail", "password": PASSWORD})
+    assert missing.status_code == 422
+
+    bad = client.post(
+        "/api/v1/auth/register",
+        json={"username": "bad-mail", "password": PASSWORD, "email": "not-an-email"},
+    )
+    assert bad.status_code == 422
+
+    first = client.post(
+        "/api/v1/auth/register",
+        json={"username": "one", "password": PASSWORD, "email": "same@example.com"},
+    )
+    assert first.status_code == 201
+    dup = client.post(
+        "/api/v1/auth/register",
+        json={"username": "two", "password": PASSWORD, "email": "same@example.com"},
+    )
+    assert dup.status_code == 409
+    assert dup.json()["detail"] == "邮箱已存在"
+    with Session(engine) as session:
+        assert session.exec(select(User).where(User.username == "two")).first() is None
 
 
 def test_setup_is_once_and_register_still_joins_default() -> None:
@@ -87,7 +119,10 @@ def test_setup_is_once_and_register_still_joins_default() -> None:
     assert closed.status_code == 404
     assert client.get("/api/v1/auth/setup-status").json() == {"needs_setup": False}
 
-    member = client.post("/api/v1/auth/register", json={"username": "ada", "password": PASSWORD})
+    member = client.post(
+        "/api/v1/auth/register",
+        json={"username": "ada", "password": PASSWORD, "email": "ada@example.com"},
+    )
     assert member.status_code == 201
     assert decode_token(member.json()["access_token"])["tenant_id"] == admin["tenant_id"]
     assert decode_token(member.json()["access_token"])["role"] == Role.MEMBER.value

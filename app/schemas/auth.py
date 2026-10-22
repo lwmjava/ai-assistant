@@ -1,8 +1,12 @@
 """认证相关请求/响应模型。"""
 
+import re
+
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.security import Role
+
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 
 class LoginRequest(BaseModel):
@@ -52,7 +56,35 @@ class Token(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    """公开注册。不接受角色，避免把注册变成提权入口。"""
+    """公开注册。不接受角色，避免把注册变成提权入口。邮箱必填且做格式校验。"""
+
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=8, max_length=128)
+    email: str = Field(min_length=3, max_length=254)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("username")
+    @classmethod
+    def strip_username(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("用户名不能为空")
+        return stripped
+
+    @field_validator("email")
+    @classmethod
+    def require_email(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("邮箱不能为空")
+        if not _EMAIL_RE.fullmatch(stripped):
+            raise ValueError("邮箱格式不正确")
+        return stripped
+
+
+class SetupRequest(BaseModel):
+    """一次性初始化向导。内置超级管理员可以没有邮箱。"""
 
     username: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=8, max_length=128)
@@ -74,7 +106,11 @@ class RegisterRequest(BaseModel):
         if value is None:
             return None
         stripped = value.strip()
-        return stripped or None
+        if not stripped:
+            return None
+        if not _EMAIL_RE.fullmatch(stripped):
+            raise ValueError("邮箱格式不正确")
+        return stripped
 
 
 class SetupStatus(BaseModel):

@@ -523,10 +523,30 @@ def create_upload_import_job(
     filename: str,
     content_type: str | None,
     batch_id: str | None = None,
+    content_hash: str | None = None,
     commit: bool = True,
 ) -> ImportJob:
-    """创建文件导入任务。commit 为假时不提交，便于整批和配额锁一起提交。"""
+    """创建文件导入任务。commit 为假时不提交，便于整批和配额锁一起提交。
+
+    同一用户、同一内容哈希若已有未完成任务，直接返回该任务（单进程幂等）。
+    """
     _validate_creation_batch(session, user, batch_id)
+    if content_hash:
+        existing = session.exec(
+            select(ImportJob).where(
+                col(ImportJob.tenant_id) == user.tenant_id,
+                col(ImportJob.user_id) == user.id,
+                col(ImportJob.content_hash) == content_hash,
+                col(ImportJob.status).in_(
+                    [
+                        ImportJobStatus.PENDING.value,
+                        ImportJobStatus.RUNNING.value,
+                    ]
+                ),
+            )
+        ).first()
+        if existing is not None:
+            return existing
     job = ImportJob(
         tenant_id=user.tenant_id,
         user_id=user.id,
@@ -536,6 +556,7 @@ def create_upload_import_job(
         source_name=filename,
         storage_path=storage_path,
         content_type=content_type,
+        content_hash=content_hash,
     )
     session.add(job)
     session.flush()

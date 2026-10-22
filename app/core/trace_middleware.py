@@ -15,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core import log_context
+from app.core.process_metrics import record_api_request
 
 _X_REQUEST_ID = "X-Request-ID"
 
@@ -26,6 +27,8 @@ class TraceIdMiddleware(BaseHTTPMiddleware):
         supplied = request.headers.get(_X_REQUEST_ID, "")
         trace_id = supplied if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", supplied) else uuid.uuid4().hex
         log_context.set_trace_id(trace_id)
+        if request.url.path.startswith("/api/"):
+            record_api_request()
         try:
             response = await call_next(request)
         finally:

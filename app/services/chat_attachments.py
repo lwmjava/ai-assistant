@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.rag.document_parsers.service import parse_uploaded_document
+from app.rag.magic_bytes import MagicByteMismatchError, check_magic_bytes
 
 MAX_ATTACHMENT_BYTES = 1048576
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
@@ -90,6 +91,10 @@ def prepare_attachments(items: Sequence[AttachmentInput | dict[str, Any]] | None
             raise AttachmentTooLargeError("单个附件不能超过 1048576 字节")
         if not data:
             raise AttachmentValidationError("附件不能为空")
+        try:
+            check_magic_bytes(item.name, data)
+        except MagicByteMismatchError:
+            raise AttachmentValidationError("附件内容与扩展名不符，请移除后重试") from None
         if extension in IMAGE_EXTENSIONS:
             mime = _validate_image(data, extension)
             prepared.append(PreparedAttachment(item.name, len(data), mime,

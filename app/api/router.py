@@ -17,6 +17,7 @@ from app.api.routes import (
     mcp,
     rag,
     skills,
+    tenant_settings,
     workflow,
 )
 
@@ -34,6 +35,7 @@ api_router.include_router(audit.router)
 api_router.include_router(admin_tenants.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_system.router)
+api_router.include_router(tenant_settings.router)
 api_router.include_router(invitations.router)
 api_router.include_router(evaluation.router)
 api_router.include_router(feedback.router)

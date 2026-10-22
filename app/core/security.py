@@ -166,12 +166,11 @@ ROLE_PERMISSIONS: dict[str, dict[str, list[str]]] = {
         "delete": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value],
     },
     "conversations": {
+        # §5.3.2「对话/Chat」：system_viewer 与 viewer 不允许。
         "read": [
             Role.SYSTEM_ADMIN.value,
-            Role.SYSTEM_VIEWER.value,
             Role.TENANT_ADMIN.value,
             Role.MEMBER.value,
-            Role.VIEWER.value,
         ],
         "write": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value, Role.MEMBER.value],
         "delete": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value, Role.MEMBER.value],

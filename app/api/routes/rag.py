@@ -4,6 +4,7 @@
 检索面默认同租户当前版本。控制面：成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
 """
 
+import hashlib
 import json
 import logging
 from datetime import datetime
@@ -14,6 +15,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Header,
     HTTPException,
     Request,
     Response,
@@ -28,6 +30,7 @@ from app.api.deps import audit_event, get_db, require_permission
 from app.api.errors import PublicHTTPError, error_responses, public_response
 from app.audit.models import AuditAction
 from app.core.config import settings
+from app.core.idempotency import import_batch_keys
 from app.core.security import Role
 from app.models.rag import Document, DocumentChunk, ImportBatch, ImportJob
 from app.models.user import User
@@ -52,6 +55,7 @@ from app.rag.import_jobs import (
     create_url_import_job,
     retry_import_job,
 )
+from app.rag.magic_bytes import MagicByteMismatchError, check_magic_bytes
 from app.rag.service import DocumentVectorizationSummary, RAGService, chunk_vectorization_state
 from app.rag.upload_limits import UploadLimitError, check_upload_limits, parse_allowed_extensions
 from app.services.quota import QuotaExceededError, SourceFileUnreadableError, begin_source_quota
@@ -77,6 +81,15 @@ def _enforce_upload_limit(filename: str, size: int) -> None:
             raise PublicHTTPError(413, "file_too_large", detail=exc.detail,
                                   extra={"limit_bytes": settings.RAG_UPLOAD_MAX_BYTES}) from exc
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _enforce_upload_content(filename: str, raw: bytes) -> None:
+    """扩展名通过后，再按文件头校验魔术数字。"""
+    _enforce_upload_limit(filename, len(raw))
+    try:
+        check_magic_bytes(filename, raw)
+    except MagicByteMismatchError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
 
 
 def _discard_new_source(relative_path: str) -> None:
@@ -438,7 +451,7 @@ async def upload_document(
     """
     filename = file.filename or "未命名文档"
     raw = await file.read()
-    _enforce_upload_limit(filename, len(raw))
+    _enforce_upload_content(filename, raw)
     try:
         held = begin_source_quota(session, current_user.tenant_id, len(raw))
     except QuotaExceededError as exc:
@@ -512,6 +525,16 @@ async def upload_document(
     return _doc_with_vectorization(doc, rag, current_user)
 
 
+def _load_batch_out(session: Session, batch_id: str, user: User) -> ImportBatchOut | None:
+    batch = session.get(ImportBatch, batch_id)
+    if batch is None or batch.tenant_id != user.tenant_id or batch.user_id != user.id:
+        return None
+    jobs = list(
+        session.exec(select(ImportJob).where(col(ImportJob.batch_id) == batch.id)).all()
+    )
+    return _batch_out(batch, jobs)
+
+
 @router.post(
     "/import-jobs/upload",
     response_model=ImportBatchOut,
@@ -522,15 +545,28 @@ async def create_upload_jobs(
     files: list[UploadFile] = File(...),
     current_user: User = Depends(require_permission("knowledge_bases", "write")),
     session: Session = Depends(get_db),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ImportBatchOut | JSONResponse:
-    """批量上传文件并创建异步导入任务。"""
+    """批量上传文件并创建异步导入任务。
+
+    带 ``Idempotency-Key`` 时，同一进程内相同用户重复提交只产生一批任务。
+    """
+    key = (idempotency_key or "").strip()
+    cache_key = f"{current_user.tenant_id}:{current_user.id}:{key}" if key else ""
+    if cache_key:
+        existing_id = import_batch_keys.get(cache_key)
+        if isinstance(existing_id, str):
+            cached = _load_batch_out(session, existing_id, current_user)
+            if cached is not None:
+                return cached
+
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="至少上传一个文件")
     prepared: list[tuple[str, bytes, str | None]] = []
     for file in files:
         filename = file.filename or "未命名文档"
         raw = await file.read()
-        _enforce_upload_limit(filename, len(raw))
+        _enforce_upload_content(filename, raw)
         prepared.append((filename, raw, file.content_type))
     additional = sum(len(raw) for _, raw, _ in prepared)
     try:
@@ -555,6 +591,7 @@ async def create_upload_jobs(
         for filename, raw, content_type in prepared:
             storage_path = save_source_file(current_user.tenant_id, raw, filename)
             saved.append(storage_path)
+            content_hash = hashlib.sha256(raw).hexdigest()
             jobs.append(
                 create_upload_import_job(
                     session,
@@ -563,6 +600,7 @@ async def create_upload_jobs(
                     filename=filename,
                     content_type=content_type,
                     batch_id=batch.id,
+                    content_hash=content_hash,
                     commit=not held,
                 )
             )
@@ -578,6 +616,15 @@ async def create_upload_jobs(
             detail="保存源文件失败，请稍后重试或联系管理员",
         )
     session.refresh(batch)
+    if cache_key:
+        remembered = import_batch_keys.put_if_absent(cache_key, batch.id)
+        if remembered != batch.id:
+            for relative_path in saved:
+                _discard_new_source(relative_path)
+            session.rollback()
+            cached = _load_batch_out(session, remembered, current_user)
+            if cached is not None:
+                return cached
     return _batch_out(batch, jobs)
 
 

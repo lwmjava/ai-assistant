@@ -17,7 +17,12 @@ import type { Token } from '@/types/api'
 const schema = z.object({
   username: z.string().trim().min(1, '请输入用户名').max(64, '用户名过长'),
   password: z.string().min(8, '密码至少 8 位').max(128, '密码过长'),
-  email: z.string().trim().max(254, '邮箱过长').optional(),
+  email: z
+    .string()
+    .trim()
+    .min(1, '请输入邮箱')
+    .max(254, '邮箱过长')
+    .email('邮箱格式不正确'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -38,11 +43,10 @@ export default function RegisterPage() {
 
   async function onSubmit(values: FormValues) {
     setFormError(null)
-    const email = values.email?.trim()
     try {
       const token = await api.post<Token>(
         '/auth/register',
-        { username: values.username, password: values.password, email: email || null },
+        { username: values.username, password: values.password, email: values.email.trim() },
         { anonymous: true },
       )
       await establish(token)
@@ -68,7 +72,8 @@ export default function RegisterPage() {
           label="邮箱"
           type="email"
           autoComplete="email"
-          placeholder="选填"
+          required
+          placeholder="ada@example.com"
           error={errors.email?.message}
           {...register('email')}
         />

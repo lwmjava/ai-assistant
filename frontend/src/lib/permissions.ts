@@ -30,7 +30,8 @@ const ROLE_PERMISSIONS: Record<string, Partial<Record<Action, Role[]>>> = {
     delete: ['system_admin', 'tenant_admin'],
   },
   conversations: {
-    read: ['system_admin', 'system_viewer', 'tenant_admin', 'member', 'viewer'],
+    // 与后端 ROLE_PERMISSIONS 及 §5.3.2「对话/Chat」一致：system_viewer / viewer 不可读。
+    read: ['system_admin', 'tenant_admin', 'member'],
     write: ['system_admin', 'tenant_admin', 'member'],
     delete: ['system_admin', 'tenant_admin', 'member'],
   },

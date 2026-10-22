@@ -6071,7 +6071,7 @@ tasks:
 
   - id: "OPS-002"
     title: "并发与幂等：导入任务、配额扣减、租户切换"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -6114,6 +6114,7 @@ tasks:
         - "pytest -k 'idempot or concurrency'"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：导入上传支持Idempotency-Key进程内复用批次、内容哈希未完成任务去重；租户切换行锁+短时幂等；配额并发沿用既有行锁。专项test_ops_002与quota并发通过。待业务验收与最终CI。未宣称跨实例。"
       nightly:
         eligible: false
         production_access: false
@@ -7784,7 +7785,7 @@ tasks:
 
   - id: "AUTH-005"
     title: "对话读取权限与矩阵一致"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7821,6 +7822,7 @@ tasks:
         - "pytest -k \"permission or conversation\""
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22用户页面验收：访客与平台审计员访问对话均显示403页；矩阵未改写。实现仍在未提交工作区，与其他卡混在 HEAD 82c5c6e6a1eae7a929721cf609cca0771b03e5b5。最终提交的 Ubuntu CI 与 L2 独立审查未完成，保持 in_review。"
       nightly:
         eligible: false
         production_access: false
@@ -7875,7 +7877,7 @@ tasks:
 
   - id: "SEC-005"
     title: "上传按文件头校验魔术数字"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7913,6 +7915,7 @@ tasks:
         - "pytest -k \"upload or magic or storage\""
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：知识库上传与会话附件写盘前按文件头校验；扩展名不符拒绝。专项test_sec_005通过。待业务验收与最终CI。"
       nightly:
         eligible: false
         production_access: false
@@ -8113,7 +8116,7 @@ tasks:
 
   - id: "AUTH-006"
     title: "公开注册邮箱必填与唯一校验"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8157,6 +8160,7 @@ tasks:
         - "pytest -k \"register or auth\""
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：公开注册邮箱必填+格式+库唯一；setup仍可空邮箱。前后端注册页同步。专项test_auth_register通过。待业务验收与最终CI。"
       nightly:
         eligible: false
         production_access: false
@@ -8165,7 +8169,7 @@ tasks:
 
   - id: "ADM-005"
     title: "系统状态页：健康、在线用户、存储、调用量"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8204,6 +8208,7 @@ tasks:
         - "pytest -k \"status or admin\""
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：状态接口与页面增加在线用户(15分钟)、知识库存储字节、本进程自然日API调用量。仅system_admin。专项test_admin_status通过。待业务验收与最终CI。"
       nightly:
         eligible: false
         production_access: false
@@ -8308,7 +8313,7 @@ tasks:
 
   - id: "SEC-006"
     title: "日志侧身份证手机号银行卡脱敏"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -8344,6 +8349,7 @@ tasks:
         - "pytest -k \"sanitiz or log or pii\""
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：LogSanitizer增加身份证/手机号/银行卡值模式；挂在既有日志脱敏路径。专项test_sec_006通过。待业务验收与最终CI。"
       nightly:
         eligible: false
         production_access: false
@@ -8576,7 +8582,7 @@ tasks:
 
   - id: "ADM-006"
     title: "租户设置页（ADM-04）"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8620,6 +8626,7 @@ tasks:
         - "cd frontend && npm run build"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：/settings/tenant页+GET/POST /tenant/members；导航按members:write显示；知识库入口链到既有页。专项test_adm_006与前端typecheck通过。待业务验收与最终CI。"
       nightly:
         eligible: false
         production_access: false

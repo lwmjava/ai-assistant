@@ -46,6 +46,14 @@ _SENSITIVE_VALUE_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("api_key_value", re.compile(
         r'\b(sk-[A-Za-z0-9_-]{20,}|api-[A-Za-z0-9_-]{20,}|key-[A-Za-z0-9_-]{20,})\b'
     )),
+    # 中国大陆身份证号（18 位，含校验位 X）；边界与输入过滤一致，避免中文紧贴漏遮。
+    ("id_card", re.compile(
+        r"(?<![0-9A-Za-z])[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx](?![0-9A-Za-z])"
+    )),
+    # 中国大陆手机号
+    ("phone", re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")),
+    # 银行卡号（16-19 位数字）
+    ("bank_card", re.compile(r"(?<!\d)\d{16,19}(?!\d)")),
 ]
 
 

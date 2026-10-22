@@ -133,17 +133,19 @@ def register_member(
     *,
     username: str,
     password: str,
-    email: str | None = None,
+    email: str,
 ) -> User:
-    """公开注册：加入 default 租户，角色固定为 member。"""
+    """公开注册：加入 default 租户，角色固定为 member。邮箱必填且全局唯一。"""
+    if not email or not email.strip():
+        raise ValueError("邮箱不能为空")
     tenant = get_or_create_default_tenant(session)
-    _reject_taken_identity(session, username, email)
+    _reject_taken_identity(session, username, email.strip())
     return create_user(
         session,
         tenant_id=tenant.id,
         username=username,
         password=password,
-        email=email,
+        email=email.strip(),
         role=Role.MEMBER,
     )
 

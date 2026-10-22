@@ -45,7 +45,10 @@ def _login(client: TestClient, role: str, username: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
 
-def test_admin_sees_connectivity_without_invented_counts() -> None:
+def test_admin_sees_connectivity_and_process_metrics() -> None:
+    from app.core.process_metrics import reset_for_tests
+
+    reset_for_tests()
     client = _client()
     headers = _login(client, Role.SYSTEM_ADMIN.value, "admin")
     resp = client.get("/api/v1/admin/system/status", headers=headers)
@@ -55,8 +58,12 @@ def test_admin_sees_connectivity_without_invented_counts() -> None:
     assert body["checks"]["vector_store"]["backend"]
     assert body["version"]
     assert body["started_at"]
-    assert "online_users" not in body
-    assert "request_count" not in body
+    assert isinstance(body["online_users"], int)
+    assert body["online_users"] >= 1
+    assert isinstance(body["storage_bytes"], int)
+    assert body["storage_bytes"] >= 0
+    assert isinstance(body["api_request_count"], int)
+    assert body["api_request_count"] >= 1
 
 
 def test_member_cannot_open_system_status() -> None:

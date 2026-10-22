@@ -29,6 +29,7 @@ const TenantCreatePage = lazy(() => import('@/pages/TenantCreate'))
 const UsersPage = lazy(() => import('@/pages/Users'))
 const UserCreatePage = lazy(() => import('@/pages/UserCreate'))
 const StatusPage = lazy(() => import('@/pages/Status'))
+const TenantSettingsPage = lazy(() => import('@/pages/TenantSettings'))
 const InvitationsPage = lazy(() => import('@/pages/Invitations'))
 const EvaluationsPage = lazy(() => import('@/pages/Evaluations'))
 
@@ -67,7 +68,7 @@ function RequireAuth({ children, passwordPage = false }: { children: ReactElemen
   if (!bootstrapped) return <div role="status" className="grid min-h-screen place-items-center text-sm text-text-muted">正在验证登录状态…</div>
   if (!user) return <div role="alert" className="grid min-h-screen place-items-center text-sm text-text-muted"><div>无法验证登录状态，请刷新页面重试或 <button className="text-primary" onClick={() => useAuthStore.getState().logout()}>退出登录</button></div></div>
   if (user.must_change_password && !passwordPage) return <Navigate to="/change-password" replace />
-  if (!user.must_change_password && passwordPage) return <Navigate to="/chat" replace />
+  if (!user.must_change_password && passwordPage) return <Navigate to="/" replace />
   return children
 }
 
@@ -322,6 +323,16 @@ export default function App() {
                 <StatusPage />
               </Lazy>
             </RequireAdmin>
+          }
+        />
+        <Route
+          path="/settings/tenant"
+          element={
+            <RequirePermission resource="members" action="write">
+              <Lazy>
+                <TenantSettingsPage />
+              </Lazy>
+            </RequirePermission>
           }
         />
         <Route path="*" element={<NotFound />} />

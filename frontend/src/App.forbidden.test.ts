@@ -59,7 +59,7 @@ test('member opening admin pages sees 403 rather than an in-page empty hint only
   for (const path of ['/users', '/users/new', '/tenants', '/tenants/new', '/status', '/audit']) {
     const html = render(path)
     expect(html, path).toContain('403')
-    expect(html, path).toContain('返回对话')
+    expect(html, path).toContain('返回首页')
     expect(html, path).toContain('LAYOUT')
   }
 })
@@ -68,8 +68,15 @@ test('viewer without agent permission sees 403 instead of being sent to chat', (
   setRole('viewer')
   const html = render('/tools')
   expect(html).toContain('403')
-  expect(html).toContain('返回对话')
-  expect(html).toContain('href="/chat"')
+  expect(html).toContain('返回首页')
+  expect(html).toContain('href="/"')
+})
+
+test('viewer cannot open chat after conversation read matrix alignment', () => {
+  setRole('viewer')
+  const html = render('/chat')
+  expect(html).toContain('403')
+  expect(html).toContain('返回首页')
 })
 
 test('system viewer can open audit but not user administration', () => {
@@ -77,7 +84,7 @@ test('system viewer can open audit but not user administration', () => {
   expect(render('/audit')).not.toContain('>403<')
   const users = render('/users')
   expect(users).toContain('403')
-  expect(users).toContain('返回对话')
+  expect(users).toContain('返回首页')
 })
 
 test('system admin does not get a 403 on user administration', () => {

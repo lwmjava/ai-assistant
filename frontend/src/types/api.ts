@@ -59,6 +59,9 @@ export interface SystemStatus {
     database: { status: string }
     vector_store: { status: string; backend: string }
   }
+  online_users: number
+  storage_bytes: number
+  api_request_count: number
 }
 
 export interface LoginRequest {

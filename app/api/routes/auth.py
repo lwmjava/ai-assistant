@@ -18,6 +18,7 @@ from app.core.security import (
     decode_token,
     verify_refresh_token,
 )
+from app.core.tenant_switch import switch_tenant_locked
 from app.models.user import Tenant, User
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -25,6 +26,7 @@ from app.schemas.auth import (
     RefreshRequest,
     RegisterRequest,
     RevokeTokensResult,
+    SetupRequest,
     SetupStatus,
     Token,
     UserInfo,
@@ -50,7 +52,6 @@ from app.services.membership import (
     InactiveTenantError,
     NotMemberError,
     list_memberships,
-    switch_tenant,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -246,7 +247,7 @@ def setup_status(session: Session = Depends(get_db)) -> SetupStatus:
 
 @router.post("/setup", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def setup(
-    body: RegisterRequest, request: Request, session: Session = Depends(get_db)
+    body: SetupRequest, request: Request, session: Session = Depends(get_db)
 ) -> Token:
     """创建首个系统管理员。已有系统管理员时向导关闭。"""
     try:
@@ -315,7 +316,7 @@ def switch_tenant_route(
 ) -> Token:
     """是成员才换发目标租户的令牌。不是成员时不改租户和令牌版本。"""
     try:
-        user = switch_tenant(session, current_user, body.tenant_id)
+        user = switch_tenant_locked(session, current_user, body.tenant_id)
     except NotMemberError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="不是该租户的成员")
     except InactiveTenantError:

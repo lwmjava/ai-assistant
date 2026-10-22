@@ -13,6 +13,11 @@ from app.api.routes.health import (
     _vector_store_status,
 )
 from app.core.config import settings
+from app.core.process_metrics import (
+    api_request_count_today,
+    knowledge_storage_bytes,
+    online_user_count,
+)
 from app.core.security import Role
 from app.models.user import User
 from app.schemas.admin import ProbeStatus, SystemChecks, SystemStatusOut, VectorProbeStatus
@@ -32,7 +37,7 @@ def _require_system_admin(user: User = Depends(get_current_user)) -> User:
 
 @router.get("/status", response_model=SystemStatusOut)
 def system_status(_: User = Depends(_require_system_admin)) -> SystemStatusOut:
-    """返回数据库、向量库、版本和本进程启动时间。"""
+    """返回健康探测，以及本进程在线用户、存储与自然日调用量。"""
     database = _check(_database_status)
     try:
         vector_status, backend = _vector_store_status()
@@ -55,4 +60,7 @@ def system_status(_: User = Depends(_require_system_admin)) -> SystemStatusOut:
                 fallback_reason=_runtime_reason(),
             ),
         ),
+        online_users=online_user_count(),
+        storage_bytes=knowledge_storage_bytes(),
+        api_request_count=api_request_count_today(),
     )

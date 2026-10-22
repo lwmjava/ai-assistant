@@ -92,6 +92,9 @@ def get_current_user(
                 detail="租户已停用",
             )
     log_context.set_user(user.id, user.tenant_id)
+    from app.core.process_metrics import record_authenticated_user
+
+    record_authenticated_user(user.id)
     password_routes = {("GET", "/api/v1/auth/me"), ("POST", "/api/v1/auth/change-password")}
     route_path = getattr(request.scope.get("route"), "path", request.url.path)
     if user.must_change_password and (request.method, route_path) not in password_routes:

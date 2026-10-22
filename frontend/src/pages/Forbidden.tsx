@@ -18,10 +18,10 @@ export function ForbiddenPage({
         </h1>
         <p className="mt-2 text-sm text-text-muted">{description}</p>
         <Link
-          to="/chat"
+          to="/"
           className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-fg"
         >
-          返回对话
+          返回首页
         </Link>
       </div>
     </div>

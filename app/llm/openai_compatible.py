@@ -15,7 +15,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.response_cache import BoundedCache, cache_limits, current_cache_snapshot, digest
-from app.llm.base import ChatMessage, LLMOptions, LLMProvider
+from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider
 from app.llm.budget import enforce_generation_budget
 from app.llm.capabilities import (
     GenerationCapability,
@@ -58,6 +58,112 @@ def _response_content(data: object) -> str:
             "llm_empty_response", finish_reason=choice.get("finish_reason"),
             native_tool_calls=bool(message.get("tool_calls") or message.get("function_call")),
             reply=content,
+        )
+    if not isinstance(content, str):
+        raise LLMResponseError("llm_invalid_response")
+    return content
+
+
+def _strict_json_object(raw: str) -> dict:
+    def unique_pairs(items: list[tuple[str, object]]) -> dict:
+        value: dict = {}
+        for key, item in items:
+            if key in value:
+                raise ValueError("duplicate")
+            value[key] = item
+        return value
+
+    def reject_constant(_name: str) -> object:
+        raise ValueError("nonfinite")
+
+    data = json.loads(raw, object_pairs_hook=unique_pairs, parse_constant=reject_constant)
+    if not isinstance(data, dict):
+        raise ValueError("not_object")
+    _reject_nonfinite(data)
+    return data
+
+
+def _reject_nonfinite(value: object) -> None:
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("nonfinite")
+    if isinstance(value, dict):
+        for item in value.values():
+            _reject_nonfinite(item)
+    elif isinstance(value, list):
+        for item in value:
+            _reject_nonfinite(item)
+
+
+def _text_protocol(content: object) -> bool:
+    if not isinstance(content, str) or not content:
+        return False
+    if "<tool_call>" in content or "</tool_call>" in content:
+        return True
+    return "DSML" in content and any(token in content for token in ("<｜", "</｜"))
+
+
+def _envelope(name: str, arguments: dict) -> str:
+    return (
+        "<tool_call>"
+        + json.dumps({"name": name, "arguments": arguments}, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        + "</tool_call>"
+    )
+
+
+def _native_tool_result(data: object, allowed: set[str]) -> str:
+    if not isinstance(data, dict):
+        raise LLMResponseError("llm_invalid_response")
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+        raise LLMResponseError("llm_invalid_response")
+    choice = choices[0]
+    message = choice.get("message")
+    if not isinstance(message, dict):
+        raise LLMResponseError("llm_invalid_response")
+    calls = message.get("tool_calls")
+    content = message.get("content")
+    if calls:
+        if isinstance(content, str) and content.strip():
+            raise LLMResponseError("llm_invalid_tool_call", finish_reason=choice.get("finish_reason"),
+                                   native_tool_calls=True)
+        if not isinstance(calls, list) or len(calls) != 1 or not isinstance(calls[0], dict):
+            raise LLMResponseError("llm_invalid_tool_call", finish_reason=choice.get("finish_reason"),
+                                   native_tool_calls=True)
+        call = calls[0]
+        fn = call.get("function")
+        call_id = call.get("id")
+        if (call.get("type") not in {None, "function"} or not isinstance(call_id, str) or not call_id.strip()
+                or not isinstance(fn, dict)):
+            raise LLMResponseError("llm_invalid_tool_call", finish_reason=choice.get("finish_reason"),
+                                   native_tool_calls=True)
+        name = fn.get("name")
+        raw_arguments = fn.get("arguments")
+        if not isinstance(name, str) or name not in allowed:
+            raise LLMResponseError("llm_invalid_tool_call", finish_reason=choice.get("finish_reason"),
+                                   native_tool_calls=True)
+        try:
+            if isinstance(raw_arguments, dict):
+                _reject_nonfinite(raw_arguments)
+                arguments = raw_arguments
+            elif isinstance(raw_arguments, str):
+                arguments = _strict_json_object(raw_arguments)
+            else:
+                raise ValueError("arguments")
+        except (ValueError, TypeError, json.JSONDecodeError, RecursionError) as exc:
+            raise LLMResponseError(
+                "llm_invalid_tool_call", finish_reason=choice.get("finish_reason"), native_tool_calls=True,
+            ) from exc
+        if message.get("function_call"):
+            raise LLMResponseError("llm_invalid_tool_call", finish_reason=choice.get("finish_reason"),
+                                   native_tool_calls=True)
+        return _envelope(name, arguments)
+    if message.get("function_call") or _text_protocol(content):
+        raise LLMResponseError("llm_invalid_tool_call", finish_reason=choice.get("finish_reason"),
+                               native_tool_calls=bool(message.get("function_call")))
+    if content is None or (isinstance(content, str) and not content.strip()):
+        raise LLMResponseError(
+            "llm_empty_response", finish_reason=choice.get("finish_reason"),
+            native_tool_calls=False, reply=content if isinstance(content, str) else None,
         )
     if not isinstance(content, str):
         raise LLMResponseError("llm_invalid_response")
@@ -114,8 +220,17 @@ class OpenAICompatibleProvider(LLMProvider):
         margin = settings.LLM_BUDGET_SAFETY_MARGIN + (
             capability.safety_margin if capability else 0
         )
+        counted = list(messages)
+        if options is not None and options.tools is not None:
+            counted.append(ChatMessage(
+                role=ChatRole.SYSTEM,
+                content=json.dumps(
+                    [item.model_dump(mode="json") for item in options.tools],
+                    ensure_ascii=False, separators=(",", ":"), allow_nan=False,
+                ),
+            ))
         enforce_generation_budget(
-            capability, messages, self._reserved_output(options), margin
+            capability, counted, self._reserved_output(options), margin
         )
 
     def _headers(self) -> dict:
@@ -139,12 +254,27 @@ class OpenAICompatibleProvider(LLMProvider):
             payload["temperature"] = opts.temperature
         if opts.max_tokens is not None:
             payload["max_tokens"] = opts.max_tokens
+        if opts.tools is not None:
+            payload["tool_choice"] = "none" if not opts.tools else "auto"
+            payload["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": item.name,
+                        "description": item.description,
+                        "parameters": item.parameters or {"type": "object", "properties": {}},
+                    },
+                }
+                for item in opts.tools
+            ]
         return payload
 
     def _cache_request(
         self, payload: dict, opts: LLMOptions, headers: dict, url: str, timeout: float
     ) -> tuple[str, str] | None:
         if not settings.LLM_RESPONSE_CACHE_ENABLED or cache_limits() is None:
+            return None
+        if opts.tools is not None:
             return None
         if (opts.temperature is None or not math.isfinite(opts.temperature)
                 or opts.temperature != 0 or (opts.max_tokens is not None and opts.max_tokens <= 0)):
@@ -194,6 +324,8 @@ class OpenAICompatibleProvider(LLMProvider):
                 data = resp.json()
             except ValueError:
                 raise LLMResponseError("llm_invalid_response") from None
+        if opts.tools is not None:
+            return _native_tool_result(data, {item.name for item in opts.tools})
         content = _response_content(data)
         choice = data["choices"][0]
         if request is not None and self._revalidate(request):
@@ -207,6 +339,8 @@ class OpenAICompatibleProvider(LLMProvider):
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> AsyncIterator[str]:
         opts = (options or LLMOptions()).model_copy(deep=True)
+        if opts.tools is not None:
+            raise LLMResponseError("llm_invalid_tool_call")
         self._guard(messages, opts)
         payload = copy.deepcopy(self._payload(messages, opts, True))
         headers = dict(self._headers())

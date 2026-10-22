@@ -43,8 +43,17 @@ from app.agents.tools.base import Tool, ToolIntent, ToolRegistry, inspect_tool_c
 from app.agents.tools.executor import ToolExecutor
 from app.core import log_context
 from app.core.config import settings
-from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text, user_message_content
+from app.llm.base import (
+    ChatMessage,
+    ChatRole,
+    LLMOptions,
+    LLMProvider,
+    LLMToolDefinition,
+    content_text,
+    user_message_content,
+)
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
+from app.llm.openai_compatible import LLMResponseError
 from app.llm.routing import LLMUnavailableError
 from app.rag.context_builder import (
     CONTEXT_BUDGET_EXHAUSTED,
@@ -238,6 +247,16 @@ def build_preflight_user_content(history: Sequence[ChatMessage | dict], user_inp
     return f"## 最近对话\n{recent_dialogue(history)}\n\n## 用户最新消息\n{user_input}"
 
 
+def native_tool_definitions(registry: ToolRegistry | None) -> list[LLMToolDefinition]:
+    """Runtime and official evaluation advertise the same function schemas."""
+    if registry is None:
+        return []
+    return [
+        LLMToolDefinition(name=tool.name, description=tool.description, parameters=tool.parameters)
+        for tool in registry.all()
+    ]
+
+
 def selection_tool_registry() -> ToolRegistry:
     """Copy production metadata only; no production function can be invoked here."""
     from app.agents.tools.builtin import default_tools
@@ -275,8 +294,7 @@ def action_user_content(state: AgentState, registry: ToolRegistry | None, includ
     elif registry is not None:
         tools_text = (
             "## 可用外部工具\n" + registry.describe()
-            + "\n\n如需调用工具，仅输出如下格式（不要附加其它文字）：\n"
-            '<tool_call>{"name": "工具名", "arguments": {参数键值对}}</tool_call>'
+            + "\n\n如需调用工具，使用接口提供的函数调用，只请求一个已列出的工具。"
         )
     guidance = _confirmed_code_guidance(registry, include_tools)
     if guidance:
@@ -512,11 +530,18 @@ class AgentPipeline:
         elif self.skill_prompt_injection:
             system = f"{system}\n\n---\n# 激活的技能指令\n{self.skill_prompt_injection}"
         t0 = time.monotonic()
-        if self.structured_plans_enabled or state.structured_plan is not None:
-            async with asyncio.timeout(model_timeout(self)):
-                result = await self.llm.chat(self._messages(system, content, state), self.options)
-        else:
-            result = await self.llm.chat(self._messages(system, content, state), self.options)
+        options = self._llm_options(is_action_stage)
+        try:
+            if self.structured_plans_enabled or state.structured_plan is not None:
+                async with asyncio.timeout(model_timeout(self)):
+                    result = await self.llm.chat(self._messages(system, content, state), options)
+            else:
+                result = await self.llm.chat(self._messages(system, content, state), options)
+        except LLMResponseError as exc:
+            if is_action_stage and exc.error_code == "llm_invalid_tool_call":
+                result = "<tool_call></tool_call>"
+            else:
+                raise
         elapsed = (time.monotonic() - t0) * 1000
         # 记录 LLM 调用 trace
         if self.trace and self.trace.debug_mode:
@@ -640,6 +665,17 @@ class AgentPipeline:
             async for delta in self.llm.stream_chat(
                 self._messages(system, self._build_respond(state), state), self.options):
                 yield delta
+
+    def _llm_options(self, action_stage: bool) -> LLMOptions:
+        options = (self.options or LLMOptions()).model_copy(deep=True)
+        if not action_stage:
+            options.tools = None
+            return options
+        if self._execution_policy.include_tools:
+            options.tools = native_tool_definitions(self._tools_for_policy(self._execution_policy))
+        else:
+            options.tools = []
+        return options
 
     def _tools_for_policy(self, policy: ExecutionPolicy) -> ToolRegistry | None:
         if self.tools is None or not policy.include_tools:

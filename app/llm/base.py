@@ -77,12 +77,23 @@ class ChatMessage(BaseModel):
     content: ChatContent
 
 
+class LLMToolDefinition(BaseModel):
+    """One function the compatible client may advertise on a native tool request."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: str = ""
+    parameters: dict = Field(default_factory=dict)
+
+
 class LLMOptions(BaseModel):
     """一次补全请求的可调参数（未设置则由提供商使用默认值）。"""
 
     temperature: float | None = None
     max_tokens: int | None = None
     timeout: float | None = None
+    tools: list[LLMToolDefinition] | None = None
 
 
 class LLMProvider(ABC):

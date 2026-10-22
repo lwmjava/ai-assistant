@@ -29,6 +29,7 @@ if str(REPO_ROOT) not in sys.path:
 from app.agents.pipeline import (  # noqa: E402
     build_preflight_messages,
     build_tool_choice_messages,
+    native_tool_definitions,
     preflight_needs_full_pipeline,
     selection_tool_registry,
 )
@@ -38,7 +39,7 @@ from app.llm.base import LLMOptions  # noqa: E402
 from app.llm.factory import get_llm_provider  # noqa: E402
 from app.llm.openai_compatible import LLMResponseError, OpenAICompatibleProvider  # noqa: E402
 
-EVALUATOR_VERSION = "agent-chain-eval-0.4.1"
+EVALUATOR_VERSION = "agent-chain-eval-0.5.0"
 # Compatibility declaration: no Tool/DB/RAG execution; these are NOT runtime counters.
 SIDE_EFFECTS = {"sandbox": 0, "mcp": 0, "network": 0, "rag": 0, "database": 0}
 REPORT_SCHEMA_VERSION = "agent-chain-report-3.0.0"
@@ -114,6 +115,10 @@ def prompt_hash(cases: list[dict] | None = None) -> str:
         for stage, messages in stages:
             inputs.append({"case_id": case["case_id"], "stage": stage,
                            "messages": [message.model_dump(mode="json") for message in messages]})
+    inputs.append({
+        "stage": "native_tool_schema",
+        "tools": [item.model_dump(mode="json") for item in native_tool_definitions(selection_tool_registry())],
+    })
     return hashlib.sha256(json.dumps(inputs, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
@@ -366,7 +371,11 @@ def score_valid_calls(cases: list[dict], records: list[dict]) -> float:
 
 async def predict_tools(provider, cases: list[dict], calls=None) -> tuple[list[list[str]], list[str], list[dict]]:
     """Propose once, validate, then invoke an in-memory recording Tool only."""
-    options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
+    options = LLMOptions(
+        temperature=0,
+        timeout=CALL_TIMEOUT,
+        tools=native_tool_definitions(selection_tool_registry()),
+    )
     chosen: list[list[str]] = []
     raws: list[str] = []
     records: list[dict] = []
@@ -443,6 +452,10 @@ async def model_reply(provider, messages, options, *, calls=None, case_id="", st
                 attempts[-1] = reply_attempt(raw)
                 return raw
             except LLMResponseError as exc:
+                if exc.error_code == "llm_invalid_tool_call":
+                    raw = "<tool_call></tool_call>"
+                    attempts[-1] = reply_attempt(raw)
+                    return raw
                 if exc.error_code != "llm_empty_response":
                     raise
                 if exc.reply is not None and len(exc.reply.encode("utf-8")) > MAX_REPLY_BYTES:
@@ -518,6 +531,7 @@ def build_report(mode, provider, cases, routes, raws, tool_names, tool_raws, rec
         "tool_call_validity_recall": score_valid_calls(cases, records),
         "side_effects": dict(SIDE_EFFECTS),
         "side_effects_evidence": SIDE_EFFECTS_EVIDENCE,
+        "tool_reply_encoding": "client_normalized_internal_envelope",
         "cases": [
             {**row, "raw_reply": raw, "tool_reply": tool_raw, "predicted_tools": tools["predicted_tools"],
              "tool_record": record}

@@ -12,12 +12,13 @@ from scripts import run_agent_chain_eval as runner
 
 
 def test_runtime_and_official_share_explicit_tool_wire_protocol():
-    """The system instruction must name the complete protocol, not just its opening tag."""
+    """Runtime action and official evaluation advertise the same native function schemas."""
     from app.agents.prompts import SYSTEM_ACT
 
     class CaptureModel:
         async def chat(self, messages, options):
             self.messages = messages
+            self.options = options
             return "No tool needed."
 
     model = CaptureModel()
@@ -25,10 +26,11 @@ def test_runtime_and_official_share_explicit_tool_wire_protocol():
     state = pipeline.AgentState(user_input="Compute a result.")
     asyncio.run(agent._run_action_once(state))
     official = pipeline.build_tool_choice_messages([], state.user_input)
+    expected = {item.name for item in pipeline.native_tool_definitions(pipeline.selection_tool_registry())}
     assert model.messages[0].content == official[0].content == SYSTEM_ACT
-    assert '<tool_call>{"name":"工具名","arguments":{}}</tool_call>' in SYSTEM_ACT
-    assert "合法 JSON" in SYSTEM_ACT and "DSML" in SYSTEM_ACT
-    assert "禁止" in SYSTEM_ACT and "</tool_call>" in SYSTEM_ACT
+    assert {item.name for item in model.options.tools} == expected
+    assert "函数调用" in SYSTEM_ACT and "DSML" in SYSTEM_ACT
+    assert "<tool_call>" in SYSTEM_ACT and "不要输出" in SYSTEM_ACT
 
 
 @pytest.mark.parametrize("private_protocol", [True, False, "supported"])
@@ -84,6 +86,62 @@ def test_official_tool_protocol_failure_stays_failed_without_retry(
     assert ("tool_selection_recall" in failed) == rejected
     assert ("tool_call_validity_recall" in failed) == rejected
     assert all(value == 0 for value in report["side_effects"].values())
+
+
+def test_official_native_invalid_tool_call_fails_without_retry(
+    isolated_real_transport, monkeypatch, tmp_path,
+):
+    from scripts import agent_gate_check as gate
+
+    provider, _ = isolated_real_transport
+    tool_requests = 0
+
+    async def reply(self, messages, options):
+        nonlocal tool_requests
+        if messages[0].content == pipeline.SYSTEM_ACT:
+            tool_requests += 1
+            if tool_requests == 1:
+                raise runner.LLMResponseError(
+                    "llm_invalid_tool_call", finish_reason="stop", native_tool_calls=False,
+                )
+            return await runner.SmokeIntentModel().chat(messages, options)
+        return await runner.SmokeIntentModel().chat(messages, options)
+
+    monkeypatch.setattr(runner.OpenAICompatibleProvider, "chat", reply)
+    target = tmp_path / "native-invalid.json"
+    assert asyncio.run(runner.run("official", tmp_path, target)) == 1
+    report = json.loads(target.read_text(encoding="utf-8"))
+    assert len(report["call_attempts"]) == report["model_requests"] == 12
+    assert report["empty_response_retries"] == 0
+    assert tool_requests == 2
+    assert report["tool_reply_encoding"] == "client_normalized_internal_envelope"
+    failed_row = next(row for row in report["cases"] if row["tool_reply"] == "<tool_call></tool_call>")
+    assert failed_row["tool_record"]["error_code"] == "invalid_envelope"
+    assert report["tool_selection_recall"] == 0.5
+    assert report["tool_call_validity_recall"] == 0.5
+    failed = gate.check_report(report, provider.model, report["endpoint_hash"])
+    assert "tool_selection_recall" in failed
+    assert "tool_call_validity_recall" in failed
+    assert "empty_model_response" not in failed
+
+
+def test_official_predict_tools_sends_native_tool_definitions():
+    captured = {}
+
+    class Capture:
+        async def chat(self, messages, options):
+            captured["options"] = options
+            return "No tool needed."
+
+    case = {
+        "case_id": "probe",
+        "history": [],
+        "user_input": "计算 1+1",
+        "expected_tools": ["calculator"],
+    }
+    asyncio.run(runner.predict_tools(Capture(), [case]))
+    expected = {item.name for item in pipeline.native_tool_definitions(pipeline.selection_tool_registry())}
+    assert {item.name for item in captured["options"].tools} == expected
 
 
 @pytest.mark.parametrize("empty", ["", " \n", None])
@@ -246,6 +304,7 @@ def test_complete_official_entry_with_isolated_transport(isolated_real_transport
     assert report["model"] == provider.model
     assert report["provider"] == "openai-compatible"
     assert report["side_effects_evidence"] == runner.SIDE_EFFECTS_EVIDENCE
+    assert report["tool_reply_encoding"] == "client_normalized_internal_envelope"
     assert report["tool_call_validity_recall"] == 1.0
     assert sum(row["tool_record"]["recorded_calls"] for row in report["cases"]) == 2
     assert report["report_schema_version"] == runner.REPORT_SCHEMA_VERSION

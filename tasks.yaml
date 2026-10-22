@@ -29,8 +29,8 @@ project:
     frontend_typecheck: "cd frontend; npm run typecheck"
     frontend_build: "cd frontend; npm run build"
   reading_policy: "按AGENTS.md第2节读取全局策略、当前卡与直接依赖摘要；历史must_read仅作按需索引，任务专属要求保留。"
-  delivery_record_policy: "按AGENTS.md第9节分级；新卡保留ID/目标/状态/依赖/范围/验收/风险/交付记录链接，复用全局策略；同一记录写计划与实际结果，不复制过程日志或按固定行数裁剪。不另写计划/实现/关闭三套说明；存量无用文档只停止新增。"
-  review_policy: "普通任务自审，复杂边界或明确要求时独立审查；专项通过后即可审查，不整份发送台账/manifest；配额耗尽记incomplete。阻断项闭合即退出，无新证据不重复最终审核；技术审查不冒充人工业务接受。"
+  delivery_record_policy: "按AGENTS.md第9节分级；目标/范围/验收已清楚时在当前卡补方案差异和实际结果即可。复杂任务或授权批次复用一份必要计划；普通任务不新增计划/实现/关闭三套说明，不复制日志，不按固定行数裁剪。历史证据不批量删除。"
+  review_policy: "按实际授权判定/执行/数据影响分级，不按文件名或权限等关键词扩大审查。普通任务自审，复杂边界或明确要求时独立审查；专项后审查与走查，起始包只含相关材料，预算耗尽记incomplete。阻断项闭合即退出，不重复最终审核；技术审查不冒充业务接受。"
   artifact_policy: "按AGENTS.md第11节区分文档、scripts、tests、evals及临时产物；存量引用先核对再迁移，不删除历史证据。"
   evidence_policy: "事实引用代码、配置、测试、Trace、数据或已批准文档；假设必须标记并给出验证动作。"
   regression_gate_policy: "任务关闭与提交前执行 AGENTS.md 第10节强制回归：开发阶段专项与调用方，完整pytest可由最终SHA合格CI承担，适用Linux检查与最终输入指纹/提交SHA绑定仍须满足；必要检查失败、缺失或过期不得关闭业务任务。纯文档治理按文档契约验证，不代表业务CI通过。"
@@ -55,6 +55,20 @@ risk_policy:
   L3: "退款、删除、合同、财务、权限提升或不可逆敏感操作；必须人工审批"
 
 tasks:
+  - id: "GOV-004"
+    title: "按实际影响整理AI开发入口与专题工作流"
+    status: "done"
+    priority: "P1"
+    depends_on: ["GOV-003"]
+    scope:
+      allowed_paths: ["AGENTS.md", "tasks.yaml", ".cursor/rules/00-global.mdc", ".cursor/rules/07-testing-evaluation.mdc", "docs/AI辅助开发迭代指导.md", "docs/governance/agent-harness-engineering.md", "docs/workflows/bugfix-and-incident.md", "docs/workflows/end-to-end-development.md", "docs/workflows/nightly-autonomous-development.md", "docs/workflows/production-compose.md"]
+      non_goals: ["不改业务/测试/依赖/CI行为", "不降低现有必要检查", "不变更已有业务卡状态", "不删除历史证据或操作生产"]
+    acceptance: ["AGENTS为唯一规则入口，日常流程与运行时/历史/事故/夜间/生产资料职责明确", "当前卡复用记录，按实际影响审查，不机械生成文档或扩大验证", "第10节回归门禁及夜间/生产安全要求保留；YAML/引用/规则一致性通过"]
+    risk: {level: "L1", side_effect: "开发规则表述与文档阅读路由改变，不改变产品运行时"}
+    execution:
+      plan: "本卡作为唯一交付记录：压缩AGENTS历史快照与重复说明，保留章节编号和第10节；专题文档声明适用触发，端到端流程改成日常短路径，同步Cursor与全局策略。基线dc13445，已有未跟踪Untitled保留。"
+      progress: "2026-10-22已调整本卡10个允许文件；AGENTS去除重复快照/流程，专题文档增加触发路由，普通任务复用卡内记录并按实际影响审查。conda Python静态核对退出0：AGENTS第10节与基线逐字一致、所有既有任务卡语义不变、YAML/Cursor frontmatter及本轮Markdown本地链接有效、14节编号保留、夜间准入和生产禁止删卷要求保留；git diff --check退出0。纯文档契约完成，不运行业务回归、不关闭业务卡；实际提效/Token收益待自然任务观察。回滚仅回退本卡文档diff，保留其他用户改动；未提交推送或操作生产。"
+
   - id: "VAL-001"
     title: "验证执行隔离、审核顺序与CI兼容调整"
     status: "in_progress"
@@ -68,6 +82,20 @@ tasks:
     execution:
       plan: "docs/plans/proposal_validation_delivery_efficiency_20261022.md#val-001本地验证规则与ci兼容调整"
       progress: "2026-10-22本地全量20261022T081057-88d6a61997db退出0：3362 passed/3 skipped（Linux文件系统）、Ruff与mypy通过，约14分钟。NFR-011/FE-001已按新规则试用并记入同一方案第13节；Linux/最终CI未做，VAL-001保持in_progress。"
+
+  - id: "TOOL-001"
+    title: "行动阶段改用原生结构化工具调用"
+    status: "in_review"
+    priority: "P0"
+    depends_on: []
+    scope:
+      allowed_paths: ["app/llm/base.py", "app/llm/openai_compatible.py", "app/agents/pipeline.py", "app/agents/prompts.py", "scripts/run_agent_chain_eval.py", "tests/test_llm_native_tools.py", "tests/test_llm_response_validity.py", "tests/test_tool_dsml_protocol.py", "tests/eval/test_agent_eval_runner.py", "tests/test_rag_028_model_capability.py", "tests/test_supervisor_tool_contract_review.py", "evals/README.md", "README.md", "tasks.yaml", "docs/adr/0020-native-tool-proposals.md", "docs/adr/README.md", "docs/plans/implementation_native_tool_calls_20261022.md"]
+      non_goals: ["不改权限模型或工具副作用", "不改冻结评测数据/阈值", "不改CI行为", "不提交推送或付费official"]
+    acceptance: ["兼容客户端发送并只接受单个已注册函数调用", "畸形/多调用/文本协议/收尾无工具被拒绝且无格式重试", "运行时与官方评测发送相同工具定义；专项通过；最终SHA CI与付费复验完成前不得done"]
+    risk: {level: "L1", side_effect: "行动阶段LLM请求形状变化；受控执行链与内部信封保持"}
+    execution:
+      plan: "docs/plans/implementation_native_tool_calls_20261022.md"
+      progress: "2026-10-22已接线原生tools并完成专项：宽专项602/1后修复评测空信封，随后54 passed；ruff/mypy退出0。未做独立审查、全量pytest、最终SHA CI、付费official。保持in_review，不得done。"
 
   - id: "GOV-003"
     title: "精简开发治理的上下文、交付记录与评审流程"

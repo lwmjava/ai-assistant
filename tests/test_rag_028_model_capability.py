@@ -105,6 +105,26 @@ def _patch_transport(
             return _OK
         return script[min(len(recorder.requests) - 1, len(script) - 1)]
 
+    def native_call(text: str) -> dict | None:
+        raw = text.strip()
+        if not raw.startswith("<tool_call>") or not raw.endswith("</tool_call>"):
+            return None
+        try:
+            payload = json.loads(raw[len("<tool_call>"):-len("</tool_call>")])
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(payload, dict) or not isinstance(payload.get("name"), str):
+            return None
+        arguments = payload.get("arguments", {})
+        return {
+            "id": "call_1",
+            "type": "function",
+            "function": {
+                "name": payload["name"],
+                "arguments": json.dumps(arguments, ensure_ascii=False, separators=(",", ":")),
+            },
+        }
+
     def respond(request: httpx.Request) -> httpx.Response:
         recorder.requests.append(request)
         body = json.loads(request.content or b"{}")
@@ -114,6 +134,12 @@ def _patch_transport(
             return httpx.Response(
                 200, content=f"data: {chunk}\n\ndata: [DONE]\n\n".encode()
             )
+        call = native_call(text) if body.get("tools") is not None else None
+        if call is not None:
+            return httpx.Response(200, json={"choices": [{
+                "message": {"content": None, "tool_calls": [call]},
+                "finish_reason": "tool_calls",
+            }]})
         return httpx.Response(200, json={"choices": [{"message": {"content": text}}]})
 
     transport = httpx.MockTransport(respond)

@@ -343,10 +343,23 @@ async def test_real_provider_cache_hit_reexecutes_tool_for_each_new_request(isol
         user = body["messages"][-1]["content"]
         if system.startswith("你是编排调度器"):
             answer = "research" if "not_called" in user else "draft"
-        elif system.startswith(SYSTEM_ACT):
-            answer = "done" if "结果=" in user else proposal()
+        elif system.startswith(SYSTEM_ACT) and "结果=" not in user:
+            return httpx.Response(200, json={"model": "gpt-4o-mini", "choices": [{
+                "message": {
+                    "content": None,
+                    "tool_calls": [{
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "review_read",
+                            "arguments": json.dumps({"value": 1}, separators=(",", ":")),
+                        },
+                    }],
+                },
+                "finish_reason": "tool_calls",
+            }]})
         else:
-            answer = "done"
+            answer = "done" if system.startswith(SYSTEM_ACT) else "done"
         return httpx.Response(200, json={"model": "gpt-4o-mini", "choices": [
             {"message": {"content": answer}, "finish_reason": "stop"},
         ]})
@@ -362,10 +375,11 @@ async def test_real_provider_cache_hit_reexecutes_tool_for_each_new_request(isol
     assert first_count > 0 and calls == [{"value": 1}]
     _, _, logs = await enter(isolated, service, stream)
     assert calls == [{"value": 1}, {"value": 1}] and len(logs) == 2
-    assert len(cache_hits) > first_hits, "must observe an actual provider cache hit in the new request"
+    assert any(body.get("tools") for body in requests)
     if not stream:
-        assert any("<tool_call>" in value for value in cache_hits[first_hits:])
-        assert len(requests) == first_count
+        assert len(cache_hits) > first_hits, "text-stage replies remain cacheable"
+        assert len(requests) > first_count, "native tool hops bypass the response cache"
+        assert all("<tool_call>" not in str(value) for value in cache_hits)
     else:
         assert len(requests) - first_count < first_count
 

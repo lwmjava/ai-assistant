@@ -10,7 +10,7 @@ alwaysApply: false
 
 ## MUST
 
-- 按影响选择单元、契约、集成、Agent、RAG、安全、E2E 和回归测试。
+- 按实际影响选择单元、契约、集成、Agent、RAG、安全、E2E 和回归测试；这不是每个任务全选的清单。纯说明不机械补行为测试，确定性缺陷不机械跑真实模型。
 - Prompt、模型、Tool、Skill、RAG、状态机、Guardrail 或 Harness 变化必须新增/更新 Evaluation Case。
 - 使用脱敏或合成但具代表性的真实业务回归集，覆盖成功、拒绝、异常、恢复、HITL 和租户隔离。
 - 固定并记录数据集、Prompt、模型、Tool 和评测器版本；设置可解释质量门禁。

@@ -66,3 +66,5 @@ ADR-0017：[工作流执行超时与协作取消](0017-workflow-execution-cancel
 ADR-0018：[工作流单进程准入与周期幂等](0018-workflow-concurrency-idempotency.md)，Accepted，2026-10-20；用户批准共享容量、周期消费语义及最小扩围，批准不代表已实现。
 
 ADR-0019：[开发环境 Milvus Lite 启动选择](0019-milvus-lite-runtime-selection.md)，Accepted，2026-10-21；只锁定启动一次的实例选择和归属拒绝。Windows 上尚未证明 Lite 运行库可用。
+
+ADR-0020：[原生结构化工具提议](0020-native-tool-proposals.md)，Accepted，2026-10-22。行动阶段通过兼容接口原生 tools/tool_calls 提议单个函数调用，客户端严格校验后归一为内部执行信封；不放宽文本协议解析。架构批准不代表评测或生产发布完成。

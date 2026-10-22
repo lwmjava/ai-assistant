@@ -84,6 +84,10 @@ python scripts/run_agent_chain_eval.py --mode official
 
 `agent_gate_probe.py` 现在验证 route、followup、tool、arguments 四类受控退化；arguments 探针保留正确工具名并使用空参数，只触发有效调用率失败。无工具提议同时降低工具名召回和有效调用率，保留两个失败原因。测试与实际命令见实现说明；确定性专项通过不替代真实 official 或人工业务验收。
 
+### 原生工具调用：evaluator 0.5.0（2026-10-22）
+
+行动阶段与官方评测发送相同的原生函数定义。报告中的 `tool_reply` 是客户端归一后的内部信封，不能当作原始 HTTP `tool_calls`。冻结数据 0.1.1 与四项阈值不变；评测器版本更新。畸形、多调用、文本协议或未注册工具在客户端拒绝，不新增格式重试。
+
 
 ## 已确认代码保持回归 v1
 

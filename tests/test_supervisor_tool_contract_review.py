@@ -378,7 +378,7 @@ async def test_real_provider_cache_hit_reexecutes_tool_for_each_new_request(isol
     assert any(body.get("tools") for body in requests)
     if not stream:
         assert len(cache_hits) > first_hits, "text-stage replies remain cacheable"
-        assert len(requests) > first_count, "native tool hops bypass the response cache"
+        assert len(requests) > first_count, "native tool_calls replies are not cached"
         assert all("<tool_call>" not in str(value) for value in cache_hits)
     else:
         assert len(requests) - first_count < first_count

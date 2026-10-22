@@ -170,6 +170,25 @@ def _native_tool_result(data: object, allowed: set[str]) -> str:
     return content
 
 
+def _cacheable_completion(data: object, payload: dict, content: str) -> bool:
+    if not isinstance(data, dict) or not isinstance(content, str) or not content.strip():
+        return False
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+        return False
+    choice = choices[0]
+    message = choice.get("message")
+    if not isinstance(message, dict):
+        return False
+    return (
+        data.get("model") == payload.get("model")
+        and choice.get("finish_reason") == "stop"
+        and not message.get("tool_calls")
+        and not message.get("function_call")
+        and not _text_protocol(content)
+    )
+
+
 class OpenAICompatibleProvider(LLMProvider):
     """基于 OpenAI Chat Completions 接口的提供商（兼容 Ollama）。
 
@@ -274,8 +293,6 @@ class OpenAICompatibleProvider(LLMProvider):
     ) -> tuple[str, str] | None:
         if not settings.LLM_RESPONSE_CACHE_ENABLED or cache_limits() is None:
             return None
-        if opts.tools is not None:
-            return None
         if (opts.temperature is None or not math.isfinite(opts.temperature)
                 or opts.temperature != 0 or (opts.max_tokens is not None and opts.max_tokens <= 0)):
             return None
@@ -324,15 +341,12 @@ class OpenAICompatibleProvider(LLMProvider):
                 data = resp.json()
             except ValueError:
                 raise LLMResponseError("llm_invalid_response") from None
-        if opts.tools is not None:
-            return _native_tool_result(data, {item.name for item in opts.tools})
-        content = _response_content(data)
-        choice = data["choices"][0]
-        if request is not None and self._revalidate(request):
-            if (data.get("model") == payload["model"] and choice.get("finish_reason") == "stop"
-                    and isinstance(content, str) and content and not choice["message"].get("tool_calls")
-                    and not choice["message"].get("function_call")):
-                _responses.put(request[0], content)
+        content = (
+            _native_tool_result(data, {item.name for item in opts.tools})
+            if opts.tools is not None else _response_content(data)
+        )
+        if request is not None and self._revalidate(request) and _cacheable_completion(data, payload, content):
+            _responses.put(request[0], content)
         return content
 
     async def stream_chat(

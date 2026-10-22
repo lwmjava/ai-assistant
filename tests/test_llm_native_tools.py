@@ -7,6 +7,7 @@ import httpx
 import pytest
 
 from app.core.config import settings
+from app.core.response_cache import bind_cache_scope
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMToolDefinition
 from app.llm.openai_compatible import LLMResponseError, OpenAICompatibleProvider
 
@@ -251,7 +252,7 @@ def test_native_tool_schema_is_counted_in_budget(transport, monkeypatch) -> None
     assert "calculator" in extra.content
 
 
-def test_native_request_bypasses_response_cache(transport, monkeypatch) -> None:
+def test_native_tool_calls_are_not_cached(transport, monkeypatch) -> None:
     monkeypatch.setattr(settings, "LLM_RESPONSE_CACHE_ENABLED", True)
     requests = transport(
         {
@@ -262,7 +263,23 @@ def test_native_request_bypasses_response_cache(transport, monkeypatch) -> None:
             }],
         }
     )
-    first = _invoke()
-    second = _invoke()
+    with bind_cache_scope(lambda: "native-tool-cache"):
+        first = _invoke()
+        second = _invoke()
     assert first == second
     assert len(requests) == 2
+
+
+def test_native_advertised_text_draft_is_cached(transport, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "LLM_RESPONSE_CACHE_ENABLED", True)
+    requests = transport(
+        {
+            "model": "local-test",
+            "choices": [{"message": {"content": "draft answer"}, "finish_reason": "stop"}],
+        }
+    )
+    with bind_cache_scope(lambda: "native-tool-cache"):
+        first = _invoke()
+        second = _invoke()
+    assert first == second == "draft answer"
+    assert len(requests) == 1

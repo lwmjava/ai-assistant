@@ -33,3 +33,7 @@
 当前指纹（SHA256）：`app/llm/base.py` d93c0384126634aceeecaceb36cd6257be082159cf495e19e578b0f917a503da；`app/llm/openai_compatible.py` 0e8c6da4cc322be04f57e0c83207e6dabc3bf65c87b95850ff712f750f4f7668；`app/agents/pipeline.py` 5fc1889340e13b55812a3268a02b868b11dc644e408ef4be87252ba6e22cc346；`app/agents/prompts.py` 90c34f241207b545713040e84ea67c1553fb77650e781e9045b2b7fcfac1b9a1；`scripts/run_agent_chain_eval.py` 35455e8283eb36fa26b9ceaf2f228dc1c9da48ac17bc438317a8e2d10927d9f4；`tests/test_llm_native_tools.py` 5b9e04fbf8b79cc0a0ed33712cae4ea1ff100d5556a8eb365ca80d23ee6b6cf4。
 
 未做项：独立审查；本地全量 pytest；最终 SHA Ubuntu CI（含 Agent official）；付费真实模型复验；提交/推送；业务接受。身份/租户/撤销入口本轮无代码改动，未单列重跑。EVAL-001 规划中的 `0020-evaluation-job-lifecycle.md` 尚未落盘，本卡使用已批准的 `0020-native-tool-proposals.md` 同号不同文件，未改 EVAL-001。回滚：回退上述 options/客户端/行动与评测接线及 Prompt，不改数据库、不重放工具。任务保持 in_review，不得 done。
+
+## CI 缓存回归（1858e16）
+
+Ubuntu run 39768108317：Agent official 通过（工具指标 1.0）；Backend 失败于 `test_cache_acceptance_default_chatservice_actual_http_count`，第二次相同对话 HTTP 7→8。原因是行动阶段只要广告 tools 就整段跳过缓存，纯文本草稿也无法复用。修正为 schema 进入缓存键，仅 native `tool_calls` 响应不落盘。

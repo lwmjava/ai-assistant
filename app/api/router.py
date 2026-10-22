@@ -9,6 +9,7 @@ from app.api.routes import (
     audit,
     auth,
     chat,
+    evaluation,
     export,
     health,
     invitations,
@@ -33,3 +34,4 @@ api_router.include_router(admin_tenants.router)
 api_router.include_router(admin_users.router)
 api_router.include_router(admin_system.router)
 api_router.include_router(invitations.router)
+api_router.include_router(evaluation.router)

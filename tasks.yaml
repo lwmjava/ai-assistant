@@ -11367,7 +11367,7 @@ tasks:
       blocked_by: []
   - id: EVAL-001
     title: 受权评测报告查询与结果页面
-    status: backlog
+    status: in_review
     priority: P1
     depends_on:
     - RAG-017
@@ -11457,7 +11457,8 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+      implementation_plan: docs/plans/implementation_eval_001.md
+      progress: 2026-10-22用户采用读取矩阵后实施API/页面；31条专项、Ruff/mypy、前端四项（172条测试）和隔离页面冒烟通过。授权后Codex只读独立审查NO_FINDINGS、退出0。最终全量3304 passed/3 skipped/退出0；Linux/最终Ubuntu CI待补，不关闭。见docs/plans/implementation_eval_001.md。
   - id: EVAL-002
     title: 评测数据集版本审核与反馈候选管理
     status: backlog

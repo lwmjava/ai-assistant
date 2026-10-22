@@ -3,6 +3,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   Activity,
+  ChartNoAxesCombined,
   BookOpen,
   Building2,
   CalendarClock,
@@ -32,6 +33,7 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
+  { to: '/evaluations', label: '评测报告', icon: ChartNoAxesCombined, resource: 'evaluations', action: 'read' },
   { to: '/chat', label: '对话', icon: MessagesSquare, resource: 'conversations', action: 'read' },
   { to: '/knowledge', label: '知识库', icon: BookOpen, resource: 'knowledge_bases', action: 'read' },
   { to: '/tools', label: '工具与 MCP', icon: Wrench, resource: 'agents', action: 'read' },

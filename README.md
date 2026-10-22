@@ -938,3 +938,17 @@ mypy app/
 ## 许可证
 
 本项目基于 [Apache License 2.0](LICENSE) 开源。
+
+## 只读评测报告（Partial）
+
+控制台 `/evaluations` 提供已登记报告列表、指标历史、详情和失败切片；不运行模型或评测器，不作质量发布结论。后端接口：
+
+- `GET /api/v1/evaluations/reports?family=retrieval|generation|agent&page=1&page_size=20`
+- `GET /api/v1/evaluations/reports/{report_id}`
+- `GET /api/v1/evaluations/trend?family=agent&metric=route_accuracy`
+
+全局报告仅 `system_admin` / `system_viewer` 可读；租户报告仅同租户 `tenant_admin` 可读，系统角色不自动跨读租户结果。`member` / `viewer` 无读取权；详情无权与不存在均返回404。身份依赖复用当前User/Tenant校验，不采用前端传入角色。
+
+服务端白名单位于 `app/services/evaluation_reports.py` 的 `REPORT_ENTRIES`。首批显式登记四份仓库历史报告，覆盖检索、生成、Agent；租户运行结果须由维护者审核归属后显式登记，不从文件名或报告内的评测用例tenant_id推断所有者。没有注册/上传/执行接口，不允许任意路径下载。缺文件显示不可用，未知/坏协议显示不支持，缺测为null，不填零；调用成功不等于质量通过。旧检索报告没有门禁结论时不推断通过；Agent各用例成功也不冒充官方gate通过。
+
+API仅投影指标、受限版本元信息及失败标识；不返回query、回答、Prompt、工具参数、原始错误或绝对路径。历史表保留协议/数据/模型信息与缺测，不计算跨口径提升。Linux和最终Ubuntu CI仍待验证，当前不宣称Implemented。契约和回滚见[交付记录](docs/plans/implementation_eval_001.md)。

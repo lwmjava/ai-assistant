@@ -4656,6 +4656,198 @@
           }
         ]
       }
+    },
+    "/api/v1/evaluations/reports": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "List Reports",
+        "operationId": "list_reports_api_v1_evaluations_reports_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "retrieval",
+                    "generation",
+                    "agent"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Family"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/trend": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "Trend",
+        "operationId": "trend_api_v1_evaluations_trend_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "retrieval",
+                "generation",
+                "agent"
+              ],
+              "type": "string",
+              "title": "Family"
+            }
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Metric"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportTrend"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/reports/{report_id}": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "Report Detail",
+        "operationId": "report_detail_api_v1_evaluations_reports__report_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6559,6 +6751,329 @@
         "title": "RegisterRequest",
         "description": "公开注册。不接受角色，避免把注册变成提权入口。"
       },
+      "ReportDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "retrieval",
+              "generation",
+              "agent"
+            ],
+            "title": "Family"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "global",
+              "tenant"
+            ],
+            "title": "Scope"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "unmeasured",
+              "unsupported",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "protocol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol"
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata",
+            "default": {}
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ReportMetric"
+            },
+            "type": "array",
+            "title": "Metrics",
+            "default": []
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/ReportFailure"
+            },
+            "type": "array",
+            "title": "Failures",
+            "default": []
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "family",
+          "scope",
+          "status"
+        ],
+        "title": "ReportDetail"
+      },
+      "ReportFailure": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "reason"
+        ],
+        "title": "ReportFailure"
+      },
+      "ReportMetric": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "ratio",
+              "count",
+              "ms"
+            ],
+            "title": "Unit",
+            "default": "ratio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "ReportMetric"
+      },
+      "ReportPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ReportPage"
+      },
+      "ReportSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "retrieval",
+              "generation",
+              "agent"
+            ],
+            "title": "Family"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "global",
+              "tenant"
+            ],
+            "title": "Scope"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "unmeasured",
+              "unsupported",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "protocol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol"
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata",
+            "default": {}
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ReportMetric"
+            },
+            "type": "array",
+            "title": "Metrics",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "family",
+          "scope",
+          "status"
+        ],
+        "title": "ReportSummary"
+      },
+      "ReportTrend": {
+        "properties": {
+          "family": {
+            "type": "string",
+            "enum": [
+              "retrieval",
+              "generation",
+              "agent"
+            ],
+            "title": "Family"
+          },
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family",
+          "metric",
+          "points"
+        ],
+        "title": "ReportTrend"
+      },
       "RevokeTokensResult": {
         "properties": {
           "user_id": {
@@ -7325,6 +7840,85 @@
         ],
         "title": "Token",
         "description": "令牌响应。"
+      },
+      "TrendPoint": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "unmeasured",
+              "unsupported",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "protocol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id",
+          "recorded_at",
+          "value",
+          "status",
+          "protocol",
+          "metadata"
+        ],
+        "title": "TrendPoint"
       },
       "UrlImportRequest": {
         "properties": {

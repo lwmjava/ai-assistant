@@ -430,3 +430,42 @@ export interface HealthInfo {
     llm?: { mode: string }
   }
 }
+export type ReportFamily = 'retrieval' | 'generation' | 'agent'
+export type ReportStatus = 'passed' | 'failed' | 'unmeasured' | 'unsupported' | 'unavailable'
+export interface ReportMetric {
+  name: string
+  value: number | null
+  unit: 'ratio' | 'count' | 'ms'
+}
+export interface EvaluationReport {
+  id: string
+  family: ReportFamily
+  scope: 'global' | 'tenant'
+  status: ReportStatus
+  protocol: string | null
+  recorded_at: string | null
+  metadata: Record<string, string | number | null>
+  metrics: ReportMetric[]
+}
+export interface EvaluationReportDetail extends EvaluationReport {
+  failures: { case_id: string; category: string | null; reason: string }[]
+  failure_count: number
+}
+export interface EvaluationReportPage {
+  items: EvaluationReport[]
+  total: number
+  page: number
+  page_size: number
+}
+export interface EvaluationTrend {
+  family: ReportFamily
+  metric: string
+  points: {
+    report_id: string
+    recorded_at: string | null
+    value: number | null
+    status: ReportStatus
+    protocol: string | null
+    metadata: Record<string, string | number | null>
+  }[]
+}

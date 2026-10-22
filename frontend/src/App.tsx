@@ -29,6 +29,7 @@ const UsersPage = lazy(() => import('@/pages/Users'))
 const UserCreatePage = lazy(() => import('@/pages/UserCreate'))
 const StatusPage = lazy(() => import('@/pages/Status'))
 const InvitationsPage = lazy(() => import('@/pages/Invitations'))
+const EvaluationsPage = lazy(() => import('@/pages/Evaluations'))
 
 /** 路由切换时的降级视图：保持布局稳定，避免白屏。 */
 function PageFallback() {
@@ -167,6 +168,11 @@ export default function App() {
         }
       >
         <Route path="/" element={<HomeRedirect />} />
+        <Route path="/evaluations" element={
+          <RequirePermission resource="evaluations" action="read">
+            <Lazy><EvaluationsPage /></Lazy>
+          </RequirePermission>
+        } />
         <Route
           path="/chat"
           element={

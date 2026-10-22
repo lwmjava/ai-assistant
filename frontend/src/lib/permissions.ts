@@ -12,6 +12,9 @@ import type { DocumentOut, Role, UserInfo } from '@/types/api'
 type Action = 'read' | 'write' | 'delete'
 
 const ROLE_PERMISSIONS: Record<string, Partial<Record<Action, Role[]>>> = {
+  evaluations: {
+    read: ['system_admin', 'system_viewer', 'tenant_admin'],
+  },
   system: {
     read: ['system_admin', 'system_viewer'],
     write: ['system_admin'],

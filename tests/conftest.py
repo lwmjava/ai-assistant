@@ -8,6 +8,7 @@ import ipaddress
 import os
 import socket
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from pydantic_settings.sources import DotEnvSettingsSource
@@ -17,11 +18,13 @@ from pydantic_settings.sources import DotEnvSettingsSource
 # 把临时根目录放到已 gitignore 的 data/，并尽量走 --basetemp（不再建 pytest-current）。
 _PYTEST_TMP = Path(__file__).resolve().parents[1] / "data" / "pytest-tmp"
 _PYTEST_TMP.mkdir(parents=True, exist_ok=True)
+_PYTEST_RUN = _PYTEST_TMP / ("run-" + uuid4().hex)
+_PYTEST_RUN.mkdir()
 for _env_key in ("TMP", "TEMP", "TMPDIR"):
-    os.environ[_env_key] = str(_PYTEST_TMP)
+    os.environ[_env_key] = str(_PYTEST_RUN)
 
 os.environ.setdefault("ENV", "development")
-os.environ.setdefault("DATABASE_URL", "sqlite:///./data/test_ai_assistant.db")
+os.environ.setdefault("DATABASE_URL", "sqlite:///" + (_PYTEST_RUN / "test_ai_assistant.db").as_posix())
 os.environ.setdefault("AUTH_ENABLED", "true")
 # 清空初始管理员配置，避免测试库被自动填充。
 os.environ.setdefault("INITIAL_ADMIN_USERNAME", "")
@@ -104,10 +107,10 @@ def _offline_network(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
-    """未指定 --basetemp 时固定到 data/pytest-tmp/run，避免 AppData 下 pytest-current 联接。"""
+    """Use a process-unique base directory unless the caller selected one."""
     if getattr(config.option, "basetemp", None):
         return
-    config.option.basetemp = _PYTEST_TMP / "run"
+    config.option.basetemp = _PYTEST_RUN / "tmp"
 
 
 @pytest.fixture(autouse=True)

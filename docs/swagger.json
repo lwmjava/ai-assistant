@@ -12,7 +12,7 @@
           "system"
         ],
         "summary": "Health Check",
-        "description": "报告数据库、向量库连通性及可选工具配置状态。工具未配置不阻塞启动。",
+        "description": "报告数据库、向量库连通性、Embedding 配置身份及可选工具状态。Embedding 字段只展示身份，不探测网络；工具未配置不阻塞启动。",
         "operationId": "health_check_api_v1_health_get",
         "responses": {
           "200": {

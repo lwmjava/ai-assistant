@@ -221,7 +221,7 @@ JWT 鉴权、网关、缓存属于基础设施，分别落在 `core/` 与 `api/`
 
 | 模块 | 方法 | 路径 | 说明 |
 |------|------|------|------|
-| 系统 | `GET` | `/api/v1/health` | 健康检查 |
+| 系统 | `GET` | `/api/v1/health` | 健康检查（数据库/向量库连通性，以及 Embedding 配置身份） |
 | 认证 | `POST` | `/api/v1/auth/login` | 用户名密码登录，返回双令牌 |
 | 认证 | `POST` | `/api/v1/auth/refresh` | 刷新令牌（refresh 轮转） |
 | 认证 | `GET` | `/api/v1/auth/me` | 当前用户信息 |
@@ -928,6 +928,8 @@ mypy app/
 搜索仅发送调用者明确输入的查询，不附带会话历史或租户知识库内容。配置的密钥可能产生搜索/模型费用，由运维授权启用。结果附来源 URL，作为不可信资料交给 Agent；不能把来源当作权限或执行指令。`SEARCH_TIMEOUT_SECONDS`、`SEARCH_MAX_RESULTS`、`SEARCH_MAX_RESPONSE_BYTES` 限制超时、结果数及远端响应体积。没有真实付费调用证据时，不声称真实搜索质量或生产可用性。
 
 `file_ops` 默认关闭。运维仅可将明确允许所有对话用户阅读的公开共享文本资料配置到 `FILE_OPS_ALLOWED_ROOTS`，格式为 JSON 别名到绝对目录的映射，例如 `{"public":"E:/shared-public"}`，然后启用 `FILE_OPS_ENABLED`。不得配置租户上传目录、数据库、密钥、生产配置或用户私有目录。工具接收 `root` 别名、相对 `path` 和可选 `max_bytes`，只读有限 UTF-8 文本；没有写入、删除或列目录接口。`FILE_OPS_MAX_BYTES` 默认 65536。
+
+`GET /api/v1/health` 的 `checks.embedding` 展示当前 Embedding 的只读身份（provider、模型、维度、是否 Mock），不构造真实提供商、不发起嵌入请求、不验证连通，也不返回密钥或服务地址。`quality_evidence=false` 表示这次结果不能作为检索质量或上线证据；开发环境降级为 Mock 时只能证明链路走通。生产环境缺少 `EMBEDDING_API_KEY` 时启动仍会失败；该字段只在进程已经启动后可读。官方检索/压测报告必须记录所用 Embedding 提供商、模型与维度。
 
 `GET /api/v1/health` 的 `checks.tools.web_search` 和 `checks.tools.file_ops` 展示脱敏配置状态，不展示密钥或主机根路径，也不发起收费探测。可选工具不可用不改变既有数据库/向量库连通性判定。运行中关闭搜索或文件开关后，新的对话工具清单回到旧四工具；部署回滚应恢复上一源码发行和匹配的 Prompt 登记。配置默认值见 `.env.example`，本卡验收证据见 `docs/plans/implementation_pagt_001.md`。
 

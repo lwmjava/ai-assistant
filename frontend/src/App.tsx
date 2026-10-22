@@ -8,7 +8,8 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { SessionNotice } from '@/components/auth/SessionNotice'
 import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary'
 import { api } from '@/lib/http'
-import { can } from '@/lib/permissions'
+import { can, canManageTenants, canViewAudit } from '@/lib/permissions'
+import { ForbiddenPage } from '@/pages/Forbidden'
 import { useAuthStore } from '@/store/auth'
 import type { Role, SetupStatus } from '@/types/api'
 
@@ -70,7 +71,7 @@ function RequireAuth({ children, passwordPage = false }: { children: ReactElemen
   return children
 }
 
-/** 资源级守卫：角色不在后端权限矩阵内时重定向到默认页（后端仍会二次校验）。 */
+/** 资源级守卫：角色不在后端权限矩阵内时展示 403 页（后端仍会二次校验）。 */
 function RequirePermission({
   resource,
   action,
@@ -81,7 +82,39 @@ function RequirePermission({
   children: ReactElement
 }) {
   const role = useAuthStore((s) => s.user?.role)
-  if (!can(role, resource, action)) return <Navigate to="/chat" replace />
+  if (!can(role, resource, action)) {
+    return (
+      <ForbiddenPage description="当前角色无权打开此页面。权限由后端角色矩阵控制，如需访问请联系管理员。" />
+    )
+  }
+  return children
+}
+
+/** 用户/租户/系统状态：后端只允许平台管理员。 */
+function RequireAdmin({ children }: { children: ReactElement }) {
+  const role = useAuthStore((s) => s.user?.role)
+  if (!canManageTenants(role)) {
+    return (
+      <ForbiddenPage
+        title="当前角色无权打开管理页"
+        description="用户、租户和系统状态只对平台管理员开放。"
+      />
+    )
+  }
+  return children
+}
+
+/** 审计日志：后端允许平台管理员与平台审计员。 */
+function RequireAudit({ children }: { children: ReactElement }) {
+  const role = useAuthStore((s) => s.user?.role)
+  if (!canViewAudit(role)) {
+    return (
+      <ForbiddenPage
+        title="当前角色无权查看审计日志"
+        description="审计日志仅对平台管理员与平台审计员开放。"
+      />
+    )
+  }
   return children
 }
 
@@ -226,9 +259,11 @@ export default function App() {
         <Route
           path="/audit"
           element={
-            <Lazy>
-              <AuditPage />
-            </Lazy>
+            <RequireAudit>
+              <Lazy>
+                <AuditPage />
+              </Lazy>
+            </RequireAudit>
           }
         />
         <Route
@@ -242,41 +277,51 @@ export default function App() {
         <Route
           path="/tenants/new"
           element={
-            <Lazy>
-              <TenantCreatePage />
-            </Lazy>
+            <RequireAdmin>
+              <Lazy>
+                <TenantCreatePage />
+              </Lazy>
+            </RequireAdmin>
           }
         />
         <Route
           path="/tenants"
           element={
-            <Lazy>
-              <TenantsPage />
-            </Lazy>
+            <RequireAdmin>
+              <Lazy>
+                <TenantsPage />
+              </Lazy>
+            </RequireAdmin>
           }
         />
         <Route
           path="/users/new"
           element={
-            <Lazy>
-              <UserCreatePage />
-            </Lazy>
+            <RequireAdmin>
+              <Lazy>
+                <UserCreatePage />
+              </Lazy>
+            </RequireAdmin>
           }
         />
         <Route
           path="/users"
           element={
-            <Lazy>
-              <UsersPage />
-            </Lazy>
+            <RequireAdmin>
+              <Lazy>
+                <UsersPage />
+              </Lazy>
+            </RequireAdmin>
           }
         />
         <Route
           path="/status"
           element={
-            <Lazy>
-              <StatusPage />
-            </Lazy>
+            <RequireAdmin>
+              <Lazy>
+                <StatusPage />
+              </Lazy>
+            </RequireAdmin>
           }
         />
         <Route path="*" element={<NotFound />} />

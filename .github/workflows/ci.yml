@@ -20,6 +20,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -29,7 +33,9 @@ jobs:
       - name: Mypy typecheck
         run: mypy app/
       - name: Pytest
-        run: pytest
+        run: |
+          mkdir -p data/validation/ci-backend
+          pytest --junitxml=data/validation/ci-backend/pytest.xml
       - name: RAG baseline gate
         env:
           RAG_BACKEND: native
@@ -40,6 +46,53 @@ jobs:
         run: |
           python scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
           python scripts/rag_gate_check.py --report evals/reports/rag-v0.1-baseline-ci.json --baseline evals/reports/rag-v0.1-baseline-20260919.json
+      - name: Upload Backend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: data/validation/ci-backend/pytest.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Compatible split: Backend still owns the required RAG gate. This job stays
+  # off until ENABLE_RAG_OFFICIAL_JOB=true, so push/PR do not pay twice.
+  rag-baseline:
+    name: RAG official baseline
+    if: vars.ENABLE_RAG_OFFICIAL_JOB == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e ".[dev,langgraph]"
+      - name: RAG baseline gate
+        env:
+          RAG_BACKEND: native
+          RAG_CHUNK_STRATEGY: structured
+          RAG_VECTOR_STORE: local
+          RAG_EFFECTIVE_DATE_FILTER: 'false'
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+        run: |
+          python scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
+          python scripts/rag_gate_check.py --report evals/reports/rag-v0.1-baseline-ci.json --baseline evals/reports/rag-v0.1-baseline-20260919.json
+      - name: Upload RAG evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evals/reports/rag-v0.1-baseline-ci.json
+          if-no-files-found: warn
+          retention-days: 14
 
   agent-baseline:
     name: Agent official baseline
@@ -61,6 +114,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
       - name: Install dependencies
         run: |
           pip install -r requirements.txt

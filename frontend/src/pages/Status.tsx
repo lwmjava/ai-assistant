@@ -1,12 +1,11 @@
 /** 系统状态：数据库、向量库、版本和启动时间。仅系统管理员可查看。 */
 
-import { ShieldOff } from 'lucide-react'
-
 import { useSystemStatus } from '@/api/system'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { formatDateTime } from '@/lib/cn'
 import { canManageTenants } from '@/lib/permissions'
+import { ForbiddenPage } from '@/pages/Forbidden'
 import { useAuthStore } from '@/store/auth'
 
 function label(status: string): string {
@@ -20,13 +19,10 @@ export default function StatusPage() {
 
   if (!allowed) {
     return (
-      <div className="panel">
-        <EmptyState
-          icon={<ShieldOff className="size-5" aria-hidden />}
-          title="当前角色无权查看系统状态"
-          description="数据库和向量库的连通情况只对平台管理员开放。"
-        />
-      </div>
+      <ForbiddenPage
+        title="当前角色无权查看系统状态"
+        description="数据库和向量库的连通情况只对平台管理员开放。"
+      />
     )
   }
 

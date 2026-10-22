@@ -1,7 +1,7 @@
 /** 审计日志页：多条件过滤 + 分页（仅 system_admin / system_viewer 可见）。 */
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Filter, ScrollText, ShieldOff } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Filter, ScrollText } from 'lucide-react'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -10,6 +10,7 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { Input, Select } from '@/components/ui/Field'
 import { useAuditLogs, type AuditQuery } from '@/api/audit'
 import { canViewAudit } from '@/lib/permissions'
+import { ForbiddenPage } from '@/pages/Forbidden'
 import { formatDateTime, truncate } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
 import type { AuditLogOut } from '@/types/api'
@@ -116,13 +117,10 @@ export default function AuditPage() {
 
   if (!allowed) {
     return (
-      <div className="panel">
-        <EmptyState
-          icon={<ShieldOff className="size-5" aria-hidden />}
-          title="当前角色无权查看审计日志"
-          description="审计日志仅对平台管理员与平台审计员开放，权限由后端强制校验。"
-        />
-      </div>
+      <ForbiddenPage
+        title="当前角色无权查看审计日志"
+        description="审计日志仅对平台管理员与平台审计员开放，权限由后端强制校验。"
+      />
     )
   }
 

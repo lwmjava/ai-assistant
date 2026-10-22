@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { Pager } from '@/components/ui/Pager'
 import { formatReportMetric, reportMetrics, reportStatus } from '@/lib/evaluations'
 import { can } from '@/lib/permissions'
+import { ForbiddenPage } from '@/pages/Forbidden'
 import { useAuthStore } from '@/store/auth'
 import type { ReportFamily } from '@/types/api'
 
@@ -22,7 +23,9 @@ export default function EvaluationsPage() {
   const detail = useEvaluationDetail(selected, allowed)
   const trend = useEvaluationTrend(family, metric, allowed)
 
-  if (!allowed) return <EmptyState title="当前角色无权查看评测报告" />
+  if (!allowed) {
+    return <ForbiddenPage title="当前角色无权查看评测报告" />
+  }
 
   return <div className="space-y-6">
     <PageHeader title="评测报告" description="查看已登记报告的指标、版本和失败切片。报告中的通过结论不替代发布验收。" />

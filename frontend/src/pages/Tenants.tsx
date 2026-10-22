@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ShieldOff } from 'lucide-react'
 
 import {
   useActivateTenant,
@@ -18,6 +17,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, ErrorState } from '@/components/ui/Feedback'
+import { ForbiddenPage } from '@/pages/Forbidden'
 import { Input, Select, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { Pager } from '@/components/ui/Pager'
@@ -93,13 +93,10 @@ export default function TenantsPage() {
 
   if (!allowed) {
     return (
-      <div className="panel">
-        <EmptyState
-          icon={<ShieldOff className="size-5" aria-hidden />}
-          title="当前角色无权管理租户"
-          description="租户列表只对平台管理员开放。"
-        />
-      </div>
+      <ForbiddenPage
+        title="当前角色无权管理租户"
+        description="租户列表只对平台管理员开放。"
+      />
     )
   }
 

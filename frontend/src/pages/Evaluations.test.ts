@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, expect, test, vi } from 'vitest'
 
 import EvaluationsPage from './Evaluations'
@@ -26,8 +27,12 @@ beforeEach(() => {
   state.role = 'system_admin'; state.error = false; state.empty = false
 })
 
+function renderPage() {
+  return renderToString(createElement(MemoryRouter, null, createElement(EvaluationsPage)))
+}
+
 test('renders recorded failure, missing metric and absent model explicitly', () => {
-  const html = renderToString(createElement(EvaluationsPage))
+  const html = renderPage()
   expect(html).toContain('失败')
   expect(html).toContain('缺测')
   expect(html).toContain('模型未记录')
@@ -35,14 +40,16 @@ test('renders recorded failure, missing metric and absent model explicitly', () 
 
 test('unknown ownership is represented by an empty authorized list', () => {
   state.empty = true
-  expect(renderToString(createElement(EvaluationsPage))).toContain('暂无有权查看的报告')
+  expect(renderPage()).toContain('暂无有权查看的报告')
 })
 
 test('load error and unauthorized role never render report entries', () => {
   state.error = true
-  expect(renderToString(createElement(EvaluationsPage))).not.toContain('aria-label="报告列表"><ul')
+  expect(renderPage()).not.toContain('aria-label="报告列表"><ul')
   state.role = 'member'
-  const html = renderToString(createElement(EvaluationsPage))
+  const html = renderPage()
+  expect(html).toContain('403')
   expect(html).toContain('当前角色无权查看评测报告')
+  expect(html).toContain('返回对话')
   expect(html).not.toContain('retrieval-example')
 })

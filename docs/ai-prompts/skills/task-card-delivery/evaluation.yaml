@@ -1,4 +1,4 @@
-version: task-card-delivery-eval-v1.2
+version: task-card-delivery-eval-v1.3
 tier: Smoke/Adversarial
 cases:
   - id: complete
@@ -91,3 +91,15 @@ cases:
   - id: unrelated-suggestion
     input: 本卡所有验收与业务接受完成；评审只建议未来优化无关模块，未发现范围内阻断缺陷。
     expected: close
+  - id: review-quota
+    input: 独立审查起始材料已限定；宿主额度用尽，拟写成NO_FINDINGS并关闭。
+    expected: blocked
+  - id: extra-docs
+    input: 普通可逆任务卡内已有方案和结果；正确关闭方式是原记录补充，不得再写实现说明和关闭对账。
+    expected: close
+  - id: ci-full-pytest
+    input: 公共路径专项与调用方已通过，最终SHA的Ubuntu Backend CI全量pytest通过且输入未变；拟因未再跑本机同等全量拒绝关闭。
+    expected: close
+  - id: infra-needs-local-full
+    input: 首次修改conftest和验证执行器；专项20项通过，拟跳过本地全量只等尚未运行的CI后关闭。
+    expected: blocked

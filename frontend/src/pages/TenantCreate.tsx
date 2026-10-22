@@ -3,13 +3,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldOff } from 'lucide-react'
 
 import { useCreateTenant } from '@/api/tenants'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
-import { EmptyState } from '@/components/ui/Feedback'
 import { Input } from '@/components/ui/Field'
+import { ForbiddenPage } from '@/pages/Forbidden'
 import { ApiError } from '@/lib/http'
 import { canManageTenants } from '@/lib/permissions'
 import { useAuthStore } from '@/store/auth'
@@ -24,13 +23,10 @@ export default function TenantCreatePage() {
 
   if (!allowed) {
     return (
-      <div className="panel">
-        <EmptyState
-          icon={<ShieldOff className="size-5" aria-hidden />}
-          title="当前角色无权管理租户"
-          description="创建租户只对平台管理员开放。"
-        />
-      </div>
+      <ForbiddenPage
+        title="当前角色无权管理租户"
+        description="创建租户只对平台管理员开放。"
+      />
     )
   }
 

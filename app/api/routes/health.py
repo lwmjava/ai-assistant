@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.llm.factory import llm_availability
 from app.models.rag import DocumentChunk
+from app.rag.embeddings.factory import embedding_availability
 from app.rag.index_identity import (
     ACTUAL_METRIC,
     ACTUAL_NORMALIZATION,
@@ -208,7 +209,10 @@ def _embedding_index_view() -> dict:
 
 @router.get("/health")
 def health_check() -> JSONResponse:
-    """报告数据库、向量库连通性及可选工具配置状态。工具未配置不阻塞启动。"""
+    """报告数据库、向量库连通性、Embedding 配置身份及可选工具状态。
+
+    Embedding 字段只展示身份，不探测网络；工具未配置不阻塞启动。
+    """
     database = _check(_database_status)
     try:
         vector_status, backend = _vector_store_status()
@@ -238,6 +242,7 @@ def health_check() -> JSONResponse:
                 "embedding_index": index_view,
             },
             "llm": {"mode": llm_availability()},
+            "embedding": embedding_availability(),
             "tools": {
                 "web_search": search_availability(),
                 "file_ops": file_ops_availability(),

@@ -29,11 +29,11 @@ project:
     frontend_typecheck: "cd frontend; npm run typecheck"
     frontend_build: "cd frontend; npm run build"
   reading_policy: "按AGENTS.md第2节读取全局策略、当前卡与直接依赖摘要；历史must_read仅作按需索引，任务专属要求保留。"
-  delivery_record_policy: "按AGENTS.md第9节分级；新卡保留ID/目标/状态/依赖/范围/验收/风险/交付记录链接，复用全局策略；同一记录写计划与实际结果，不复制过程日志或按固定行数裁剪。"
-  review_policy: "普通任务自审，复杂边界或明确要求时独立审查；阻断项闭合即退出，无新证据不重复最终审核；技术审查不冒充人工业务接受。"
+  delivery_record_policy: "按AGENTS.md第9节分级；新卡保留ID/目标/状态/依赖/范围/验收/风险/交付记录链接，复用全局策略；同一记录写计划与实际结果，不复制过程日志或按固定行数裁剪。不另写计划/实现/关闭三套说明；存量无用文档只停止新增。"
+  review_policy: "普通任务自审，复杂边界或明确要求时独立审查；专项通过后即可审查，不整份发送台账/manifest；配额耗尽记incomplete。阻断项闭合即退出，无新证据不重复最终审核；技术审查不冒充人工业务接受。"
   artifact_policy: "按AGENTS.md第11节区分文档、scripts、tests、evals及临时产物；存量引用先核对再迁移，不删除历史证据。"
   evidence_policy: "事实引用代码、配置、测试、Trace、数据或已批准文档；假设必须标记并给出验证动作。"
-  regression_gate_policy: "任务关闭与提交前执行 AGENTS.md 第10节强制回归：公共路径全量pytest、适用Linux检查、最终输入指纹/提交SHA绑定；必要检查失败、缺失或过期不得关闭业务任务。纯文档治理按文档契约验证，不代表业务CI通过。"
+  regression_gate_policy: "任务关闭与提交前执行 AGENTS.md 第10节强制回归：开发阶段专项与调用方，完整pytest可由最终SHA合格CI承担，适用Linux检查与最终输入指纹/提交SHA绑定仍须满足；必要检查失败、缺失或过期不得关闭业务任务。纯文档治理按文档契约验证，不代表业务CI通过。"
   source_comment_policy: "每次改代码都必须遵守：源代码、测试、前端和迁移脚本里的注释与文档字符串只描述当前行为。不得写入任务编号、ADR 编号、需求或设计文档名称、修订日期，以及依据哪份文档实现的说明。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   commit_message_policy: "每次 git 提交都必须遵守：提交说明只写实现了什么功能，或修复了什么问题。不得写入需求编号、任务编号、ADR 编号，也不得写依据哪份需求、设计或计划文档。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   capacity_policy: "个人开发按理论产能的60%-70%排期，其余用于取证、联调、返工、审核和发布。"
@@ -55,6 +55,20 @@ risk_policy:
   L3: "退款、删除、合同、财务、权限提升或不可逆敏感操作；必须人工审批"
 
 tasks:
+  - id: "VAL-001"
+    title: "验证执行隔离、审核顺序与CI兼容调整"
+    status: "in_progress"
+    priority: "P0"
+    depends_on: ["GOV-003", "NFR-001"]
+    scope:
+      allowed_paths: ["scripts/validate_delivery.py", "tests/conftest.py", "tests/test_validation_runner.py", "tests/test_validation_isolation.py", ".github/workflows/ci.yml", "AGENTS.md", ".cursor/rules/00-global.mdc", ".cursor/rules/07-testing-evaluation.mdc", "README.md", "tasks.yaml", "docs/plans/proposal_validation_delivery_efficiency_20261022.md", "docs/workflows/end-to-end-development.md", "docs/checklists/review-and-release-checklist.md", "docs/ai-prompts/skills/task-card-delivery/", "docs/ai-prompts/skills/module-batch-delivery/"]
+      non_goals: ["不移除旧RAG阻断链", "不变更远程保护", "不提交推送或付费调用"]
+    acceptance: ["唯一运行目录/库、全量互斥、有效选测与输入失效有反例", "首次本地完整回归/静态与最终Linux CI证据有效；缺项不done", "规则/审核材料/退出与兼容CI同步"]
+    risk: {level: "L1", side_effect: "测试进程与CI执行配置改变", rollback: "回退执行器接线，保留日志与旧阻断链"}
+    execution:
+      plan: "docs/plans/proposal_validation_delivery_efficiency_20261022.md#val-001本地验证规则与ci兼容调整"
+      progress: "2026-10-22本地全量20261022T081057-88d6a61997db退出0：3362 passed/3 skipped（Linux文件系统）、Ruff与mypy通过，约14分钟。NFR-011/FE-001已按新规则试用并记入同一方案第13节；Linux/最终CI未做，VAL-001保持in_progress。"
+
   - id: "GOV-003"
     title: "精简开发治理的上下文、交付记录与评审流程"
     status: "done"
@@ -6789,7 +6803,7 @@ tasks:
 
   - id: "NFR-011"
     title: "检索可用性自检：health 暴露 Embedding 状态与模型维度"
-    status: "backlog"
+    status: "in_progress"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -6804,6 +6818,10 @@ tasks:
           evidence: "AGENTS.md：无真实 Embedding 时开发环境用 Mock，只能证明链路，不能证明检索质量"
     scope:
       allowed_paths:
+        - "README.md"
+        - "docs/swagger.json"
+        - "docs/product/项目产品需求方案.md"
+        - "docs/plans/proposal_validation_delivery_efficiency_20261022.md"
         - "app/api/routes/health.py"
         - "app/rag/embeddings/"
         - "app/core/config.py"
@@ -6834,6 +6852,8 @@ tasks:
         - "pytest -k 'health'"
     execution:
       owner: "个人开发者"
+      plan: "docs/plans/proposal_validation_delivery_efficiency_20261022.md#nfr-011试用"
+      progress: "2026-10-22试用：/health checks.embedding 只读身份；targeted 14 passed、pytest -k health 25 passed、Ruff/mypy 0。生产缺密钥 fail-fast 未改。无完整pytest/Linux/CI，保持in_progress。"
       nightly:
         eligible: true
         production_access: false
@@ -7781,7 +7801,7 @@ tasks:
 
   - id: "FE-001"
     title: "非系统角色管理页进入 403 页"
-    status: "backlog"
+    status: "in_progress"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7794,6 +7814,7 @@ tasks:
           evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
     scope:
       allowed_paths:
+        - "docs/plans/proposal_validation_delivery_efficiency_20261022.md"
         - "frontend/src/"
         - "tests/"
         - "tasks.yaml"
@@ -7816,6 +7837,8 @@ tasks:
         - "cd frontend && npm run typecheck"
     execution:
       owner: "个人开发者"
+      plan: "docs/plans/proposal_validation_delivery_efficiency_20261022.md#fe-001试用"
+      progress: "2026-10-22试用：统一403页；前端四项20261022T085324-3a6536cc424c退出0（181 passed）。未改权限矩阵。无登录member的浏览器403走查，保持in_progress。"
       nightly:
         eligible: false
         production_access: false

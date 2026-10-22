@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldOff } from 'lucide-react'
 
 import { useCreateMember, useTenants } from '@/api/tenants'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
-import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
+import { ErrorState, SkeletonRows } from '@/components/ui/Feedback'
+import { ForbiddenPage } from '@/pages/Forbidden'
 import { Input, Select } from '@/components/ui/Field'
 import { ApiError } from '@/lib/http'
 import { canManageTenants } from '@/lib/permissions'
@@ -31,13 +31,10 @@ export default function UserCreatePage() {
 
   if (!allowed) {
     return (
-      <div className="panel">
-        <EmptyState
-          icon={<ShieldOff className="size-5" aria-hidden />}
-          title="当前角色无权管理用户"
-          description="创建用户只对平台管理员开放。"
-        />
-      </div>
+      <ForbiddenPage
+        title="当前角色无权管理用户"
+        description="创建用户只对平台管理员开放。"
+      />
     )
   }
 

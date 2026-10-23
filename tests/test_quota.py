@@ -344,7 +344,7 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
     member = client(_user(tenant.id, Role.MEMBER.value, user_id="quota-member"))
     denied = member.patch(
         f"/api/v1/admin/tenants/{tenant.id}/quota",
-        json={"message_limit": 1, "storage_limit_bytes": 1, "reason": "成员不能改"},
+        json={"message_limit": 1, "storage_limit_bytes": 1, "token_limit": 1, "reason": "成员不能改"},
     )
     assert denied.status_code == 403
 
@@ -356,7 +356,7 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
     assert missing.status_code == 422
     negative = admin.patch(
         f"/api/v1/admin/tenants/{tenant.id}/quota",
-        json={"message_limit": -1, "storage_limit_bytes": 1, "reason": "负数"},
+        json={"message_limit": -1, "storage_limit_bytes": 1, "token_limit": 1, "reason": "负数"},
     )
     assert negative.status_code == 422
     with Session(engine) as session:
@@ -367,11 +367,17 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
 
     updated = admin.patch(
         f"/api/v1/admin/tenants/{tenant.id}/quota",
-        json={"message_limit": 4, "storage_limit_bytes": None, "reason": " 放宽消息上限 "},
+        json={
+            "message_limit": 4,
+            "storage_limit_bytes": None,
+            "token_limit": 100,
+            "reason": " 放宽消息上限 ",
+        },
     )
     assert updated.status_code == 200
     assert updated.json()["message_limit"] == 4
     assert updated.json()["storage_limit_bytes"] is None
+    assert updated.json()["token_limit"] == 100
     with Session(engine) as session:
         logs = session.exec(
             select(AuditLog).where(
@@ -393,7 +399,7 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
     monkeypatch.setattr(settings, "AUDIT_ENABLED", False)
     closed = admin.patch(
         f"/api/v1/admin/tenants/{tenant.id}/quota",
-        json={"message_limit": 1, "storage_limit_bytes": 1, "reason": "审计关闭"},
+        json={"message_limit": 1, "storage_limit_bytes": 1, "token_limit": 1, "reason": "审计关闭"},
     )
     assert closed.status_code == 503
     with Session(engine) as session:
@@ -411,7 +417,7 @@ def test_quota_settings_require_admin_reason_and_audit(client, monkeypatch) -> N
     monkeypatch.setattr("app.services.quota.AuditLog", BrokenAudit)
     failed = admin.patch(
         f"/api/v1/admin/tenants/{tenant.id}/quota",
-        json={"message_limit": 2, "storage_limit_bytes": 2, "reason": "审计失败"},
+        json={"message_limit": 2, "storage_limit_bytes": 2, "token_limit": 2, "reason": "审计失败"},
     )
     assert failed.status_code == 503
     with Session(engine) as session:

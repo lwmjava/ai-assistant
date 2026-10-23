@@ -246,8 +246,8 @@ export async function parseError(res: Response): Promise<ApiError> {
     const quota = quotaExceededMessage(data)
     const limited = rateLimitedDetail(data)
     const normalized = errorMessage(data)
-    if (normalized) detail = normalized
-    else if (quota) detail = quota
+    if (quota) detail = quota
+    else if (normalized) detail = normalized
     else if (limited) detail = limited
     else if (typeof data?.detail === 'string') detail = data.detail
     else if (Array.isArray(data?.detail)) {

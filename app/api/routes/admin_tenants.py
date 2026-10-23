@@ -211,6 +211,9 @@ def _quota_out(tenant: Tenant) -> QuotaOut:
         tenant_id=tenant.id,
         message_limit=tenant.message_limit,
         storage_limit_bytes=tenant.storage_limit_bytes,
+        token_limit=tenant.token_limit,
+        tokens_used_period=int(tenant.tokens_used_period or 0),
+        quota_period_ym=tenant.quota_period_ym,
     )
 
 
@@ -243,6 +246,7 @@ def update_tenant_quota_route(
             tenant_id=tenant_id,
             message_limit=body.message_limit,
             storage_limit_bytes=body.storage_limit_bytes,
+            token_limit=body.token_limit,
             reason=body.reason,
         )
     except QuotaNotFoundError:

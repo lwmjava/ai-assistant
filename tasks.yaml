@@ -6071,7 +6071,7 @@ tasks:
 
   - id: "OPS-002"
     title: "并发与幂等：导入任务、配额扣减、租户切换"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -6114,7 +6114,7 @@ tasks:
         - "pytest -k 'idempot or concurrency'"
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：导入上传支持Idempotency-Key进程内复用批次、内容哈希未完成任务去重；租户切换行锁+短时幂等；配额并发沿用既有行锁。专项test_ops_002与quota并发通过。待业务验收与最终CI。未宣称跨实例。"
+      progress: "2026-10-22实现：导入上传支持Idempotency-Key进程内复用批次、内容哈希未完成任务去重；租户切换行锁+短时幂等；配额并发沿用既有行锁。专项test_ops_002与quota并发通过。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未宣称跨实例。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -7877,7 +7877,7 @@ tasks:
 
   - id: "SEC-005"
     title: "上传按文件头校验魔术数字"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7915,7 +7915,7 @@ tasks:
         - "pytest -k \"upload or magic or storage\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：知识库上传与会话附件写盘前按文件头校验；扩展名不符拒绝。专项test_sec_005通过。待业务验收与最终CI。"
+      progress: "2026-10-22实现：知识库上传与会话附件写盘前按文件头校验；扩展名不符拒绝。专项test_sec_005通过。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -7972,7 +7972,7 @@ tasks:
 
   - id: "QUOTA-002"
     title: "Token 配额与自然月重置"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8010,6 +8010,7 @@ tasks:
         - "pytest -k quota"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：token_limit与自然月tokens_used_period、超限resets_at；专项test_quota与test_quota_002通过。2026-10-23验收发现页面把超限收成通用句。前端改为展示 Token 已达上限、本月已用、上限与下次重置时间；vitest error-contract 与 chat-stream-state 通过。用户于2026-10-23要求关闭。最终 CI 尚未覆盖。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8018,7 +8019,7 @@ tasks:
 
   - id: "CHAT-008"
     title: "会话软删除与归档"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on: []
@@ -8060,7 +8061,7 @@ tasks:
         - "pytest -k \"conversation or archive or delete\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-23用户验收通过：软删除后默认列表不再出现，已删除列表仍可找到；归档进入归档列表并可取消。最终提交的 GitHub CI 尚未核对，保持 in_review。"
+      progress: "2026-10-23用户验收通过：软删除后默认列表不再出现，已删除列表仍可找到；归档进入归档列表并可取消。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8069,7 +8070,7 @@ tasks:
 
   - id: "EXPORT-002"
     title: "训练格式导出 Alpaca 或 ShareGPT"
-    status: "in_review"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8109,7 +8110,7 @@ tasks:
         - "pytest -k export"
     execution:
       owner: "个人开发者"
-      progress: "2026-10-23用户验收通过：ShareGPT 文件可下载解析，审计在文件返回前写入。最终提交的 GitHub CI 尚未核对，保持 in_review。"
+      progress: "2026-10-23用户验收通过：ShareGPT 文件可下载解析，审计在文件返回前写入。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8118,7 +8119,7 @@ tasks:
 
   - id: "AUTH-006"
     title: "公开注册邮箱必填与唯一校验"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8162,7 +8163,7 @@ tasks:
         - "pytest -k \"register or auth\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：公开注册邮箱必填+格式+库唯一；setup仍可空邮箱。前后端注册页同步。专项test_auth_register通过。2026-10-23用户验收通过。最终提交的 GitHub CI 尚未核对，保持 in_review。"
+      progress: "2026-10-22实现：公开注册邮箱必填+格式+库唯一；setup仍可空邮箱。前后端注册页同步。专项test_auth_register通过。2026-10-23用户验收通过。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8171,7 +8172,7 @@ tasks:
 
   - id: "ADM-005"
     title: "系统状态页：健康、在线用户、存储、调用量"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8210,7 +8211,7 @@ tasks:
         - "pytest -k \"status or admin\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：状态接口与页面增加在线用户(15分钟)、知识库存储字节、本进程自然日API调用量。仅system_admin。专项test_admin_status通过。2026-10-23用户验收通过。最终提交的 GitHub CI 尚未核对，保持 in_review。"
+      progress: "2026-10-22实现：状态接口与页面增加在线用户(15分钟)、知识库存储字节、本进程自然日API调用量。仅system_admin。专项test_admin_status通过。2026-10-23用户验收通过。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8315,7 +8316,7 @@ tasks:
 
   - id: "SEC-006"
     title: "日志侧身份证手机号银行卡脱敏"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -8351,7 +8352,7 @@ tasks:
         - "pytest -k \"sanitiz or log or pii\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：LogSanitizer增加身份证/手机号/银行卡值模式；挂在既有日志脱敏路径。专项test_sec_006通过。待业务验收与最终CI。"
+      progress: "2026-10-22实现：LogSanitizer增加身份证/手机号/银行卡值模式；挂在既有日志脱敏路径。专项test_sec_006通过。2026-10-23用户验收通过：样例写入日志后只保留 id_card、phone、bank_card 类型，三个号码原文不在日志中。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8584,7 +8585,7 @@ tasks:
 
   - id: "ADM-006"
     title: "租户设置页（ADM-04）"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8628,7 +8629,7 @@ tasks:
         - "cd frontend && npm run build"
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：/settings/tenant页+GET/POST /tenant/members；导航按members:write显示；知识库入口链到既有页。专项test_adm_006与前端typecheck通过。2026-10-23用户验收通过。最终提交的 GitHub CI 尚未核对，保持 in_review。"
+      progress: "2026-10-22实现：/settings/tenant页+GET/POST /tenant/members；导航按members:write显示；知识库入口链到既有页。专项test_adm_006与前端typecheck通过。2026-10-23用户验收通过。2026-10-23 GitHub Actions run 39898269129（提交 5aa94e8）Backend、Frontend、RAG official baseline、Agent official baseline 均为 success。用户于2026-10-23要求关闭。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8637,7 +8638,7 @@ tasks:
 
   - id: "ADM-007"
     title: "Feature Flag 管理 API（ADM-05）"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on: []
@@ -8681,6 +8682,7 @@ tasks:
         - "pytest -k feature -v"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：GET/PATCH /admin/features，数据库覆盖+启动回写settings；专项test_adm_007通过。2026-10-23用户验收通过并要求关闭。最终 CI 尚未覆盖。未合并或部署。"
       nightly:
         eligible: false
         production_access: false
@@ -8689,7 +8691,7 @@ tasks:
 
   - id: "SEC-007"
     title: "注入检测可阻断"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     target_date: ""
     depends_on: []
@@ -8734,6 +8736,7 @@ tasks:
         - "pytest -k injection -v"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-22实现：SECURITY_BLOCK_ON_INJECTION=true时注入样例403且无助手落库；关闭时仍可对话。2026-10-23验收时开关仍为默认关闭，样例被模型正常回复。流式在开关打开后改为直接返回403「输入被安全策略拒绝（疑似提示词注入）」，且不写助手回复。专项test_sec_007通过。2026-10-23用户验收通过并要求关闭。最终 CI 尚未覆盖。未合并或部署。"
       nightly:
         eligible: false
         production_access: false

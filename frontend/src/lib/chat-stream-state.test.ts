@@ -36,6 +36,17 @@ test('短路省略阶段，异运行与损坏事件不能拼入回复，终态�
   expect(state).toMatchObject({ error: '服务暂时不可用', retryable: true, streaming: false, text: '' })
 })
 
+test('流内 Token 超限事件展示用量、上限和重置时间', () => {
+  const resetsAt = '2026-11-01T00:00:00Z'
+  const state = reduceStreamSnapshot(emptyStreamSnapshot(), event('error', {
+    code: 'quota_exceeded', limit_type: 'tokens', used: 1, limit: 1, resets_at: resetsAt,
+    message: '本租户配额已用尽，请联系租户管理员',
+    error: { code: 'quota_exceeded', message: '本租户配额已用尽，请联系租户管理员', request_id: 'PRIVATE-REQUEST-ID' },
+  }))
+  expect(state.error).toBe(`Token 已达上限：本月已用 1，上限是 1。下次重置时间：${resetsAt}。请联系管理员提高上限，或等待自然月重置。`)
+  expect(state.error).not.toContain('PRIVATE-REQUEST-ID')
+})
+
 test('取消后的未确认工具不再显示执行中，也不伪称已成功', () => {
   let state = reduceStreamSnapshot(emptyStreamSnapshot(), event('tool.call', { call_id: 'in-flight', tool_name: 'probe' }))
   state = reduceStreamSnapshot(state, event('run.finished', { status: 'cancelled' }))

@@ -1,7 +1,10 @@
-"""租户消息条数与源文件字节配额。
+"""租户消息条数、Token 与源文件字节配额。
 
 未设置的上限是空值，表示不限制。检查和写入放在锁住该租户行的同一事务里。
+Token 按自然月（UTC）累计；跨月时清零本周期用量。
 """
+
+from __future__ import annotations
 
 import json
 import logging
@@ -20,12 +23,13 @@ logger = logging.getLogger(__name__)
 
 
 class QuotaExceededError(Exception):
-    """新增会超过上限。响应里只有本维度的已用量和上限。"""
+    """新增会超过上限。响应里含本维度用量、上限与下次自然月重置时间。"""
 
-    def __init__(self, *, limit_type: str, used: int, limit: int) -> None:
+    def __init__(self, *, limit_type: str, used: int, limit: int, resets_at: str) -> None:
         self.limit_type = limit_type
         self.used = used
         self.limit = limit
+        self.resets_at = resets_at
         super().__init__(limit_type)
 
     def as_dict(self) -> dict[str, str | int]:
@@ -34,6 +38,7 @@ class QuotaExceededError(Exception):
             "limit_type": self.limit_type,
             "used": self.used,
             "limit": self.limit,
+            "resets_at": self.resets_at,
         }
 
 
@@ -47,6 +52,28 @@ class QuotaNotFoundError(Exception):
 
 class QuotaAuditError(Exception):
     """审计关闭或写入失败。配额保持原值。"""
+
+
+def current_period_ym(now: datetime | None = None) -> str:
+    """UTC 自然月键，格式 YYYY-MM。"""
+    stamp = now or datetime.now(UTC)
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=UTC)
+    else:
+        stamp = stamp.astimezone(UTC)
+    return f"{stamp.year:04d}-{stamp.month:02d}"
+
+
+def next_month_resets_at(now: datetime | None = None) -> str:
+    """下一自然月 UTC 起点的 ISO-8601 时间。"""
+    stamp = now or datetime.now(UTC)
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=UTC)
+    else:
+        stamp = stamp.astimezone(UTC)
+    year = stamp.year + (1 if stamp.month == 12 else 0)
+    month = 1 if stamp.month == 12 else stamp.month + 1
+    return datetime(year, month, 1, tzinfo=UTC).isoformat().replace("+00:00", "Z")
 
 
 def _end_read_transaction(session: Session) -> None:
@@ -64,6 +91,16 @@ def _lock_tenant(session: Session, tenant_id: str) -> Tenant | None:
     if int(getattr(result, "rowcount", 0) or 0) == 0:
         return None
     return session.get(Tenant, tenant_id)
+
+
+def ensure_quota_period(tenant: Tenant, *, now: datetime | None = None) -> bool:
+    """跨自然月时清零 Token 周期用量。返回是否发生了重置。"""
+    period = current_period_ym(now)
+    if tenant.quota_period_ym == period:
+        return False
+    tenant.quota_period_ym = period
+    tenant.tokens_used_period = 0
+    return True
 
 
 def count_user_messages(session: Session, tenant_id: str) -> int:
@@ -113,6 +150,12 @@ def used_source_bytes(session: Session, tenant_id: str) -> int:
     return total
 
 
+def estimate_turn_tokens(*, user_text: str, assistant_text: str = "") -> int:
+    """无供应商 usage 时，按字符粗估本轮 Token（至少 1）。"""
+    chars = len(user_text or "") + len(assistant_text or "")
+    return max(1, (chars + 3) // 4)
+
+
 def accept_user_message(
     session: Session,
     *,
@@ -125,24 +168,40 @@ def accept_user_message(
 ) -> tuple[Conversation, str]:
     """在锁住的租户事务里写入一条用户消息。超限时回滚，不留下新会话。
 
-    返回 ``(conversation, user_message_id)``：用户消息行 id 供 PAGT-006 checkpoint 绑定，
-    使每条用户消息独占一行（跨消息隔离、唯一约束真实生效）。
+    同时检查消息条数库存与本月 Token 余额；任一超限都不落库。
+    返回 ``(conversation, user_message_id)``。
     """
     _end_read_transaction(session)
     tenant = _lock_tenant(session, tenant_id)
-    limit = None if tenant is None else tenant.message_limit
-    if limit is None:
-        if session.in_transaction():
-            session.rollback()
-    else:
+    resets_at = next_month_resets_at()
+    if tenant is not None:
+        ensure_quota_period(tenant)
+        session.add(tenant)
+
+    message_limit = None if tenant is None else tenant.message_limit
+    token_limit = None if tenant is None else tenant.token_limit
+    tokens_used = 0 if tenant is None else int(tenant.tokens_used_period or 0)
+
+    if message_limit is not None:
         used = count_user_messages(session, tenant_id)
-        if used >= limit:
+        if used >= message_limit:
             session.rollback()
-            raise QuotaExceededError(limit_type="messages", used=used, limit=limit)
+            raise QuotaExceededError(
+                limit_type="messages", used=used, limit=message_limit, resets_at=resets_at
+            )
+    if token_limit is not None and tokens_used >= token_limit:
+        session.rollback()
+        raise QuotaExceededError(
+            limit_type="tokens", used=tokens_used, limit=token_limit, resets_at=resets_at
+        )
 
     if conversation_id:
         conversation = session.get(Conversation, conversation_id)
-        if conversation is None or not _can_access(conversation, user_id, tenant_id, role):
+        if (
+            conversation is None
+            or not _can_access(conversation, user_id, tenant_id, role)
+            or conversation.deleted_at is not None
+        ):
             session.rollback()
             raise ValueError("会话不存在或无权访问")
     else:
@@ -159,6 +218,22 @@ def accept_user_message(
     session.refresh(conversation)
     session.refresh(user_message)
     return conversation, user_message.id
+
+
+def consume_tokens(session: Session, tenant_id: str, amount: int) -> None:
+    """对话成功后累加本月 Token。amount <= 0 时忽略。"""
+    if amount <= 0:
+        return
+    _end_read_transaction(session)
+    tenant = _lock_tenant(session, tenant_id)
+    if tenant is None:
+        if session.in_transaction():
+            session.rollback()
+        return
+    ensure_quota_period(tenant)
+    tenant.tokens_used_period = int(tenant.tokens_used_period or 0) + amount
+    session.add(tenant)
+    session.commit()
 
 
 def _can_access(conversation: Conversation, user_id: str, tenant_id: str, role: str) -> bool:
@@ -183,7 +258,12 @@ def begin_source_quota(session: Session, tenant_id: str, additional: int) -> boo
         raise
     if used + additional > limit:
         session.rollback()
-        raise QuotaExceededError(limit_type="source_bytes", used=used, limit=limit)
+        raise QuotaExceededError(
+            limit_type="source_bytes",
+            used=used,
+            limit=limit,
+            resets_at=next_month_resets_at(),
+        )
     return True
 
 
@@ -195,6 +275,7 @@ def update_tenant_quota(
     tenant_id: str,
     message_limit: int | None,
     storage_limit_bytes: int | None,
+    token_limit: int | None,
     reason: str,
 ) -> Tenant:
     """修改上限，并与 quota_update 审计同一事务提交。审计失败则上限不变。"""
@@ -205,9 +286,11 @@ def update_tenant_quota(
         raise QuotaNotFoundError()
     old_message = tenant.message_limit
     old_storage = tenant.storage_limit_bytes
+    old_token = tenant.token_limit
     try:
         tenant.message_limit = message_limit
         tenant.storage_limit_bytes = storage_limit_bytes
+        tenant.token_limit = token_limit
         session.add(tenant)
         session.add(
             AuditLog(
@@ -224,6 +307,8 @@ def update_tenant_quota(
                         "message_limit_new": message_limit,
                         "storage_limit_bytes_old": old_storage,
                         "storage_limit_bytes_new": storage_limit_bytes,
+                        "token_limit_old": old_token,
+                        "token_limit_new": token_limit,
                         "reason": reason,
                     },
                     ensure_ascii=False,

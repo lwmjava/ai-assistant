@@ -24,6 +24,11 @@ class Tenant(SQLModel, TimestampMixin, table=True):
     # 空值表示不限制。0 表示该维度不允许新增。
     message_limit: int | None = Field(default=None)
     storage_limit_bytes: int | None = Field(default=None)
+    token_limit: int | None = Field(default=None)
+    # 自然月周期内已消耗 Token；跨月时清零。
+    tokens_used_period: int = Field(default=0)
+    # 当前计量周期，格式 YYYY-MM（UTC）。
+    quota_period_ym: str | None = Field(default=None)
 
     users: list["User"] = Relationship(back_populates="tenant")
 

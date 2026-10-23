@@ -211,6 +211,17 @@ def _ensure_quota_columns() -> None:
             if "storage_limit_bytes" not in columns:
                 logger.warning("补齐缺失的租户源文件上限列")
                 conn.execute(text("ALTER TABLE tenants ADD COLUMN storage_limit_bytes INTEGER"))
+            if "token_limit" not in columns:
+                logger.warning("补齐缺失的租户 Token 上限列")
+                conn.execute(text("ALTER TABLE tenants ADD COLUMN token_limit INTEGER"))
+            if "tokens_used_period" not in columns:
+                logger.warning("补齐缺失的租户 Token 周期用量列")
+                conn.execute(
+                    text("ALTER TABLE tenants ADD COLUMN tokens_used_period INTEGER NOT NULL DEFAULT 0")
+                )
+            if "quota_period_ym" not in columns:
+                logger.warning("补齐缺失的租户配额周期列")
+                conn.execute(text("ALTER TABLE tenants ADD COLUMN quota_period_ym VARCHAR"))
         if "rag_documents" in tables:
             columns = {column["name"] for column in inspect(conn).get_columns("rag_documents")}
             if "source_bytes" not in columns:
@@ -364,7 +375,7 @@ def _later_rag_tables_exist() -> bool:
 
 
 def _quota_columns_present() -> bool:
-    """三列都在时，才可以把版本直接标到当前 head。"""
+    """配额相关列都在时，才可以把版本直接标到当前 head。"""
     from app.core.database import engine
 
     with engine.connect() as conn:
@@ -373,7 +384,14 @@ def _quota_columns_present() -> bool:
             return False
         tenant_columns = {column["name"] for column in inspect(conn).get_columns("tenants")}
         document_columns = {column["name"] for column in inspect(conn).get_columns("rag_documents")}
-    return {"message_limit", "storage_limit_bytes"}.issubset(tenant_columns) and "source_bytes" in document_columns
+    required = {
+        "message_limit",
+        "storage_limit_bytes",
+        "token_limit",
+        "tokens_used_period",
+        "quota_period_ym",
+    }
+    return required.issubset(tenant_columns) and "source_bytes" in document_columns
 
 
 def _stamp_if_schema_already_at_head() -> bool:
@@ -412,7 +430,23 @@ def _stamp_if_schema_already_at_head() -> bool:
     if not _later_rag_tables_exist():
         return False
     if not _quota_columns_present():
-        if current != "d7c2a91e4b18":
+        from app.core.database import engine as _engine
+
+        with _engine.connect() as conn:
+            tenant_cols = (
+                {column["name"] for column in inspect(conn).get_columns("tenants")}
+                if "tenants" in inspect(conn).get_table_names()
+                else set()
+            )
+        has_basic = {"message_limit", "storage_limit_bytes"}.issubset(tenant_cols)
+        if has_basic:
+            if current != "d7e0f3a21b44":
+                logger.warning(
+                    "消息/存储配额列已在，但 Token 周期列还没有。版本先标到 d7e0f3a21b44: current=%s",
+                    current,
+                )
+                stamp("d7e0f3a21b44")
+        elif current != "d7c2a91e4b18":
             logger.warning(
                 "导入平台表已在，但配额列还没有。版本先标到 d7c2a91e4b18，再执行加列: current=%s",
                 current,

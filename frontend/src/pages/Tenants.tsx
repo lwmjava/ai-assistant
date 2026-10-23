@@ -266,6 +266,15 @@ function TenantDetailModal({ tenant, onClose }: { tenant: TenantOut | null; onCl
                 <span className="text-text-muted">源文件上限：</span>
                 {formatLimit(quota.data.storage_limit_bytes, ' 字节')}
               </p>
+              <p>
+                <span className="text-text-muted">Token 上限：</span>
+                {formatLimit(quota.data.token_limit, '')}
+              </p>
+              <p>
+                <span className="text-text-muted">本月已用 Token：</span>
+                {quota.data.tokens_used_period}
+                {quota.data.quota_period_ym ? `（${quota.data.quota_period_ym}）` : ''}
+              </p>
             </>
           )}
         </div>
@@ -350,6 +359,7 @@ function QuotaModal({
   const update = useUpdateTenantQuota()
   const [messageLimit, setMessageLimit] = useState('')
   const [storageLimit, setStorageLimit] = useState('')
+  const [tokenLimit, setTokenLimit] = useState('')
   const [reason, setReason] = useState('')
   const [error, setError] = useState('')
   const [ready, setReady] = useState(false)
@@ -360,6 +370,7 @@ function QuotaModal({
     setStorageLimit(
       quota.data.storage_limit_bytes == null ? '' : String(quota.data.storage_limit_bytes),
     )
+    setTokenLimit(quota.data.token_limit == null ? '' : String(quota.data.token_limit))
     setReady(true)
   }, [quota.data, ready])
 
@@ -367,7 +378,8 @@ function QuotaModal({
     event.preventDefault()
     const message = parseLimit(messageLimit)
     const storage = parseLimit(storageLimit)
-    if (message === 'invalid' || storage === 'invalid') {
+    const tokens = parseLimit(tokenLimit)
+    if (message === 'invalid' || storage === 'invalid' || tokens === 'invalid') {
       setError('上限只能留空或填写非负整数')
       return
     }
@@ -381,6 +393,7 @@ function QuotaModal({
         tenantId: tenant.id,
         message_limit: message,
         storage_limit_bytes: storage,
+        token_limit: tokens,
         reason: reason.trim(),
       })
       onFail('')
@@ -398,7 +411,7 @@ function QuotaModal({
       open
       onClose={onClose}
       title="租户配额"
-      description={`${tenant.name} 的消息条数和源文件上限。留空表示不限制，0 表示不能再新增。`}
+      description={`${tenant.name} 的消息条数、Token 与源文件上限。留空表示不限制，0 表示不能再新增。Token 按自然月累计。`}
       busy={update.isPending}
       footer={
         <>
@@ -435,6 +448,14 @@ function QuotaModal({
           inputMode="numeric"
           autoComplete="off"
           hint="留空表示不限制，0 表示不能再写入新的源文件。"
+        />
+        <Input
+          label="Token 上限"
+          value={tokenLimit}
+          onChange={(event) => setTokenLimit(event.target.value)}
+          inputMode="numeric"
+          autoComplete="off"
+          hint="留空表示不限制，0 表示本月不能再发起消耗 Token 的对话。按 UTC 自然月重置。"
         />
         <Textarea
           label="变更原因"

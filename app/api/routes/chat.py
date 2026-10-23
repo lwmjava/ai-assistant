@@ -450,6 +450,8 @@ async def chat_stream(
     await asyncio.shield(run.ready.wait())
     if isinstance(run.initial_error, ResumeRejectedError):
         raise HTTPException(status_code=run.initial_error.status_code, detail=str(run.initial_error))
+    if isinstance(run.initial_error, SecurityRejectedError):
+        raise HTTPException(status_code=run.initial_error.status_code, detail=str(run.initial_error))
     if isinstance(run.initial_error, QuotaExceededError):
         return public_response(429, "quota_exceeded", legacy=run.initial_error.as_dict())
     return EventSourceResponse(

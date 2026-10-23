@@ -56,6 +56,39 @@ def test_setup_logging_is_idempotent() -> None:
     setup_logging()  # 幂等：不抛错、不叠层
 
 
+def test_setup_logging_writes_redacted_json_file(monkeypatch, tmp_path) -> None:
+    """日志写入滚动文件，身份证、手机号和银行卡不留原文。"""
+    from app.core.config import settings
+    from app.core.json_logging import _FILE_MARK, setup_logging
+    from app.security.log_redaction import install_log_redaction
+
+    log_path = tmp_path / "app.log"
+    monkeypatch.setattr(settings, "LOG_FILE", str(log_path))
+    monkeypatch.setattr(settings, "LOG_LEVEL", "INFO")
+    install_log_redaction()
+    setup_logging()
+    setup_logging()
+    root = logging.getLogger()
+    marked = [handler for handler in root.handlers if getattr(handler, _FILE_MARK, None) == str(log_path.resolve())]
+    assert len(marked) == 1
+    logger = logging.getLogger("app.security.test_log_file")
+    logger.setLevel(logging.INFO)
+    id_card = "110101199001011234"
+    phone = "13800138000"
+    bank = "6222021234567890123"
+    try:
+        logger.info("id=%s phone=%s bank=%s", id_card, phone, bank)
+        marked[0].flush()
+        text = log_path.read_text(encoding="utf-8")
+    finally:
+        root.removeHandler(marked[0])
+        marked[0].close()
+    assert id_card not in text
+    assert phone not in text
+    assert bank not in text
+    assert "***" in text
+
+
 def test_trace_middleware_echoes_header() -> None:
     from fastapi import FastAPI
     from fastapi.testclient import TestClient

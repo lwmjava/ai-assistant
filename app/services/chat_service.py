@@ -61,7 +61,7 @@ from app.services.chat_skills import (
     validate_resume_skill_binding,
 )
 from app.services.combined_tools import combined_events
-from app.services.quota import accept_user_message
+from app.services.quota import accept_user_message, consume_tokens, estimate_turn_tokens
 
 if TYPE_CHECKING:
     from app.debug.trace import AgentTrace
@@ -691,6 +691,12 @@ class ChatService:
             code_results=result.code_results,
             skill_names=_skill_name_list(skill_ctx),
         )
+        if result.error_code != "model_unavailable":
+            consume_tokens(
+                session,
+                user.tenant_id,
+                estimate_turn_tokens(user_text=message, assistant_text=result.answer),
+            )
         session.refresh(conv)
         session.expire(conv, ["messages"])
         if result.error_code == "model_unavailable":
@@ -717,6 +723,8 @@ class ChatService:
         # 0. 安全治理：限流 + 输入过滤 + 注入检测，得到送模型的脱敏文本
         sec_ctx, safe_message = self._apply_input_security(message, user)
         if sec_ctx and sec_ctx.blocked:
+            if sec_ctx.injection_detected:
+                raise self._rejection_error(sec_ctx)
             if sec_ctx.rate_limited:
                 yield AgentEvent(
                     "rate_limit",
@@ -813,6 +821,12 @@ class ChatService:
                         skill_names=_skill_name_list(skill_ctx),
                     )
                     assistant_saved = True
+                    if state.error_code != "model_unavailable":
+                        consume_tokens(
+                            session,
+                            user.tenant_id,
+                            estimate_turn_tokens(user_text=message, assistant_text=answer),
+                        )
                     current = ChatService._conversation_after_reply(session, conv, conversation_id)
                     if current is not None and state.error_code != "model_unavailable":
                         self._maybe_reflect(current, state)

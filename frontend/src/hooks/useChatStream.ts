@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { errorCode, errorMessage } from '@/lib/api-errors'
+import { quotaExceededMessage } from '@/lib/quota-message'
 import { api, hideStackTrace } from '@/lib/http'
 import { retryAfterFromEvent } from '@/lib/rate-limit'
 import { streamPost, StreamInterruptedError } from '@/lib/sse'
@@ -201,7 +202,7 @@ export function reduceStreamSnapshot(previous: StreamSnapshot, msg: SSEMessage, 
       return item ? { ...next, subtasks: [...next.subtasks, item] } : next
     }
     case 'error': return { ...next, retryable: payload.retryable === true,
-      error: errorMessage(payload) ?? hideStackTrace(typeof payload.message === 'string' ? payload.message : '生成失败，请稍后重试') }
+      error: quotaExceededMessage(payload) ?? errorMessage(payload) ?? hideStackTrace(typeof payload.message === 'string' ? payload.message : '生成失败，请稍后重试') }
     case 'run.finished': {
       const toolCalls = next.toolCalls.map((call): StreamToolCall => call.status === 'running'
         ? { ...call, status: 'interrupted', summary: '运行已结束，未收到工具结果' } : call)

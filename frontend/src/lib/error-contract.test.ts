@@ -86,7 +86,22 @@ test('file limit is visible without arbitrary backend prose or request identity'
 
 test('legacy quota payload remains readable', async () => {
   fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ code: 'quota_exceeded', limit_type: 'messages', used: 10, limit: 10 }), { status: 429 }))
-  await expect(api.get('/test')).rejects.toMatchObject({ code: 'quota_exceeded', detail: ERROR_MESSAGES.quota_exceeded })
+  await expect(api.get('/test')).rejects.toMatchObject({
+    code: 'quota_exceeded',
+    detail: '消息条数已达上限：本租户已有 10 条用户消息，上限是 10 条。请联系管理员提高上限，或删除部分会话后再发送。',
+  })
+})
+
+test('token quota envelope shows usage, limit and reset without request id', async () => {
+  const resetsAt = '2026-11-01T00:00:00Z'
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+    code: 'quota_exceeded', limit_type: 'tokens', used: 1, limit: 1, resets_at: resetsAt,
+    error: { code: 'quota_exceeded', message: '本租户配额已用尽，请联系租户管理员', request_id: 'PRIVATE-REQUEST-ID', retry_after: null },
+  }), { status: 429 }))
+  const error = await api.get('/test').then(() => null, (err: { detail?: string; code?: string }) => err)
+  expect(error).toMatchObject({ code: 'quota_exceeded' })
+  expect(error?.detail).toBe(`Token 已达上限：本月已用 1，上限是 1。下次重置时间：${resetsAt}。请联系管理员提高上限，或等待自然月重置。`)
+  expect(error?.detail).not.toContain('PRIVATE-REQUEST-ID')
 })
 
 test('tenant suspension cause survives clearing tokens and changing route', async () => {
@@ -100,6 +115,22 @@ test('tenant suspension cause survives clearing tokens and changing route', asyn
 
 const run = '11111111222243338444555555555555'
 const frame = (seq: number, event: string, fields = {}) => `id: ${run}:${seq}\nevent: ${event}\ndata: ${JSON.stringify({ run_id: run, ...fields })}\n\n`
+
+test('stream token quota rejection uses the same usage notice', async () => {
+  const resetsAt = '2026-11-01T00:00:00Z'
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+    code: 'quota_exceeded', limit_type: 'tokens', used: 1, limit: 1, resets_at: resetsAt,
+    error: { code: 'quota_exceeded', message: 'backend detail', request_id: 'PRIVATE-REQUEST-ID', retry_after: null },
+  }), { status: 429 }))
+  const onError = vi.fn()
+  await streamPost('/chat/stream', { run_id: run }, token(), { onMessage: vi.fn(), onError })
+  const message = String(onError.mock.calls[0]?.[0]?.message ?? '')
+  expect(message).toContain('Token 已达上限')
+  expect(message).toContain('本月已用 1')
+  expect(message).toContain('上限是 1')
+  expect(message).toContain(`下次重置时间：${resetsAt}`)
+  expect(message).not.toContain('PRIVATE-REQUEST-ID')
+})
 
 test.each(['token_revoked', 'user_disabled', 'tenant_suspended'])('SSE HTTP %s never refreshes terminal identity', async (code) => {
   fetchMock.mockResolvedValueOnce(failure(code, code === 'token_revoked' ? 401 : 403))

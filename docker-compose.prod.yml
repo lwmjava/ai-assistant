@@ -54,6 +54,7 @@ services:
       - "${APP_BIND_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
     volumes:
       - appdata:/app/data
+      - applogs:/app/logs
     depends_on:
       db:
         condition: service_healthy
@@ -130,6 +131,7 @@ services:
 volumes:
   pgdata:
   appdata:
+  applogs:
   etcddata:
   miniodata:
   milvusdata:

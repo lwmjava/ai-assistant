@@ -118,6 +118,8 @@ services:
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     ports:
       - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       db:
         condition: service_healthy

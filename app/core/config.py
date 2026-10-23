@@ -107,6 +107,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     LOG_LEVEL: str = "INFO"
+    # 相对路径相对项目根目录。本地进程与容器都写这个文件。
+    LOG_FILE: str = "logs/app.log"
 
     # ── LLM 提供商 ──
     # 以下为代码默认值，运行时会被 .env / 环境变量覆盖

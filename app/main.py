@@ -55,6 +55,12 @@ async def lifespan(app: FastAPI):
     with Session(engine) as session:
         ensure_initial_admin(session)
 
+    # 2.5 功能开关覆盖写回进程配置
+    from app.services.feature_flags import apply_persisted_flags
+
+    with Session(engine) as session:
+        apply_persisted_flags(session)
+
     # 4. 登记 Channel
     registry.register(HttpApiChannel(asgi_app=app))
     logger.info("ai-assistant 启动完成，已登记 %d 个 Channel。", len(registry.all()))

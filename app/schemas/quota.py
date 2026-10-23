@@ -9,18 +9,22 @@ class QuotaOut(BaseModel):
     tenant_id: str
     message_limit: int | None
     storage_limit_bytes: int | None
+    token_limit: int | None
+    tokens_used_period: int
+    quota_period_ym: str | None
 
 
 class QuotaUpdate(BaseModel):
-    """一次写全两个上限。空值表示不限制，0 表示不能再新增。"""
+    """一次写全三个上限。空值表示不限制，0 表示不能再新增。"""
 
     model_config = {"extra": "forbid"}
 
     message_limit: int | None
     storage_limit_bytes: int | None
+    token_limit: int | None
     reason: str = Field(min_length=1, max_length=200)
 
-    @field_validator("message_limit", "storage_limit_bytes")
+    @field_validator("message_limit", "storage_limit_bytes", "token_limit")
     @classmethod
     def reject_negative(cls, value: int | None) -> int | None:
         if value is not None and value < 0:

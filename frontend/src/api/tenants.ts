@@ -74,12 +74,16 @@ export interface QuotaOut {
   tenant_id: string
   message_limit: number | null
   storage_limit_bytes: number | null
+  token_limit: number | null
+  tokens_used_period: number
+  quota_period_ym: string | null
 }
 
 export interface QuotaUpdateBody {
   tenantId: string
   message_limit: number | null
   storage_limit_bytes: number | null
+  token_limit: number | null
   reason: string
 }
 
@@ -98,6 +102,7 @@ export function useUpdateTenantQuota() {
       api.patch<QuotaOut>(`/admin/tenants/${body.tenantId}/quota`, {
         message_limit: body.message_limit,
         storage_limit_bytes: body.storage_limit_bytes,
+        token_limit: body.token_limit,
         reason: body.reason,
       }),
     onSuccess: (_data, body) => {

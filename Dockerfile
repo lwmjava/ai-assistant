@@ -38,7 +38,7 @@ RUN if [ "$INSTALL_MILVUS" = "true" ]; then pip install --no-cache-dir '.[milvus
 COPY --from=frontend /src/dist ./frontend/dist
 
 # 数据目录（SQLite 默认存放处；使用 Postgres 时可忽略）。
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+RUN mkdir -p /app/data /app/logs && chown -R appuser:appuser /app
 
 USER appuser
 

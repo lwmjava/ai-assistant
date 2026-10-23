@@ -12,7 +12,7 @@
           "system"
         ],
         "summary": "Health Check",
-        "description": "报告数据库、向量库连通性、Embedding 配置身份及可选工具状态。Embedding 字段只展示身份，不探测网络；工具未配置不阻塞启动。",
+        "description": "报告数据库、向量库连通性、Embedding 配置身份及可选工具状态。\n\nEmbedding 字段只展示身份，不探测网络；工具未配置不阻塞启动。",
         "operationId": "health_check_api_v1_health_get",
         "responses": {
           "200": {
@@ -329,7 +329,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RegisterRequest"
+                "$ref": "#/components/schemas/SetupRequest"
               }
             }
           },
@@ -994,29 +994,51 @@
           "chat"
         ],
         "summary": "List Conversations",
-        "description": "列出当前用户可见的会话。",
+        "description": "列出当前用户可见的会话。status=active|archived|deleted。",
         "operationId": "list_conversations_api_v1_chat_conversations_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "active",
+              "title": "Status"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/ConversationOut"
                   },
-                  "type": "array",
                   "title": "Response List Conversations Api V1 Chat Conversations Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/chat/conversations/{conversation_id}": {
@@ -1127,7 +1149,7 @@
           "chat"
         ],
         "summary": "Delete Conversation",
-        "description": "删除会话及其消息。",
+        "description": "软删除会话。消息保留，默认列表不再出现。",
         "operationId": "delete_conversation_api_v1_chat_conversations__conversation_id__delete",
         "security": [
           {
@@ -1153,6 +1175,102 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Delete Conversation Api V1 Chat Conversations  Conversation Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{conversation_id}/archive": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Archive Conversation",
+        "description": "归档会话，进入归档列表。",
+        "operationId": "archive_conversation_api_v1_chat_conversations__conversation_id__archive_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{conversation_id}/unarchive": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Unarchive Conversation",
+        "description": "取消归档，回到活动列表。",
+        "operationId": "unarchive_conversation_api_v1_chat_conversations__conversation_id__unarchive_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationOut"
                 }
               }
             }
@@ -1382,6 +1500,31 @@
         ]
       }
     },
+    "/api/v1/export/conversations/sharegpt": {
+      "post": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Export Conversations Sharegpt",
+        "description": "当前租户的租户管理员下载本租户 ShareGPT 训练格式对话。审计写入成功后才开始返回文件。",
+        "operationId": "export_conversations_sharegpt_api_v1_export_conversations_sharegpt_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/rag/documents/ingest": {
       "post": {
         "tags": [
@@ -1580,17 +1723,40 @@
           "rag"
         ],
         "summary": "Create Upload Jobs",
-        "description": "批量上传文件并创建异步导入任务。",
+        "description": "批量上传文件并创建异步导入任务。\n\n带 ``Idempotency-Key`` 时，同一进程内相同用户重复提交只产生一批任务。",
         "operationId": "create_upload_jobs_api_v1_rag_import_jobs_upload_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_create_upload_jobs_api_v1_rag_import_jobs_upload_post"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "202": {
@@ -1607,9 +1773,6 @@
             "description": "file_too_large: 上传文件超过上限。",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
                 "examples": {
                   "file_too_large": {
                     "value": {
@@ -1621,6 +1784,9 @@
                       }
                     }
                   }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1629,9 +1795,6 @@
             "description": "quota_exceeded: 本租户配额已用尽，请联系租户管理员。",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
                 "examples": {
                   "quota_exceeded": {
                     "value": {
@@ -1643,6 +1806,9 @@
                       }
                     }
                   }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1657,12 +1823,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/rag/import-jobs/url": {
@@ -4485,7 +4646,7 @@
           "admin-system"
         ],
         "summary": "System Status",
-        "description": "返回数据库、向量库、版本和本进程启动时间。",
+        "description": "返回健康探测，以及本进程在线用户、存储与自然日调用量。",
         "operationId": "system_status_api_v1_admin_system_status_get",
         "responses": {
           "200": {
@@ -4494,6 +4655,214 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SystemStatusOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/features": {
+      "get": {
+        "tags": [
+          "admin-features"
+        ],
+        "summary": "List Feature Flags",
+        "operationId": "list_feature_flags_api_v1_admin_features_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeatureFlagOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Feature Flags Api V1 Admin Features Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/features/{flag_key}": {
+      "patch": {
+        "tags": [
+          "admin-features"
+        ],
+        "summary": "Patch Feature Flag",
+        "operationId": "patch_feature_flag_api_v1_admin_features__flag_key__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "flag_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Flag Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureFlagUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "admin-features"
+        ],
+        "summary": "Get Feature Flag",
+        "operationId": "get_feature_flag_api_v1_admin_features__flag_key__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "flag_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Flag Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenant/members": {
+      "get": {
+        "tags": [
+          "tenant-settings"
+        ],
+        "summary": "List Tenant Members",
+        "description": "列出当前租户成员（经 memberships 关联）。",
+        "operationId": "list_tenant_members_api_v1_tenant_members_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserInfo"
+                  },
+                  "type": "array",
+                  "title": "Response List Tenant Members Api V1 Tenant Members Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "tenant-settings"
+        ],
+        "summary": "Create Tenant Member",
+        "description": "在当前租户下创建成员。角色固定为 member。",
+        "operationId": "create_tenant_member_api_v1_tenant_members_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5993,6 +6362,28 @@
             "type": "string",
             "title": "Updated At"
           },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/MessageOut"
@@ -6046,6 +6437,28 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
           }
         },
         "type": "object",
@@ -6566,6 +6979,72 @@
           "kind"
         ],
         "title": "FailureFeedbackIn"
+      },
+      "FeatureFlagOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "value": {
+            "type": "boolean",
+            "title": "Value"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "overridden": {
+            "type": "boolean",
+            "title": "Overridden",
+            "default": false
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "default"
+        ],
+        "title": "FeatureFlagOut"
+      },
+      "FeatureFlagUpdate": {
+        "properties": {
+          "value": {
+            "type": "boolean",
+            "title": "Value",
+            "description": "开关目标值"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "FeatureFlagUpdate"
       },
       "FeedbackOut": {
         "properties": {
@@ -7374,13 +7853,42 @@
               }
             ],
             "title": "Storage Limit Bytes"
+          },
+          "token_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Limit"
+          },
+          "tokens_used_period": {
+            "type": "integer",
+            "title": "Tokens Used Period"
+          },
+          "quota_period_ym": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quota Period Ym"
           }
         },
         "type": "object",
         "required": [
           "tenant_id",
           "message_limit",
-          "storage_limit_bytes"
+          "storage_limit_bytes",
+          "token_limit",
+          "tokens_used_period",
+          "quota_period_ym"
         ],
         "title": "QuotaOut",
         "description": "当前上限。空值表示该维度不限制。"
@@ -7409,6 +7917,17 @@
             ],
             "title": "Storage Limit Bytes"
           },
+          "token_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Limit"
+          },
           "reason": {
             "type": "string",
             "maxLength": 200,
@@ -7421,10 +7940,11 @@
         "required": [
           "message_limit",
           "storage_limit_bytes",
+          "token_limit",
           "reason"
         ],
         "title": "QuotaUpdate",
-        "description": "一次写全两个上限。空值表示不限制，0 表示不能再新增。"
+        "description": "一次写全三个上限。空值表示不限制，0 表示不能再新增。"
       },
       "RatingOut": {
         "properties": {
@@ -7568,15 +8088,9 @@
             "title": "Password"
           },
           "email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 254
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
             "title": "Email"
           }
         },
@@ -7584,10 +8098,11 @@
         "type": "object",
         "required": [
           "username",
-          "password"
+          "password",
+          "email"
         ],
         "title": "RegisterRequest",
-        "description": "公开注册。不接受角色，避免把注册变成提权入口。"
+        "description": "公开注册。不接受角色，避免把注册变成提权入口。邮箱必填且做格式校验。"
       },
       "ReportDetail": {
         "properties": {
@@ -8155,6 +8670,42 @@
         "title": "SearchResultOut",
         "description": "检索命中结果。"
       },
+      "SetupRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "SetupRequest",
+        "description": "一次性初始化向导。内置超级管理员可以没有邮箱。"
+      },
       "SetupStatus": {
         "properties": {
           "needs_setup": {
@@ -8571,6 +9122,21 @@
           },
           "checks": {
             "$ref": "#/components/schemas/SystemChecks"
+          },
+          "online_users": {
+            "type": "integer",
+            "title": "Online Users",
+            "default": 0
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "title": "Storage Bytes",
+            "default": 0
+          },
+          "api_request_count": {
+            "type": "integer",
+            "title": "Api Request Count",
+            "default": 0
           }
         },
         "type": "object",
@@ -8583,7 +9149,7 @@
           "checks"
         ],
         "title": "SystemStatusOut",
-        "description": "系统管理员看到的运行状态。不包含人数或调用量。"
+        "description": "系统管理员看到的运行状态：健康探测 + 本进程指标。"
       },
       "TenantCreate": {
         "properties": {

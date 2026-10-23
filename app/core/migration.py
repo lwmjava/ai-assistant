@@ -440,7 +440,15 @@ def _stamp_if_schema_already_at_head() -> bool:
             )
         has_basic = {"message_limit", "storage_limit_bytes"}.issubset(tenant_cols)
         if has_basic:
-            if current != "d7e0f3a21b44":
+            # timeout_seconds 在 a4b7c2d9e160 之后才加入；不能越过该修订直接标到反馈表修订。
+            if "timeout_seconds" not in workflow_columns:
+                if current != "a4b7c2d9e160":
+                    logger.warning(
+                        "配额基础列已在但工作流超时列缺失，版本先标到 a4b7c2d9e160: current=%s",
+                        current,
+                    )
+                    stamp("a4b7c2d9e160")
+            elif current != "d7e0f3a21b44":
                 logger.warning(
                     "消息/存储配额列已在，但 Token 周期列还没有。版本先标到 d7e0f3a21b44: current=%s",
                     current,

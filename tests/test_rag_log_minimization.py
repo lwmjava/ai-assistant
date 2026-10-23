@@ -262,6 +262,7 @@ async def test_stream_sources_remain_in_response_but_not_logs(monkeypatch, sourc
     monkeypatch.setattr(service, "_persist_assistant", persisted)
     monkeypatch.setattr(service, "_model_name", lambda: "synthetic-model")
     monkeypatch.setattr(ChatService, "_conversation_after_reply", lambda *a: None)
+    monkeypatch.setattr("app.services.chat_service.consume_tokens", lambda *a, **k: None)
     result = [event async for event in service.chat_stream(Mock(info={}), Mock(), QUERY)]
     assert json.loads(next(event.data for event in result if event.type == "sources")) == sources
     assert persisted.call_args.args[4] is sources

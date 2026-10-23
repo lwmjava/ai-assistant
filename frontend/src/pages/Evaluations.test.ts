@@ -20,6 +20,12 @@ vi.mock('@/api/evaluations', () => ({
     isPending: false, isError: false,
     data: { points: [{ report_id: 'retrieval-example', value: null, status: 'failed', protocol: null, metadata: {} }] },
   }),
+  useEvaluationDatasets: () => ({ isPending: false, isError: false, data: { items: [], total: 0 } }),
+  useEvaluationVersions: () => ({ isPending: false, isError: false, data: { items: [] } }),
+  useEvaluationCandidates: () => ({ isPending: false, isError: false, data: { items: [] } }),
+  useCreateEvaluationDataset: () => ({ mutate: vi.fn(), isPending: false }),
+  useReviewEvaluationCandidate: () => ({ mutate: vi.fn() }),
+  useSubmitDatasetVersion: () => ({ mutate: vi.fn() }),
 }))
 
 beforeEach(() => {

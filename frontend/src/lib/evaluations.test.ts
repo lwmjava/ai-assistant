@@ -13,8 +13,12 @@ test('missing, zero, failure and absent verdict remain distinct', () => {
 test('only approved reader roles have navigation access', () => {
   for (const role of ['system_admin', 'system_viewer', 'tenant_admin'] as const) {
     expect(can(role, 'evaluations', 'read')).toBe(true)
-    expect(can(role, 'evaluations', 'write')).toBe(false)
   }
+  expect(can('system_admin', 'evaluations', 'write')).toBe(true)
+  expect(can('tenant_admin', 'evaluations', 'write')).toBe(true)
+  expect(can('system_viewer', 'evaluations', 'write')).toBe(false)
+  expect(can('system_admin', 'evaluations', 'delete')).toBe(true)
+  expect(can('tenant_admin', 'evaluations', 'delete')).toBe(false)
   for (const role of ['member', 'viewer', undefined] as const) {
     expect(can(role, 'evaluations', 'read')).toBe(false)
   }

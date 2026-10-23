@@ -14,6 +14,8 @@ type Action = 'read' | 'write' | 'delete'
 const ROLE_PERMISSIONS: Record<string, Partial<Record<Action, Role[]>>> = {
   evaluations: {
     read: ['system_admin', 'system_viewer', 'tenant_admin'],
+    write: ['system_admin', 'tenant_admin'],
+    delete: ['system_admin'],
   },
   system: {
     read: ['system_admin', 'system_viewer'],

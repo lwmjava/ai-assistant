@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
+
+from tests._utf8_subprocess import python_utf8
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GATE_SCRIPT = REPO_ROOT / "scripts" / "rag_gate_check.py"
@@ -19,14 +20,9 @@ REAL_REPORT = REPO_ROOT / "evals" / "reports" / "rag-v0.1-baseline-20261010.json
 BASELINE = REPO_ROOT / "evals" / "reports" / "rag-v0.1-baseline-20260919.json"
 
 
-def run_gate(report: Path, baseline: Path = BASELINE) -> subprocess.CompletedProcess:
+def run_gate(report: Path, baseline: Path = BASELINE) -> subprocess.CompletedProcess[str]:
     """以 subprocess 运行门禁脚本并返回结果。"""
-    return subprocess.run(
-        [sys.executable, str(GATE_SCRIPT), "--report", str(report), "--baseline", str(baseline)],
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
+    return python_utf8([str(GATE_SCRIPT), "--report", str(report), "--baseline", str(baseline)])
 
 
 @pytest.fixture()

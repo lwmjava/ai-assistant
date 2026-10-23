@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from scripts import validate_delivery as runner
+from tests._utf8_subprocess import run_utf8
 
 
 def test_runs_are_unique_and_preflight_uses_only_its_own_database(tmp_path):
@@ -60,14 +61,15 @@ def test_cli_reports_existing_full_run_without_starting_pytest(tmp_path):
         json.dumps({"pid": 4242, "run_id": "occupied", "started_at": "2026-10-22T00:00:00+00:00"}),
         encoding="utf-8",
     )
-    completed = subprocess.run(
+    completed = run_utf8(
         [sys.executable, str(runner.__file__), "full", "--root", str(tmp_path)],
-        capture_output=True, text=True, timeout=30, check=False,
+        timeout=30,
+        check=False,
         env={**os.environ, "PYTHONUTF8": "1"},
     )
     assert completed.returncode != 0
-    assert "Traceback" not in completed.stderr
-    published = json.loads(completed.stdout)
+    assert "Traceback" not in (completed.stderr or "")
+    published = json.loads(completed.stdout or "")
     assert published["status"] == "lock_held"
     assert published["occupant"]["run_id"] == "occupied"
     assert published["occupant"]["pid"] == 4242

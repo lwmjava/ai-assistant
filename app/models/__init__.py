@@ -5,6 +5,11 @@
 
 from app.models.agent_state import AgentRunState  # noqa: F401
 from app.models.conversation import Conversation, Message  # noqa: F401
+from app.models.evaluation import (  # noqa: F401
+    EvaluationDataset,
+    EvaluationDatasetVersion,
+    EvaluationFeedbackCandidate,
+)
 from app.models.feature_flag import FeatureFlag  # noqa: F401
 from app.models.feedback import ChatAttempt, ChatFeedback, MessageRating  # noqa: F401
 from app.models.membership import Invitation, Membership  # noqa: F401

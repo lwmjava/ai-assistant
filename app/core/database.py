@@ -47,6 +47,9 @@ def init_db(*, auto_migrate: bool = True) -> None:
     from app.models import (
         agent_state,  # noqa: F401
         conversation,  # noqa: F401
+        evaluation,  # noqa: F401
+        feature_flag,  # noqa: F401
+        feedback,  # noqa: F401
         rag,  # noqa: F401
         skill,  # noqa: F401
         user,  # noqa: F401

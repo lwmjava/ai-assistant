@@ -941,9 +941,9 @@ mypy app/
 
 本项目基于 [Apache License 2.0](LICENSE) 开源。
 
-## 只读评测报告（Implemented）
+## 评测报告与数据集（Partial）
 
-控制台 `/evaluations` 提供已登记报告列表、指标历史、详情和失败切片；不运行模型或评测器，不作质量发布结论。后端接口：
+控制台 `/evaluations` 提供已登记报告列表、指标历史、详情和失败切片；报告查询不运行模型或评测器，不作质量发布结论。后端只读报告接口：
 
 - `GET /api/v1/evaluations/reports?family=retrieval|generation|agent&page=1&page_size=20`
 - `GET /api/v1/evaluations/reports/{report_id}`
@@ -951,9 +951,22 @@ mypy app/
 
 全局报告仅 `system_admin` / `system_viewer` 可读；租户报告仅同租户 `tenant_admin` 可读，系统角色不自动跨读租户结果。`member` / `viewer` 无读取权；详情无权与不存在均返回404。身份依赖复用当前User/Tenant校验，不采用前端传入角色。
 
-服务端白名单位于 `app/services/evaluation_reports.py` 的 `REPORT_ENTRIES`。首批显式登记四份仓库历史报告，覆盖检索、生成、Agent；租户运行结果须由维护者审核归属后显式登记，不从文件名或报告内的评测用例tenant_id推断所有者。没有注册/上传/执行接口，不允许任意路径下载。缺文件显示不可用，未知/坏协议显示不支持，缺测为null，不填零；调用成功不等于质量通过。旧检索报告没有门禁结论时不推断通过；Agent各用例成功也不冒充官方gate通过。
+服务端白名单位于 `app/services/evaluation_reports.py` 的 `REPORT_ENTRIES`。首批显式登记四份仓库历史报告，覆盖检索、生成、Agent；租户运行结果须由维护者审核归属后显式登记，不从文件名或报告内的评测用例tenant_id推断所有者。报告侧不允许任意路径下载。缺文件显示不可用，未知/坏协议显示不支持，缺测为null，不填零；调用成功不等于质量通过。旧检索报告没有门禁结论时不推断通过；Agent各用例成功也不冒充官方gate通过。
 
-API仅投影指标、受限版本元信息及失败标识；不返回query、回答、Prompt、工具参数、原始错误或绝对路径。历史表保留协议/数据/模型信息与缺测，不计算跨口径提升。同源码提交的Linux/Ubuntu CI已通过，2026-10-22用户业务验收通过；本节只读报告能力为Implemented，不代表统一评测管理能力全部完成。契约和回滚见[交付记录](docs/plans/implementation_eval_001.md)。
+API仅投影指标、受限版本元信息及失败标识；不返回query、回答、Prompt、工具参数、原始错误或绝对路径。历史表保留协议/数据/模型信息与缺测，不计算跨口径提升。只读报告能力为Implemented（EVAL-001）；在线评测任务执行仍为 Planned（EVAL-003）。
+
+### 评测数据集与反馈候选（EVAL-002，进行中）
+
+同页提供租户隔离的数据集版本与反馈回归候选管理。写操作需 `evaluations:write`（`system_admin` / `tenant_admin`）；删除草稿/驳回版本需 `evaluations:delete`（仅 `system_admin`）。AI 生成来源不得升 Gold；显式 Gold 批准仅 `system_admin` 且审核备注为 `ACCEPT_GOLD`。冻结版本不可变；非系统管理员导出时脱敏 holdout 期望字段。反馈候选复用 FEED-001 记录快照，接受候选不会自动入集或改 Gold。
+
+- `GET/POST /api/v1/evaluations/datasets`
+- `GET /api/v1/evaluations/datasets/{id}`
+- `GET/POST /api/v1/evaluations/datasets/{id}/versions`
+- `GET /api/v1/evaluations/datasets/{id}/versions/{version_id}`
+- `POST .../submit`、`POST .../review`、`DELETE .../versions/{version_id}`
+- `GET/POST /api/v1/evaluations/candidates`、`POST /api/v1/evaluations/candidates/{id}/review`
+
+专项：`pytest tests/test_evaluation_datasets.py tests/test_evaluation_api.py`。契约见 `docs/plans/plan_eval_002_dataset_governance_20261023.md`，实现说明见 `docs/plans/implementation_eval_002.md`。
 
 ### 对话反馈 API
 

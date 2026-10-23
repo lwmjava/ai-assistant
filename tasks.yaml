@@ -11526,7 +11526,7 @@ tasks:
       progress: 2026-10-22用户采用读取矩阵后实施API/页面；31条专项、Ruff/mypy、前端四项（172条测试）和隔离页面冒烟通过。授权后Codex只读独立审查NO_FINDINGS、退出0。本地全量3304 passed/3 skipped/退出0；用户授权单次重跑后00ea6ee的Ubuntu CI run39710843032/job119608102936成功：Ruff/mypy/pytest（3284 passed/4 skipped）和真实Embedding RAG gate通过，Frontend/Agent也成功；技术证据齐；2026-10-22用户明确业务验收通过并授权关闭，状态done。见docs/plans/implementation_eval_001.md。
   - id: EVAL-002
     title: 评测数据集版本审核与反馈候选管理
-    status: backlog
+    status: in_review
     priority: P1
     depends_on:
     - EVAL-001
@@ -11612,7 +11612,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: 2026-10-21按用户指令登记核心拆分；业务未实施、基线/具体设计/最终CI未验证，保持backlog。
+      progress: 2026-10-23用户确认「可以关闭了」——业务验收接受（含此前AI受托API 15/15）。本地门禁：专项/openapi、ruff0、mypy0、前端四项、全量pytest 3425passed/3skipped（含基线83修复）。改动仍在feat/EVAL-002未提交（HEAD仍03e8bf3+工作区）。按AGENTS§10：无最终候选提交SHA与同SHA Ubuntu CI前不得done，状态in_review。下一步：用户授权后提交并推送，CI绿再改done。
   - id: EVAL-003
     title: 受预算在线评测任务执行与取消
     status: backlog

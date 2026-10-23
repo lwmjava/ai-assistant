@@ -2,7 +2,6 @@
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -10,6 +9,7 @@ import pytest
 import yaml
 
 from scripts import validate_delivery as runner
+from tests._utf8_subprocess import run_utf8
 
 CI_WORKFLOW = Path(__file__).resolve().parents[1] / ".github/workflows/ci.yml"
 
@@ -53,12 +53,12 @@ def test_timed_out_command_never_passes(tmp_path):
 
 
 def test_cli_rejects_empty_target_without_launching_suite():
-    result = subprocess.run(
+    result = run_utf8(
         [sys.executable, str(runner.__file__), "targeted"],
-        capture_output=True, text=True, timeout=10,
+        timeout=10,
     )
     assert result.returncode == 2
-    assert "--test" in result.stderr
+    assert "--test" in (result.stderr or "")
 
 
 def test_repeated_permission_errors_stop_before_the_timeout(tmp_path):
@@ -80,25 +80,25 @@ def test_repeated_permission_errors_stop_before_the_timeout(tmp_path):
 def test_cli_summary_rejects_unknown_run_without_traceback(tmp_path):
     missing = tmp_path / "not-a-run"
     missing.mkdir()
-    result = subprocess.run(
+    result = run_utf8(
         [sys.executable, str(runner.__file__), "summary", "--root", str(tmp_path), "--run", str(missing)],
-        capture_output=True, text=True, timeout=10,
+        timeout=10,
     )
     assert result.returncode == 2
-    assert "Traceback" not in result.stderr
-    assert "data/validation" in result.stderr
+    assert "Traceback" not in (result.stderr or "")
+    assert "data/validation" in (result.stderr or "")
 
 
 def test_cli_summary_never_promotes_invalidated_evidence(tmp_path):
     run = runner.create_run(tmp_path)
     document = {"status": "invalidated", "commands": [], "inputs": {}}
     (run / "result.json").write_text(json.dumps(document), encoding="utf-8")
-    result = subprocess.run(
+    result = run_utf8(
         [sys.executable, str(runner.__file__), "summary", "--root", str(tmp_path), "--run", str(run)],
-        capture_output=True, text=True, timeout=10,
+        timeout=10,
     )
     assert result.returncode != 0
-    assert json.loads(result.stdout)["status"] == "invalidated"
+    assert json.loads(result.stdout or "")["status"] == "invalidated"
 
 
 def _ci_workflow():

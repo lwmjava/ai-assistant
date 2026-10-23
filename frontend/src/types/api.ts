@@ -482,3 +482,70 @@ export interface EvaluationTrend {
     metadata: Record<string, string | number | null>
   }[]
 }
+
+export type DatasetVersionStatus = 'draft' | 'pending_review' | 'approved' | 'rejected'
+export type CandidateStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+
+export interface EvaluationDataset {
+  id: string
+  tenant_id: string
+  name: string
+  slug: string
+  family: ReportFamily
+  created_by: string
+  description: string | null
+}
+
+export interface EvaluationDatasetPage {
+  items: EvaluationDataset[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface EvaluationDatasetVersion {
+  id: string
+  dataset_id: string
+  tenant_id: string
+  version: string
+  status: DatasetVersionStatus
+  source: 'upload' | 'feedback' | 'ai_generated'
+  content_hash: string
+  schema_name: string
+  case_count: number
+  is_frozen: boolean
+  created_by: string
+  reviewed_by: string | null
+  review_decision: string | null
+  review_notes: string | null
+}
+
+export interface EvaluationDatasetVersionPage {
+  items: EvaluationDatasetVersion[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface EvaluationCandidate {
+  id: string
+  tenant_id: string
+  source_type: 'feedback' | 'rating'
+  source_id: string
+  attempt_id: string | null
+  conversation_id: string | null
+  status: CandidateStatus
+  nominated_by: string
+  source_user_id: string
+  reviewed_by: string | null
+  review_notes: string | null
+  target_dataset_id: string | null
+  snapshot: Record<string, unknown>
+}
+
+export interface EvaluationCandidatePage {
+  items: EvaluationCandidate[]
+  total: number
+  page: number
+  page_size: number
+}

@@ -4,7 +4,6 @@ import copy
 import hashlib
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -12,6 +11,7 @@ import pytest
 import yaml
 
 from scripts import run_agent_chain_eval as runner
+from tests._utf8_subprocess import run_utf8
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -111,12 +111,12 @@ def invoke(script, path, *extra):
     environment.update(LLM_API_KEY="", LLM_INTENT_API_KEY="", LLM_FALLBACK_API_KEY="",
                        LLM_BASE_URL="http://127.0.0.1:1", LLM_PROVIDER="mock",
                        RAG_BACKEND="native", DATABASE_URL="sqlite:///./data/test_ai_assistant.db")
-    result = subprocess.run(
+    result = run_utf8(
         [sys.executable, str(ROOT / "scripts" / script), "--report", str(path),
          "--expected-model", MODEL, "--expected-endpoint-hash", ENDPOINT, *extra],
-        env=environment, capture_output=True, text=True, timeout=60, check=False,
+        env=environment, check=False,
     )
-    assert "Traceback" not in result.stderr
+    assert "Traceback" not in (result.stderr or "")
     return result
 
 
@@ -249,9 +249,9 @@ def invoke_runner(mode, out):
                        LLM_BASE_URL="http://127.0.0.1:1", LLM_PROVIDER="mock",
                        LLM_INTENT_PROVIDER="mock", LLM_FALLBACK_PROVIDER="mock",
                        RAG_BACKEND="native", DATABASE_URL="sqlite:///./data/test_ai_assistant.db")
-    return subprocess.run(
+    return run_utf8(
         [sys.executable, str(ROOT / "scripts/run_agent_chain_eval.py"), "--mode", mode, "--out", str(out)],
-        env=environment, capture_output=True, text=True, timeout=60, check=False,
+        env=environment, check=False,
     )
 
 
@@ -261,7 +261,7 @@ def test_independent_runner_missing_real_identity_creates_no_report(tmp_path):
     assert result.returncode == 2
     assert "AGENT_EVAL_ERROR:real_single_uncached_intent_required" in result.stdout
     assert not out.exists()
-    assert "Traceback" not in result.stderr
+    assert "Traceback" not in (result.stderr or "")
 
 
 def test_independent_runner_smoke_and_existing_evidence(tmp_path):

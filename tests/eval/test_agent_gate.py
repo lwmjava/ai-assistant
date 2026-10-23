@@ -5,7 +5,6 @@ import asyncio
 import copy
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,7 @@ from app.llm.openai_compatible import OpenAICompatibleProvider
 from scripts import agent_gate_check as gate
 from scripts import agent_gate_probe as probe
 from scripts import run_agent_chain_eval as evaluator
+from tests._utf8_subprocess import python_utf8
 
 MODEL = "deepseek-chat"
 ENDPOINT = evaluator.endpoint_hash("https://api.deepseek.com/v1")
@@ -66,9 +66,17 @@ def report():
 
 
 def cli(path: Path):
-    return subprocess.run([sys.executable, str(evaluator.REPO_ROOT / "scripts/agent_gate_check.py"),
-                           "--report", str(path), "--expected-model", MODEL,
-                           "--expected-endpoint-hash", ENDPOINT], capture_output=True, text=True, timeout=60)
+    return python_utf8(
+        [
+            str(evaluator.REPO_ROOT / "scripts/agent_gate_check.py"),
+            "--report",
+            str(path),
+            "--expected-model",
+            MODEL,
+            "--expected-endpoint-hash",
+            ENDPOINT,
+        ]
+    )
 
 
 def test_gate_valid_official_structure_and_cli(report, tmp_path):

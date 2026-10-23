@@ -71,13 +71,19 @@ def _tenant(
 def _counts(tenant_id: str) -> tuple[int, int]:
     with Session(engine) as session:
         conversations = session.exec(
-            select(func.count()).select_from(Conversation).where(col(Conversation.tenant_id) == tenant_id)
+            select(func.count())
+            .select_from(Conversation)
+            .where(col(Conversation.tenant_id) == tenant_id, col(Conversation.deleted_at).is_(None))
         ).one()
         messages = session.exec(
             select(func.count())
             .select_from(Message)
             .join(Conversation, col(Message.conversation_id) == Conversation.id)
-            .where(col(Conversation.tenant_id) == tenant_id, col(Message.role) == "user")
+            .where(
+                col(Conversation.tenant_id) == tenant_id,
+                col(Message.role) == "user",
+                col(Conversation.deleted_at).is_(None),
+            )
         ).one()
     return int(conversations), int(messages)
 

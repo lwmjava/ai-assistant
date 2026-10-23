@@ -25,6 +25,10 @@ from app.models.rag import Document, DocumentChunk, ImportBatch, ImportJob, Impo
 from app.models.user import User
 from app.rag.import_jobs import run_import_jobs_once
 
+# 导入失败用例只关心后续转换，文件头仍须通过类型校验。
+_ZIP_HEADER = b"PK\x03\x04"
+_OLE_HEADER = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
 
 def _patch_storage_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """将知识库源文件落盘目录重定向到临时路径。"""
@@ -615,7 +619,7 @@ def test_pptx_import_job_persists_trace_for_ocr_fallback_failure(
                 "files",
                 (
                     "deck.pptx",
-                    io.BytesIO(b"fake-pptx"),
+                    io.BytesIO(_ZIP_HEADER + b"fake-pptx"),
                     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
                 ),
             )
@@ -691,7 +695,7 @@ def test_pptx_import_job_persists_trace_for_pdf_conversion_failure(
                 "files",
                 (
                     "deck.pptx",
-                    io.BytesIO(b"fake-pptx"),
+                    io.BytesIO(_ZIP_HEADER + b"fake-pptx"),
                     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
                 ),
             )
@@ -789,7 +793,7 @@ def test_legacy_doc_import_job_succeeds(
 
     resp = client.post(
         "/api/v1/rag/import-jobs/upload",
-        files=[("files", ("legacy.doc", io.BytesIO(b"%doc"), "application/msword"))],
+        files=[("files", ("legacy.doc", io.BytesIO(_OLE_HEADER + b"%doc"), "application/msword"))],
     )
     assert resp.status_code == 202
 
@@ -832,7 +836,7 @@ def test_legacy_doc_import_job_truncates_user_error_and_persists_trace(
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
         "/api/v1/rag/import-jobs/upload",
-        files=[("files", ("legacy.doc", io.BytesIO(b"%doc"), "application/msword"))],
+        files=[("files", ("legacy.doc", io.BytesIO(_OLE_HEADER + b"%doc"), "application/msword"))],
     )
     assert resp.status_code == 202
 
@@ -890,7 +894,7 @@ def test_legacy_doc_import_job_persists_full_trace_for_subprocess_failure(
     monkeypatch.setattr("app.rag.import_jobs.parse_uploaded_document", fake_parse)
     resp = client.post(
         "/api/v1/rag/import-jobs/upload",
-        files=[("files", ("legacy.ppt", io.BytesIO(b"%ppt"), "application/vnd.ms-powerpoint"))],
+        files=[("files", ("legacy.ppt", io.BytesIO(_OLE_HEADER + b"%ppt"), "application/vnd.ms-powerpoint"))],
     )
     assert resp.status_code == 202
 

@@ -20,6 +20,13 @@ def test_log_sanitizer_redacts_id_phone_bank() -> None:
     assert text.count("***") >= 3
 
 
+def test_log_sanitizer_keeps_hex_version_hashes() -> None:
+    sanitizer = LogSanitizer()
+    version = "1.0#sha256:e87edb2efae6cac0006afe5b27dca523b3ad34679fedc3643214368238484844"
+    text = sanitizer.sanitize(f"skill_activated effective_version={version} origin=builtin")
+    assert version in text
+
+
 def test_log_filter_redacts_pii_in_message() -> None:
     install_log_redaction()
     stream = io.StringIO()

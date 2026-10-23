@@ -14,12 +14,12 @@ function render(node: React.ReactElement) {
   return renderToString(createElement(MemoryRouter, null, node))
 }
 
-test('shows a full 403 page with a return-to-chat action', () => {
+test('shows a full 403 page with a return-home action', () => {
   const html = render(createElement(ForbiddenPage))
   expect(html).toContain('403')
   expect(html).toContain('没有访问权限')
-  expect(html).toContain('返回对话')
-  expect(html).toContain('href="/chat"')
+  expect(html).toContain('返回首页')
+  expect(html).toContain('href="/"')
   expect(html).toContain('role="alert"')
 })
 

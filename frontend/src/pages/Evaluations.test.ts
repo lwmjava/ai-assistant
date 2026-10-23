@@ -50,6 +50,6 @@ test('load error and unauthorized role never render report entries', () => {
   const html = renderPage()
   expect(html).toContain('403')
   expect(html).toContain('当前角色无权查看评测报告')
-  expect(html).toContain('返回对话')
+  expect(html).toContain('返回首页')
   expect(html).not.toContain('retrieval-example')
 })

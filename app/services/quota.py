@@ -67,12 +67,16 @@ def _lock_tenant(session: Session, tenant_id: str) -> Tenant | None:
 
 
 def count_user_messages(session: Session, tenant_id: str) -> int:
-    """本租户现存用户消息条数。助手回复不计入。"""
+    """本租户未软删除会话中的用户消息条数。助手回复不计入。"""
     statement = (
         select(func.count())
         .select_from(Message)
         .join(Conversation, col(Message.conversation_id) == Conversation.id)
-        .where(col(Conversation.tenant_id) == tenant_id, col(Message.role) == "user")
+        .where(
+            col(Conversation.tenant_id) == tenant_id,
+            col(Message.role) == "user",
+            col(Conversation.deleted_at).is_(None),
+        )
     )
     return int(session.exec(statement).one())
 

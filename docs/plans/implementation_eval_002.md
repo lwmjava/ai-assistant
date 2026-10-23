@@ -1,11 +1,11 @@
-# EVAL-002 实现说明（门禁已跑，未关闭）
+# EVAL-002 实现说明（已关闭）
 
 - 分支：`feat/EVAL-002`
 - 基线提交：`03e8bf30f2a7332260478e54a549d452dcf4b3e8`（`feat/stage5-quota-chat-export-adm-sec`；`main` 无 EVAL-001/FEED-001）
-- 候选：未提交；输入指纹见 `data/validation/eval002-gates-20261023/input-sha256.txt`
+- 最终业务候选：`df2b1ffaf09d686b595acb1883cc91cc57bd2a5b`
 - 契约：`docs/plans/plan_eval_002_dataset_governance_20261023.md`
 - 解释器：`D:/DepTooL/anaconda3/envs/ai-assistant/python.exe`
-- 平台：Windows 10（本机专项）；Linux/Ubuntu CI 未跑（无推送）
+- 平台：Windows 10（本机专项）；Ubuntu CI 绑定最终业务 SHA
 
 ## 行为摘要
 
@@ -47,16 +47,26 @@
 
 用户更新 `.env` 管理员口令后授权执行 `data/validation/eval002_agent_accept.py`（本机 `127.0.0.1:8000`，`system_admin`）：**15 PASS / 0 FAIL**。覆盖创建数据集、导入 draft、hash、AI+gold→422、submit、approve、已批准删除→422、点踩→提名候选→accept、接受后已批版本 `case_count` 仍为 2。口令与 token 未写入本文件。
 
-## 业务接受（2026-10-23）
+## 业务接受与关闭（2026-10-23）
 
-用户确认「可以关闭了」。业务验收视为接受（含 AI 受托 API 15/15）。任务状态 → `in_review`，**尚未 `done`**。
+用户确认「可以关闭了」后业务验收接受；随后确认 GitHub CI 通过。
 
-## 未验证 / 阻断 done 项
+同 SHA CI（run [39950697792](https://github.com/lwmjava/ai-assistant/actions/runs/39950697792)）：
 
-- 工作区改动未提交；无最终候选 SHA
-- 同 SHA Ubuntu Backend / Frontend / Agent CI 未跑
-- 独立审查未单独落盘（实现者自审 + 受托验收已做；若要求独立审查需另授权）
-- `tenant_admin` holdout 脱敏未在本轮受托脚本覆盖（system_admin 主链已通；专项测试已覆盖脱敏）
+| Job | ID | 结论 |
+|---|---|---|
+| Backend (ruff / mypy / pytest) | 120404143260 | success |
+| Frontend (typecheck / vitest / eslint / build) | 120404143302 | success |
+| Agent official baseline | 120404143098 | success |
+| RAG official baseline | 120404143229 | success |
+
+任务状态 → `done`。不代表合并或生产发布授权。
+
+## 残余说明（非阻断）
+
+- 独立审查未单独落盘（实现者自审 + 受托验收已做）
+- `tenant_admin` holdout 脱敏未在受托脚本覆盖（system_admin 主链已通；专项测试已覆盖脱敏）
+- 关闭后若仅追加本验收说明到 `tasks.yaml` / 本文件，不改变 `df2b1ff` 检查输入，可沿用上述 CI 证据
 
 ## 回滚
 

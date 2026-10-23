@@ -141,30 +141,80 @@ class ChatService:
 
     # ── 会话生命周期 ──────────────────────────────
     def list_conversations(
-        self, session: Session, user: User, *, limit: int = 50, offset: int = 0
+        self,
+        session: Session,
+        user: User,
+        *,
+        status: str = "active",
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[Conversation]:
-        """列出当前用户可见的会话（系统管理员可见同租户全部）。"""
+        """列出当前用户可见的会话（系统管理员可见同租户全部）。
+
+        status: active（默认，未删未归档）/ archived / deleted。
+        """
         stmt = select(Conversation).where(Conversation.tenant_id == user.tenant_id)
         if user.role_enum.value != "system_admin":
             stmt = stmt.where(Conversation.user_id == user.id)
+        if status == "archived":
+            stmt = stmt.where(
+                col(Conversation.deleted_at).is_(None),
+                col(Conversation.archived_at).is_not(None),
+            )
+        elif status == "deleted":
+            stmt = stmt.where(col(Conversation.deleted_at).is_not(None))
+        else:
+            stmt = stmt.where(
+                col(Conversation.deleted_at).is_(None),
+                col(Conversation.archived_at).is_(None),
+            )
         stmt = stmt.order_by(col(Conversation.updated_at).desc()).limit(limit).offset(offset)
         return list(session.exec(stmt).all())
 
     def get_conversation(self, session: Session, user: User, conversation_id: str) -> Conversation | None:
-        """按 ID 获取会话，无权限时返回 None。"""
+        """按 ID 获取会话，无权限时返回 None。软删除会话仍可按 ID 读取。"""
         conv = session.get(Conversation, conversation_id)
         if conv is None or not self._can_access(conv, user):
             return None
         return conv
 
     def delete_conversation(self, session: Session, user: User, conversation_id: str) -> bool:
-        """删除会话（级联删除消息）。无权限或不存在返回 False。"""
+        """软删除会话。消息行保留，默认列表不再出现。"""
         conv = self.get_conversation(session, user, conversation_id)
-        if conv is None:
+        if conv is None or conv.deleted_at is not None:
             return False
-        session.delete(conv)
+        now = datetime.now(UTC)
+        conv.deleted_at = now
+        conv.updated_at = now
+        session.add(conv)
         session.commit()
         return True
+
+    def archive_conversation(self, session: Session, user: User, conversation_id: str) -> Conversation | None:
+        """归档未删除的会话。"""
+        conv = self.get_conversation(session, user, conversation_id)
+        if conv is None or conv.deleted_at is not None:
+            return None
+        now = datetime.now(UTC)
+        conv.archived_at = now
+        conv.updated_at = now
+        session.add(conv)
+        session.commit()
+        session.refresh(conv)
+        return conv
+
+    def unarchive_conversation(self, session: Session, user: User, conversation_id: str) -> Conversation | None:
+        """取消归档，回到活动列表。"""
+        conv = self.get_conversation(session, user, conversation_id)
+        if conv is None or conv.deleted_at is not None or conv.archived_at is None:
+            return None
+        now = datetime.now(UTC)
+        conv.archived_at = None
+        conv.updated_at = now
+        session.add(conv)
+        session.commit()
+        session.refresh(conv)
+        return conv
 
     def rename_conversation(
         self, session: Session, user: User, conversation_id: str, title: str

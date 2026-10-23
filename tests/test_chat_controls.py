@@ -151,7 +151,12 @@ def test_rename_and_delete_follow_owner_and_same_tenant_admin(client) -> None:
     deleted = http.delete(f"/api/v1/chat/conversations/{conversation_id}")
     assert deleted.status_code == 200
     holder["user"] = _user("chat-member", "tenant-a", Role.MEMBER, "chat-member")
-    assert http.get(f"/api/v1/chat/conversations/{conversation_id}").status_code == 404
+    assert all(item["id"] != conversation_id for item in http.get("/api/v1/chat/conversations").json())
+    detail = http.get(f"/api/v1/chat/conversations/{conversation_id}")
+    assert detail.status_code == 200
+    assert detail.json()["deleted_at"]
+    removed = http.get("/api/v1/chat/conversations?status=deleted")
+    assert any(item["id"] == conversation_id for item in removed.json())
 
 
 def test_same_tenant_members_cannot_see_each_other(client) -> None:

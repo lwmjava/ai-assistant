@@ -5,6 +5,7 @@ Conversation 归属某个租户下的用户；Message 归属某次会话，
 """
 
 import uuid
+from datetime import datetime
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -25,6 +26,10 @@ class Conversation(SQLModel, TimestampMixin, table=True):
     tenant_id: str = Field(index=True)
     user_id: str = Field(index=True)
     title: str | None = Field(default=None)
+    # 软删除时间；默认列表不展示，仍可按 deleted 状态查询。
+    deleted_at: datetime | None = Field(default=None, index=True)
+    # 归档时间；进入归档列表，默认活动列表不展示。
+    archived_at: datetime | None = Field(default=None, index=True)
 
     messages: list["Message"] = Relationship(
         back_populates="conversation", cascade_delete=True

@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlmodel import Session
@@ -132,6 +132,8 @@ class ConversationOut(BaseModel):
     title: str | None
     created_at: str
     updated_at: str
+    deleted_at: str | None = None
+    archived_at: str | None = None
 
 
 class AttachmentOut(BaseModel):
@@ -263,6 +265,8 @@ def _conv_out(conv: Conversation) -> ConversationOut:
         title=conv.title,
         created_at=conv.created_at.isoformat(),
         updated_at=conv.updated_at.isoformat(),
+        deleted_at=conv.deleted_at.isoformat() if conv.deleted_at else None,
+        archived_at=conv.archived_at.isoformat() if conv.archived_at else None,
     )
 
 
@@ -499,11 +503,18 @@ async def cancel_run(run_id: str, current_user: User = Depends(require_permissio
 
 @router.get("/conversations", response_model=list[ConversationOut])
 def list_conversations(
+    list_status: str = Query("active", alias="status"),
     current_user: User = Depends(require_permission("conversations", "read")),
     session: Session = Depends(get_db),
 ) -> list[ConversationOut]:
-    """列出当前用户可见的会话。"""
-    convs = _service.list_conversations(session, current_user)
+    """列出当前用户可见的会话。status=active|archived|deleted。"""
+    normalized = (list_status or "active").strip().lower()
+    if normalized not in {"active", "archived", "deleted"}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="status 只能是 active、archived 或 deleted",
+        )
+    convs = _service.list_conversations(session, current_user, status=normalized)
     return [_conv_out(c) for c in convs]
 
 
@@ -562,7 +573,7 @@ async def delete_conversation(
     current_user: User = Depends(require_permission("conversations", "delete")),
     session: Session = Depends(get_db),
 ) -> dict:
-    """删除会话及其消息。"""
+    """软删除会话。消息保留，默认列表不再出现。"""
     ok = _service.delete_conversation(session, current_user, conversation_id)
     if not ok:
         raise HTTPException(
@@ -576,6 +587,54 @@ async def delete_conversation(
         resource_id=conversation_id,
     )
     return {"deleted": True}
+
+
+@router.post("/conversations/{conversation_id}/archive", response_model=ConversationOut)
+async def archive_conversation(
+    conversation_id: str,
+    request: Request,
+    current_user: User = Depends(require_permission("conversations", "write")),
+    session: Session = Depends(get_db),
+) -> ConversationOut:
+    """归档会话，进入归档列表。"""
+    conv = _service.archive_conversation(session, current_user, conversation_id)
+    if conv is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
+        )
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=current_user,
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details={"action": "conversation_archive"},
+    )
+    return _conv_out(conv)
+
+
+@router.post("/conversations/{conversation_id}/unarchive", response_model=ConversationOut)
+async def unarchive_conversation(
+    conversation_id: str,
+    request: Request,
+    current_user: User = Depends(require_permission("conversations", "write")),
+    session: Session = Depends(get_db),
+) -> ConversationOut:
+    """取消归档，回到活动列表。"""
+    conv = _service.unarchive_conversation(session, current_user, conversation_id)
+    if conv is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在或无权访问"
+        )
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=current_user,
+        resource_type="conversation",
+        resource_id=conversation_id,
+        details={"action": "conversation_unarchive"},
+    )
+    return _conv_out(conv)
 
 
 @router.get("/tools")

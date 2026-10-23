@@ -8018,7 +8018,7 @@ tasks:
 
   - id: "CHAT-008"
     title: "会话软删除与归档"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on: []
@@ -8060,6 +8060,7 @@ tasks:
         - "pytest -k \"conversation or archive or delete\""
     execution:
       owner: "个人开发者"
+      progress: "2026-10-23用户验收通过：软删除后默认列表不再出现，已删除列表仍可找到；归档进入归档列表并可取消。最终提交的 GitHub CI 尚未核对，保持 in_review。"
       nightly:
         eligible: false
         production_access: false
@@ -8068,7 +8069,7 @@ tasks:
 
   - id: "EXPORT-002"
     title: "训练格式导出 Alpaca 或 ShareGPT"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -8108,6 +8109,7 @@ tasks:
         - "pytest -k export"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-23用户验收通过：ShareGPT 文件可下载解析，审计在文件返回前写入。最终提交的 GitHub CI 尚未核对，保持 in_review。"
       nightly:
         eligible: false
         production_access: false
@@ -8160,7 +8162,7 @@ tasks:
         - "pytest -k \"register or auth\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：公开注册邮箱必填+格式+库唯一；setup仍可空邮箱。前后端注册页同步。专项test_auth_register通过。待业务验收与最终CI。"
+      progress: "2026-10-22实现：公开注册邮箱必填+格式+库唯一；setup仍可空邮箱。前后端注册页同步。专项test_auth_register通过。2026-10-23用户验收通过。最终提交的 GitHub CI 尚未核对，保持 in_review。"
       nightly:
         eligible: false
         production_access: false
@@ -8208,7 +8210,7 @@ tasks:
         - "pytest -k \"status or admin\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：状态接口与页面增加在线用户(15分钟)、知识库存储字节、本进程自然日API调用量。仅system_admin。专项test_admin_status通过。待业务验收与最终CI。"
+      progress: "2026-10-22实现：状态接口与页面增加在线用户(15分钟)、知识库存储字节、本进程自然日API调用量。仅system_admin。专项test_admin_status通过。2026-10-23用户验收通过。最终提交的 GitHub CI 尚未核对，保持 in_review。"
       nightly:
         eligible: false
         production_access: false
@@ -8626,7 +8628,7 @@ tasks:
         - "cd frontend && npm run build"
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22实现：/settings/tenant页+GET/POST /tenant/members；导航按members:write显示；知识库入口链到既有页。专项test_adm_006与前端typecheck通过。待业务验收与最终CI。"
+      progress: "2026-10-22实现：/settings/tenant页+GET/POST /tenant/members；导航按members:write显示；知识库入口链到既有页。专项test_adm_006与前端typecheck通过。2026-10-23用户验收通过。最终提交的 GitHub CI 尚未核对，保持 in_review。"
       nightly:
         eligible: false
         production_access: false

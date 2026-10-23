@@ -50,6 +50,7 @@ class AuditAction(str, Enum):
     TENANT_DEACTIVATE = "tenant_deactivate"
     QUOTA_UPDATE = "quota_update"
     EXPORT_REQUESTED = "export_requested"
+    TRAINING_EXPORT_REQUESTED = "training_export_requested"
 
     # ── 对话 ──
     CONVERSATION_CREATE = "conversation_create"

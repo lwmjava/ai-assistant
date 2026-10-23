@@ -1,25 +1,25 @@
-/** 下载当前租户对话原文。成功时浏览器保存 conversations.json。 */
+/** 下载当前租户对话原文或 ShareGPT 训练格式。 */
 
 import { exportFailureMessage } from '@/lib/export-message'
 import { API_BASE, notifySessionExpired, refreshTokens } from '@/lib/http'
 import { getAccessToken } from '@/store/auth'
 
-async function postExport(token: string | null): Promise<Response> {
-  return fetch(`${API_BASE}/export/conversations`, {
+async function postExport(path: string, token: string | null): Promise<Response> {
+  return fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
 }
 
-export async function downloadTenantConversations(): Promise<void> {
-  let res = await postExport(getAccessToken())
+async function downloadExport(path: string, filename: string): Promise<void> {
+  let res = await postExport(path, getAccessToken())
   if (res.status === 401) {
     const next = await refreshTokens()
     if (!next) {
       notifySessionExpired()
       throw new Error('登录状态已失效，请重新登录')
     }
-    res = await postExport(next.access_token)
+    res = await postExport(path, next.access_token)
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '')
@@ -37,9 +37,17 @@ export async function downloadTenantConversations(): Promise<void> {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'conversations.json'
+  link.download = filename
   document.body.appendChild(link)
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+}
+
+export async function downloadTenantConversations(): Promise<void> {
+  await downloadExport('/export/conversations', 'conversations.json')
+}
+
+export async function downloadTenantConversationsSharegpt(): Promise<void> {
+  await downloadExport('/export/conversations/sharegpt', 'conversations_sharegpt.json')
 }

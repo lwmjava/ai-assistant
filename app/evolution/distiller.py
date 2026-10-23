@@ -225,7 +225,10 @@ class Distiller:
                 # 获取最近更新的会话
                 stmt = (
                     select(Conversation)
-                    .where(Conversation.updated_at >= cutoff)
+                    .where(
+                        Conversation.updated_at >= cutoff,
+                        col(Conversation.deleted_at).is_(None),
+                    )
                     .order_by(col(Conversation.updated_at).desc())
                     .limit(max_count)
                 )

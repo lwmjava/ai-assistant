@@ -11,17 +11,21 @@ import type {
   ToolItem,
 } from '@/types/api'
 
+export type ConversationListStatus = 'active' | 'archived' | 'deleted'
+
 export const conversationKeys = {
   all: ['conversations'] as const,
-  list: () => [...conversationKeys.all, 'list'] as const,
+  list: (status: ConversationListStatus = 'active') =>
+    [...conversationKeys.all, 'list', status] as const,
   detail: (id: string) => [...conversationKeys.all, 'detail', id] as const,
 }
 
 /** 会话列表（当前用户可见范围由后端按租户/归属过滤）。 */
-export function useConversations() {
+export function useConversations(status: ConversationListStatus = 'active') {
   return useQuery({
-    queryKey: conversationKeys.list(),
-    queryFn: () => api.get<ConversationOut[]>('/chat/conversations'),
+    queryKey: conversationKeys.list(status),
+    queryFn: () =>
+      api.get<ConversationOut[]>(`/chat/conversations?status=${encodeURIComponent(status)}`),
     staleTime: 10_000,
   })
 }
@@ -43,6 +47,26 @@ export function useDeleteConversation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete<{ deleted: boolean }>(`/chat/conversations/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: conversationKeys.all })
+    },
+  })
+}
+
+export function useArchiveConversation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.post<ConversationOut>(`/chat/conversations/${id}/archive`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: conversationKeys.all })
+    },
+  })
+}
+
+export function useUnarchiveConversation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.post<ConversationOut>(`/chat/conversations/${id}/unarchive`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: conversationKeys.all })
     },

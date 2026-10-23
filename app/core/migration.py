@@ -180,6 +180,23 @@ def _ensure_message_columns() -> None:
             conn.execute(text("ALTER TABLE messages ADD COLUMN skill_names TEXT"))
 
 
+def _ensure_conversation_lifecycle_columns() -> None:
+    """补齐会话软删除与归档列。"""
+    from app.core.database import engine
+
+    with engine.begin() as conn:
+        tables = set(inspect(conn).get_table_names())
+        if "conversations" not in tables:
+            return
+        columns = {col["name"] for col in inspect(conn).get_columns("conversations")}
+        if "deleted_at" not in columns:
+            logger.warning("补齐缺失的会话软删除列")
+            conn.execute(text("ALTER TABLE conversations ADD COLUMN deleted_at DATETIME"))
+        if "archived_at" not in columns:
+            logger.warning("补齐缺失的会话归档列")
+            conn.execute(text("ALTER TABLE conversations ADD COLUMN archived_at DATETIME"))
+
+
 def _ensure_quota_columns() -> None:
     """版本已被标到 head、但配额列还没写上时，把可空整数列补上。"""
     from app.core.database import engine
@@ -449,6 +466,7 @@ def auto_migrate() -> bool:
     if not pending:
         _ensure_rag_schema_columns()
         _ensure_message_columns()
+        _ensure_conversation_lifecycle_columns()
         _ensure_quota_columns()
         logger.info("数据库 schema 已是最新版本，无需迁移。")
         return True
@@ -461,6 +479,7 @@ def auto_migrate() -> bool:
         upgrade("head")
         _ensure_rag_schema_columns()
         _ensure_message_columns()
+        _ensure_conversation_lifecycle_columns()
         _ensure_quota_columns()
         logger.info("数据库迁移完成（%d 个版本）。", len(pending))
         return True

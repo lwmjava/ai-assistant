@@ -16,11 +16,14 @@ import {
   conversationKeys,
   renameConversation,
   sendMessage,
+  useArchiveConversation,
   useConversation,
   useConversations,
   useDeleteConversation,
+  useUnarchiveConversation,
+  type ConversationListStatus,
 } from '@/api/chat'
-import { downloadTenantConversations } from '@/api/export'
+import { downloadTenantConversations, downloadTenantConversationsSharegpt } from '@/api/export'
 import { useChatStream } from '@/hooks/useChatStream'
 import { useChatAttachments } from '@/hooks/useChatAttachments'
 import { useRegenerate } from '@/hooks/useRegenerate'
@@ -99,6 +102,7 @@ export default function ChatPage() {
     remove: removeAttachment, removeSent: removeSentAttachments } = useChatAttachments()
   const [pending, setPending] = useState<MessageOut[]>([])
   const [listOpen, setListOpen] = useState(false)
+  const [listStatus, setListStatus] = useState<ConversationListStatus>('active')
   const [pendingDelete, setPendingDelete] = useState<ConversationOut | null>(null)
   /** 发送模式：流式 / 一次性，记忆在本地。 */
   const [mode, setMode] = useState<SendMode>(readMode)
@@ -122,9 +126,11 @@ export default function ChatPage() {
   // 一次性模式的中断控制器；fetch 被 abort 会抛 AbortError，需与真实错误区分
   const onceAbortRef = useRef<AbortController | null>(null)
 
-  const conversationsQuery = useConversations()
+  const conversationsQuery = useConversations(listStatus)
   const detailQuery = useConversation(activeId)
   const deleteMutation = useDeleteConversation()
+  const archiveMutation = useArchiveConversation()
+  const unarchiveMutation = useUnarchiveConversation()
   const { snapshot, send, stop, reset } = useChatStream()
   const healthQuery = useQuery({
     queryKey: ['health'],
@@ -527,13 +533,35 @@ export default function ChatPage() {
         setPending([])
         reset()
       }
-      toast.success('会话已删除')
+      toast.success('会话已移入已删除')
     } catch (err) {
       toast.error('删除失败', err instanceof ApiError ? err.detail : undefined)
     } finally {
       setPendingDelete(null)
     }
   }, [pendingDelete, deleteMutation, activeId, toast, reset, clearAttachments])
+
+  const handleArchive = useCallback(
+    async (id: string) => {
+      try {
+        if (listStatus === 'archived') {
+          await unarchiveMutation.mutateAsync(id)
+          toast.success('已取消归档')
+        } else {
+          await archiveMutation.mutateAsync(id)
+          if (activeId === id) {
+            setActiveId(null)
+            setPending([])
+            reset()
+          }
+          toast.success('会话已归档')
+        }
+      } catch (err) {
+        toast.error('归档失败', err instanceof ApiError ? err.detail : undefined)
+      }
+    },
+    [listStatus, archiveMutation, unarchiveMutation, activeId, toast, reset],
+  )
 
   const handleExport = useCallback(async () => {
     if (exporting) return
@@ -546,6 +574,22 @@ export default function ChatPage() {
       const message = err instanceof Error ? err.message : '导出失败，请稍后重试'
       setExportNotice(message)
       toast.error('导出未完成', message)
+    } finally {
+      setExporting(false)
+    }
+  }, [exporting, toast])
+
+  const handleExportSharegpt = useCallback(async () => {
+    if (exporting) return
+    setExporting(true)
+    setExportNotice(null)
+    try {
+      await downloadTenantConversationsSharegpt()
+      toast.success('已开始下载', '文件名为 conversations_sharegpt.json')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '导出失败，请稍后重试'
+      setExportNotice(message)
+      toast.error('训练格式导出未完成', message)
     } finally {
       setExporting(false)
     }
@@ -570,6 +614,8 @@ export default function ChatPage() {
         error={conversationsQuery.error}
         role={role}
         open={listOpen}
+        listStatus={listStatus}
+        onListStatusChange={setListStatus}
         onClose={() => setListOpen(false)}
         onSelect={handleSelect}
         onNew={handleNew}
@@ -577,6 +623,7 @@ export default function ChatPage() {
           const target = conversations.find((c) => c.id === id)
           if (target) setPendingDelete(target)
         }}
+        onArchive={(id) => void handleArchive(id)}
         onRetry={() => void conversationsQuery.refetch()}
       />
 
@@ -640,14 +687,24 @@ export default function ChatPage() {
             </Button>
           )}
           {canExport && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void handleExport()}
-              disabled={exporting}
-            >
-              {exporting ? '正在导出' : '导出本租户对话'}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleExport()}
+                disabled={exporting}
+              >
+                {exporting ? '正在导出' : '导出本租户对话'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleExportSharegpt()}
+                disabled={exporting}
+              >
+                导出 ShareGPT
+              </Button>
+            </>
           )}
           <Button
             size="sm"
@@ -781,7 +838,7 @@ export default function ChatPage() {
         open={Boolean(pendingDelete)}
         onClose={() => setPendingDelete(null)}
         title="删除会话"
-        description="会话内的全部消息将一并移除，此操作不可撤销。"
+        description="会话会从默认列表隐藏，消息仍保留，可在「已删除」中查看。"
         size="sm"
         busy={deleteMutation.isPending}
         footer={

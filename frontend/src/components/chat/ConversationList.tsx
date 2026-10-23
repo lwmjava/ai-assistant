@@ -1,7 +1,8 @@
-/** 会话列表：新建、切换、删除；移动端以抽屉呈现。 */
+/** 会话列表：新建、切换、删除、归档；移动端以抽屉呈现。 */
 
-import { MessageSquarePlus, Trash2, X } from 'lucide-react'
+import { Archive, MessageSquarePlus, Trash2, X } from 'lucide-react'
 
+import type { ConversationListStatus } from '@/api/chat'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/Feedback'
 import { cn } from '@/lib/cn'
@@ -16,12 +17,21 @@ export interface ConversationListProps {
   error: unknown
   role: Role | undefined
   open: boolean
+  listStatus: ConversationListStatus
+  onListStatusChange: (status: ConversationListStatus) => void
   onClose: () => void
   onSelect: (id: string) => void
   onNew: () => void
   onDelete: (id: string) => void
+  onArchive: (id: string) => void
   onRetry: () => void
 }
+
+const STATUS_TABS: { id: ConversationListStatus; label: string }[] = [
+  { id: 'active', label: '活动' },
+  { id: 'archived', label: '归档' },
+  { id: 'deleted', label: '已删除' },
+]
 
 export function ConversationList({
   conversations,
@@ -30,13 +40,21 @@ export function ConversationList({
   error,
   role,
   open,
+  listStatus,
+  onListStatusChange,
   onClose,
   onSelect,
   onNew,
   onDelete,
+  onArchive,
   onRetry,
 }: ConversationListProps) {
   const canDelete = can(role, 'conversations', 'delete')
+  const canWrite = can(role, 'conversations', 'write')
+  const emptyTitle =
+    listStatus === 'archived' ? '还没有归档会话' : listStatus === 'deleted' ? '还没有已删除会话' : '还没有会话'
+  const emptyDescription =
+    listStatus === 'active' ? '点击「新建」发起第一轮对话。' : '切换到其他分类查看会话。'
 
   return (
     <>
@@ -59,7 +77,13 @@ export function ConversationList({
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-3">
           <p className="px-1 text-sm font-medium text-text-muted">会话</p>
           <div className="flex items-center gap-1">
-            <Button size="sm" variant="primary" onClick={onNew} icon={<MessageSquarePlus className="size-4" aria-hidden />}>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={onNew}
+              disabled={listStatus !== 'active'}
+              icon={<MessageSquarePlus className="size-4" aria-hidden />}
+            >
               新建
             </Button>
             <button
@@ -73,17 +97,33 @@ export function ConversationList({
           </div>
         </div>
 
+        <div className="flex gap-1 border-b border-border px-2 py-2" role="tablist" aria-label="会话分类">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={listStatus === tab.id}
+              onClick={() => onListStatusChange(tab.id)}
+              className={cn(
+                'flex-1 rounded-md px-2 py-1.5 text-xs transition-colors',
+                listStatus === tab.id
+                  ? 'bg-primary/12 font-medium text-text'
+                  : 'text-text-muted hover:bg-surface-2',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="scroll-y flex-1 p-2">
           {loading ? (
             <SkeletonRows rows={6} className="p-2" />
           ) : error ? (
             <ErrorState error={error} onRetry={onRetry} className="border-0 bg-transparent" />
           ) : conversations.length === 0 ? (
-            <EmptyState
-              title="还没有会话"
-              description="点击「新建」发起第一轮对话。"
-              className="py-10"
-            />
+            <EmptyState title={emptyTitle} description={emptyDescription} className="py-10" />
           ) : (
             <ul className="space-y-1">
               {conversations.map((conv) => {
@@ -96,7 +136,7 @@ export function ConversationList({
                       aria-current={isActive ? 'true' : undefined}
                       className={cn(
                         'w-full rounded-lg px-3 py-2.5 text-left transition-colors',
-                        'min-h-touch pr-11',
+                        'min-h-touch pr-20',
                         isActive
                           ? 'bg-primary/12 ring-1 ring-primary/25'
                           : 'hover:bg-surface-2',
@@ -115,20 +155,40 @@ export function ConversationList({
                       </span>
                     </button>
 
-                    {canDelete && (
-                      <button
-                        type="button"
-                        onClick={() => onDelete(conv.id)}
-                        aria-label={`删除会话 ${conv.title ?? conv.id}`}
-                        className={cn(
-                          'absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-md',
-                          'text-text-faint opacity-0 transition-opacity hover:bg-danger/15 hover:text-danger',
-                          'focus-visible:opacity-100 group-hover/item:opacity-100',
-                        )}
-                      >
-                        <Trash2 className="size-3.5" aria-hidden />
-                      </button>
-                    )}
+                    <div className="absolute right-1 top-1/2 flex -translate-y-1/2 gap-0.5">
+                      {canWrite && listStatus !== 'deleted' && (
+                        <button
+                          type="button"
+                          onClick={() => onArchive(conv.id)}
+                          aria-label={
+                            listStatus === 'archived'
+                              ? `取消归档 ${conv.title ?? conv.id}`
+                              : `归档会话 ${conv.title ?? conv.id}`
+                          }
+                          className={cn(
+                            'grid size-9 place-items-center rounded-md',
+                            'text-text-faint opacity-0 transition-opacity hover:bg-primary/15 hover:text-primary',
+                            'focus-visible:opacity-100 group-hover/item:opacity-100',
+                          )}
+                        >
+                          <Archive className="size-3.5" aria-hidden />
+                        </button>
+                      )}
+                      {canDelete && listStatus !== 'deleted' && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(conv.id)}
+                          aria-label={`删除会话 ${conv.title ?? conv.id}`}
+                          className={cn(
+                            'grid size-9 place-items-center rounded-md',
+                            'text-text-faint opacity-0 transition-opacity hover:bg-danger/15 hover:text-danger',
+                            'focus-visible:opacity-100 group-hover/item:opacity-100',
+                          )}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden />
+                        </button>
+                      )}
+                    </div>
                   </li>
                 )
               })}

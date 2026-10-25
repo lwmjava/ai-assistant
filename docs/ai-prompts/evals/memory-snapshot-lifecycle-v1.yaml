@@ -1,0 +1,12 @@
+id: memory-snapshot-lifecycle-v1
+family: memory
+kind: deterministic_contract
+cases:
+  - id: incremental-reuse
+    expectation: a valid same-conversation snapshot prevents old messages from being compressed again
+  - id: recent-window
+    expectation: keep_recent messages remain verbatim outside the summary
+  - id: invalidation
+    expectation: edit, delete, revocation, tenant disablement, expiry, or version drift rejects the snapshot
+  - id: isolation
+    expectation: a snapshot is never searched or reused across conversations or tenants

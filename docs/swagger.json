@@ -2807,6 +2807,131 @@
         ]
       }
     },
+    "/api/v1/run-history": {
+      "get": {
+        "tags": [
+          "run-history"
+        ],
+        "summary": "List Run History",
+        "operationId": "list_run_history_api_v1_run_history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "conversation_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunHistoryPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/run-history/{run_id}": {
+      "get": {
+        "tags": [
+          "run-history"
+        ],
+        "summary": "Get Run History",
+        "operationId": "get_run_history_api_v1_run_history__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunHistoryDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mcp/servers": {
       "get": {
         "tags": [
@@ -5026,6 +5151,190 @@
         ]
       }
     },
+    "/api/v1/evaluations/targets": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "List Targets",
+        "operationId": "list_targets_api_v1_evaluations_targets_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "target_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "rag",
+                "agent",
+                "workflow"
+              ],
+              "type": "string",
+              "title": "Target Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationTargetPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/execution-users": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "List Execution Users",
+        "operationId": "list_execution_users_api_v1_evaluations_execution_users_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationExecutionUserPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/retrieval/strategies": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "Retrieval Strategies",
+        "operationId": "retrieval_strategies_api_v1_evaluations_retrieval_strategies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalStrategiesOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/evaluations/retrieval/compare": {
+      "post": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "Compare Retrieval",
+        "operationId": "compare_retrieval_api_v1_evaluations_retrieval_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalComparisonCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/evaluations/reports": {
       "get": {
         "tags": [
@@ -5049,7 +5358,8 @@
                   "enum": [
                     "retrieval",
                     "generation",
-                    "agent"
+                    "agent",
+                    "workflow"
                   ],
                   "type": "string"
                 },
@@ -5129,7 +5439,8 @@
               "enum": [
                 "retrieval",
                 "generation",
-                "agent"
+                "agent",
+                "workflow"
               ],
               "type": "string",
               "title": "Family"
@@ -5201,6 +5512,275 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReportDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/jobs": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "List Jobs",
+        "operationId": "list_jobs_api_v1_evaluations_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationJobPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "Create Job",
+        "operationId": "create_job_api_v1_evaluations_jobs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationJobCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationJobOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_api_v1_evaluations_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationJobOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/jobs/{job_id}/cases": {
+      "get": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "List Job Cases",
+        "operationId": "list_job_cases_api_v1_evaluations_jobs__job_id__cases_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationCaseResultPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/jobs/{job_id}/cancel": {
+      "post": {
+        "tags": [
+          "evaluations"
+        ],
+        "summary": "Cancel Job",
+        "operationId": "cancel_job_api_v1_evaluations_jobs__job_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationJobOut"
                 }
               }
             }
@@ -7389,7 +7969,8 @@
             "enum": [
               "retrieval",
               "generation",
-              "agent"
+              "agent",
+              "workflow"
             ],
             "title": "Family"
           },
@@ -7447,7 +8028,8 @@
             "enum": [
               "retrieval",
               "generation",
-              "agent"
+              "agent",
+              "workflow"
             ],
             "title": "Family"
           },
@@ -8184,6 +8766,654 @@
           "error"
         ],
         "title": "ErrorResponse"
+      },
+      "EvaluationCaseResultOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "passed",
+              "failed",
+              "error",
+              "skipped"
+            ],
+            "title": "Status"
+          },
+          "metrics": {
+            "type": "object",
+            "title": "Metrics"
+          },
+          "assertions": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Assertions"
+          },
+          "evidence": {
+            "type": "object",
+            "title": "Evidence"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
+          },
+          "external_calls_used": {
+            "type": "integer",
+            "title": "External Calls Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "tenant_id",
+          "case_id",
+          "status",
+          "metrics",
+          "assertions",
+          "evidence",
+          "external_calls_used"
+        ],
+        "title": "EvaluationCaseResultOut"
+      },
+      "EvaluationCaseResultPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationCaseResultOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "EvaluationCaseResultPage"
+      },
+      "EvaluationExecutionUserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "tenant_admin",
+              "member"
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "role"
+        ],
+        "title": "EvaluationExecutionUserOut"
+      },
+      "EvaluationExecutionUserPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationExecutionUserOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "EvaluationExecutionUserPage"
+      },
+      "EvaluationJobCreate": {
+        "properties": {
+          "dataset_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Id"
+          },
+          "dataset_version_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Version Id"
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "retrieval",
+                  "generation",
+                  "agent",
+                  "workflow"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runner"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "smoke",
+                  "synthetic",
+                  "real"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "target_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "rag",
+                  "agent",
+                  "workflow"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Type"
+          },
+          "target_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Target Ids"
+          },
+          "execution_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution User Id"
+          },
+          "enable_generation": {
+            "type": "boolean",
+            "title": "Enable Generation",
+            "default": false
+          },
+          "enable_judge": {
+            "type": "boolean",
+            "title": "Enable Judge",
+            "default": false
+          },
+          "max_cost_yuan": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Max Cost Yuan",
+            "default": 0
+          },
+          "data_egress_confirmed": {
+            "type": "boolean",
+            "title": "Data Egress Confirmed",
+            "default": false
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Idempotency Key"
+          },
+          "max_external_calls": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Max External Calls",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "idempotency_key"
+        ],
+        "title": "EvaluationJobCreate"
+      },
+      "EvaluationJobOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "submitted_by": {
+            "type": "string",
+            "title": "Submitted By"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "dataset_version_id": {
+            "type": "string",
+            "title": "Dataset Version Id"
+          },
+          "job_kind": {
+            "type": "string",
+            "enum": [
+              "internal_smoke",
+              "real_resource"
+            ],
+            "title": "Job Kind"
+          },
+          "target_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "rag",
+                  "agent",
+                  "workflow"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Type"
+          },
+          "adapter_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Name"
+          },
+          "adapter_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Version"
+          },
+          "metric_schema_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric Schema Version"
+          },
+          "execution_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution User Id"
+          },
+          "runner": {
+            "type": "string",
+            "enum": [
+              "retrieval",
+              "generation",
+              "agent",
+              "workflow"
+            ],
+            "title": "Runner"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "smoke",
+              "synthetic",
+              "real"
+            ],
+            "title": "Mode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "cancel_requested",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "interrupted"
+            ],
+            "title": "Status"
+          },
+          "input_hash": {
+            "type": "string",
+            "title": "Input Hash"
+          },
+          "max_external_calls": {
+            "type": "integer",
+            "title": "Max External Calls"
+          },
+          "external_calls_used": {
+            "type": "integer",
+            "title": "External Calls Used"
+          },
+          "case_total": {
+            "type": "integer",
+            "title": "Case Total"
+          },
+          "case_completed": {
+            "type": "integer",
+            "title": "Case Completed"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "report_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Hash"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "cancel_requested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Requested At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "submitted_by",
+          "dataset_id",
+          "dataset_version_id",
+          "job_kind",
+          "runner",
+          "mode",
+          "status",
+          "input_hash",
+          "max_external_calls",
+          "external_calls_used",
+          "case_total",
+          "case_completed"
+        ],
+        "title": "EvaluationJobOut"
+      },
+      "EvaluationJobPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationJobOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "EvaluationJobPage"
+      },
+      "EvaluationTargetOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "target_type": {
+            "type": "string",
+            "enum": [
+              "rag",
+              "agent",
+              "workflow"
+            ],
+            "title": "Target Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "owner_unavailable"
+            ],
+            "title": "Status"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "target_type",
+          "status",
+          "metadata"
+        ],
+        "title": "EvaluationTargetOut"
+      },
+      "EvaluationTargetPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationTargetOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "EvaluationTargetPage"
       },
       "ExecutionOut": {
         "properties": {
@@ -9475,7 +10705,8 @@
             "enum": [
               "retrieval",
               "generation",
-              "agent"
+              "agent",
+              "workflow"
             ],
             "title": "Family"
           },
@@ -9620,7 +10851,8 @@
             "enum": [
               "ratio",
               "count",
-              "ms"
+              "ms",
+              "CNY"
             ],
             "title": "Unit",
             "default": "ratio"
@@ -9675,7 +10907,8 @@
             "enum": [
               "retrieval",
               "generation",
-              "agent"
+              "agent",
+              "workflow"
             ],
             "title": "Family"
           },
@@ -9763,7 +10996,8 @@
             "enum": [
               "retrieval",
               "generation",
-              "agent"
+              "agent",
+              "workflow"
             ],
             "title": "Family"
           },
@@ -9786,6 +11020,238 @@
           "points"
         ],
         "title": "ReportTrend"
+      },
+      "RetrievalComparisonCandidate": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "document_id": {
+            "type": "string",
+            "title": "Document Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "similarity": {
+            "type": "number",
+            "title": "Similarity"
+          },
+          "version_status": {
+            "type": "string",
+            "title": "Version Status"
+          },
+          "retrieval_origin": {
+            "type": "string",
+            "title": "Retrieval Origin"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "expanded_from_chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expanded From Chunk Id"
+          },
+          "score_inherited_from_chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Inherited From Chunk Id"
+          },
+          "content_preview": {
+            "type": "string",
+            "title": "Content Preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "chunk_id",
+          "document_id",
+          "score",
+          "similarity",
+          "version_status",
+          "retrieval_origin",
+          "content_preview"
+        ],
+        "title": "RetrievalComparisonCandidate"
+      },
+      "RetrievalComparisonCreate": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query"
+          },
+          "baseline": {
+            "$ref": "#/components/schemas/RetrievalVariant"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/RetrievalVariant"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query",
+          "baseline",
+          "candidate"
+        ],
+        "title": "RetrievalComparisonCreate"
+      },
+      "RetrievalComparisonOut": {
+        "properties": {
+          "identity": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Identity"
+          },
+          "baseline": {
+            "$ref": "#/components/schemas/RetrievalComparisonRun"
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/RetrievalComparisonRun"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identity",
+          "baseline",
+          "candidate"
+        ],
+        "title": "RetrievalComparisonOut"
+      },
+      "RetrievalComparisonRun": {
+        "properties": {
+          "variant": {
+            "$ref": "#/components/schemas/RetrievalVariant"
+          },
+          "effective_backend": {
+            "type": "string",
+            "title": "Effective Backend"
+          },
+          "elapsed_ms": {
+            "type": "number",
+            "title": "Elapsed Ms"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalComparisonCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variant",
+          "effective_backend",
+          "elapsed_ms",
+          "candidates"
+        ],
+        "title": "RetrievalComparisonRun"
+      },
+      "RetrievalStrategiesOut": {
+        "properties": {
+          "backends": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Backends"
+          },
+          "top_k_min": {
+            "type": "integer",
+            "title": "Top K Min",
+            "default": 1
+          },
+          "top_k_max": {
+            "type": "integer",
+            "title": "Top K Max",
+            "default": 50
+          }
+        },
+        "type": "object",
+        "required": [
+          "backends"
+        ],
+        "title": "RetrievalStrategiesOut"
+      },
+      "RetrievalVariant": {
+        "properties": {
+          "backend": {
+            "type": "string",
+            "enum": [
+              "native",
+              "langchain",
+              "llamaindex"
+            ],
+            "title": "Backend"
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Top K"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backend",
+          "top_k"
+        ],
+        "title": "RetrievalVariant"
       },
       "RevokeTokensResult": {
         "properties": {
@@ -9817,6 +11283,297 @@
         ],
         "title": "Role",
         "description": "五级角色（按权限从高到低）。"
+      },
+      "RunEventOut": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "offset_ms": {
+            "type": "number",
+            "title": "Offset Ms"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "round": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "name",
+          "offset_ms"
+        ],
+        "title": "RunEventOut"
+      },
+      "RunHistoryDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms"
+          },
+          "llm_call_count": {
+            "type": "integer",
+            "title": "Llm Call Count"
+          },
+          "tool_call_count": {
+            "type": "integer",
+            "title": "Tool Call Count"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "usage_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Source"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/RunEventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "status",
+          "error_code",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "llm_call_count",
+          "tool_call_count",
+          "input_tokens",
+          "output_tokens",
+          "usage_source",
+          "events"
+        ],
+        "title": "RunHistoryDetail"
+      },
+      "RunHistoryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "title": "Conversation Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms"
+          },
+          "llm_call_count": {
+            "type": "integer",
+            "title": "Llm Call Count"
+          },
+          "tool_call_count": {
+            "type": "integer",
+            "title": "Tool Call Count"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "usage_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "status",
+          "error_code",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "llm_call_count",
+          "tool_call_count",
+          "input_tokens",
+          "output_tokens",
+          "usage_source"
+        ],
+        "title": "RunHistoryOut"
+      },
+      "RunHistoryPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunHistoryOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "RunHistoryPage"
       },
       "RunOut": {
         "properties": {

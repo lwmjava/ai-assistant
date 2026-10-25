@@ -1,0 +1,11 @@
+id: retrieval-comparison-v1
+family: retrieval
+kind: deterministic_contract
+description: Verify side-by-side retrieval uses one authorized scope and a stable index identity.
+cases:
+  - id: distinct-variants
+    expectation: baseline and candidate must differ
+  - id: no-fallback
+    expectation: requested and effective backend must match
+  - id: stable-identity
+    expectation: embedding, vector store, and active index identity remain unchanged

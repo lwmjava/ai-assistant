@@ -1,0 +1,43 @@
+version: "1.1.3"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored deterministic lifecycle scenarios; not Gold or model-quality evidence"
+execution: "pytest tests/test_evaluation_quality.py tests/test_evaluation_jobs.py tests/test_evaluation_api.py tests/test_evaluation_datasets.py tests/test_evaluation_reports.py"
+cases:
+  - id: completed_task_report_navigation
+    classification: Observed Regression
+    expected: "A completed real-resource task provides a direct view-report action for its bound report, preserving the job/report association without manually matching identifiers in a separate report list."
+    reproduction: "Start one approved RAG evaluation from /evaluations, wait for succeeded, and inspect its task card."
+    observed: "The card contains only job ID/status/progress. No report action, report ID or report hash is rendered. Confirmed in the delegated browser acceptance on 2026-10-25."
+  - id: real_report_identity_projection
+    classification: Observed Regression
+    expected: "Real report details and history show the recorded dataset version and embedding provider/model/dimension/index/backend identity; they do not label recorded fields as missing."
+    reproduction: "Open the completed job's RAG report in /evaluation-reports, compare its details/history with dataset.version_id and target_snapshot.targets[].metadata in the stored report."
+    observed: "Details show dataset_version_id but history reads dataset_version and labels it missing; the real-report projection omits the stored embedding identity, so the page also labels the model missing. Confirmed with explicit local, mock/mock-embedding/64 offline fixtures, not model-quality evidence."
+  - id: bounded_persistent_queue
+    expected: "Only available concurrency slots are submitted to the executor. Overflow remains queued in the database without in-memory task markers; success or failure frees slots to claim the oldest queued jobs. Duplicate notifications do not duplicate execution; cancelled queued jobs are skipped, and shutdown cancels active work without claiming backlog."
+  - id: unexpected_dispatch_failure
+    expected: "An unexpected worker exception stops the dispatcher, signals active cancellation, and logs only the exception class. Queued work is not implicitly retried or kept in an unbounded failure set; startup recovery marks retained nonterminal work interrupted."
+  - id: authorized_zero_cost_start
+    expected: "An approved, runner-compatible immutable dataset version creates one queued job with zero external-call budget."
+  - id: paid_mode_refusal
+    expected: "The legacy internal Smoke creation contract rejects official/real modes and any positive external-call budget before persistence or runner invocation. Separately authorized real-resource tasks use the explicit real-resource contract and its verified budget gates."
+  - id: idempotency
+    expected: "The same actor/key/payload returns the original job; key reuse with a different immutable version conflicts."
+  - id: tenant_non_disclosure
+    expected: "Cross-tenant list/detail/cancel cannot disclose whether a job exists."
+  - id: cancellation
+    expected: "Queued work cancels immediately; running work records cancel_requested and reaches cancelled without publishing success."
+  - id: failure_and_timeout
+    expected: "Runner failure, invalid report, and timeout retain deterministic failed states and public-safe error codes without retry."
+  - id: restart
+    expected: "Persisted queued/running/cancel_requested work becomes interrupted at process startup and is not retried."
+  - id: report_binding
+    expected: "Successful work binds the input hash, report-relative path, and report SHA-256 to the job."
+  - id: paid_quality_explicit_envelope
+    expected: "Real RAG quality requires explicit data egress confirmation, verified price/model identity, at most 10 cases, 30 requests, and 5 CNY; unknown pricing sends zero requests. Internal smoke remains zero-cost."
+  - id: quality_usage_and_failure
+    expected: "Each embedding/generation/judge attempt shares the same call/cost budget and persists reservation before HTTP. Missing/invalid usage, timeout, model drift and cancellation retain costs and deterministic failure without retries. Unknown embedding pricing refuses the entire quality task."
+  - id: untrusted_judge
+    expected: "Untrusted question/evidence/answer stay in data fields. Duplicate keys, nonfinite/out-of-range/bool scores and extra instructions cannot become valid scores. Missing reference remains unknown correctness; same-model scores are advisory."
+  - id: quality_revocation_and_drift
+    expected: "Revoked initiator, tenant/resource changes, dataset hash drift or changed model/price/prompt reject further requests. Answers and private evidence are not persisted in quality results."

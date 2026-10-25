@@ -1,0 +1,29 @@
+id: evaluation-platform-acceptance-v1
+family: platform
+kind: deterministic_contract
+version: "1.1.0"
+classification: Smoke/Adversarial
+provenance: AI-authored deterministic scenarios; not Gold or business-quality acceptance
+cases:
+  - id: failed-report-stays-failed
+    expectation: a red source report remains failed through list and detail APIs
+  - id: platform-admin-only
+    expectation: only system_admin can access the evaluation, report and run-history pages and APIs; tenant_admin, system_viewer, member and viewer are denied
+  - id: internal-smoke-zero-budget
+    expectation: fixed repository runners remain internal smoke with zero external calls and cannot stand in for real-resource product evaluation
+  - id: explicit-real-resource-budget
+    expectation: real Agent and Workflow require an explicit external-call budget; RAG generation and Judge require enabled verified pricing, data-egress confirmation and at most 10 cases, 30 requests and 5 CNY including Embedding; Judge requires generation and unknown pricing sends zero requests
+  - id: real-resource-selection
+    expectation: select an active target tenant and its real resources; Agent requires an active execution user in that tenant; approved manual versions or traceable RAG Silver are supported without matching a fixed repository input hash
+  - id: bounded-job-queue
+    expectation: only free concurrency slots enter the executor; overflow stays persistent queued, cancelled work is skipped, completion drains backlog and shutdown stops claiming without retrying unexpected worker errors
+  - id: tenant-nondisclosure
+    expectation: a different tenant cannot distinguish another tenant's job from a missing job
+  - id: comparable-retrieval
+    expectation: only distinct variants with a stable identity and no backend fallback return results
+  - id: no-quality-overclaim
+    expectation: mock or synthetic execution is not reported as real retrieval or generation quality
+  - id: default-trace-counts
+    expectation: non-debug runs retain actual registered model and tool attempt counts without payload events; missing token usage remains null and reading history causes no execution
+  - id: final-version-evidence
+    expectation: acceptance requires checks bound to the final candidate, applicable same-SHA Ubuntu CI, browser walkthrough and representative business acceptance; old full-test evidence cannot close changed inputs

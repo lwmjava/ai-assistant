@@ -68,3 +68,9 @@ ADR-0018：[工作流单进程准入与周期幂等](0018-workflow-concurrency-i
 ADR-0019：[开发环境 Milvus Lite 启动选择](0019-milvus-lite-runtime-selection.md)，Accepted，2026-10-21；只锁定启动一次的实例选择和归属拒绝。Windows 上尚未证明 Lite 运行库可用。
 
 ADR-0020：[原生结构化工具提议](0020-native-tool-proposals.md)，Accepted，2026-10-22。行动阶段通过兼容接口原生 tools/tool_calls 提议单个函数调用，客户端严格校验后归一为内部执行信封；不放宽文本协议解析。架构批准不代表评测或生产发布完成。
+
+ADR-0021：[运行历史存储与可见性](0021-run-history-storage-visibility.md)，Accepted，2026-10-23。运行历史保存脱敏投影，默认查询窗30天且不自动物理删除；所有者与同租户管理员可读，历史查询不重放执行。
+
+ADR-0022：[会话记忆快照治理](0022-memory-snapshot-governance.md)，Accepted，2026-10-23。快照仅限单会话，绑定主体/租户/消息前缀及策略版本；删除、撤权、停用、过期或版本漂移均失效，不自动物理删除。
+
+ADR-0023：[受预算评测任务生命周期](0023-evaluation-job-lifecycle.md)，Accepted，2026-10-23，2026-10-24补记。评测任务采用租户隔离的持久状态机、有限并发、合作取消与重启终态；内部 Smoke 保持零费用，真实 RAG 生成/Judge/Embedding 共享显式批准的请求及费用上限，未知价格拒绝。

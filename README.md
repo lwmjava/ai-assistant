@@ -316,6 +316,14 @@ python -m app.cli init
 
 `WORKFLOW_MAX_CONCURRENCY` 默认 `4`，接受 1–1000 的整数。手动与定时执行共享全进程容量；已有活动执行的同一工作流或容量已满时，手动执行返回 409，不新增历史、不调用模型，也不排队。执行、取消清理、终态保存和 webhook 全部结束后才释放容量；手动执行结束后可再次触发新的执行。
 
+平台管理员可在独立的 `/evaluations` 页面选择目标租户和系统内真实 RAG 文档、系统默认 Agent 或 Workflow，启动持久评测任务。RAG 可直接从所选文档当前索引生成可追溯 Silver 用例；Agent 必须选择目标租户内启用的真实用户作为执行主体；Workflow 在临时数据库中运行真实执行引擎并禁用 webhook。Agent/Workflow 必须显式填写外部调用上限，任务达到预算后停止。每次任务固化资源、适配器、测试集和执行主体快照，支持状态查询、幂等提交和合作取消。`EVALUATION_JOB_MAX_CONCURRENCY` 默认为 1（范围 1–8），`EVALUATION_JOB_TIMEOUT_SECONDS` 默认为 900 秒（范围 30–7200）。进程重启时遗留非终态任务标为 `interrupted`，不会自动重试。
+
+RAG 页面可选择生成质量并启用 Judge。两者复用当前 `LLM_BASE_URL`、`LLM_API_KEY` 和 `LLM_DEFAULT_MODEL`，需开启 `EVALUATION_QUALITY_ENABLED`，配置与当前完整端点/模型匹配的 `EVALUATION_PRICE_BASE_URL`、`EVALUATION_PRICE_MODEL`、`EVALUATION_PRICE_REFERENCE` 和输入/输出最高单价 `EVALUATION_INPUT_YUAN_PER_MTOK`、`EVALUATION_OUTPUT_YUAN_PER_MTOK`（元/百万 tokens）。价格须覆盖所有时段和缓存情形的最高计费，并有可核对来源；无法确定价格、缺少已登记模型能力或缺少响应 usage 时停止。价格配置不自动启用，也不修改 `.env`。
+
+质量任务须确认所选文档与问题为合成或已脱敏数据并允许外发，最多 10 条用例、30 次模型请求、5 元。每次调用先持久化最坏费用预占，成功后按 usage 结算，失败/取消/未知 usage 保留预占；不重试、不使用回答缓存。报告保留模型/Prompt 版本、逐调用用途、usage 和费用，不保存答案正文。费用是配置价格下的计算值，供应商账单仍是最终依据。Judge 与生成使用同一模型，仅作辅助评分；无参考答案时正确性记缺测，不能据此宣称业务验收或生产质量达标。Agent/Workflow 的生成/Judge 质量开关暂不支持。
+
+检索用到的 Embedding 请求也计入上述同一预算，沿用当前 `EMBEDDING_*` 服务及活动索引。启用质量任务还须配置 `EVALUATION_EMBEDDING_PRICE_BASE_URL`、`EVALUATION_EMBEDDING_PRICE_MODEL`、`EVALUATION_EMBEDDING_PRICE_REFERENCE`、`EVALUATION_EMBEDDING_YUAN_PER_MTOK`（最高嵌入单价，元/百万 tokens）；缺失则在创建前拒绝。每条用例按至少 1 次 Embedding、1 次生成及可选 1 次 Judge 检查请求预算。质量任务使用计费 Embedding 适配器，不重试或更换模型；普通检索路径不受影响。`citation_id_validity` 只衡量引用 ID 是否来自选入证据，语义支持程度由辅助 Judge 单独表达。
+
 定时执行以实际数据库 Engine、租户、工作流和 UTC 到期时间区分周期，同一周期在本进程只消费一次；失败、超时或取消的周期也不会重放。容量拒绝不消费周期，下次扫描可重试。扫描仍为串行，长任务可能延迟后续任务；进程重启后的去重和多进程协调尚未实现，不承诺跨重启的 exactly-once。删除成功会清理本进程周期标记，升级或回滚前须排空活动执行。
 
 Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[langgraph]"`（`langgraph>=1.0.0,<1.1`），再把 `AGENT_ORCHESTRATION` 设为 `langgraph`。这时只有明确要求多轮调研的问题才进入 Supervisor；不需要工具和知识库的问题只生成一次。没装这个包时，多轮请求回退五阶段管线。默认配置仍是 `self`。
@@ -941,19 +949,37 @@ mypy app/
 
 本项目基于 [Apache License 2.0](LICENSE) 开源。
 
-## 评测报告与数据集（Partial）
+## 真实资源评测与报告（Partial）
 
-控制台 `/evaluations` 提供已登记报告列表、指标历史、详情和失败切片；报告查询不运行模型或评测器，不作质量发布结论。后端只读报告接口：
+控制台 `/evaluations` 只负责目标选择、预算和运行状态；`/evaluation-reports` 单独提供已登记报告列表、指标历史、详情、失败切片和逐用例证据。评测、报告、运行历史、审计和系统状态均仅对 `system_admin` 开放。报告查询本身不运行模型或评测器，也不作质量发布结论。后端只读报告接口：
 
-- `GET /api/v1/evaluations/reports?family=retrieval|generation|agent&page=1&page_size=20`
+- `GET /api/v1/evaluations/reports?family=retrieval|generation|agent|workflow&page=1&page_size=20`
 - `GET /api/v1/evaluations/reports/{report_id}`
 - `GET /api/v1/evaluations/trend?family=agent&metric=route_accuracy`
+- `GET /api/v1/evaluations/jobs/{job_id}/cases`
 
-全局报告仅 `system_admin` / `system_viewer` 可读；租户报告仅同租户 `tenant_admin` 可读，系统角色不自动跨读租户结果。`member` / `viewer` 无读取权；详情无权与不存在均返回404。身份依赖复用当前User/Tenant校验，不采用前端传入角色。
+所有评测接口均由后端强制要求 `system_admin`，不采用前端传入角色。当前引导账号 `admin` 是平台管理员；后续可在用户租户能力中把该角色授予其他账号。
 
 服务端白名单位于 `app/services/evaluation_reports.py` 的 `REPORT_ENTRIES`。首批显式登记四份仓库历史报告，覆盖检索、生成、Agent；租户运行结果须由维护者审核归属后显式登记，不从文件名或报告内的评测用例tenant_id推断所有者。报告侧不允许任意路径下载。缺文件显示不可用，未知/坏协议显示不支持，缺测为null，不填零；调用成功不等于质量通过。旧检索报告没有门禁结论时不推断通过；Agent各用例成功也不冒充官方gate通过。
 
-API仅投影指标、受限版本元信息及失败标识；不返回query、回答、Prompt、工具参数、原始错误或绝对路径。历史表保留协议/数据/模型信息与缺测，不计算跨口径提升。只读报告能力为Implemented（EVAL-001）；在线评测任务执行仍为 Planned（EVAL-003）。
+报告 API 投影统一摘要、版本元信息和类型专属指标；真实任务另提供受限的逐用例断言与检索/执行证据，不返回密钥、绝对路径或原始异常。历史表保留协议/数据/模型信息与缺测，不计算跨口径提升。RAG 生成质量与 Judge 已接入显式预算路径，配置方式与限制见上文；默认关闭且价格不明时拒绝创建，不降级为 Mock。真实质量、同 SHA CI 与业务接受尚未完成。
+
+同页的“检索策略并排比较”仅列出当前进程实际可构造且不会静默降级的 `native`、`langchain`、`llamaindex` 适配器。两侧必须至少有一个参数不同，并复用同一用户读权限、租户、Embedding、向量库和活动索引；比较期间身份变化或请求后端发生 fallback 时返回冲突，不落盘、不修改线上默认配置。
+
+- `GET /api/v1/evaluations/retrieval/strategies`
+- `POST /api/v1/evaluations/retrieval/compare`
+
+D3 操作与组合验收边界见 `docs/checklists/evaluation-platform-acceptance.md`。自动 Silver 只使用真实文档当前索引分块，并明确记录生成器与证据；它不是人工 Gold。没有真实模型配置或明确预算时，不得把 Mock 或链路成功写成真实 Agent/Workflow 质量结论。
+
+## 运行历史（Partial）
+
+平台管理员可在 `/run-history` 查看最近 30 天的运行摘要。详情只包含节点/调用名称、相对时间、耗时、状态与轮次，不保存 Prompt、回答、工具参数/结果、凭据或原始错误。无可信 usage 来源时 Token 显示“未知”而不是 0。过期记录只从查询隐藏，不自动物理删除；历史查看不会重放模型或工具。
+
+- `GET /api/v1/run-history?page=1&page_size=20&conversation_id=...`
+- `GET /api/v1/run-history/{run_id}`
+- `RUN_HISTORY_RETENTION_DAYS=30`，`RUN_HISTORY_MAX_EVENTS=200`
+
+会话记忆压缩会在同一会话内持久化受治理快照，并在后续请求/进程重启后从已处理游标继续，避免重复压缩旧消息。快照绑定身份、租户、会话、撤销版本、消息前缀与实现版本；编辑/删除、撤权、停用、过期或版本变化时安全重算。默认有效期 `MEMORY_SNAPSHOT_RETENTION_DAYS=30`，不自动物理删除。该能力不提供跨会话记忆、画像或记忆检索。
 
 ### 评测数据集与反馈候选（EVAL-002，进行中）
 

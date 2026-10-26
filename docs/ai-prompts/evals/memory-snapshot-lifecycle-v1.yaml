@@ -2,6 +2,10 @@ id: memory-snapshot-lifecycle-v1
 family: memory
 kind: deterministic_contract
 cases:
+  - id: failed-compression-window
+    expectation: failed compression retains the full configured pending window and does not advance the snapshot cursor
+  - id: configured-policy-binding
+    expectation: Chat uses configured window, threshold, strategy and keep_recent; changed compression configuration invalidates persisted snapshots
   - id: incremental-reuse
     expectation: a valid same-conversation snapshot prevents old messages from being compressed again
   - id: recent-window

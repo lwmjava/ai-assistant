@@ -1,8 +1,20 @@
-version: "1.1.3"
+version: "1.1.5"
 classification: "Smoke/Adversarial"
 provenance: "AI-authored deterministic lifecycle scenarios; not Gold or model-quality evidence"
 execution: "pytest tests/test_evaluation_quality.py tests/test_evaluation_jobs.py tests/test_evaluation_api.py tests/test_evaluation_datasets.py tests/test_evaluation_reports.py"
 cases:
+  - id: all_resource_runtime_fence
+    classification: Observed Regression
+    expected: "Every real target revalidates initiator, active tenant, resource and execution principal before cases and external calls. Drift rejects publication; cancellation closes an in-flight provider and prevents another call."
+    regression: "tests/test_evaluation_adapters.py::test_real_job_revalidates_frozen_resources_and_authority; tests/test_evaluation_runtime_guards.py"
+  - id: shared_agent_routes_and_measured_metrics
+    classification: Observed Regression
+    expected: "Agent evaluation uses the same route/Skill/orchestration assembly as chat with only governed L0 tools and no conversation writes. Metrics without appropriate assertions stay null; completion is not reported as tool validity or followup recall."
+    regression: "tests/test_evaluation_runtime_guards.py; tests/test_evaluation_orchestrator.py"
+  - id: cancelled_stream_history
+    classification: Observed Regression
+    expected: "Closing a partially consumed chat stream records a non-success history with run_cancelled, retaining actual call counts."
+    regression: "tests/test_run_history.py::test_chat_stream_close_persists_final_model_attempt"
   - id: completed_task_report_navigation
     classification: Observed Regression
     expected: "A completed real-resource task provides a direct view-report action for its bound report, preserving the job/report association without manually matching identifiers in a separate report list."
@@ -41,3 +53,7 @@ cases:
     expected: "Untrusted question/evidence/answer stay in data fields. Duplicate keys, nonfinite/out-of-range/bool scores and extra instructions cannot become valid scores. Missing reference remains unknown correctness; same-model scores are advisory."
   - id: quality_revocation_and_drift
     expected: "Revoked initiator, tenant/resource changes, dataset hash drift or changed model/price/prompt reject further requests. Answers and private evidence are not persisted in quality results."
+  - id: quality_policy_rejection_guidance
+    classification: Observed Regression
+    expected: "Quality-disabled, missing model/embedding pricing, capability and insufficient call-budget rejections provide safe actionable messages; unknown exceptions retain a generic response, without external calls or relaxed gates."
+    regression: "tests/test_evaluation_api.py::test_job_policy_errors_explain_safe_recovery_without_raw_errors"

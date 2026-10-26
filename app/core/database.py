@@ -67,9 +67,10 @@ def init_db(*, auto_migrate: bool = True) -> None:
         from app.core.migration import auto_migrate as _auto_migrate
 
         _auto_migrate()
-    from app.core.migration import _ensure_rag_schema_columns
+    from app.core.migration import _ensure_evaluation_job_columns, _ensure_rag_schema_columns
 
     _ensure_rag_schema_columns()
+    _ensure_evaluation_job_columns()
 
 
 def get_session() -> Generator[Session, None, None]:

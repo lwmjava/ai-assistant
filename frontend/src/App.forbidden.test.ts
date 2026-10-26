@@ -79,12 +79,13 @@ test('viewer cannot open chat after conversation read matrix alignment', () => {
   expect(html).toContain('返回首页')
 })
 
-test('system viewer can open audit but not user administration', () => {
+test('system viewer cannot open platform administration pages', () => {
   setRole('system_viewer')
-  expect(render('/audit')).not.toContain('>403<')
-  const users = render('/users')
-  expect(users).toContain('403')
-  expect(users).toContain('返回首页')
+  for (const path of ['/audit', '/evaluations', '/evaluation-reports', '/run-history', '/status']) {
+    const html = render(path)
+    expect(html, path).toContain('403')
+    expect(html, path).toContain('返回首页')
+  }
 })
 
 test('system admin does not get a 403 on user administration', () => {

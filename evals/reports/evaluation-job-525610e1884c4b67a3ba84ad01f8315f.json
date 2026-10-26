@@ -1,0 +1,83 @@
+{
+  "report_schema_version": "real-evaluation-report-1.0.0",
+  "recorded_at": "2026-10-25T02:36:59.392110+00:00",
+  "job_id": "525610e1884c4b67a3ba84ad01f8315f",
+  "tenant_id": "ui-tenant",
+  "family": "retrieval",
+  "target_type": "rag",
+  "adapter": {
+    "name": "builtin.rag",
+    "version": "1.0.0",
+    "metric_schema_version": "evaluation-metrics-v1"
+  },
+  "target_snapshot": {
+    "execution_principal": null,
+    "target_type": "rag",
+    "targets": [
+      {
+        "id": "6b34f18148774675b52c25749ac94630",
+        "metadata": {
+          "chunk_count": 1,
+          "content_hash": null,
+          "embedding_dim": 64,
+          "embedding_model": "mock-embedding",
+          "embedding_provider": "mock",
+          "index_id": "c91b9d0c52bb4019870a22173d160eb0",
+          "vector_backend": "local",
+          "version_group_id": "85e6190120474148851c9541cf65df98",
+          "version_number": 1
+        },
+        "name": "页面验收合成退货政策（Smoke）",
+        "status": "available",
+        "target_type": "rag"
+      }
+    ]
+  },
+  "dataset": {
+    "id": "ui-small",
+    "version_id": "ui-small-v1",
+    "content_hash": "9e0503f3a65d71294648d6abef7bcefbb85f0dcd259f49be406f13e7f5faaad9"
+  },
+  "options": {
+    "enable_generation": false,
+    "enable_judge": false
+  },
+  "budget": {
+    "max_external_calls": 0
+  },
+  "metrics": {
+    "recall_at_1": 1.0,
+    "recall_at_5": 1.0,
+    "recall_at_10": 1.0,
+    "mrr": 1.0,
+    "latency_p95_ms": 20.893
+  },
+  "cases": [
+    {
+      "case_id": "ui-small-0",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 20.893
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "6b34f18148774675b52c25749ac94630"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "288d84b7f3a84369ad27f7e3d3b438aa",
+            "document_id": "6b34f18148774675b52c25749ac94630",
+            "score": 0.03278688524590164,
+            "similarity": 0.7423218080230882
+          }
+        ]
+      }
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}

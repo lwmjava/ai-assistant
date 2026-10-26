@@ -1,6 +1,6 @@
 """审计日志 Admin API。
 
-仅 system_admin / system_viewer 可访问。
+仅 system_admin 可访问。
 提供审计日志查询、过滤、分页功能。
 
 端点：
@@ -10,13 +10,13 @@
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_db, require_system_admin
 from app.audit.models import AuditLog
-from app.core.security import Role
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -65,19 +65,6 @@ class AuditLogPage(BaseModel):
     page_size: int
 
 
-# ── 权限守卫 ──
-
-
-def _require_system_admin_or_viewer(user=Depends(get_current_user)):
-    """仅允许 system_admin / system_viewer 访问审计日志。"""
-    if user.role_enum not in (Role.SYSTEM_ADMIN, Role.SYSTEM_VIEWER):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅系统管理员可查看审计日志",
-        )
-    return user
-
-
 # ── 端点 ──
 
 
@@ -97,7 +84,7 @@ def list_audit_logs(
     page: int = Query(1, ge=1, description="页码（1-based）"),
     page_size: int = Query(50, ge=1, le=200, description="每页条数（上限 200）"),
     # 依赖
-    _admin: None = Depends(_require_system_admin_or_viewer),
+    _admin: User = Depends(require_system_admin),
     session: Session = Depends(get_db),
 ) -> AuditLogPage:
     """查询审计日志（支持多条件过滤 + 分页）。

@@ -16,6 +16,7 @@ Supervisor**：由 supervisor 节点决定「先调研」还是「直接撰写�
 import asyncio
 import json
 import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import suppress
 from typing import TypedDict
@@ -25,6 +26,7 @@ from app.agents.plan_runtime import model_timeout
 from app.agents.skills.base import SkillBindingRejected, SkillRuntime
 from app.agents.supervisor_tools import SupervisorToolDelegate, bounded_integer
 from app.agents.tools.base import ToolRegistry
+from app.debug.trace import AgentTrace
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, user_message_content
 from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
@@ -123,6 +125,7 @@ class SupervisorGraph:
         max_revisions: int = 2,
         skill_runtime=None,
         tool_delegate: SupervisorToolDelegate | None = None,
+        trace: AgentTrace | None = None,
     ) -> None:
         self.llm = llm
         self.options = options or LLMOptions()
@@ -131,6 +134,7 @@ class SupervisorGraph:
         self.max_revisions = max_revisions
         self.skill_runtime = skill_runtime
         self.tool_delegate = tool_delegate
+        self.trace = trace
         if tool_delegate is not None:
             bounded_integer(max_revisions, 10)
         self._event_acks: dict[int, asyncio.Future] = {}
@@ -148,6 +152,19 @@ class SupervisorGraph:
     async def _chat(self, messages, options):
         if self.tool_delegate is not None:
             self.tool_delegate.verify_actor()
+        started = time.monotonic()
+        try:
+            return await self._chat_authorized(messages, options)
+        finally:
+            if self.trace is not None:
+                self.trace.llm_call(
+                    getattr(self.llm, "model", "unknown"),
+                    latency_ms=(time.monotonic() - started) * 1000,
+                    stage="supervisor",
+                )
+
+    async def _chat_authorized(self, messages, options):
+        if self.tool_delegate is not None:
             async with asyncio.timeout(model_timeout(self.tool_delegate.pipeline)):
                 return await self.llm.chat(messages, options)
         return await self.llm.chat(messages, options)

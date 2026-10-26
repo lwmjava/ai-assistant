@@ -1,5 +1,6 @@
 """Explicitly registered reports, authorized before file access and projection."""
 
+import hashlib
 import json
 import math
 import re
@@ -8,6 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from sqlmodel import Session, col, select
+
+from app.models.evaluation import EvaluationJob
 from app.models.user import User
 from app.schemas.evaluation import (
     ReportDetail,
@@ -36,6 +40,7 @@ class ReportEntry:
     path: str
     scope: str
     tenant_id: str | None = None
+    content_hash: str | None = None
 
 
 REPORT_ROOT = Path(__file__).resolve().parents[2] / "evals" / "reports"
@@ -49,8 +54,12 @@ REPORT_ENTRIES = (
 METRICS: dict[str, tuple[str, ...]] = {
     "retrieval": ("recall_at_1", "recall_at_5", "recall_at_10", "mrr", "ndcg_at_10",
                   "quote_coverage", "violation_rate", "latency_p95_ms"),
-    "generation": ("answer_point_accuracy", "citation_accuracy", "refusal_correct_rate", "cases_failed"),
-    "agent": ("route_accuracy", "followup_recall", "tool_selection_recall", "tool_call_validity_recall"),
+    "generation": ("answer_point_accuracy", "citation_accuracy", "refusal_correct_rate", "cases_failed",
+                   "judge_faithfulness", "judge_correctness", "external_calls_used", "cost_yuan",
+                   "recall_at_5", "mrr", "latency_p95_ms", "citation_id_validity"),
+    "agent": ("route_accuracy", "followup_recall", "tool_selection_recall", "tool_call_validity_recall",
+              "pipeline_completion_rate"),
+    "workflow": ("completion_rate", "deterministic_assertion_rate", "latency_p95_ms"),
 }
 _TOKEN = re.compile(r"[A-Za-z0-9_.:@+\-]{1,128}\Z")
 
@@ -101,7 +110,50 @@ def _project(entry: ReportEntry, raw: dict[str, Any]) -> ReportDetail:
     failures: list[ReportFailure] = []
     status: Any = "unmeasured"
     recorded_at = None
-    if entry.family == "retrieval":
+    if raw.get("report_schema_version") == "real-evaluation-report-1.0.0":
+        if raw.get("family") != entry.family:
+            raise ReportProtocolError
+        raw_metrics = _mapping(raw.get("metrics"))
+        units = {"latency_p95_ms": "ms", "cases_failed": "count",
+                 "external_calls_used": "count", "cost_yuan": "CNY"}
+        metrics = [
+            _metric(name, value, units.get(name, "ratio"))
+            for name, value in raw_metrics.items()
+            if isinstance(name, str) and name in METRICS[entry.family]
+        ]
+        failures = [
+            _failure(row, str(row.get("reason") or "deterministic_assertion_failed"))
+            for row in _rows(raw.get("failures"))
+        ]
+        raw_status = raw.get("status")
+        if raw_status not in {"passed", "failed"}:
+            raise ReportProtocolError
+        status = raw_status
+        protocol = "real-evaluation-report-1.0.0"
+        recorded_at = _timestamp(raw.get("recorded_at"))
+        dataset = _mapping(raw.get("dataset"))
+        adapter = _mapping(raw.get("adapter"))
+        metadata = {
+            "job_id": _token(raw.get("job_id")),
+            "target_type": _token(raw.get("target_type")),
+            "dataset_version_id": _token(dataset.get("version_id")),
+            "dataset_hash": _token(dataset.get("content_hash")),
+            "adapter": _token(adapter.get("name")),
+            "adapter_version": _token(adapter.get("version")),
+            "metric_schema_version": _token(adapter.get("metric_schema_version")),
+        }
+        quality = _mapping(raw.get("budget", {})).get("quality")
+        if isinstance(quality, dict):
+            metadata.update({
+                "generation_model": _token(quality.get("model")),
+                "generation_provider": _token(quality.get("provider")),
+                "judge_model": (
+                    _token(quality.get("model")) if _mapping(raw.get("options", {})).get("enable_judge") else None
+                ),
+                "quality_prompt_hash": _token(quality.get("prompt_hash")),
+                "judge_evidence": "advisory_same_model",
+            })
+    elif entry.family == "retrieval":
         if raw.get("report_schema_version") is not None:
             raise ReportProtocolError
         config, overall = _mapping(raw.get("run_config")), _mapping(raw.get("overall"))
@@ -212,12 +264,9 @@ class ReportService:
 
     @staticmethod
     def _allowed(user: User, entry: ReportEntry) -> bool:
-        if not user.is_active:
+        if not user.is_active or entry.scope not in {"global", "tenant"}:
             return False
-        if entry.scope == "global" and entry.tenant_id is None:
-            return user.role in ("system_admin", "system_viewer")
-        return (entry.scope == "tenant" and bool(entry.tenant_id)
-                and user.role == "tenant_admin" and user.tenant_id == entry.tenant_id)
+        return user.role == "system_admin"
 
     def detail(self, user: User, report_id: str) -> ReportDetail:
         entry = next((e for e in self.entries if e.id == report_id and self._allowed(user, e)), None)
@@ -230,6 +279,8 @@ class ReportService:
             with path.open("rb") as stream:
                 content = stream.read(16 * 1024 * 1024 + 1)
             if len(content) > 16 * 1024 * 1024:
+                raise ReportProtocolError
+            if entry.content_hash and hashlib.sha256(content).hexdigest() != entry.content_hash:
                 raise ReportProtocolError
             raw = json.loads(content)
             return _project(entry, _mapping(raw))
@@ -261,5 +312,28 @@ class ReportService:
         return ReportTrend(family=family, metric=metric, points=points)
 
 
-def get_report_service() -> ReportService:
-    return ReportService(REPORT_ROOT, REPORT_ENTRIES)
+def get_report_service(session: Session | None = None) -> ReportService:
+    entries = list(REPORT_ENTRIES)
+    if session is not None:
+        jobs = session.exec(
+            select(EvaluationJob).where(
+                col(EvaluationJob.status) == "succeeded",
+                col(EvaluationJob.report_id).is_not(None),
+                col(EvaluationJob.report_path).is_not(None),
+            )
+        ).all()
+        for job in jobs:
+            path = Path(job.report_path or "")
+            if path.parent.as_posix() != "evals/reports" or not job.report_id:
+                continue
+            entries.append(
+                ReportEntry(
+                    id=job.report_id,
+                    family=cast(ReportFamily, job.runner),
+                    path=path.name,
+                    scope="tenant",
+                    tenant_id=job.tenant_id,
+                    content_hash=job.report_hash,
+                )
+            )
+    return ReportService(REPORT_ROOT, tuple(entries))

@@ -473,6 +473,7 @@ def test_trace_records_tool_statuses_without_secrets() -> None:
     statuses = [event.data.get("status") for event in trace.events if event.type == "tool_call"]
     assert counter["n"] == 1
     assert "executed" in statuses
+    assert trace.summary()["tool_call_count"] == counter["n"]
     assert "skipped" in statuses
     assert "exhausted" in statuses
     for event in trace.events:

@@ -129,6 +129,16 @@ def require_permission(resource: str, action: str) -> Callable[[User], User]:
     return _guard
 
 
+def require_system_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Restrict platform-management APIs to the platform administrator role."""
+    if current_user.role_enum is not Role.SYSTEM_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="仅平台管理员可访问此功能",
+        )
+    return current_user
+
+
 async def audit_event(
     request: Request,
     action: AuditAction,

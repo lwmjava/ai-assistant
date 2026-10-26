@@ -456,19 +456,26 @@ async def iter_combined_tools(
                     raise
                 state.executed_tool_fingerprints.add(fingerprint)
                 state.tool_rounds_used += 1
+                executor = ToolExecutor(tools, redact_errors=True, before_attempt=check)
                 prior = (log_context.get_user_id(), log_context.get_tenant_id())
                 if execution_principal is not None:
                     log_context.set_user(*execution_principal)
+                tool_started = time.monotonic()
+                status = "error"
                 try:
-                    result = await ToolExecutor(tools, redact_errors=True, before_attempt=check).execute(call)
+                    result = await executor.execute(call)
+                    status = result.status
+                except (asyncio.CancelledError, GeneratorExit):
+                    status = "cancelled"
+                    raise
                 finally:
                     if execution_principal is not None:
                         log_context.set_user(*prior)
-                status = result.status
-                if trace is not None:
-                    trace.tool_call(
-                        "calculator", status=status, round_no=state.tool_rounds_used, latency_ms=result.latency_ms
-                    )
+                    if trace is not None:
+                        trace.tool_call(
+                            "calculator", status=status, round_no=state.tool_rounds_used,
+                            latency_ms=(time.monotonic() - tool_started) * 1000,
+                        )
                 state.tool_results.append(ToolOutput(result.observation, status=status))
                 if skill_runtime is not None:
                     skill_runtime.record("combined", status, call.name)

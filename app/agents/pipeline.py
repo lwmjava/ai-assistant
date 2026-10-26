@@ -17,7 +17,8 @@ import logging
 import re
 import time
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Sequence
+from contextlib import aclosing
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
@@ -518,6 +519,24 @@ class AgentPipeline:
                         content=user_message_content(user_content, state.user_images if state else ())),
         ]
 
+    async def _model_chat(
+        self, llm: LLMProvider, messages: list[ChatMessage], options: LLMOptions, stage: str,
+    ) -> str:
+        started = time.monotonic()
+        result = ""
+        try:
+            result = await llm.chat(messages, options)
+            return result
+        finally:
+            if self.trace is not None:
+                self.trace.llm_call(
+                    getattr(llm, "model", "unknown"),
+                    prompt=content_text(messages[-1].content) if messages else "",
+                    response=result if isinstance(result, str) else "",
+                    latency_ms=(time.monotonic() - started) * 1000,
+                    stage=stage,
+                )
+
     async def _stage(self, system: str, builder_name: str, state: AgentState) -> str:
         if self.authority_check is not None:
             self.authority_check()
@@ -529,29 +548,20 @@ class AgentPipeline:
             system = self.skill_runtime.prompt(system, self.skill_path)
         elif self.skill_prompt_injection:
             system = f"{system}\n\n---\n# 激活的技能指令\n{self.skill_prompt_injection}"
-        t0 = time.monotonic()
         options = self._llm_options(is_action_stage)
         try:
             if self.structured_plans_enabled or state.structured_plan is not None:
                 async with asyncio.timeout(model_timeout(self)):
-                    result = await self.llm.chat(self._messages(system, content, state), options)
+                    result = await self._model_chat(
+                        self.llm, self._messages(system, content, state), options, builder_name,
+                    )
             else:
-                result = await self.llm.chat(self._messages(system, content, state), options)
+                result = await self._model_chat(self.llm, self._messages(system, content, state), options, builder_name)
         except LLMResponseError as exc:
             if is_action_stage and exc.error_code == "llm_invalid_tool_call":
                 result = "<tool_call></tool_call>"
             else:
                 raise
-        elapsed = (time.monotonic() - t0) * 1000
-        # 记录 LLM 调用 trace
-        if self.trace and self.trace.debug_mode:
-            self.trace.llm_call(
-                getattr(self.llm, "model", "unknown"),
-                prompt=content,
-                response=result,
-                latency_ms=elapsed,
-                stage=builder_name,
-            )
         if state.structured_plan is not None and is_action_stage:
             if not isinstance(result, str) or not result.strip() or len(result) > 8000:
                 raise PlanExecutionError("INVALID_STEP_OUTPUT", "draft")
@@ -651,20 +661,40 @@ class AgentPipeline:
         state.plan_cursor = 0
         self._checkpoint(state, stage="plan", status="running")
 
-    async def _stream_final(self, state: AgentState) -> AsyncIterator[str]:
+    async def _stream_final(self, state: AgentState) -> AsyncGenerator[str, None]:
         system = self.skill_runtime.prompt(_FINAL_SYSTEM, self.skill_path) if self.skill_runtime else _FINAL_SYSTEM
         note = self._skill_notice(state)
         if note:
             yield note + "\n\n"
-        if self.structured_plans_enabled or state.structured_plan is not None:
-            async with asyncio.timeout(model_timeout(self)):
-                async for delta in self.llm.stream_chat(
-                    self._messages(system, self._build_respond(state), state), self.options):
+        started = time.monotonic()
+        attempted = False
+        response: AsyncIterator[str] | None = None
+        try:
+            if self.structured_plans_enabled or state.structured_plan is not None:
+                async with asyncio.timeout(model_timeout(self)):
+                    response = self.llm.stream_chat(
+                        self._messages(system, self._build_respond(state), state), self.options)
+                    attempted = True
+                    async for delta in response:
+                        yield delta
+            else:
+                response = self.llm.stream_chat(
+                    self._messages(system, self._build_respond(state), state), self.options)
+                attempted = True
+                async for delta in response:
                     yield delta
-        else:
-            async for delta in self.llm.stream_chat(
-                self._messages(system, self._build_respond(state), state), self.options):
-                yield delta
+        finally:
+            try:
+                close_response = getattr(response, "aclose", None)
+                if close_response is not None:
+                    await close_response()
+            finally:
+                if attempted and self.trace is not None:
+                    self.trace.llm_call(
+                        getattr(self.llm, "model", "unknown"),
+                        latency_ms=(time.monotonic() - started) * 1000,
+                        stage="respond",
+                    )
 
     def _llm_options(self, action_stage: bool) -> LLMOptions:
         options = (self.options or LLMOptions()).model_copy(deep=True)
@@ -743,15 +773,24 @@ class AgentPipeline:
         prior_actor = (log_context.get_user_id(), log_context.get_tenant_id())
         if self.execution_principal is not None:
             log_context.set_user(*self.execution_principal)
+        started = time.monotonic()
+        status = "error"
         try:
             result = await executor.execute(call)
+            status = "executed" if result.status == "ok" else result.status
         except (asyncio.CancelledError, GeneratorExit):
+            status = "cancelled"
             if self.skill_runtime is not None:
                 self.skill_runtime.record(self.skill_path, "cancelled", call.name)
             raise
         finally:
             if self.execution_principal is not None:
                 log_context.set_user(*prior_actor)
+            if self.trace is not None:
+                self.trace.tool_call(
+                    call.name, status=status, round_no=state.tool_rounds_used,
+                    latency_ms=(time.monotonic() - started) * 1000,
+                )
         if self.skill_runtime is not None:
             self.skill_runtime.record(self.skill_path, result.status, call.name)
         return ToolOutput(result.observation, status=result.status)
@@ -1085,13 +1124,13 @@ class AgentPipeline:
         """
         if self.structured_plans_enabled or state.structured_plan is not None:
             async with asyncio.timeout(model_timeout(self)):
-                decision = await self.intent_llm.chat(
+                decision = await self._model_chat(self.intent_llm,
                     build_preflight_messages(state.history, state.retrieval_query if state.retrieval_query is not None
-                                             else state.user_input), self.options)
+                                             else state.user_input), self.options, "preflight")
         else:
-            decision = await self.intent_llm.chat(
+            decision = await self._model_chat(self.intent_llm,
                 build_preflight_messages(state.history, state.retrieval_query if state.retrieval_query is not None
-                                         else state.user_input), self.options)
+                                         else state.user_input), self.options, "preflight")
         return preflight_needs_full_pipeline(decision)
 
     async def _quality_gate_loop(self, state: AgentState) -> str:
@@ -1125,9 +1164,9 @@ class AgentPipeline:
         messages = self._messages(SYSTEM_QUALITY_GATE, prompt, state)
         if self.structured_plans_enabled or state.structured_plan is not None:
             async with asyncio.timeout(model_timeout(self)):
-                raw = await self.llm.chat(messages, self.options)
+                raw = await self._model_chat(self.llm, messages, self.options, "quality_gate")
         else:
-            raw = await self.llm.chat(messages, self.options)
+            raw = await self._model_chat(self.llm, messages, self.options, "quality_gate")
         try:
             return float((raw or "").strip())
         except (ValueError, TypeError):
@@ -1144,7 +1183,7 @@ class AgentPipeline:
     def _record_tool_trace(self, name: str, status: str, round_no: int, latency_ms: float) -> None:
         if self.trace is None:
             return
-        self.trace.tool_call(name, status=status, round_no=round_no, latency_ms=latency_ms)
+        self.trace.tool_call(name, status=status, round_no=round_no, latency_ms=latency_ms, counted=False)
 
     async def _finalize_without_tools(self, state: AgentState) -> str:
         """轮次用完或需要收尾时，再做一次不列工具的行动。"""
@@ -1200,7 +1239,7 @@ class AgentPipeline:
         self,
         state: AgentState,
         execution_policy: ExecutionPolicy | None = None,
-    ) -> AsyncIterator[AgentEvent]:
+    ) -> AsyncGenerator[AgentEvent, None]:
         """产出 tool 与 code_result，并把草稿写进 state.draft。"""
         policy = execution_policy or ExecutionPolicy()
         if state.structured_plan is not None:
@@ -1260,16 +1299,13 @@ class AgentPipeline:
                 yield AgentEvent("tool", f"调用工具：{call.name}")
                 call_id = uuid.uuid4().hex
                 yield tool_event("tool.call", call.name, call_id=call_id)
-                started = time.monotonic()
                 fresh = await self._finish_tool(state, call)
                 yield tool_event("tool.result", call.name, call_id=call_id,
                                  ok=getattr(state.tool_results[-1], "status", "ok") == "ok")
-                latency_ms = (time.monotonic() - started) * 1000
                 state.executed_tool_fingerprints.add(tool_fingerprint(call.name, call.arguments))
                 state.tool_budget_exhausted = state.tool_budget_exhausted or round_no >= self.max_tool_rounds
                 if settings.AGENT_STATE_CHECKPOINT_TOOL_ROUND:
                     self._checkpoint(state, stage="action", status="running")
-                self._record_tool_trace(call.name, "executed", round_no, latency_ms)
                 for item in fresh:
                     yield AgentEvent("code_result", json.dumps(item, ensure_ascii=False))
                 wrap_up = True
@@ -1299,23 +1335,24 @@ class AgentPipeline:
                  "检索": "retrieval", "行动": "action", "反思": "reflection",
                  "响应": "respond", "质量检查": "quality_gate", "质量门自纠错": "revision"}
         try:
-            async for event in self._run_stream_events(state):
-                if event.type == "stage":
-                    if current is not None:
-                        yield node_event("node.finished", current, status="done")
-                    current = names.get(event.data, event.data)
-                    yield node_event("node.started", current)
-                elif event.type in {"error", "done"} and current is not None:
-                    status = "failed" if event.type == "error" or state.error else "done"
-                    yield node_event("node.finished", current, status=status)
-                    current = None
-                yield event
+            async with aclosing(self._run_stream_events(state)) as stream_events:
+                async for event in stream_events:
+                    if event.type == "stage":
+                        if current is not None:
+                            yield node_event("node.finished", current, status="done")
+                        current = names.get(event.data, event.data)
+                        yield node_event("node.started", current)
+                    elif event.type in {"error", "done"} and current is not None:
+                        status = "failed" if event.type == "error" or state.error else "done"
+                        yield node_event("node.finished", current, status=status)
+                        current = None
+                    yield event
         except asyncio.CancelledError:
             if current is not None:
                 yield node_event("node.finished", current, status="cancelled")
             raise
 
-    async def _run_stream_events(self, state: AgentState) -> AsyncIterator[AgentEvent]:
+    async def _run_stream_events(self, state: AgentState) -> AsyncGenerator[AgentEvent, None]:
         """流式执行：广播阶段进度事件，最终环节逐字吐出 token。"""
         try:
             resumed = self._resume_state(state)
@@ -1338,9 +1375,10 @@ class AgentPipeline:
                 self._apply_budget_notice(state)
                 yield AgentEvent("stage", "响应")
                 chunks: list[str] = []
-                async for delta in self._stream_final(state):
-                    chunks.append(delta)
-                    yield AgentEvent("token", delta)
+                async with aclosing(self._stream_final(state)) as response_stream:
+                    async for delta in response_stream:
+                        chunks.append(delta)
+                        yield AgentEvent("token", delta)
                 state.answer = "".join(chunks)
                 self._checkpoint(state, stage="done", status="done")
                 yield AgentEvent("done", state.answer)
@@ -1410,9 +1448,10 @@ class AgentPipeline:
             # 7. 响应
             yield AgentEvent("stage", "响应")
             response_chunks: list[str] = []
-            async for delta in self._stream_final(state):
-                response_chunks.append(delta)
-                yield AgentEvent("token", delta)
+            async with aclosing(self._stream_final(state)) as response_stream:
+                async for delta in response_stream:
+                    response_chunks.append(delta)
+                    yield AgentEvent("token", delta)
             # 披露语已作为 token 先行吐出，这里补回 state.answer，
             # 保证 state 与用户实际看到的一致。
             state.answer = self._with_disclosure(state, "".join(response_chunks))

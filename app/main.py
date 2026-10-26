@@ -55,6 +55,13 @@ async def lifespan(app: FastAPI):
     with Session(engine) as session:
         ensure_initial_admin(session)
 
+    from app.services.evaluation_jobs import recover_interrupted_jobs
+
+    with Session(engine) as session:
+        recovered_evaluation_jobs = recover_interrupted_jobs(session)
+    if recovered_evaluation_jobs:
+        logger.warning("已将 %d 个未完成评测任务标记为 interrupted。", recovered_evaluation_jobs)
+
     # 2.5 功能开关覆盖写回进程配置
     from app.services.feature_flags import apply_persisted_flags
 
@@ -89,6 +96,10 @@ async def lifespan(app: FastAPI):
     from app.services.agent_state_cleanup import stop_cleanup
 
     await stop_cleanup()
+
+    from app.services.evaluation_jobs import dispatcher
+
+    dispatcher.shutdown()
 
     # 关闭时停止调度器（幂等）
     from app.workflow.scheduler import stop_scheduler

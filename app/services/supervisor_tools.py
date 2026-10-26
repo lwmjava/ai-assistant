@@ -51,7 +51,7 @@ def wire_supervisor_tools(session: Session, user: User, graph: "SupervisorGraph"
     if graph.tools is None or not graph.tools.all():
         return
     verify_actor, principal = execution_authority(session, user)
-    pipeline = AgentPipeline(graph.llm, options=graph.options, tools=graph.tools)
+    pipeline = AgentPipeline(graph.llm, options=graph.options, tools=graph.tools, trace=graph.trace)
     pipeline.executor = ToolExecutor(graph.tools)
     pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
     pipeline.skill_runtime = graph.skill_runtime

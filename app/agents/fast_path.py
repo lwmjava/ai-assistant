@@ -5,7 +5,9 @@
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+import time
+from collections.abc import AsyncGenerator
+from contextlib import aclosing
 
 from app.agents.pipeline import (
     AgentEvent,
@@ -21,6 +23,7 @@ from app.agents.route import ChatRoute, RouteKind
 from app.agents.skills.base import SkillBindingRejected, SkillRuntime
 from app.agents.tools.base import ToolRegistry
 from app.agents.tools.executor import ToolExecutor
+from app.debug.trace import AgentTrace
 from app.llm.base import ChatMessage, ChatRole, LLMOptions, LLMProvider, content_text, user_message_content
 from app.rag.context_builder import CONTEXT_BUDGET_EXHAUSTED
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus
@@ -67,7 +70,8 @@ async def _stream_reply(
     state: AgentState,
     system: str,
     user: str,
-) -> AsyncIterator[AgentEvent]:
+    trace: AgentTrace | None = None,
+) -> AsyncGenerator[AgentEvent, None]:
     yield AgentEvent("stage", "响应")
     messages = [
         ChatMessage(role=ChatRole.SYSTEM, content=system),
@@ -79,11 +83,26 @@ async def _stream_reply(
     if state.retrieval_disclosure:
         for piece in _chunk_tokens(state.retrieval_disclosure + "\n\n"):
             yield AgentEvent("token", piece)
-    async for delta in llm.stream_chat(messages, options):
-        if not delta:
-            continue
-        parts.append(delta)
-        yield AgentEvent("token", delta)
+    response = llm.stream_chat(messages, options)
+    started = time.monotonic()
+    try:
+        async for delta in response:
+            if not delta:
+                continue
+            parts.append(delta)
+            yield AgentEvent("token", delta)
+    finally:
+        try:
+            close_response = getattr(response, "aclose", None)
+            if close_response is not None:
+                await close_response()
+        finally:
+            if trace is not None:
+                trace.llm_call(
+                    getattr(llm, "model", "unknown"),
+                    latency_ms=(time.monotonic() - started) * 1000,
+                    stage="fast.respond",
+                )
     body = "".join(parts).strip()
     state.answer = f"{state.retrieval_disclosure}\n\n{body}" if state.retrieval_disclosure else body
     state.draft = state.answer
@@ -105,23 +124,25 @@ async def iter_fast_path(
     tools: ToolRegistry | None,
     skill_prompt: str = "",
     skill_runtime: SkillRuntime | None = None,
-) -> AsyncIterator[AgentEvent]:
+    trace: AgentTrace | None = None,
+) -> AsyncGenerator[AgentEvent, None]:
     """短路路径只报告实际执行的节点，不伪造被省略的规划/反思。"""
     yield protocol_event("intent.classified", intent=route.kind.value, shortcut=True)
     current: str | None = None
     names = {"行动": "action", "检索": "retrieval", "响应": "respond"}
     try:
-        async for event in _iter_fast_path_events(
-                llm, options, state, route, retriever, tools, skill_prompt, skill_runtime):
-            if event.type == "stage":
-                if current is not None:
+        async with aclosing(_iter_fast_path_events(
+                llm, options, state, route, retriever, tools, skill_prompt, skill_runtime, trace)) as events:
+            async for event in events:
+                if event.type == "stage":
+                    if current is not None:
+                        yield node_event("node.finished", current, status="done")
+                    current = names.get(event.data, event.data)
+                    yield node_event("node.started", current)
+                elif event.type == "done" and current is not None:
                     yield node_event("node.finished", current, status="done")
-                current = names.get(event.data, event.data)
-                yield node_event("node.started", current)
-            elif event.type == "done" and current is not None:
-                yield node_event("node.finished", current, status="done")
-                current = None
-            yield event
+                    current = None
+                yield event
     except asyncio.CancelledError:
         if current is not None:
             yield node_event("node.finished", current, status="cancelled")
@@ -146,10 +167,11 @@ async def _iter_fast_path_events(
     tools: ToolRegistry | None,
     skill_prompt: str = "",
     skill_runtime: SkillRuntime | None = None,
-) -> AsyncIterator[AgentEvent]:
+    trace: AgentTrace | None = None,
+) -> AsyncGenerator[AgentEvent, None]:
     """按已决定的短路径产出事件，并把最终文本写进 state.answer。"""
     if route.kind is RouteKind.TOOLS and route.tool_names:
-        pipeline = AgentPipeline(llm, options, retriever=None, tools=tools)
+        pipeline = AgentPipeline(llm, options, retriever=None, tools=tools, trace=trace)
         if tools is not None:
             pipeline.executor = ToolExecutor(tools)
         pipeline.max_tool_rounds = _TOOL_ROUND_CAP
@@ -158,8 +180,9 @@ async def _iter_fast_path_events(
         pipeline.skill_path = "fast.tools"
         policy = ExecutionPolicy(allowed_tool_names=route.tool_names)
         yield AgentEvent("stage", "行动")
-        async for event in pipeline._iter_action_loop(state, policy):
-            yield event
+        async with aclosing(pipeline._iter_action_loop(state, policy)) as action_events:
+            async for event in action_events:
+                yield event
         state.answer = state.draft or ""
         if skill_runtime:
             available = [t.name for t in tools.all() if t.name in route.tool_names] if tools else []
@@ -247,11 +270,13 @@ async def _iter_fast_path_events(
             state.retrieval_disclosure = "\n\n".join(filter(None, [note, state.retrieval_disclosure]))
     system = _DIRECT_SYSTEM + ("\n\n" + notice if notice else "")
     system = skill_runtime.prompt(system, route.kind.value) if skill_runtime else _system(system, skill_prompt)
-    async for event in _stream_reply(
+    async with aclosing(_stream_reply(
         llm,
         options,
         state,
         system,
         _user_block(state, extra),
-    ):
-        yield event
+        trace,
+    )) as reply_events:
+        async for event in reply_events:
+            yield event

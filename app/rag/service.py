@@ -301,6 +301,24 @@ class RAGService:
             self._embedding, self._vector_store, self._tokenizer,
         )
 
+    def supported_search_backends(self) -> list[str]:
+        """Return only adapters that can be constructed without silent fallback."""
+        supported: list[str] = []
+        for name in ("native", "langchain", "llamaindex"):
+            if self._resolve_backend(name).name == name:
+                supported.append(name)
+        return supported
+
+    def retrieval_identity(self) -> dict[str, str | int | None]:
+        """Stable, credential-free identity used to fence side-by-side comparisons."""
+        identity = identity_from_provider(self._embedding)
+        return {
+            **identity.describe(),
+            "identity_key": identity.key(),
+            "index_id": self._read_index_id(),
+            "vector_store": f"{type(self._vector_store).__module__}.{type(self._vector_store).__name__}",
+        }
+
     # ── 摄取 ────────────────────────────────────────
     def _build_chunk_params(self, chunk_params: dict | None = None) -> ChunkParams:
         """构造切分参数，合并全局默认值与请求级覆盖。"""

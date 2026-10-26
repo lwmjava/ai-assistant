@@ -92,11 +92,7 @@ class MemoryCompressor:
 
         if self._llm is None:
             logger.warning("MemoryCompressor 未配置 LLM，跳过压缩")
-            return MemorySnapshot(
-                compressed_count=len(messages),
-                compressed_at=_now_iso(),
-                strategy=cfg.strategy,
-            )
+            return existing_snapshot or MemorySnapshot()
 
         # 构建历史文本
         history_text = _messages_to_text(messages)
@@ -149,11 +145,7 @@ class MemoryCompressor:
             )
         except Exception:  # noqa: BLE001 — 压缩失败不应阻塞对话
             logger.exception("记忆压缩失败")
-            return MemorySnapshot(
-                compressed_count=len(messages),
-                compressed_at=_now_iso(),
-                strategy=cfg.strategy,
-            )
+            return existing_snapshot or MemorySnapshot()
 
 
 def _messages_to_text(messages: list[ChatMessage]) -> str:

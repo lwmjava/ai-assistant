@@ -10,7 +10,8 @@
 import asyncio
 import json
 import logging
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import aclosing
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -30,7 +31,7 @@ from app.llm.base import ChatMessage, ChatRole, LLMOptions
 from app.llm.budget import BUDGET_EXCEEDED_MESSAGE, ContextBudgetError
 from app.llm.factory import get_llm_provider
 from app.llm.vision import validate_image_inputs
-from app.memory.base import ConversationMemory
+from app.memory.base import CompressionStrategy, ConversationMemory, MemoryConfig
 from app.memory.manager import MemoryManager
 from app.models.conversation import Conversation, Message
 from app.models.user import Tenant, User
@@ -117,9 +118,10 @@ def sanitize_history_text(text: str) -> str:
 class ChatService:
     """对话编排与持久化服务。"""
 
-    def __init__(self, llm_provider=None) -> None:
+    def __init__(self, llm_provider=None, *, intent_llm_provider=None) -> None:
         # 允许注入自定义 LLM（测试 / 运行时覆盖）；为空时按需取全局提供商。
         self._llm = llm_provider
+        self._intent_provider = intent_llm_provider
 
     @property
     def llm(self):
@@ -127,6 +129,8 @@ class ChatService:
 
     def _intent_llm(self):
         """构造时传入的客户端盖住意图链，避免评测脚本再去读环境变量。"""
+        if self._intent_provider is not None:
+            return self._intent_provider
         if self._llm is not None:
             return self._llm
         return get_llm_provider("intent")
@@ -183,6 +187,9 @@ class ChatService:
         conv = self.get_conversation(session, user, conversation_id)
         if conv is None or conv.deleted_at is not None:
             return False
+        from app.services.memory_snapshots import MemorySnapshotService
+
+        MemorySnapshotService(session).invalidate(user, conv, "conversation_deleted")
         now = datetime.now(UTC)
         conv.deleted_at = now
         conv.updated_at = now
@@ -302,31 +309,76 @@ class ChatService:
         recent = [m for m in conv.messages if m.content][-_HISTORY_LIMIT:]
         return [ChatMessage(role=ChatRole(m.role), content=sanitize_history_text(m.content)) for m in recent]
 
-    async def _build_memory(self, conv: Conversation) -> ConversationMemory:
-        """构建对话记忆：窗口裁剪 + 必要时压缩。
-
-        SKELETON：当前使用 MemoryManager 做内存级管理；
-        可按需扩展数据库持久化与跨会话记忆。
-        """
+    async def _build_memory(
+        self, conv: Conversation, *, existing_snapshot=None
+    ) -> ConversationMemory:
+        """Build a bounded memory, optionally continuing a validated snapshot."""
         if not settings.MEMORY_ENABLED:
             return ConversationMemory(
                 recent_messages=self._history_messages(conv),
                 total_messages=len(conv.messages),
             )
         try:
+            ordered = sorted(conv.messages, key=lambda row: (row.created_at, row.id))
             all_messages = [
                 ChatMessage(role=ChatRole(m.role), content=sanitize_history_text(m.content))
-                for m in conv.messages
+                for m in ordered
                 if m.content
             ]
-            mgr = MemoryManager(self.llm)
-            return await mgr.manage(all_messages)
+            mgr = MemoryManager(self.llm, config=MemoryConfig(
+                window_size=settings.MEMORY_WINDOW_SIZE,
+                compression_threshold=settings.MEMORY_COMPRESSION_THRESHOLD,
+                strategy=CompressionStrategy(settings.MEMORY_STRATEGY),
+                max_summary_chars=settings.MEMORY_MAX_SUMMARY_CHARS,
+                inject_memory=settings.MEMORY_ENABLED,
+                keep_recent=settings.MEMORY_KEEP_RECENT,
+            ))
+            return await mgr.manage(all_messages, existing_snapshot=existing_snapshot)
         except Exception:  # noqa: BLE001 — 记忆管理失败不应阻塞对话
             logger.exception("记忆管理失败，回退到简单窗口")
             return ConversationMemory(
                 recent_messages=self._history_messages(conv),
                 total_messages=len(conv.messages),
             )
+
+    async def _build_authorized_memory(
+        self, session: Session, user: User, conv: Conversation
+    ) -> ConversationMemory:
+        """Apply policy, reuse a valid snapshot, then persist the new safe projection."""
+        from app.services.memory_policy import MemoryPolicyError, assert_memory_access
+        from app.services.memory_snapshots import MemorySnapshotService
+
+        if not settings.MEMORY_ENABLED:
+            return await self._build_memory(conv)
+        if (
+            not settings.AUTH_ENABLED
+            and user.id == user.tenant_id == "__auth_disabled__"
+            and user.role == "system_admin"
+        ):
+            # Development/demo mode deliberately has no durable identity to bind a
+            # snapshot to. Keep bounded in-request memory without persisting it.
+            return await self._build_memory(conv)
+        try:
+            assert_memory_access(session, user, conv)
+        except MemoryPolicyError:
+            raise ResumeRejectedError("会话不存在或无权访问", 404) from None
+        snapshots = MemorySnapshotService(session)
+        try:
+            existing = snapshots.load(user, conv)
+        except Exception:  # noqa: BLE001
+            logger.exception("记忆快照读取失败，回退到受权原消息重算")
+            existing = None
+        memory = (
+            await self._build_memory(conv, existing_snapshot=existing)
+            if existing is not None
+            else await self._build_memory(conv)
+        )
+        try:
+            snapshots.save(user, conv, memory.snapshot)
+        except Exception:  # noqa: BLE001
+            session.rollback()
+            logger.exception("记忆快照保存失败，本次继续使用内存结果")
+        return memory
 
     def _build_retriever(self, session: Session, user: User):
         """同步固定读域/主体，依赖构造延至本请求真正检索时。"""
@@ -388,10 +440,11 @@ class ChatService:
         tools,
         skill_ctx: SkillContext | None,
         skill_runtime: SkillRuntime | None = None,
+        trace: "AgentTrace | None" = None,
     ) -> AsyncIterator[AgentEvent]:
         skill_prompt = skill_ctx.prompt_injection if skill_ctx and skill_ctx.prompt_injection else ""
         logger.info("对话走短路径：%s", route.kind.value)
-        async for event in iter_fast_path(
+        async with aclosing(iter_fast_path(
             self.llm,
             self._options,
             state,
@@ -400,8 +453,10 @@ class ChatService:
             tools,
             skill_prompt,
             skill_runtime=skill_runtime,
-        ):
-            yield event
+            trace=trace,
+        )) as events:
+            async for event in events:
+                yield event
 
     def _build_pipeline(
         self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None,
@@ -436,6 +491,7 @@ class ChatService:
 
             return SupervisorGraph(
                 self.llm, options=self._options, retriever=retriever, tools=tools, skill_runtime=skill_runtime,
+                trace=trace,
             )
         except ImportError as exc:
             logger.warning("AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc)
@@ -444,12 +500,48 @@ class ChatService:
                 options=self._options,
                 retriever=retriever,
                 tools=tools,
+                trace=trace,
                 intent_llm=self._intent_llm(),
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
             pipeline.skill_runtime = skill_runtime
             return pipeline
+
+    async def _run_selected_agent(
+        self, session: Session, user: User, state: AgentState, retriever, tools,
+        skill_ctx, skill_runtime, trace=None, *, allow_fast: bool = True,
+        prepare_pipeline: Callable | None = None,
+    ) -> AgentState:
+        """Execute the same selected routes for a normal or isolated request."""
+        combination = route_message(state.retrieval_query or state.user_input)
+        events: AsyncIterator[AgentEvent]
+        fast = self._fast_route(state.retrieval_query or state.user_input) if allow_fast else None
+        if combination.kind is RouteKind.COMBINED:
+            events = combined_events(
+                session, user, self.llm, self._options, state, combination,
+                retriever, tools, skill_runtime, trace=trace,
+            )
+        elif fast is not None:
+            events = self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime, trace)
+        else:
+            pipeline = self._build_pipeline(
+                retriever, tools, skill_ctx, trace=trace, skill_runtime=skill_runtime,
+            )
+            if isinstance(pipeline, AgentPipeline):
+                pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
+            if prepare_pipeline is not None:
+                prepare_pipeline(pipeline)
+            return await pipeline.run(state)
+        try:
+            async for event in events:
+                if event.type == "error":
+                    state.error_code = str(safe_error_metadata(event.metadata)["code"])
+        finally:
+            close = getattr(events, "aclose", None)
+            if close is not None:
+                await close()
+        return state
 
     def _wire_runtime(
         self, session, user, conv, tools, pipeline: AgentPipeline, message_id: str
@@ -608,7 +700,7 @@ class ChatService:
             session, user, conversation_id, message, resume_message_id,
             _execution_claims if _execution_claims is not None else [], attachments=attachment_payload)
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
-        memory = await self._build_memory(conv)
+        memory = await self._build_authorized_memory(session, user, conv)
         state = AgentState(user_input=model_user_text(safe_message, prepared), user_images=image_urls(prepared),
                            history=memory.recent_messages, retrieval_query=safe_message)
         # 2. 注入记忆上下文到管线
@@ -635,7 +727,18 @@ class ChatService:
         combined = resume_message_id is None and combination.kind is RouteKind.COMBINED
         fast = None if combined or resume_message_id or prepared else self._fast_route(safe_message)
         try:
-            if combined:
+            if resume_message_id is None:
+                def prepare_selected(pipeline):
+                    if isinstance(pipeline, AgentPipeline):
+                        self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
+                    else:
+                        self._wire_supervisor_tools(session, user, pipeline)
+
+                result = await self._run_selected_agent(
+                    session, user, state, retriever, tools, skill_ctx, skill_runtime,
+                    trace, allow_fast=not prepared, prepare_pipeline=prepare_selected,
+                )
+            elif combined:
                 combined_iterator = combined_events(
                     session, user, self.llm, self._options, state, combination, retriever, tools, skill_runtime,
                     trace=trace,
@@ -648,7 +751,7 @@ class ChatService:
                     await combined_iterator.aclose()
                 result = state
             elif fast is not None:
-                async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime):
+                async for _event in self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime, trace):
                     if _event.type == "error":
                         state.error_code = str(safe_error_metadata(_event.metadata)["code"])
                 result = state
@@ -672,7 +775,7 @@ class ChatService:
         except SkillBindingRejected as exc:
             raise ResumeRejectedError(str(exc)) from None
         # 8. 收集追踪
-        self._collect_trace(trace)
+        self._collect_trace(session, user, conv.id, trace)
         # 9. 安全治理：输出过滤
         self._apply_output_security(result.answer, sec_ctx)
         if _fresh_response:
@@ -741,7 +844,7 @@ class ChatService:
             session, user, conversation_id, message, resume_message_id,
             _execution_claims if _execution_claims is not None else [], attachments=attachment_payload)
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
-        memory = await self._build_memory(conv)
+        memory = await self._build_authorized_memory(session, user, conv)
         state = AgentState(user_input=model_user_text(safe_message, prepared), user_images=image_urls(prepared),
                            history=memory.recent_messages, retrieval_query=safe_message)
         # 注入记忆上下文
@@ -765,10 +868,12 @@ class ChatService:
             raise ResumeRejectedError(str(exc)) from None
         combination = route_message(safe_message)
         combined = resume_message_id is None and combination.kind is RouteKind.COMBINED
-        combined_trace = self._create_trace() if combined else None
+        combined_trace = self._create_trace()
         fast = None if combined or resume_message_id or prepared else self._fast_route(safe_message)
         pipeline = (None if fast is not None or combined else
-                    self._build_pipeline(retriever, tools, skill_ctx, skill_runtime=skill_runtime))
+                    self._build_pipeline(
+                        retriever, tools, skill_ctx, trace=combined_trace, skill_runtime=skill_runtime
+                    ))
         if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
             raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
         if isinstance(pipeline, AgentPipeline):
@@ -793,7 +898,7 @@ class ChatService:
                     trace=combined_trace,
                 )
             elif fast is not None:
-                events = self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime)
+                events = self._iter_fast(state, fast, retriever, tools, skill_ctx, skill_runtime, combined_trace)
             else:
                 assert pipeline is not None
                 events = pipeline.run_stream(state)
@@ -852,11 +957,20 @@ class ChatService:
                              metadata=safe_error_metadata({"code": "context_budget_exceeded"}))
             yield AgentEvent("done", BUDGET_EXCEEDED_REPLY)
         finally:
-            self._collect_trace(combined_trace)
-            if events is not None:
-                close_events = getattr(events, "aclose", None)
-                if close_events is not None:
-                    await close_events()
+            try:
+                if events is not None:
+                    close_events = getattr(events, "aclose", None)
+                    if close_events is not None:
+                        await close_events()
+            finally:
+                if combined_trace is not None:
+                    if stopped:
+                        combined_trace.finish(error="run_cancelled")
+                    elif not assistant_saved:
+                        combined_trace.finish(error="run_interrupted")
+                    elif state.error or state.error_code:
+                        combined_trace.finish(error="run_failed")
+                self._collect_trace(session, user, conversation_id, combined_trace)
             if stopped and not assistant_saved and collected:
                 # 只用已经交给页面的 token。不用 state.answer，避免把未展示的后文写进去。
                 # 另开会话写入：客户端断开时，请求上的会话可能已经解除绑定。
@@ -1263,26 +1377,36 @@ class ChatService:
 
     @staticmethod
     def _create_trace() -> "AgentTrace | None":
-        """创建调试追踪对象（仅在 DEBUG_ENABLED 时）。"""
-        if not settings.DEBUG_ENABLED:
-            return None
+        """Create a trace for durable summaries; verbose events remain debug-gated."""
         try:
             from app.debug.trace import AgentTrace
 
-            return AgentTrace(debug_mode=True)
+            trace = AgentTrace(debug_mode=settings.DEBUG_ENABLED)
+            trace.start()
+            return trace
         except Exception:  # noqa: BLE001
             return None
 
     @staticmethod
-    def _collect_trace(trace: "AgentTrace | None") -> None:
-        """收集追踪到全局缓存。"""
+    def _collect_trace(
+        session: Session,
+        user: User,
+        conversation_id: str,
+        trace: "AgentTrace | None",
+    ) -> None:
+        """Keep the bounded cache and persist only the redacted history projection."""
         if trace is None:
             return
         try:
             from app.debug.trace import TraceCollector
+            from app.services.run_history import RunHistoryService
+
+            if not trace.finished_at:
+                trace.finish()
 
             collector = TraceCollector.get_instance()
             collector.add(trace)
+            RunHistoryService(session).record(user, conversation_id, trace)
             logger.debug(
                 "Trace 已收集: run_id=%s, duration=%.0fms, events=%d",
                 trace.run_id,
@@ -1290,4 +1414,4 @@ class ChatService:
                 len(trace.events),
             )
         except Exception:  # noqa: BLE001
-            pass
+            session.rollback()

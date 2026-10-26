@@ -69,35 +69,39 @@ class MemoryManager:
             ConversationMemory，包含窗口内消息 + 压缩快照。
         """
         total = len(messages)
+        snapshot = existing_snapshot or MemorySnapshot()
+        cursor = snapshot.compressed_count if 0 <= snapshot.compressed_count <= total else 0
+        pending = list(messages[cursor:])
+        pending_total = len(pending)
         window = self.config.window_size
         threshold = self.config.compression_threshold
 
         # 情况 1：消息数未超窗口，无需压缩
-        if total <= window:
+        if pending_total <= window:
             return ConversationMemory(
-                recent_messages=list(messages),
-                snapshot=existing_snapshot or MemorySnapshot(),
+                recent_messages=pending,
+                snapshot=snapshot,
                 total_messages=total,
             )
 
         # 情况 2：消息数超窗口但未达压缩阈值（或阈值=0不压缩）→ 简单滑动窗口
-        if threshold <= 0 or total <= threshold:
+        if threshold <= 0 or pending_total <= threshold:
             logger.debug(
                 "窗口溢出（%d > %d），未达压缩阈值（%d），使用滑动窗口",
-                total,
+                pending_total,
                 window,
                 threshold,
             )
             return ConversationMemory(
-                recent_messages=list(messages[-window:]),
-                snapshot=existing_snapshot or MemorySnapshot(),
+                recent_messages=pending[-window:],
+                snapshot=snapshot,
                 total_messages=total,
             )
 
         # 情况 3：触发压缩 — 保留最近 N 条，压缩旧消息
         keep_recent = min(self.config.keep_recent, window)
-        recent = list(messages[-keep_recent:])
-        old = list(messages[:-keep_recent])
+        recent = pending[-keep_recent:]
+        old = pending[:-keep_recent]
 
         logger.info(
             "触发记忆压缩：%d 条旧消息 → LLM 摘要（保留最近 %d 条）",
@@ -105,11 +109,15 @@ class MemoryManager:
             keep_recent,
         )
 
+        previous_count = snapshot.compressed_count
         snapshot = await self._compressor.compress(
             old,
             self.config,
-            existing_snapshot=existing_snapshot,
+            existing_snapshot=snapshot,
         )
+        if snapshot.compressed_count <= previous_count or not snapshot.summary.strip():
+            # Failed compression must not discard history that has no summary.
+            recent = pending[-window:]
 
         return ConversationMemory(
             recent_messages=recent,

@@ -13,8 +13,8 @@ type Action = 'read' | 'write' | 'delete'
 
 const ROLE_PERMISSIONS: Record<string, Partial<Record<Action, Role[]>>> = {
   evaluations: {
-    read: ['system_admin', 'system_viewer', 'tenant_admin'],
-    write: ['system_admin', 'tenant_admin'],
+    read: ['system_admin'],
+    write: ['system_admin'],
     delete: ['system_admin'],
   },
   system: {
@@ -84,9 +84,9 @@ export function canControlDocument(doc: DocumentOut, user: UserInfo | null): boo
   return doc.user_id === user.id && doc.is_current
 }
 
-/** 审计日志入口：后端限定 system_admin / system_viewer。 */
+/** 平台管理入口只对 system_admin 开放。 */
 export function canViewAudit(role: Role | undefined): boolean {
-  return role === 'system_admin' || role === 'system_viewer'
+  return role === 'system_admin'
 }
 
 /** 租户页与用户页：后端这两个接口只允许 system_admin。 */

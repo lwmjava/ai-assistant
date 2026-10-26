@@ -339,6 +339,7 @@ async def test_supervisor_sends_chatmessage_objects() -> None:
     graph = SupervisorGraph.__new__(SupervisorGraph)
     llm = _RecordingLLM("FINISH")
     graph.llm = llm
+    graph.trace = None
     graph.options = LLMOptions()
     graph.max_revisions = 2
     graph._user_images = []
@@ -355,6 +356,7 @@ async def test_supervisor_draft_sends_chatmessage_objects() -> None:
     graph = SupervisorGraph.__new__(SupervisorGraph)
     llm = _RecordingLLM("最终回答")
     graph.llm = llm
+    graph.trace = None
     graph.options = LLMOptions()
     graph.max_revisions = 2
     graph._user_images = []

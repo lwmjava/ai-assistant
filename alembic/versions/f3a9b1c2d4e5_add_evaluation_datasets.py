@@ -32,7 +32,7 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(), nullable=False),
             sa.Column("updated_at", sa.DateTime(), nullable=False),
             sa.UniqueConstraint("tenant_id", "slug", name="uq_eval_dataset_tenant_slug"),
-            sa.CheckConstraint("family IN ('retrieval','generation','agent')"),
+        sa.CheckConstraint("family IN ('retrieval','generation','agent','workflow')"),
         )
         op.create_index("ix_evaluation_datasets_tenant_id", "evaluation_datasets", ["tenant_id"])
         op.create_index("ix_evaluation_datasets_slug", "evaluation_datasets", ["slug"])

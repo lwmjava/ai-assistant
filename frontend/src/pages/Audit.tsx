@@ -1,4 +1,4 @@
-/** 审计日志页：多条件过滤 + 分页（仅 system_admin / system_viewer 可见）。 */
+/** 审计日志页：多条件过滤 + 分页（仅 system_admin 可见）。 */
 
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Filter, ScrollText } from 'lucide-react'
@@ -119,7 +119,7 @@ export default function AuditPage() {
     return (
       <ForbiddenPage
         title="当前角色无权查看审计日志"
-        description="审计日志仅对平台管理员与平台审计员开放，权限由后端强制校验。"
+        description="审计日志仅对平台管理员开放，权限由后端强制校验。"
       />
     )
   }

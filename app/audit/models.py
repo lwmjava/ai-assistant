@@ -67,6 +67,10 @@ class AuditAction(str, Enum):
     WORKFLOW_DELETE = "workflow_delete"
     WORKFLOW_EXECUTE = "workflow_execute"
 
+    # ── 测评 ──
+    EVALUATION_JOB_CREATE = "evaluation_job_create"
+    EVALUATION_JOB_CANCEL = "evaluation_job_cancel"
+
     # ── 技能 ──
     SKILL_CREATE = "skill_create"
     SKILL_UPDATE = "skill_update"

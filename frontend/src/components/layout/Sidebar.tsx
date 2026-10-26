@@ -3,10 +3,12 @@
 import { NavLink } from 'react-router-dom'
 import {
   Activity,
+  FlaskConical,
   ChartNoAxesCombined,
   BookOpen,
   Building2,
   CalendarClock,
+  History,
   MessagesSquare,
   Sparkles,
   ShieldCheck,
@@ -18,7 +20,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-import { can, canManageTenants, canViewAudit } from '@/lib/permissions'
+import { can, canManageTenants } from '@/lib/permissions'
 import { cn } from '@/lib/cn'
 import type { Role } from '@/types/api'
 
@@ -34,7 +36,9 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
-  { to: '/evaluations', label: '评测报告', icon: ChartNoAxesCombined, resource: 'evaluations', action: 'read' },
+  { to: '/evaluations', label: '测评', icon: FlaskConical, visible: (role) => canManageTenants(role) },
+  { to: '/evaluation-reports', label: '测评报告', icon: ChartNoAxesCombined, visible: (role) => canManageTenants(role) },
+  { to: '/run-history', label: '运行历史', icon: History, visible: (role) => canManageTenants(role) },
   { to: '/chat', label: '对话', icon: MessagesSquare, resource: 'conversations', action: 'read' },
   { to: '/knowledge', label: '知识库', icon: BookOpen, resource: 'knowledge_bases', action: 'read' },
   { to: '/tools', label: '工具与 MCP', icon: Wrench, resource: 'agents', action: 'read' },
@@ -50,7 +54,7 @@ const ITEMS: NavItem[] = [
   },
   { to: '/tenants', label: '租户', icon: Building2, visible: (role) => canManageTenants(role) },
   { to: '/users', label: '用户', icon: UserPlus, visible: (role) => canManageTenants(role) },
-  { to: '/audit', label: '审计日志', icon: ShieldCheck, visible: (role) => canViewAudit(role) },
+  { to: '/audit', label: '审计日志', icon: ShieldCheck, visible: (role) => canManageTenants(role) },
   { to: '/status', label: '系统状态', icon: Activity, visible: (role) => canManageTenants(role) },
 ]
 

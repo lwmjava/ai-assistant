@@ -1,6 +1,24 @@
 # 受预算评测任务实施计划
 
+## 2026-10-25 九项审查修复
+
+授权：用户明确要求修复本轮九项问题；基线 feat/EVAL-002，HEAD c4841a7754030bdd558d44c5e32eb1c7f58b5fd8，保留所有既有改动。范围为迁移对账、真实评测资源/身份/取消边界、共用聊天路由与 Skill 接线、指标缺测、记忆失败回退/配置绑定、流式历史终态及对应测试；不迁移或覆盖用户数据库，不发起真实模型费用，不提交/推送。
+
+迁移对账仅标记已核验的具体旧修订，后续正常运行幂等向前迁移；head 与结构不一致也必须补跑。资源/主体在独立会话中重读，并在逐例及外部调用期间拒绝漂移、撤销和取消；Agent 与正常同步聊天共用路由选择/Skill/编排入口，评测限定 L0 且不写普通会话。缺测追问/工具有效性返回 null；管线完成率单独命名。记忆失败保留配置窗口，Chat 显式消费配置，快照绑定配置指纹。流式关闭/未完成记录 failed 加稳定 run_cancelled/run_interrupted 码，页面区分显示。
+
+新增失败边界回归：迁移既有行保留，文档/索引/管理员/租户漂移，调用中取消并禁止下一次调用，共用 Skill/路由装配与无会话写，缺测指标不冒满分，压缩失败保留窗口，配置变化使快照失效，部分流关闭不记成功。开发专项已执行112 passed，另19项和迁移/运行守卫7项通过；Ruff专项通过。首次类型检查发现两项注解/方法赋值问题已修正，最终回归待执行。回滚撤销上述逻辑变更与Evaluation输入；不删除数据库或历史记录。需要最终Windows完整回归、同提交Linux CI及独立审查，相关卡保持in_review。
+
 ## 基线与范围
+
+### 九项修复最终验证（2026-10-25）
+
+候选为 HEAD c4841a7754030bdd558d44c5e32eb1c7f58b5fd8 加验证器记录的源码/测试/配置/Evaluation文件SHA256清单。最终证据 `data/validation/20261025T140349-58615af14e03/result.json` 状态 passed：Windows conda ai-assistant 完整 pytest 3584 passed、3 skipped（exit0）；Ruff、mypy（256源文件）、前端typecheck、Vitest 187、lint、build全部exit0。命令为 `python -c "import functools,sys; import scripts.validate_delivery as validation; validation.run_command=functools.partial(validation.run_command,timeout=2400); sys.argv=['validate_delivery.py','full','--frontend']; sys.exit(validation.main())"`，解释器为 `D:/DepTooL/anaconda3/envs/ai-assistant/python.exe`。仅将单命令执行等待从1200秒延长到2400秒，未修改验证器、测试集合、断言或门禁。
+
+保留失败证据：132019-6d6111365bc8在88%附近触发1200秒timeout，不作为通过；134127-f71363036b68为3582passed/3skipped/2failed，失败是现有P0 Supervisor测试通过__new__绕开构造器而未初始化trace。补两处fixture的trace=None后P0/Supervisor/历史专项82passed；最终完整回归已重新执行。初始mypy两处类型问题及后续aclosing注解问题均已修复，最终全量证据覆盖修复版本。
+
+Linux额外专项：现成 `ai-assistant-app:latest` 镜像、Python3.11.16，在非root临时容器复制只读挂载的app/tests/alembic/docs/evals/scripts到tmpfs隔离目录，未挂载或复制用户数据库及.env。容器内安装项目已声明的pytest8.3.4、pytest-asyncio0.25.0后，执行 `python -m pytest tests/test_evaluation_runtime_guards.py tests/test_evaluation_adapters.py tests/test_evaluation_orchestrator.py tests/test_memory_snapshots.py tests/test_memory_policy.py tests/test_run_history.py tests/test_migration_reconcile.py tests/test_real_evaluation_constraint_migration.py -q --basetemp /work/data/test-temp`：44passed/1warning、exit0、8.79秒。容器已自动移除；此前非root tmpfs写权限失败已通过容器临时目录mode1777解决，不修改宿主权限。Linux验证后仅补Windows旧P0 fixture与验收说明，相关Linux专项的源码/测试输入未变。
+
+九项修复均有对应专项或公共入口回归。代码自审已完成，不能计作独立于实现者的审查；未执行真实付费调用、用户库迁移、Git提交/推送或生产发布。六张卡仍为in_review，最终提交的必要CI、独立审查和业务接受仍待完成；已有页面“报告直达入口/来源身份展示”两项独立P2并非本轮九项修复范围，保留原记录。本段及任务卡仅补验收说明，不改变已验证业务输入。
 
 ### 2026-10-24 真实生成与 Judge 扩展
 
@@ -162,3 +180,12 @@ $env:VITE_PROXY_TARGET = 'http://127.0.0.1:18765'
 长期截图：[完成任务卡](eval003-ui-20261025/completed-task.png)、[报告详情与错误的来源历史](eval003-ui-20261025/report-detail.png)、[重启后的任务状态](eval003-ui-20261025/task-states.png)。其余截图/临时脚本/指纹在隔离运行目录。未提交、推送或生产启用。
 
 机器可读结论与最终前后端输入SHA256见 `data/validation/eval003-ui-20261025/page-acceptance.json`。YAML解析/Case ID唯一性与CRLF感知whitespace检查exit0。页面验收后已停止本轮两个临时服务、关闭测试标签页并删除运行时登录明文凭据；工具控制终止服务的exit1是预期清理，不作为业务测试失败。隔离库、合成任务报告和脱敏截图保留用于复现。
+
+
+### 2026-10-25 质量任务拒绝原因提示修复
+
+用户截图展示质量/Judge任务被统一422策略提示拒绝。确认真实入口create_real已产生稳定质量错误码，但API的_job_http丢弃具体原因；仅凭截图不能判定运行环境究竟触发哪项配置或预算检查，未读取.env或操作用户数据库。
+
+仅将已知质量配置、能力、预算和外发确认错误映射为固定可操作提示，未知错误继续脱敏。未开启质量开关、修改价格、降低预算门禁或发起真实调用。新增10个API拒绝契约回归，生命周期Evaluation更新1.1.4。
+
+基线分支feat/EVAL-002，HEAD c4841a7754030bdd558d44c5e32eb1c7f58b5fd8，已有混合代码修改保留。最终专项使用D:/DepTooL/anaconda3/envs/ai-assistant/python.exe scripts/validate_delivery.py targeted --test tests/test_evaluation_api.py --test tests/test_evaluation_quality.py --test tests/test_evaluation_jobs.py：58 passed，exit0，证据data/validation/20261025T064140-d808968736c5，源码指纹见该目录；Ruff --no-cache两文件通过。mypy app/api/routes/evaluation.py通过。首次Ruff缓存目录拒绝访问，使用--no-cache重跑；初次长行失败已修正。中间验证064122因格式调整输入失效，不作通过证据；064029为调整前历史证据。本次未改变前端或接口结构。未完成用户运行服务现场复现、最终SHA完整CI，仍in_review；两项原页面P2不在本次修复范围内。回滚仅撤销_job_http固定映射及其测试，保留质量拒绝门禁。

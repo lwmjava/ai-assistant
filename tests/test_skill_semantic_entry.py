@@ -156,7 +156,7 @@ def test_both_chat_routes_pass_sanitized_input_to_selector(isolated_session, mon
         observed.append(message)
         raise StopAfterSelectionError
 
-    monkeypatch.setattr(service, "_build_memory", memory)
+    monkeypatch.setattr(service, "_build_authorized_memory", lambda session, user, conv: memory(conv))
     monkeypatch.setattr(service, "_build_tools", tools)
     monkeypatch.setattr(service, "_build_retriever", lambda *args: None)
     monkeypatch.setattr(service, "_match_skills_async", selection)
@@ -202,7 +202,7 @@ def test_semantic_cancellation_releases_chat_execution_claim(isolated_session, m
         return None
 
     monkeypatch.setattr(service, "_prepare_user_message", prepare)
-    monkeypatch.setattr(service, "_build_memory", memory)
+    monkeypatch.setattr(service, "_build_authorized_memory", lambda session, user, conv: memory(conv))
     monkeypatch.setattr(service, "_build_tools", tools)
     monkeypatch.setattr(service, "_build_retriever", lambda *args: None)
 

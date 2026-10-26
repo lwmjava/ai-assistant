@@ -82,6 +82,10 @@ class AgentTrace:
     finished_at: float = 0.0
     events: list[TraceEvent] = field(default_factory=list)
     error: str | None = None
+    _llm_call_count: int = field(default=0, init=False, repr=False)
+    _tool_call_count: int = field(default=0, init=False, repr=False)
+    _llm_latency_ms: float = field(default=0.0, init=False, repr=False)
+    _tool_latency_ms: float = field(default=0.0, init=False, repr=False)
 
     @property
     def duration_ms(self) -> float:
@@ -126,6 +130,8 @@ class AgentTrace:
     # ── LLM 调用 ──
 
     def llm_call(self, model: str, *, prompt: str = "", response: str = "", latency_ms: float = 0.0, **extra) -> None:
+        self._llm_call_count += 1
+        self._llm_latency_ms += round(latency_ms, 2)
         if not self.debug_mode:
             return
         data: dict = {
@@ -153,10 +159,14 @@ class AgentTrace:
         latency_ms: float = 0.0,
         status: str = "executed",
         round_no: int | None = None,
+        counted: bool = True,
         **extra,
     ) -> None:
         """记录工具名、状态、轮次和耗时。不保存参数、参数指纹、结果或错误原文。"""
         del args, result, extra
+        if counted:
+            self._tool_call_count += 1
+            self._tool_latency_ms += round(latency_ms, 2)
         if not self.debug_mode:
             return
         self.events.append(TraceEvent(
@@ -192,22 +202,17 @@ class AgentTrace:
     def summary(self) -> dict:
         """生成追踪摘要（供 SSE 事件 / 日志输出）。"""
         stages = [e for e in self.events if e.type in ("stage_start", "stage_end")]
-        llm_calls = [e for e in self.events if e.type == "llm_call"]
-        tool_calls = [e for e in self.events if e.type == "tool_call"]
         quality_gates = [e for e in self.events if e.type == "quality_gate"]
-
-        total_llm_latency = sum(e.data.get("latency_ms", 0) for e in llm_calls)
-        total_tool_latency = sum(e.data.get("latency_ms", 0) for e in tool_calls)
 
         return {
             "run_id": self.run_id,
             "debug_mode": self.debug_mode,
             "duration_ms": round(self.duration_ms, 2),
             "stage_count": len(stages) // 2,  # start/end pairs
-            "llm_call_count": len(llm_calls),
-            "tool_call_count": len(tool_calls),
-            "total_llm_latency_ms": round(total_llm_latency, 2),
-            "total_tool_latency_ms": round(total_tool_latency, 2),
+            "llm_call_count": self._llm_call_count,
+            "tool_call_count": self._tool_call_count,
+            "total_llm_latency_ms": round(self._llm_latency_ms, 2),
+            "total_tool_latency_ms": round(self._tool_latency_ms, 2),
             "quality_gate_passed": all(
                 e.data.get("passed", True) for e in quality_gates
             ),

@@ -244,7 +244,9 @@ async def test_stream_sources_remain_in_response_but_not_logs(monkeypatch, sourc
     monkeypatch.setattr(service, "_apply_input_security", lambda *a: (None, QUERY))
     monkeypatch.setattr(service, "_accept_user_message", lambda *a: (conv, "user-msg-log-regression"))
     monkeypatch.setattr(
-        service, "_build_memory", AsyncMock(return_value=SimpleNamespace(recent_messages=[], memory_context=""))
+        service,
+        "_build_authorized_memory",
+        AsyncMock(return_value=SimpleNamespace(recent_messages=[], memory_context="")),
     )
     monkeypatch.setattr(service, "_match_skills", lambda *a: None)
     monkeypatch.setattr(service, "_build_retriever", lambda *a: object())

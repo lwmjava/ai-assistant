@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import CheckConstraint, Column, Text, UniqueConstraint
 from sqlmodel import Field, SQLModel
@@ -14,7 +15,7 @@ class EvaluationDataset(SQLModel, TimestampMixin, table=True):
     __tablename__ = "evaluation_datasets"
     __table_args__ = (
         UniqueConstraint("tenant_id", "slug", name="uq_eval_dataset_tenant_slug"),
-        CheckConstraint("family IN ('retrieval','generation','agent')"),
+        CheckConstraint("family IN ('retrieval','generation','agent','workflow')"),
     )
 
     id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
@@ -80,3 +81,78 @@ class EvaluationFeedbackCandidate(SQLModel, TimestampMixin, table=True):
     reviewed_by: str | None = Field(default=None)
     review_notes: str | None = Field(default=None, max_length=2000)
     target_dataset_id: str | None = Field(default=None)
+
+
+class EvaluationJob(SQLModel, TimestampMixin, table=True):
+    __tablename__ = "evaluation_jobs"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "submitted_by", "idempotency_key", name="uq_eval_job_idempotency"
+        ),
+        CheckConstraint(
+            "status IN ('queued','running','cancel_requested','succeeded','failed','cancelled','interrupted')"
+        ),
+        CheckConstraint("runner IN ('retrieval','generation','agent','workflow')"),
+        CheckConstraint("mode IN ('smoke','synthetic','real')"),
+        CheckConstraint("job_kind IN ('internal_smoke','real_resource')"),
+        CheckConstraint("target_type IS NULL OR target_type IN ('rag','agent','workflow')"),
+        CheckConstraint("max_external_calls >= 0"),
+        CheckConstraint("external_calls_used >= 0"),
+        CheckConstraint("case_total >= 0"),
+        CheckConstraint("case_completed >= 0"),
+    )
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
+    tenant_id: str = Field(index=True)
+    submitted_by: str = Field(index=True)
+    dataset_id: str = Field(index=True)
+    dataset_version_id: str = Field(index=True)
+    job_kind: str = Field(default="internal_smoke", max_length=32, index=True)
+    target_type: str | None = Field(default=None, max_length=32, index=True)
+    target_ids_json: str = Field(default="[]", sa_column=Column(Text, nullable=False))
+    target_snapshot_json: str = Field(default="{}", sa_column=Column(Text, nullable=False))
+    adapter_name: str | None = Field(default=None, max_length=128)
+    adapter_version: str | None = Field(default=None, max_length=64)
+    metric_schema_version: str | None = Field(default=None, max_length=64)
+    execution_user_id: str | None = Field(default=None, index=True)
+    execution_principal_json: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
+    options_json: str = Field(default="{}", sa_column=Column(Text, nullable=False))
+    budget_json: str = Field(default="{}", sa_column=Column(Text, nullable=False))
+    runner: str = Field(max_length=32, index=True)
+    mode: str = Field(max_length=32)
+    status: str = Field(default="queued", max_length=32, index=True)
+    idempotency_key: str = Field(max_length=128)
+    request_hash: str = Field(max_length=64)
+    input_hash: str = Field(max_length=64)
+    max_external_calls: int = Field(default=0)
+    external_calls_used: int = Field(default=0)
+    case_total: int = Field(default=0)
+    case_completed: int = Field(default=0)
+    report_id: str | None = Field(default=None, max_length=160)
+    report_path: str | None = Field(default=None, max_length=500)
+    report_hash: str | None = Field(default=None, max_length=64)
+    error_code: str | None = Field(default=None, max_length=64)
+    cancel_requested_at: datetime | None = Field(default=None)
+    started_at: datetime | None = Field(default=None)
+    finished_at: datetime | None = Field(default=None)
+
+
+class EvaluationCaseResult(SQLModel, TimestampMixin, table=True):
+    __tablename__ = "evaluation_case_results"
+    __table_args__ = (
+        UniqueConstraint("job_id", "case_id", name="uq_eval_case_result_job_case"),
+        CheckConstraint("status IN ('pending','running','passed','failed','error','skipped')"),
+        CheckConstraint("external_calls_used >= 0"),
+    )
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
+    job_id: str = Field(index=True)
+    tenant_id: str = Field(index=True)
+    case_id: str = Field(max_length=160)
+    status: str = Field(default="pending", max_length=32, index=True)
+    metrics_json: str = Field(default="{}", sa_column=Column(Text, nullable=False))
+    assertions_json: str = Field(default="[]", sa_column=Column(Text, nullable=False))
+    evidence_json: str = Field(default="{}", sa_column=Column(Text, nullable=False))
+    error_code: str | None = Field(default=None, max_length=64)
+    elapsed_ms: int | None = Field(default=None)
+    external_calls_used: int = Field(default=0)

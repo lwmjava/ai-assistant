@@ -10,6 +10,7 @@ from app.agents.route import RouteKind, route_message
 from app.agents.tools.base import ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.core.config import settings
+from app.debug.trace import AgentTrace
 from app.llm.base import LLMOptions, LLMProvider
 from app.services.chat_service import ChatService
 
@@ -69,11 +70,11 @@ class _Retriever:
         return self.text
 
 
-def _events(llm, state, route, retriever=None, tools=None):
+def _events(llm, state, route, retriever=None, tools=None, trace=None):
     async def _run():
         found = []
         async for event in iter_fast_path(
-            llm, LLMOptions(), state, route, retriever, tools
+            llm, LLMOptions(), state, route, retriever, tools, trace=trace,
         ):
             found.append(event)
         return found
@@ -142,12 +143,14 @@ def test_tool_path_only_allows_named_tool_and_caps_rounds() -> None:
     llm = _CalculatorLLM()
     retriever = _Retriever()
     state = AgentState(user_input="算一下 1+1")
+    trace = AgentTrace()
     events = _events(
         llm,
         state,
         route_message(state.user_input),
         retriever,
         ToolRegistry(default_tools()),
+        trace,
     )
     assert retriever.calls == 0
     assert llm.calls <= 2
@@ -155,6 +158,9 @@ def test_tool_path_only_allows_named_tool_and_caps_rounds() -> None:
     assert "web_fetch" not in llm.prompts[0]
     assert any(event.type == "tool" and "calculator" in event.data for event in events)
     assert state.answer == "等于 2"
+    assert trace.summary()["llm_call_count"] == llm.calls
+    assert trace.summary()["tool_call_count"] == 1
+    assert trace.events == []
 
 
 def test_rag_path_retrieves_once() -> None:

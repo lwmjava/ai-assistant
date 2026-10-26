@@ -1,0 +1,4235 @@
+{
+  "report_schema_version": "real-evaluation-report-1.0.0",
+  "recorded_at": "2026-10-24T11:44:22.722516+00:00",
+  "job_id": "5def5fd62f844e37b74c7b9dbfa51d77",
+  "tenant_id": "a7c26ca759d941f8af1c0b58631b5a12",
+  "family": "retrieval",
+  "target_type": "rag",
+  "adapter": {
+    "name": "builtin.rag",
+    "version": "1.0.0",
+    "metric_schema_version": "evaluation-metrics-v1"
+  },
+  "target_snapshot": {
+    "execution_principal": null,
+    "target_type": "rag",
+    "targets": [
+      {
+        "id": "cab4a2f3439f4337a925edaa02e060e6",
+        "metadata": {
+          "chunk_count": 48,
+          "content_hash": "3b668a846c44cffefd7763054a21ea55a7babc19fc9e1d2e35e71d93396456f2",
+          "embedding_dim": 1024,
+          "embedding_model": "text-embedding-v3",
+          "embedding_provider": "openai",
+          "index_id": "16f22c5ff80842aeb0259ced13ee16ff",
+          "vector_backend": "milvus",
+          "version_group_id": "e89c60491b5d45e38b53cde00be418fa",
+          "version_number": 1
+        },
+        "name": "AI辅助开发迭代指导",
+        "status": "available",
+        "target_type": "rag"
+      }
+    ]
+  },
+  "dataset": {
+    "id": "9c3518b56ec747afa252fcd7b2400e4d",
+    "version_id": "66fabc12b7224d32a5e39169f163702e",
+    "content_hash": "1f5f90651804fc6338b360b1e316d3f7b1e6249645bf649288ea1e16fa15e1f5"
+  },
+  "options": {
+    "enable_generation": false,
+    "enable_judge": false
+  },
+  "budget": {
+    "max_external_calls": 0
+  },
+  "metrics": {
+    "recall_at_1": 1.0,
+    "recall_at_5": 1.0,
+    "recall_at_10": 1.0,
+    "mrr": 1.0,
+    "latency_p95_ms": 501.171
+  },
+  "cases": [
+    {
+      "case_id": "silver-3ff0b7ce9f2e456b8808c5c38bb172a1",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 674.759
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8567211627960205
+          },
+          {
+            "rank": 2,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.6694778203964233
+          },
+          {
+            "rank": 3,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.6527547836303711
+          },
+          {
+            "rank": 4,
+            "chunk_id": "d75ce304e2ab4c2598505106312fbd27",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030536130536130537,
+            "similarity": 0.6520949006080627
+          },
+          {
+            "rank": 5,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030158730158730156,
+            "similarity": 0.691240668296814
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029957522915269395,
+            "similarity": 0.6223677396774292
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029857397504456328,
+            "similarity": 0.6352633237838745
+          },
+          {
+            "rank": 8,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029827662395050816,
+            "similarity": 0.703439474105835
+          },
+          {
+            "rank": 9,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028083267871170464,
+            "similarity": 0.592160165309906
+          },
+          {
+            "rank": 10,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027650648360030512,
+            "similarity": 0.6317437887191772
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-fe232dbda17447288dcdfcae41bb895e",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 373.641
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8007514476776123
+          },
+          {
+            "rank": 2,
+            "chunk_id": "78a186f0e2b9464480d4534e610af306",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.6663838028907776
+          },
+          {
+            "rank": 3,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.6404118537902832
+          },
+          {
+            "rank": 4,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030798389007344232,
+            "similarity": 0.6075157523155212
+          },
+          {
+            "rank": 5,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03057889822595705,
+            "similarity": 0.6444244980812073
+          },
+          {
+            "rank": 6,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030536130536130537,
+            "similarity": 0.6309421062469482
+          },
+          {
+            "rank": 7,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02877846790890269,
+            "similarity": 0.6002135276794434
+          },
+          {
+            "rank": 8,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028629032258064516,
+            "similarity": 0.5562186241149902
+          },
+          {
+            "rank": 9,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02758751902587519,
+            "similarity": 0.597578227519989
+          },
+          {
+            "rank": 10,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027071520029266508,
+            "similarity": 0.5705509185791016
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-cbe3ab0f6ead41f491863bcbed364fb2",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 317.504
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.6415832042694092
+          },
+          {
+            "rank": 2,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.6651363372802734
+          },
+          {
+            "rank": 3,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03036576949620428,
+            "similarity": 0.676811933517456
+          },
+          {
+            "rank": 4,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030309988518943745,
+            "similarity": 0.6236758232116699
+          },
+          {
+            "rank": 5,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029857397504456328,
+            "similarity": 0.6152383089065552
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029236022193768675,
+            "similarity": 0.6284220814704895
+          },
+          {
+            "rank": 7,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028177225029148854,
+            "similarity": 0.6802788972854614
+          },
+          {
+            "rank": 8,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026973565905412694,
+            "similarity": 0.5621651411056519
+          },
+          {
+            "rank": 9,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02694394213381555,
+            "similarity": 0.5782524943351746
+          },
+          {
+            "rank": 10,
+            "chunk_id": "78a186f0e2b9464480d4534e610af306",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026838432635534086,
+            "similarity": 0.6101787686347961
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-dd9ab7d26b4d49a6aba505af0a9109ab",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 397.233
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "dd9ab7d26b4d49a6aba505af0a9109ab",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8010311722755432
+          },
+          {
+            "rank": 2,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029709507042253523,
+            "similarity": 0.5772933959960938
+          },
+          {
+            "rank": 3,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028484848484848488,
+            "similarity": 0.5881887674331665
+          },
+          {
+            "rank": 4,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028309409888357256,
+            "similarity": 0.5651033520698547
+          },
+          {
+            "rank": 5,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02786377708978328,
+            "similarity": 0.5834320187568665
+          },
+          {
+            "rank": 6,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02782608695652174,
+            "similarity": 0.5695661902427673
+          },
+          {
+            "rank": 7,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027526395173453996,
+            "similarity": 0.5493555068969727
+          },
+          {
+            "rank": 8,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027402402402402402,
+            "similarity": 0.5695942640304565
+          },
+          {
+            "rank": 9,
+            "chunk_id": "3ac123fb11e34e2b8dfea1784fe1ddbb",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02736498731424429,
+            "similarity": 0.623216986656189
+          },
+          {
+            "rank": 10,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027313266443701224,
+            "similarity": 0.5833607912063599
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-f4555111fcc34552a2cf784282f5937f",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 412.031
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "f4555111fcc34552a2cf784282f5937f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.9323033094406128
+          },
+          {
+            "rank": 2,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03200204813108039,
+            "similarity": 0.6160595417022705
+          },
+          {
+            "rank": 3,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029910714285714284,
+            "similarity": 0.5503925085067749
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.5508944988250732
+          },
+          {
+            "rank": 5,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029857397504456328,
+            "similarity": 0.5656454563140869
+          },
+          {
+            "rank": 6,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028850145288501453,
+            "similarity": 0.5467195510864258
+          },
+          {
+            "rank": 7,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028612012987012988,
+            "similarity": 0.5835933089256287
+          },
+          {
+            "rank": 8,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028370221327967807,
+            "similarity": 0.5499079823493958
+          },
+          {
+            "rank": 9,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0277569392348087,
+            "similarity": 0.5129364728927612
+          },
+          {
+            "rank": 10,
+            "chunk_id": "78a186f0e2b9464480d4534e610af306",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026984126984126985,
+            "similarity": 0.5917015671730042
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-59f4c70aaeb54e30aa1030636397ea5f",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 372.005
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "59f4c70aaeb54e30aa1030636397ea5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.7578271627426147
+          },
+          {
+            "rank": 2,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.5945398807525635
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029236022193768675,
+            "similarity": 0.5688425302505493
+          },
+          {
+            "rank": 4,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02878726010616578,
+            "similarity": 0.626348078250885
+          },
+          {
+            "rank": 5,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028782894736842105,
+            "similarity": 0.6073365807533264
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7a85305817124118b2d37081fe313e03",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028693528693528692,
+            "similarity": 0.6259918808937073
+          },
+          {
+            "rank": 7,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02862400327131466,
+            "similarity": 0.5624381303787231
+          },
+          {
+            "rank": 8,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028371628371628373,
+            "similarity": 0.5469602346420288
+          },
+          {
+            "rank": 9,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02702702702702703,
+            "similarity": 0.5603301525115967
+          },
+          {
+            "rank": 10,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026785714285714288,
+            "similarity": 0.5701128840446472
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-7a85305817124118b2d37081fe313e03",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 365.032
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "7a85305817124118b2d37081fe313e03",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.98430335521698
+          },
+          {
+            "rank": 2,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.652679443359375
+          },
+          {
+            "rank": 3,
+            "chunk_id": "87d341415daf4398acfcd5b9bbfd60a6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030309988518943745,
+            "similarity": 0.5924609303474426
+          },
+          {
+            "rank": 4,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028850145288501453,
+            "similarity": 0.5517789125442505
+          },
+          {
+            "rank": 5,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028438886647841874,
+            "similarity": 0.5502871870994568
+          },
+          {
+            "rank": 6,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028370221327967807,
+            "similarity": 0.5653387308120728
+          },
+          {
+            "rank": 7,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027972027972027972,
+            "similarity": 0.5941601395606995
+          },
+          {
+            "rank": 8,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02782608695652174,
+            "similarity": 0.577934741973877
+          },
+          {
+            "rank": 9,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027673192771084338,
+            "similarity": 0.5259557962417603
+          },
+          {
+            "rank": 10,
+            "chunk_id": "f3380ace0aeb4398aca007e374472890",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027500922849760058,
+            "similarity": 0.6355178952217102
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-3ac123fb11e34e2b8dfea1784fe1ddbb",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 348.932
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "3ac123fb11e34e2b8dfea1784fe1ddbb",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.7869242429733276
+          },
+          {
+            "rank": 2,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02976190476190476,
+            "similarity": 0.5610126852989197
+          },
+          {
+            "rank": 3,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029437229437229435,
+            "similarity": 0.5695252418518066
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028283227848101264,
+            "similarity": 0.5492912530899048
+          },
+          {
+            "rank": 5,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02819138376017471,
+            "similarity": 0.5660556554794312
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027271052146674038,
+            "similarity": 0.5463480949401855
+          },
+          {
+            "rank": 7,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02724014336917563,
+            "similarity": 0.5004989504814148
+          },
+          {
+            "rank": 8,
+            "chunk_id": "f3380ace0aeb4398aca007e374472890",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026984126984126985,
+            "similarity": 0.5847750902175903
+          },
+          {
+            "rank": 9,
+            "chunk_id": "9db0f7ed052e4567abd4f3a385187005",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026860955056179775,
+            "similarity": 0.5808396339416504
+          },
+          {
+            "rank": 10,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026397515527950312,
+            "similarity": 0.5247466564178467
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-7486b67b8e484b9c9ff9146243c76191",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 459.534
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.7330672740936279
+          },
+          {
+            "rank": 2,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.5533953905105591
+          },
+          {
+            "rank": 3,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03055037313432836,
+            "similarity": 0.5409011840820312
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7a85305817124118b2d37081fe313e03",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03036576949620428,
+            "similarity": 0.5393558740615845
+          },
+          {
+            "rank": 5,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029857397504456328,
+            "similarity": 0.5435475707054138
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028665028665028666,
+            "similarity": 0.5268518924713135
+          },
+          {
+            "rank": 7,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028577260665441927,
+            "similarity": 0.5336676836013794
+          },
+          {
+            "rank": 8,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02832415420928403,
+            "similarity": 0.5740789771080017
+          },
+          {
+            "rank": 9,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027046783625730993,
+            "similarity": 0.5327120423316956
+          },
+          {
+            "rank": 10,
+            "chunk_id": "3ac123fb11e34e2b8dfea1784fe1ddbb",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026263297872340427,
+            "similarity": 0.5577446222305298
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-60fe8e7c0dbc4342a0ba547125620a30",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 384.794
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "60fe8e7c0dbc4342a0ba547125620a30",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8566399812698364
+          },
+          {
+            "rank": 2,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031024531024531024,
+            "similarity": 0.6364040374755859
+          },
+          {
+            "rank": 3,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030834914611005692,
+            "similarity": 0.6085796356201172
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03036576949620428,
+            "similarity": 0.6010445356369019
+          },
+          {
+            "rank": 5,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029418126757516764,
+            "similarity": 0.6106200218200684
+          },
+          {
+            "rank": 6,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029083245521601686,
+            "similarity": 0.5912308692932129
+          },
+          {
+            "rank": 7,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028782894736842105,
+            "similarity": 0.6356520056724548
+          },
+          {
+            "rank": 8,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028371628371628373,
+            "similarity": 0.6300615668296814
+          },
+          {
+            "rank": 9,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02832415420928403,
+            "similarity": 0.6609144806861877
+          },
+          {
+            "rank": 10,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028169014084507043,
+            "similarity": 0.5939712524414062
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-68c1adac33184498a9035c36bd037b49",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 391.605
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "68c1adac33184498a9035c36bd037b49",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8067440986633301
+          },
+          {
+            "rank": 2,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.648078203201294
+          },
+          {
+            "rank": 3,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02919863597612958,
+            "similarity": 0.5998302698135376
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028371628371628373,
+            "similarity": 0.5760136842727661
+          },
+          {
+            "rank": 5,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028068137824235385,
+            "similarity": 0.6396382451057434
+          },
+          {
+            "rank": 6,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02804284323271665,
+            "similarity": 0.6254392862319946
+          },
+          {
+            "rank": 7,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02797067901234568,
+            "similarity": 0.6323902010917664
+          },
+          {
+            "rank": 8,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027425373134328357,
+            "similarity": 0.6204880475997925
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02736726874657909,
+            "similarity": 0.5486674308776855
+          },
+          {
+            "rank": 10,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027222222222222224,
+            "similarity": 0.5816181302070618
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-346c79dca2cb4b4b82e1405b79134a23",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 321.363
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.849500834941864
+          },
+          {
+            "rank": 2,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.6064605116844177
+          },
+          {
+            "rank": 3,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030117753623188408,
+            "similarity": 0.6128961443901062
+          },
+          {
+            "rank": 4,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02946236559139785,
+            "similarity": 0.6188513040542603
+          },
+          {
+            "rank": 5,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028693528693528692,
+            "similarity": 0.5780283212661743
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02854251012145749,
+            "similarity": 0.5798952579498291
+          },
+          {
+            "rank": 7,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028309409888357256,
+            "similarity": 0.601794958114624
+          },
+          {
+            "rank": 8,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027912386121341344,
+            "similarity": 0.5781494379043579
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027417840375586856,
+            "similarity": 0.5842864513397217
+          },
+          {
+            "rank": 10,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027364110201042444,
+            "similarity": 0.5678696632385254
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-d1c36ed478d347489fb0d48c6e9c2bb4",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 354.826
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8320335149765015
+          },
+          {
+            "rank": 2,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031054405392392875,
+            "similarity": 0.6039888858795166
+          },
+          {
+            "rank": 3,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030834914611005692,
+            "similarity": 0.6869746446609497
+          },
+          {
+            "rank": 4,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030776515151515152,
+            "similarity": 0.604791522026062
+          },
+          {
+            "rank": 5,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03055037313432836,
+            "similarity": 0.6410461068153381
+          },
+          {
+            "rank": 6,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.6406038999557495
+          },
+          {
+            "rank": 7,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028577260665441927,
+            "similarity": 0.5995624661445618
+          },
+          {
+            "rank": 8,
+            "chunk_id": "d75ce304e2ab4c2598505106312fbd27",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02857142857142857,
+            "similarity": 0.5971083045005798
+          },
+          {
+            "rank": 9,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02792120864410021,
+            "similarity": 0.5555380582809448
+          },
+          {
+            "rank": 10,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027777777777777776,
+            "similarity": 0.5743419528007507
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-381916baeff74363887fb8ddd84921c3",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 391.326
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8879024982452393
+          },
+          {
+            "rank": 2,
+            "chunk_id": "78a186f0e2b9464480d4534e610af306",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.7543695569038391
+          },
+          {
+            "rank": 3,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031746031746031744,
+            "similarity": 0.6971724033355713
+          },
+          {
+            "rank": 4,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031054405392392875,
+            "similarity": 0.6331299543380737
+          },
+          {
+            "rank": 5,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.6793562173843384
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029857397504456328,
+            "similarity": 0.667526125907898
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029418126757516764,
+            "similarity": 0.6143918037414551
+          },
+          {
+            "rank": 8,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029083245521601686,
+            "similarity": 0.6686664819717407
+          },
+          {
+            "rank": 9,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02782608695652174,
+            "similarity": 0.5837111473083496
+          },
+          {
+            "rank": 10,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027809742999616416,
+            "similarity": 0.5777732729911804
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-51a2bdac9a2d4b05b23aaf44fc153546",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 352.733
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8588125705718994
+          },
+          {
+            "rank": 2,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.649611234664917
+          },
+          {
+            "rank": 3,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.6327192783355713
+          },
+          {
+            "rank": 4,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029437229437229435,
+            "similarity": 0.6182507276535034
+          },
+          {
+            "rank": 5,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02928692699490662,
+            "similarity": 0.5963539481163025
+          },
+          {
+            "rank": 6,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028177225029148854,
+            "similarity": 0.6686952710151672
+          },
+          {
+            "rank": 7,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027884615384615386,
+            "similarity": 0.5900163054466248
+          },
+          {
+            "rank": 8,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027777777777777776,
+            "similarity": 0.6149475574493408
+          },
+          {
+            "rank": 9,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027479766610201392,
+            "similarity": 0.6189994215965271
+          },
+          {
+            "rank": 10,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027071520029266508,
+            "similarity": 0.592036247253418
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-1fef249a9530470ab3efc4da3cb26c5f",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 348.192
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8640155792236328
+          },
+          {
+            "rank": 2,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.6315160989761353
+          },
+          {
+            "rank": 3,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030776515151515152,
+            "similarity": 0.6209005117416382
+          },
+          {
+            "rank": 4,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030158730158730156,
+            "similarity": 0.5908973217010498
+          },
+          {
+            "rank": 5,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029418126757516764,
+            "similarity": 0.6063209176063538
+          },
+          {
+            "rank": 6,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029083245521601686,
+            "similarity": 0.6096495389938354
+          },
+          {
+            "rank": 7,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0288981288981289,
+            "similarity": 0.5866501331329346
+          },
+          {
+            "rank": 8,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02877846790890269,
+            "similarity": 0.598630964756012
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028283227848101264,
+            "similarity": 0.5496804714202881
+          },
+          {
+            "rank": 10,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02821869488536155,
+            "similarity": 0.6209973096847534
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-c0656e4ba6064836b588f3561fb8716d",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 347.294
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8328332304954529
+          },
+          {
+            "rank": 2,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.6820268630981445
+          },
+          {
+            "rank": 3,
+            "chunk_id": "78a186f0e2b9464480d4534e610af306",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03128054740957967,
+            "similarity": 0.7368108630180359
+          },
+          {
+            "rank": 4,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03128054740957967,
+            "similarity": 0.6685434579849243
+          },
+          {
+            "rank": 5,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.6338475942611694
+          },
+          {
+            "rank": 6,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029513888888888888,
+            "similarity": 0.6034980416297913
+          },
+          {
+            "rank": 7,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02946912242686891,
+            "similarity": 0.6713205575942993
+          },
+          {
+            "rank": 8,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029211087420042643,
+            "similarity": 0.6396463513374329
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02900988017658188,
+            "similarity": 0.6098103523254395
+          },
+          {
+            "rank": 10,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02782608695652174,
+            "similarity": 0.5946853160858154
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-bfae8160c81e448fa73afa9a28aed90f",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 353.324
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "bfae8160c81e448fa73afa9a28aed90f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.9147430062294006
+          },
+          {
+            "rank": 2,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.622253954410553
+          },
+          {
+            "rank": 3,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030776515151515152,
+            "similarity": 0.6104837656021118
+          },
+          {
+            "rank": 4,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02900988017658188,
+            "similarity": 0.5934449434280396
+          },
+          {
+            "rank": 5,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02854251012145749,
+            "similarity": 0.5510197877883911
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028404512489927477,
+            "similarity": 0.5748517513275146
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028381642512077296,
+            "similarity": 0.562246561050415
+          },
+          {
+            "rank": 8,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028068137824235385,
+            "similarity": 0.6202213764190674
+          },
+          {
+            "rank": 9,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027912386121341344,
+            "similarity": 0.5499207973480225
+          },
+          {
+            "rank": 10,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027526395173453996,
+            "similarity": 0.549846887588501
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-8defb9f763a740ababf80dc01139b192",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 366.951
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "8defb9f763a740ababf80dc01139b192",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8712667226791382
+          },
+          {
+            "rank": 2,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.5689363479614258
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029709507042253523,
+            "similarity": 0.5431542992591858
+          },
+          {
+            "rank": 4,
+            "chunk_id": "ba733fa78e0240708b33302d42f69d8f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02946236559139785,
+            "similarity": 0.5336805582046509
+          },
+          {
+            "rank": 5,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029386529386529386,
+            "similarity": 0.5339618921279907
+          },
+          {
+            "rank": 6,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028474711270410194,
+            "similarity": 0.6426299810409546
+          },
+          {
+            "rank": 7,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02804284323271665,
+            "similarity": 0.5233415961265564
+          },
+          {
+            "rank": 8,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02786377708978328,
+            "similarity": 0.5652537941932678
+          },
+          {
+            "rank": 9,
+            "chunk_id": "3ff67f5e3bc746809c04c6675d7fe2d4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027745885954841176,
+            "similarity": 0.5245286822319031
+          },
+          {
+            "rank": 10,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027692895339954164,
+            "similarity": 0.5296950340270996
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-8a9a7d03a8d8460a934c8d88683a2f29",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 378.613
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8757163882255554
+          },
+          {
+            "rank": 2,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125763125763126,
+            "similarity": 0.5992014408111572
+          },
+          {
+            "rank": 3,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125,
+            "similarity": 0.6080007553100586
+          },
+          {
+            "rank": 4,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03057889822595705,
+            "similarity": 0.6161922216415405
+          },
+          {
+            "rank": 5,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03021353930031804,
+            "similarity": 0.5730411410331726
+          },
+          {
+            "rank": 6,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.594001293182373
+          },
+          {
+            "rank": 7,
+            "chunk_id": "bfae8160c81e448fa73afa9a28aed90f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029116045245077504,
+            "similarity": 0.6285305619239807
+          },
+          {
+            "rank": 8,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029083245521601686,
+            "similarity": 0.5707509517669678
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028370221327967807,
+            "similarity": 0.5820707678794861
+          },
+          {
+            "rank": 10,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027650648360030512,
+            "similarity": 0.5827931761741638
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-78a186f0e2b9464480d4534e610af306",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 437.102
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "78a186f0e2b9464480d4534e610af306",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.9074000716209412
+          },
+          {
+            "rank": 2,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.7095978856086731
+          },
+          {
+            "rank": 3,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.7113136649131775
+          },
+          {
+            "rank": 4,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125763125763126,
+            "similarity": 0.7314383387565613
+          },
+          {
+            "rank": 5,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031054405392392875,
+            "similarity": 0.7428843975067139
+          },
+          {
+            "rank": 6,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030330882352941176,
+            "similarity": 0.6350547671318054
+          },
+          {
+            "rank": 7,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02919863597612958,
+            "similarity": 0.628582239151001
+          },
+          {
+            "rank": 8,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028850145288501453,
+            "similarity": 0.6394919753074646
+          },
+          {
+            "rank": 9,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028814262023217248,
+            "similarity": 0.6388157606124878
+          },
+          {
+            "rank": 10,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028381642512077296,
+            "similarity": 0.6036180257797241
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-9db0f7ed052e4567abd4f3a385187005",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 506.335
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "9db0f7ed052e4567abd4f3a385187005",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.9199037551879883
+          },
+          {
+            "rank": 2,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.6068141460418701
+          },
+          {
+            "rank": 3,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02900988017658188,
+            "similarity": 0.5742849707603455
+          },
+          {
+            "rank": 4,
+            "chunk_id": "3ac123fb11e34e2b8dfea1784fe1ddbb",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02886002886002886,
+            "similarity": 0.6230629086494446
+          },
+          {
+            "rank": 5,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028850145288501453,
+            "similarity": 0.5764057040214539
+          },
+          {
+            "rank": 6,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028381642512077296,
+            "similarity": 0.5638359189033508
+          },
+          {
+            "rank": 7,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027673192771084338,
+            "similarity": 0.5088009834289551
+          },
+          {
+            "rank": 8,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02736498731424429,
+            "similarity": 0.6309292316436768
+          },
+          {
+            "rank": 9,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027106227106227107,
+            "similarity": 0.5287477374076843
+          },
+          {
+            "rank": 10,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02690100430416069,
+            "similarity": 0.5100181102752686
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-53efbed2677e4575bce5f854413da320",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 337.791
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "53efbed2677e4575bce5f854413da320",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.922726035118103
+          },
+          {
+            "rank": 2,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03200204813108039,
+            "similarity": 0.6183342933654785
+          },
+          {
+            "rank": 3,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.5884532928466797
+          },
+          {
+            "rank": 4,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.6163366436958313
+          },
+          {
+            "rank": 5,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030303030303030304,
+            "similarity": 0.5791327357292175
+          },
+          {
+            "rank": 6,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030090497737556562,
+            "similarity": 0.565772533416748
+          },
+          {
+            "rank": 7,
+            "chunk_id": "3ff67f5e3bc746809c04c6675d7fe2d4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02967032967032967,
+            "similarity": 0.5796986222267151
+          },
+          {
+            "rank": 8,
+            "chunk_id": "78a186f0e2b9464480d4534e610af306",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029418126757516764,
+            "similarity": 0.5723783373832703
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028991596638655463,
+            "similarity": 0.5506464838981628
+          },
+          {
+            "rank": 10,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027912386121341344,
+            "similarity": 0.524447500705719
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-f3380ace0aeb4398aca007e374472890",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 306.555
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "f3380ace0aeb4398aca007e374472890",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8785702586174011
+          },
+          {
+            "rank": 2,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031746031746031744,
+            "similarity": 0.6563321352005005
+          },
+          {
+            "rank": 3,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.6563733816146851
+          },
+          {
+            "rank": 4,
+            "chunk_id": "87d341415daf4398acfcd5b9bbfd60a6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03021353930031804,
+            "similarity": 0.6338401436805725
+          },
+          {
+            "rank": 5,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.6456779837608337
+          },
+          {
+            "rank": 6,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029437229437229435,
+            "similarity": 0.6420263051986694
+          },
+          {
+            "rank": 7,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028594771241830064,
+            "similarity": 0.6333250999450684
+          },
+          {
+            "rank": 8,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027912386121341344,
+            "similarity": 0.6128950119018555
+          },
+          {
+            "rank": 9,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027598020555767037,
+            "similarity": 0.6257336735725403
+          },
+          {
+            "rank": 10,
+            "chunk_id": "3ff67f5e3bc746809c04c6675d7fe2d4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02758751902587519,
+            "similarity": 0.6325429081916809
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-fc67186f1e97432dafc56e0a8a9e84c9",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 327.162
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8545646071434021
+          },
+          {
+            "rank": 2,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.7430708408355713
+          },
+          {
+            "rank": 3,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031746031746031744,
+            "similarity": 0.7305318713188171
+          },
+          {
+            "rank": 4,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031054405392392875,
+            "similarity": 0.6505774259567261
+          },
+          {
+            "rank": 5,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030330882352941176,
+            "similarity": 0.71498042345047
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030309988518943745,
+            "similarity": 0.7012159824371338
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029236022193768675,
+            "similarity": 0.6918283700942993
+          },
+          {
+            "rank": 8,
+            "chunk_id": "87d341415daf4398acfcd5b9bbfd60a6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028381642512077296,
+            "similarity": 0.6348937153816223
+          },
+          {
+            "rank": 9,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027692895339954164,
+            "similarity": 0.6403387188911438
+          },
+          {
+            "rank": 10,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027479766610201392,
+            "similarity": 0.5913926362991333
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-7d083e24ba55447880540501a3eaea11",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 383.134
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8353780508041382
+          },
+          {
+            "rank": 2,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.6757449507713318
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030834914611005692,
+            "similarity": 0.6274104118347168
+          },
+          {
+            "rank": 4,
+            "chunk_id": "87d341415daf4398acfcd5b9bbfd60a6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030536130536130537,
+            "similarity": 0.6470661759376526
+          },
+          {
+            "rank": 5,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02946912242686891,
+            "similarity": 0.651422917842865
+          },
+          {
+            "rank": 6,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029386529386529386,
+            "similarity": 0.6219469308853149
+          },
+          {
+            "rank": 7,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029211087420042643,
+            "similarity": 0.638160228729248
+          },
+          {
+            "rank": 8,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028958333333333336,
+            "similarity": 0.6533976197242737
+          },
+          {
+            "rank": 9,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028068137824235385,
+            "similarity": 0.6642670631408691
+          },
+          {
+            "rank": 10,
+            "chunk_id": "bfae8160c81e448fa73afa9a28aed90f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028006267136701922,
+            "similarity": 0.6262818574905396
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-78888ebf23de4023ac39d0adf5e66352",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 376.136
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "78888ebf23de4023ac39d0adf5e66352",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8982396125793457
+          },
+          {
+            "rank": 2,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.6518669128417969
+          },
+          {
+            "rank": 3,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03036576949620428,
+            "similarity": 0.5485509634017944
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029273504273504274,
+            "similarity": 0.541096568107605
+          },
+          {
+            "rank": 5,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02813852813852814,
+            "similarity": 0.5291329622268677
+          },
+          {
+            "rank": 6,
+            "chunk_id": "f4555111fcc34552a2cf784282f5937f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028068137824235385,
+            "similarity": 0.6232659816741943
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027809742999616416,
+            "similarity": 0.5554307699203491
+          },
+          {
+            "rank": 8,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027745885954841176,
+            "similarity": 0.5276662707328796
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027673192771084338,
+            "similarity": 0.512761116027832
+          },
+          {
+            "rank": 10,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027364110201042444,
+            "similarity": 0.5241471529006958
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-9234d7bc857b43148a229f54b20debc7",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 319.426
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8901033401489258
+          },
+          {
+            "rank": 2,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03200204813108039,
+            "similarity": 0.630903959274292
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.6291131973266602
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.6234771013259888
+          },
+          {
+            "rank": 5,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029857397504456328,
+            "similarity": 0.6149049997329712
+          },
+          {
+            "rank": 6,
+            "chunk_id": "bfae8160c81e448fa73afa9a28aed90f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02964254577157803,
+            "similarity": 0.6340335011482239
+          },
+          {
+            "rank": 7,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028438886647841874,
+            "similarity": 0.6020216345787048
+          },
+          {
+            "rank": 8,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02819138376017471,
+            "similarity": 0.6083316802978516
+          },
+          {
+            "rank": 9,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027692895339954164,
+            "similarity": 0.5930866003036499
+          },
+          {
+            "rank": 10,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027031963470319637,
+            "similarity": 0.6020448803901672
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-c0982724178a4b9a9b84d883cfa1e9ff",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 501.171
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.7791353464126587
+          },
+          {
+            "rank": 2,
+            "chunk_id": "87d341415daf4398acfcd5b9bbfd60a6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031746031746031744,
+            "similarity": 0.6322060227394104
+          },
+          {
+            "rank": 3,
+            "chunk_id": "f3380ace0aeb4398aca007e374472890",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031054405392392875,
+            "similarity": 0.6784276366233826
+          },
+          {
+            "rank": 4,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030621785881252923,
+            "similarity": 0.5902798175811768
+          },
+          {
+            "rank": 5,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.5953169465065002
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0288981288981289,
+            "similarity": 0.6071760654449463
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028790389395194696,
+            "similarity": 0.585209846496582
+          },
+          {
+            "rank": 8,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02854251012145749,
+            "similarity": 0.561743438243866
+          },
+          {
+            "rank": 9,
+            "chunk_id": "bfae8160c81e448fa73afa9a28aed90f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02844551282051282,
+            "similarity": 0.6106081604957581
+          },
+          {
+            "rank": 10,
+            "chunk_id": "3ff67f5e3bc746809c04c6675d7fe2d4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02817460317460317,
+            "similarity": 0.588001549243927
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-87d341415daf4398acfcd5b9bbfd60a6",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 425.474
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "87d341415daf4398acfcd5b9bbfd60a6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.7713186144828796
+          },
+          {
+            "rank": 2,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031746031746031744,
+            "similarity": 0.5966587066650391
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.5916854739189148
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03021353930031804,
+            "similarity": 0.6168809533119202
+          },
+          {
+            "rank": 5,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028850145288501453,
+            "similarity": 0.5680973529815674
+          },
+          {
+            "rank": 6,
+            "chunk_id": "f3380ace0aeb4398aca007e374472890",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028612012987012988,
+            "similarity": 0.5578622817993164
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028577260665441927,
+            "similarity": 0.5699890851974487
+          },
+          {
+            "rank": 8,
+            "chunk_id": "7486b67b8e484b9c9ff9146243c76191",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028258706467661692,
+            "similarity": 0.5871061086654663
+          },
+          {
+            "rank": 9,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028083267871170464,
+            "similarity": 0.5615831613540649
+          },
+          {
+            "rank": 10,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027402402402402402,
+            "similarity": 0.5687229633331299
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-4242d4a1242f4ef7bc4051d547cb1d3f",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 356.993
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "4242d4a1242f4ef7bc4051d547cb1d3f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8978322744369507
+          },
+          {
+            "rank": 2,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.6561185121536255
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03036576949620428,
+            "similarity": 0.5932052135467529
+          },
+          {
+            "rank": 4,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030303030303030304,
+            "similarity": 0.6093260645866394
+          },
+          {
+            "rank": 5,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03021353930031804,
+            "similarity": 0.583624005317688
+          },
+          {
+            "rank": 6,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02967032967032967,
+            "similarity": 0.6112634539604187
+          },
+          {
+            "rank": 7,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029631255487269532,
+            "similarity": 0.5952354669570923
+          },
+          {
+            "rank": 8,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029273504273504274,
+            "similarity": 0.5823072791099548
+          },
+          {
+            "rank": 9,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028370221327967807,
+            "similarity": 0.5886141061782837
+          },
+          {
+            "rank": 10,
+            "chunk_id": "828e5a5291364675a100024f13af0eb6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02832415420928403,
+            "similarity": 0.6590325832366943
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-828e5a5291364675a100024f13af0eb6",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 313.394
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "828e5a5291364675a100024f13af0eb6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8980041742324829
+          },
+          {
+            "rank": 2,
+            "chunk_id": "4242d4a1242f4ef7bc4051d547cb1d3f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.693230390548706
+          },
+          {
+            "rank": 3,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125763125763126,
+            "similarity": 0.6500191688537598
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030776515151515152,
+            "similarity": 0.6532355546951294
+          },
+          {
+            "rank": 5,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029116045245077504,
+            "similarity": 0.578458845615387
+          },
+          {
+            "rank": 6,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028991596638655463,
+            "similarity": 0.6091337203979492
+          },
+          {
+            "rank": 7,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027650648360030512,
+            "similarity": 0.6081013083457947
+          },
+          {
+            "rank": 8,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027526395173453996,
+            "similarity": 0.5778630971908569
+          },
+          {
+            "rank": 9,
+            "chunk_id": "b6344f90cd454a8685f92dd09cc158aa",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027236652236652236,
+            "similarity": 0.6768172979354858
+          },
+          {
+            "rank": 10,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02712049508554787,
+            "similarity": 0.6092512011528015
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-6ef5fbed9354428a89c482cde575ed97",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 346.989
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "6ef5fbed9354428a89c482cde575ed97",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8905523419380188
+          },
+          {
+            "rank": 2,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.6299389600753784
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.5573806762695312
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03036576949620428,
+            "similarity": 0.5285699367523193
+          },
+          {
+            "rank": 5,
+            "chunk_id": "3ff67f5e3bc746809c04c6675d7fe2d4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030303030303030304,
+            "similarity": 0.5479016900062561
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028594771241830064,
+            "similarity": 0.5333607792854309
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02817460317460317,
+            "similarity": 0.5166321992874146
+          },
+          {
+            "rank": 8,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0273972602739726,
+            "similarity": 0.5153111219406128
+          },
+          {
+            "rank": 9,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027242401779095628,
+            "similarity": 0.5103583931922913
+          },
+          {
+            "rank": 10,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027051561365286855,
+            "similarity": 0.4942381680011749
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-ba733fa78e0240708b33302d42f69d8f",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 393.123
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "ba733fa78e0240708b33302d42f69d8f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8070307970046997
+          },
+          {
+            "rank": 2,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031024531024531024,
+            "similarity": 0.5641151666641235
+          },
+          {
+            "rank": 3,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03021353930031804,
+            "similarity": 0.6051389575004578
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029083245521601686,
+            "similarity": 0.5648925304412842
+          },
+          {
+            "rank": 5,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028958333333333336,
+            "similarity": 0.536311149597168
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0288981288981289,
+            "similarity": 0.5369787216186523
+          },
+          {
+            "rank": 7,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028283227848101264,
+            "similarity": 0.5672814249992371
+          },
+          {
+            "rank": 8,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02749266862170088,
+            "similarity": 0.5055691003799438
+          },
+          {
+            "rank": 9,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027046783625730993,
+            "similarity": 0.5400286912918091
+          },
+          {
+            "rank": 10,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027046783625730993,
+            "similarity": 0.5356708765029907
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-7dcfa1b1c71a4cee91d79d682b68d687",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 336.219
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.7716082334518433
+          },
+          {
+            "rank": 2,
+            "chunk_id": "bfae8160c81e448fa73afa9a28aed90f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030017921146953404,
+            "similarity": 0.6513128876686096
+          },
+          {
+            "rank": 3,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030017921146953404,
+            "similarity": 0.570760190486908
+          },
+          {
+            "rank": 4,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029910714285714284,
+            "similarity": 0.6008949279785156
+          },
+          {
+            "rank": 5,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.5995713472366333
+          },
+          {
+            "rank": 6,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0293236301369863,
+            "similarity": 0.5697733163833618
+          },
+          {
+            "rank": 7,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028991596638655463,
+            "similarity": 0.5811591148376465
+          },
+          {
+            "rank": 8,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028068137824235385,
+            "similarity": 0.5359257459640503
+          },
+          {
+            "rank": 9,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028006267136701922,
+            "similarity": 0.5830588340759277
+          },
+          {
+            "rank": 10,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02792120864410021,
+            "similarity": 0.621556282043457
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-3ff67f5e3bc746809c04c6675d7fe2d4",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 370.409
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "3ff67f5e3bc746809c04c6675d7fe2d4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.9505904316902161
+          },
+          {
+            "rank": 2,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.6361578702926636
+          },
+          {
+            "rank": 3,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.6000193953514099
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030798389007344232,
+            "similarity": 0.6074164509773254
+          },
+          {
+            "rank": 5,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030798389007344232,
+            "similarity": 0.585995078086853
+          },
+          {
+            "rank": 6,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030776515151515152,
+            "similarity": 0.5933805704116821
+          },
+          {
+            "rank": 7,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029236022193768675,
+            "similarity": 0.5667523145675659
+          },
+          {
+            "rank": 8,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02919863597612958,
+            "similarity": 0.5767540335655212
+          },
+          {
+            "rank": 9,
+            "chunk_id": "f3380ace0aeb4398aca007e374472890",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028371628371628373,
+            "similarity": 0.5942708849906921
+          },
+          {
+            "rank": 10,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027984344422700584,
+            "similarity": 0.5754399299621582
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-ace8dfbbf1f547f48dd5f66a54e78bd7",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 392.492
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8710752725601196
+          },
+          {
+            "rank": 2,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03200204813108039,
+            "similarity": 0.7178158760070801
+          },
+          {
+            "rank": 3,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.6668440699577332
+          },
+          {
+            "rank": 4,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.7037847638130188
+          },
+          {
+            "rank": 5,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.6658623814582825
+          },
+          {
+            "rank": 6,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029709507042253523,
+            "similarity": 0.6910253167152405
+          },
+          {
+            "rank": 7,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028665028665028666,
+            "similarity": 0.6274310350418091
+          },
+          {
+            "rank": 8,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028205128205128206,
+            "similarity": 0.6120119690895081
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0273972602739726,
+            "similarity": 0.6274315118789673
+          },
+          {
+            "rank": 10,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02715098147128967,
+            "similarity": 0.6057816743850708
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-b6344f90cd454a8685f92dd09cc158aa",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 363.977
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "b6344f90cd454a8685f92dd09cc158aa",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.905805766582489
+          },
+          {
+            "rank": 2,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03200204813108039,
+            "similarity": 0.5947041511535645
+          },
+          {
+            "rank": 3,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030798389007344232,
+            "similarity": 0.5559811592102051
+          },
+          {
+            "rank": 4,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030330882352941176,
+            "similarity": 0.5516006350517273
+          },
+          {
+            "rank": 5,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.5812392234802246
+          },
+          {
+            "rank": 6,
+            "chunk_id": "4242d4a1242f4ef7bc4051d547cb1d3f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.5860945582389832
+          },
+          {
+            "rank": 7,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02919863597612958,
+            "similarity": 0.5486881732940674
+          },
+          {
+            "rank": 8,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02904040404040404,
+            "similarity": 0.5388436913490295
+          },
+          {
+            "rank": 9,
+            "chunk_id": "828e5a5291364675a100024f13af0eb6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02878726010616578,
+            "similarity": 0.6388397812843323
+          },
+          {
+            "rank": 10,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027242401779095628,
+            "similarity": 0.5262058973312378
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-bbc743f95f164cab80b2ef3d756f2050",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 325.5
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8614915013313293
+          },
+          {
+            "rank": 2,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.84413743019104
+          },
+          {
+            "rank": 3,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031746031746031744,
+            "similarity": 0.7192927598953247
+          },
+          {
+            "rank": 4,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125,
+            "similarity": 0.6946195960044861
+          },
+          {
+            "rank": 5,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.6851847171783447
+          },
+          {
+            "rank": 6,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029877369007803793,
+            "similarity": 0.6860560178756714
+          },
+          {
+            "rank": 7,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029437229437229435,
+            "similarity": 0.6469734907150269
+          },
+          {
+            "rank": 8,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028814262023217248,
+            "similarity": 0.6715784072875977
+          },
+          {
+            "rank": 9,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02728937728937729,
+            "similarity": 0.5902707576751709
+          },
+          {
+            "rank": 10,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027106227106227107,
+            "similarity": 0.6054998636245728
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-0d75677b55fa4315a2feb9c26350ac7f",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 355.836
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "0d75677b55fa4315a2feb9c26350ac7f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8434552550315857
+          },
+          {
+            "rank": 2,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03200204813108039,
+            "similarity": 0.6264656782150269
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125763125763126,
+            "similarity": 0.5945819616317749
+          },
+          {
+            "rank": 4,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031054405392392875,
+            "similarity": 0.648169994354248
+          },
+          {
+            "rank": 5,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030330882352941176,
+            "similarity": 0.604552686214447
+          },
+          {
+            "rank": 6,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028371628371628373,
+            "similarity": 0.5427618026733398
+          },
+          {
+            "rank": 7,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027783137179239824,
+            "similarity": 0.5676833987236023
+          },
+          {
+            "rank": 8,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027046783625730993,
+            "similarity": 0.5432673692703247
+          },
+          {
+            "rank": 9,
+            "chunk_id": "828e5a5291364675a100024f13af0eb6",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0266900790166813,
+            "similarity": 0.5729612708091736
+          },
+          {
+            "rank": 10,
+            "chunk_id": "bfae8160c81e448fa73afa9a28aed90f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026387470207694927,
+            "similarity": 0.5802748799324036
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-6d2a2366463243aa9a1d71f37d766857",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 374.515
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.9143235683441162
+          },
+          {
+            "rank": 2,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03225806451612903,
+            "similarity": 0.773655116558075
+          },
+          {
+            "rank": 3,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125,
+            "similarity": 0.6622371077537537
+          },
+          {
+            "rank": 4,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030158730158730156,
+            "similarity": 0.6627094149589539
+          },
+          {
+            "rank": 5,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029957522915269395,
+            "similarity": 0.6284604072570801
+          },
+          {
+            "rank": 6,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029850746268656716,
+            "similarity": 0.636542797088623
+          },
+          {
+            "rank": 7,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029437229437229435,
+            "similarity": 0.630435049533844
+          },
+          {
+            "rank": 8,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028594771241830064,
+            "similarity": 0.6239392757415771
+          },
+          {
+            "rank": 9,
+            "chunk_id": "4242d4a1242f4ef7bc4051d547cb1d3f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028371628371628373,
+            "similarity": 0.5991492867469788
+          },
+          {
+            "rank": 10,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027242401779095628,
+            "similarity": 0.6111913919448853
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-d0cbdc7e6228458e85ebd7fee71b9980",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 353.173
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "d0cbdc7e6228458e85ebd7fee71b9980",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03252247488101534,
+            "similarity": 0.8912125825881958
+          },
+          {
+            "rank": 2,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03200204813108039,
+            "similarity": 0.6545319557189941
+          },
+          {
+            "rank": 3,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030798389007344232,
+            "similarity": 0.6403438448905945
+          },
+          {
+            "rank": 4,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02919863597612958,
+            "similarity": 0.5991678237915039
+          },
+          {
+            "rank": 5,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0288981288981289,
+            "similarity": 0.5688868165016174
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02857142857142857,
+            "similarity": 0.5943070650100708
+          },
+          {
+            "rank": 7,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028205128205128206,
+            "similarity": 0.6365993618965149
+          },
+          {
+            "rank": 8,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028021349599695006,
+            "similarity": 0.5472544431686401
+          },
+          {
+            "rank": 9,
+            "chunk_id": "c0982724178a4b9a9b84d883cfa1e9ff",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027783137179239824,
+            "similarity": 0.570000171661377
+          },
+          {
+            "rank": 10,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027583600982429624,
+            "similarity": 0.6006968021392822
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-0b960ca4d1dc4d878d0382077e0a6a79",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 421.506
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8978976607322693
+          },
+          {
+            "rank": 2,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.7413150072097778
+          },
+          {
+            "rank": 3,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0315136476426799,
+            "similarity": 0.7784444093704224
+          },
+          {
+            "rank": 4,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031009615384615385,
+            "similarity": 0.7390435338020325
+          },
+          {
+            "rank": 5,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03057889822595705,
+            "similarity": 0.747611403465271
+          },
+          {
+            "rank": 6,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.7245046496391296
+          },
+          {
+            "rank": 7,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.7134043574333191
+          },
+          {
+            "rank": 8,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029386529386529386,
+            "similarity": 0.6447324752807617
+          },
+          {
+            "rank": 9,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028991596638655463,
+            "similarity": 0.6886141300201416
+          },
+          {
+            "rank": 10,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02819138376017471,
+            "similarity": 0.6868501901626587
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-76a32714cc974a0a8ad9da9d19e1f94a",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 358.289
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "76a32714cc974a0a8ad9da9d19e1f94a",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03252247488101534,
+            "similarity": 0.8943096399307251
+          },
+          {
+            "rank": 2,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.032266458495966696,
+            "similarity": 0.6532473564147949
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030798389007344232,
+            "similarity": 0.5957050323486328
+          },
+          {
+            "rank": 4,
+            "chunk_id": "3ff67f5e3bc746809c04c6675d7fe2d4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03076923076923077,
+            "similarity": 0.5983952879905701
+          },
+          {
+            "rank": 5,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.0293236301369863,
+            "similarity": 0.5663740634918213
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028594771241830064,
+            "similarity": 0.5680686235427856
+          },
+          {
+            "rank": 7,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028006267136701922,
+            "similarity": 0.5778518915176392
+          },
+          {
+            "rank": 8,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026838432635534086,
+            "similarity": 0.5501409769058228
+          },
+          {
+            "rank": 9,
+            "chunk_id": "b6344f90cd454a8685f92dd09cc158aa",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.026736111111111113,
+            "similarity": 0.6013935804367065
+          },
+          {
+            "rank": 10,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02667140825035562,
+            "similarity": 0.56607586145401
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-6f1f59f13ab546bd855028c891bef4c8",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 330.4
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8761641979217529
+          },
+          {
+            "rank": 2,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03125,
+            "similarity": 0.6305830478668213
+          },
+          {
+            "rank": 3,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030621785881252923,
+            "similarity": 0.603160560131073
+          },
+          {
+            "rank": 4,
+            "chunk_id": "6d2a2366463243aa9a1d71f37d766857",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029631255487269532,
+            "similarity": 0.6148165464401245
+          },
+          {
+            "rank": 5,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02946912242686891,
+            "similarity": 0.6292876601219177
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7d083e24ba55447880540501a3eaea11",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029206349206349208,
+            "similarity": 0.5769727230072021
+          },
+          {
+            "rank": 7,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02877846790890269,
+            "similarity": 0.5895721912384033
+          },
+          {
+            "rank": 8,
+            "chunk_id": "f3380ace0aeb4398aca007e374472890",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028693528693528692,
+            "similarity": 0.635891854763031
+          },
+          {
+            "rank": 9,
+            "chunk_id": "9234d7bc857b43148a229f54b20debc7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02813852813852814,
+            "similarity": 0.6239416599273682
+          },
+          {
+            "rank": 10,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02813852813852814,
+            "similarity": 0.572187066078186
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-d75ce304e2ab4c2598505106312fbd27",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 384.88
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "d75ce304e2ab4c2598505106312fbd27",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8570736646652222
+          },
+          {
+            "rank": 2,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.7075608372688293
+          },
+          {
+            "rank": 3,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03149801587301587,
+            "similarity": 0.6624224185943604
+          },
+          {
+            "rank": 4,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031024531024531024,
+            "similarity": 0.6714152097702026
+          },
+          {
+            "rank": 5,
+            "chunk_id": "0b960ca4d1dc4d878d0382077e0a6a79",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029850746268656716,
+            "similarity": 0.6042497158050537
+          },
+          {
+            "rank": 6,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029827662395050816,
+            "similarity": 0.5752738118171692
+          },
+          {
+            "rank": 7,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028991596638655463,
+            "similarity": 0.6009767651557922
+          },
+          {
+            "rank": 8,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028594771241830064,
+            "similarity": 0.5893591046333313
+          },
+          {
+            "rank": 9,
+            "chunk_id": "bbc743f95f164cab80b2ef3d756f2050",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028381642512077296,
+            "similarity": 0.596779465675354
+          },
+          {
+            "rank": 10,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028309409888357256,
+            "similarity": 0.6378399729728699
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-1c74224dadd54f79b1c2c925b6743f2d",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 347.059
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "1c74224dadd54f79b1c2c925b6743f2d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8347829580307007
+          },
+          {
+            "rank": 2,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031754032258064516,
+            "similarity": 0.6875796318054199
+          },
+          {
+            "rank": 3,
+            "chunk_id": "fe232dbda17447288dcdfcae41bb895e",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.031746031746031744,
+            "similarity": 0.6944007873535156
+          },
+          {
+            "rank": 4,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03076923076923077,
+            "similarity": 0.674156904220581
+          },
+          {
+            "rank": 5,
+            "chunk_id": "fc67186f1e97432dafc56e0a8a9e84c9",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03007688828584351,
+            "similarity": 0.6569176912307739
+          },
+          {
+            "rank": 6,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.029827662395050816,
+            "similarity": 0.7468138933181763
+          },
+          {
+            "rank": 7,
+            "chunk_id": "8a9a7d03a8d8460a934c8d88683a2f29",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02862400327131466,
+            "similarity": 0.6240969300270081
+          },
+          {
+            "rank": 8,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028594771241830064,
+            "similarity": 0.6540336012840271
+          },
+          {
+            "rank": 9,
+            "chunk_id": "6f1f59f13ab546bd855028c891bef4c8",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028381642512077296,
+            "similarity": 0.6335101127624512
+          },
+          {
+            "rank": 10,
+            "chunk_id": "1fef249a9530470ab3efc4da3cb26c5f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02813852813852814,
+            "similarity": 0.667371928691864
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "silver-8e1afe98de874cd79ea83a62bedb9068",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 415.891
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "cab4a2f3439f4337a925edaa02e060e6"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "8e1afe98de874cd79ea83a62bedb9068",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.03278688524590164,
+            "similarity": 0.8215570449829102
+          },
+          {
+            "rank": 2,
+            "chunk_id": "51a2bdac9a2d4b05b23aaf44fc153546",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.030834914611005692,
+            "similarity": 0.5837987661361694
+          },
+          {
+            "rank": 3,
+            "chunk_id": "346c79dca2cb4b4b82e1405b79134a23",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.028850145288501453,
+            "similarity": 0.6018992066383362
+          },
+          {
+            "rank": 4,
+            "chunk_id": "3ff0b7ce9f2e456b8808c5c38bb172a1",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02877846790890269,
+            "similarity": 0.581547737121582
+          },
+          {
+            "rank": 5,
+            "chunk_id": "ace8dfbbf1f547f48dd5f66a54e78bd7",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02877846790890269,
+            "similarity": 0.5751791000366211
+          },
+          {
+            "rank": 6,
+            "chunk_id": "7dcfa1b1c71a4cee91d79d682b68d687",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02804284323271665,
+            "similarity": 0.5612080097198486
+          },
+          {
+            "rank": 7,
+            "chunk_id": "f4555111fcc34552a2cf784282f5937f",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.02797067901234568,
+            "similarity": 0.6080989241600037
+          },
+          {
+            "rank": 8,
+            "chunk_id": "c0656e4ba6064836b588f3561fb8716d",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027637721755368813,
+            "similarity": 0.5464897751808167
+          },
+          {
+            "rank": 9,
+            "chunk_id": "381916baeff74363887fb8ddd84921c3",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027579737335834898,
+            "similarity": 0.6029972434043884
+          },
+          {
+            "rank": 10,
+            "chunk_id": "d1c36ed478d347489fb0d48c6e9c2bb4",
+            "document_id": "cab4a2f3439f4337a925edaa02e060e6",
+            "score": 0.027402402402402402,
+            "similarity": 0.566386342048645
+          }
+        ]
+      }
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}

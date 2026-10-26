@@ -1,5 +1,6 @@
 """Real ChatService, isolated SQL retrieval/index and calculator; synthetic model, not quality evidence."""
 
+import asyncio
 import base64
 import json
 import uuid
@@ -351,6 +352,72 @@ async def test_debug_trace_records_actual_model_and_tool_without_business_payloa
     assert tool_events[0].name == "calculator" and tool_events[0].data["status"] == "ok"
     serialized = json.dumps([event.to_dict() for event in trace.events], ensure_ascii=False)
     assert "每人每日300元" not in serialized and "lodging" not in serialized
+
+
+async def test_non_debug_run_history_counts_real_combined_calls(composition, monkeypatch):
+    from app.debug.trace import AgentTrace
+    from app.models.run_history import RunHistory
+
+    engine, actor = composition
+    await ingest(engine, actor)
+    service, model = wired_model(monkeypatch)
+    trace = AgentTrace()
+    monkeypatch.setattr(service, "_create_trace", lambda: trace)
+    answer, _, _, _ = await invoke(engine, actor, service, False)
+    assert "1140.00" in answer.content
+    assert trace.events == []
+    assert len(model.calls) == trace.summary()["llm_call_count"] == 1
+    assert trace.summary()["tool_call_count"] == 1
+    with Session(engine) as session:
+        row = session.get(RunHistory, trace.run_id)
+        assert row is not None
+        assert row.llm_call_count == row.tool_call_count == 1
+        assert row.events_json == "[]"
+        assert row.input_tokens is row.output_tokens is None
+
+
+@pytest.mark.parametrize("outcome", ["error", "cancelled"])
+@pytest.mark.parametrize("debug_mode", [False, True])
+async def test_combined_tool_interruption_counts_dispatch_before_persistence(
+    composition, monkeypatch, outcome, debug_mode,
+):
+    from app.debug.trace import AgentTrace
+    from app.models.run_history import RunHistory
+
+    engine, actor = composition
+    await ingest(engine, actor)
+    service, model = wired_model(monkeypatch)
+    trace = AgentTrace(debug_mode=debug_mode)
+    monkeypatch.setattr(service, "_create_trace", lambda: trace)
+    calls = []
+
+    async def interrupted(executor, call):
+        calls.append(call.name)
+        if outcome == "cancelled":
+            raise asyncio.CancelledError
+        raise RuntimeError("private tool failure")
+
+    monkeypatch.setattr(ToolExecutor, "execute", interrupted)
+    with Session(engine) as session:
+        stream = service.chat_stream(session, actor, QUESTION)
+        try:
+            if outcome == "cancelled":
+                with pytest.raises(asyncio.CancelledError):
+                    async for _ in stream:
+                        pass
+            else:
+                async for _ in stream:
+                    pass
+        finally:
+            await stream.aclose()
+    assert calls == ["calculator"]
+    assert trace.summary()["tool_call_count"] == 1
+    assert trace.summary()["llm_call_count"] == len(model.calls) == 1
+    assert "private tool failure" not in json.dumps(trace.to_dict())
+    with Session(engine) as session:
+        row = session.get(RunHistory, trace.run_id)
+        assert row is not None and row.tool_call_count == row.llm_call_count == 1
+        assert "private tool failure" not in row.events_json
 
 
 @pytest.mark.parametrize("orchestration", ["self", "langgraph"])

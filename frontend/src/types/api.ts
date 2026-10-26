@@ -443,12 +443,35 @@ export interface HealthInfo {
     llm?: { mode: string }
   }
 }
-export type ReportFamily = 'retrieval' | 'generation' | 'agent'
+export type ReportFamily = 'retrieval' | 'generation' | 'agent' | 'workflow'
+export type EvaluationTargetType = 'rag' | 'agent' | 'workflow'
+
+export interface EvaluationTarget {
+  id: string
+  name: string
+  target_type: EvaluationTargetType
+  status: 'available' | 'owner_unavailable'
+  metadata: Record<string, string | number | boolean | null>
+}
+
+export interface EvaluationTargetPage {
+  items: EvaluationTarget[]
+}
+
+export interface EvaluationExecutionUser {
+  id: string
+  username: string
+  role: 'tenant_admin' | 'member'
+}
+
+export interface EvaluationExecutionUserPage {
+  items: EvaluationExecutionUser[]
+}
 export type ReportStatus = 'passed' | 'failed' | 'unmeasured' | 'unsupported' | 'unavailable'
 export interface ReportMetric {
   name: string
   value: number | null
-  unit: 'ratio' | 'count' | 'ms'
+  unit: 'ratio' | 'count' | 'ms' | 'CNY'
 }
 export interface EvaluationReport {
   id: string
@@ -545,6 +568,135 @@ export interface EvaluationCandidate {
 
 export interface EvaluationCandidatePage {
   items: EvaluationCandidate[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export type EvaluationJobStatus = 'queued' | 'running' | 'cancel_requested' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted'
+
+export interface EvaluationJob {
+  id: string
+  tenant_id: string
+  submitted_by: string
+  dataset_id: string
+  dataset_version_id: string
+  job_kind: 'internal_smoke' | 'real_resource'
+  target_type: EvaluationTargetType | null
+  adapter_name: string | null
+  adapter_version: string | null
+  metric_schema_version: string | null
+  execution_user_id: string | null
+  runner: ReportFamily
+  mode: 'smoke' | 'synthetic' | 'real'
+  status: EvaluationJobStatus
+  input_hash: string
+  max_external_calls: number
+  external_calls_used: number
+  case_total: number
+  case_completed: number
+  report_id: string | null
+  report_hash: string | null
+  error_code: string | null
+  cancel_requested_at: string | null
+  started_at: string | null
+  finished_at: string | null
+}
+
+export interface EvaluationJobPage {
+  items: EvaluationJob[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface EvaluationCaseResult {
+  id: string
+  job_id: string
+  tenant_id: string
+  case_id: string
+  status: 'pending' | 'running' | 'passed' | 'failed' | 'error' | 'skipped'
+  metrics: Record<string, unknown>
+  assertions: { name?: string; passed?: boolean }[]
+  evidence: Record<string, unknown>
+  error_code: string | null
+  elapsed_ms: number | null
+  external_calls_used: number
+}
+
+export interface EvaluationCaseResultPage {
+  items: EvaluationCaseResult[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export type RetrievalBackend = 'native' | 'langchain' | 'llamaindex'
+
+export interface RetrievalVariant {
+  backend: RetrievalBackend
+  top_k: number
+}
+
+export interface RetrievalComparisonCandidate {
+  rank: number
+  chunk_id: string
+  document_id: string
+  source: string | null
+  score: number
+  similarity: number
+  version_status: string
+  retrieval_origin: string
+  content_preview: string
+}
+
+export interface RetrievalComparisonRun {
+  variant: RetrievalVariant
+  effective_backend: string
+  elapsed_ms: number
+  candidates: RetrievalComparisonCandidate[]
+}
+
+export interface RetrievalComparison {
+  identity: Record<string, string | number | null>
+  baseline: RetrievalComparisonRun
+  candidate: RetrievalComparisonRun
+}
+
+export interface RetrievalStrategies {
+  backends: RetrievalBackend[]
+  top_k_min: number
+  top_k_max: number
+}
+
+export interface RunHistoryItem {
+  id: string
+  conversation_id: string
+  status: 'succeeded' | 'failed'
+  error_code: string | null
+  started_at: string
+  finished_at: string
+  duration_ms: number
+  llm_call_count: number
+  tool_call_count: number
+  input_tokens: number | null
+  output_tokens: number | null
+  usage_source: string | null
+}
+
+export interface RunHistoryDetail extends RunHistoryItem {
+  events: {
+    type: string
+    name: string
+    offset_ms: number
+    duration_ms: number | null
+    status: string | null
+    round: number | null
+  }[]
+}
+
+export interface RunHistoryPage {
+  items: RunHistoryItem[]
   total: number
   page: number
   page_size: number

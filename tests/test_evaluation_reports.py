@@ -38,8 +38,8 @@ def reports(tmp_path):
 
 
 @pytest.mark.parametrize("role,ids", [
-    ("system_admin", ["global-1"]), ("system_viewer", ["global-1"]),
-    ("tenant_admin", ["tenant-a"]), ("member", []), ("viewer", []),
+    ("system_admin", ["global-1", "tenant-a", "tenant-b"]), ("system_viewer", []),
+    ("tenant_admin", []), ("member", []), ("viewer", []),
 ])
 def test_domains_are_filtered_before_counting(reports, role, ids):
     page = reports.list_reports(principal(role), page=1, page_size=20)
@@ -104,9 +104,9 @@ def test_real_reports_match_source_and_hide_payloads():
 
 
 def test_trend_keeps_missing_values_and_does_not_mix_domains(reports):
-    trend = reports.trend(principal("tenant_admin"), "retrieval", "mrr")
-    assert [p.report_id for p in trend.points] == ["tenant-a"]
-    assert trend.points[0].value is None
+    trend = reports.trend(principal(), "retrieval", "mrr")
+    assert [p.report_id for p in trend.points] == ["global-1", "tenant-a", "tenant-b"]
+    assert all(point.value is None for point in trend.points)
 
 
 @pytest.mark.parametrize("value", [True, -1, 2, "0.8", float("inf")])

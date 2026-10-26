@@ -22,7 +22,7 @@ _VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,118}[a-z0-9]$|^[a-z0-9]$")
 _SPLITS = frozenset({"development", "validation", "holdout"})
 _TIERS = frozenset({"gold", "silver", "adversarial"})
-_FAMILIES = frozenset({"retrieval", "generation", "agent"})
+_FAMILIES = frozenset({"retrieval", "generation", "agent", "workflow"})
 _HOLDOUT_REDACT_KEYS = frozenset(
     {
         "expected_answer_points",

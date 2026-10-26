@@ -1,17 +1,43 @@
 """Authorized, payload-free evaluation report responses."""
 
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-ReportFamily = Literal["retrieval", "generation", "agent"]
+EvaluationTargetType = Literal["rag", "agent", "workflow"]
+
+
+class EvaluationTargetOut(BaseModel):
+    id: str
+    name: str
+    target_type: EvaluationTargetType
+    status: Literal["available", "owner_unavailable"]
+    metadata: dict[str, str | int | bool | None]
+
+
+class EvaluationTargetPage(BaseModel):
+    items: list[EvaluationTargetOut]
+
+
+class EvaluationExecutionUserOut(BaseModel):
+    id: str
+    username: str
+    role: Literal["tenant_admin", "member"]
+
+
+class EvaluationExecutionUserPage(BaseModel):
+    items: list[EvaluationExecutionUserOut]
+
+
+ReportFamily = Literal["retrieval", "generation", "agent", "workflow"]
 ReportStatus = Literal["passed", "failed", "unmeasured", "unsupported", "unavailable"]
 
 
 class ReportMetric(BaseModel):
     name: str
     value: float | None
-    unit: Literal["ratio", "count", "ms"] = "ratio"
+    unit: Literal["ratio", "count", "ms", "CNY"] = "ratio"
 
 
 class ReportFailure(BaseModel):
@@ -167,3 +193,135 @@ class CandidatePage(BaseModel):
 class CandidateReviewIn(BaseModel):
     decision: Literal["accept", "reject", "withdraw"]
     notes: str | None = None
+
+
+EvaluationRunner = Literal["retrieval", "generation", "agent", "workflow"]
+EvaluationJobMode = Literal["smoke", "synthetic", "real"]
+EvaluationJobStatus = Literal[
+    "queued", "running", "cancel_requested", "succeeded", "failed", "cancelled", "interrupted"
+]
+EvaluationCaseResultStatus = Literal["pending", "running", "passed", "failed", "error", "skipped"]
+
+
+class EvaluationJobCreate(BaseModel):
+    dataset_id: str | None = Field(default=None, min_length=1, max_length=128)
+    dataset_version_id: str | None = Field(default=None, min_length=1, max_length=128)
+    runner: EvaluationRunner | None = None
+    mode: EvaluationJobMode | None = None
+    tenant_id: str | None = Field(default=None, min_length=1, max_length=128)
+    target_type: EvaluationTargetType | None = None
+    target_ids: list[str] = Field(default_factory=list, max_length=100)
+    execution_user_id: str | None = Field(default=None, max_length=128)
+    enable_generation: bool = False
+    enable_judge: bool = False
+    max_cost_yuan: float = Field(default=0, ge=0, le=5, allow_inf_nan=False)
+    data_egress_confirmed: bool = False
+    idempotency_key: str = Field(min_length=1, max_length=128)
+    max_external_calls: int = Field(default=0, ge=0, le=1000)
+
+
+class EvaluationJobOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    tenant_id: str
+    submitted_by: str
+    dataset_id: str
+    dataset_version_id: str
+    job_kind: Literal["internal_smoke", "real_resource"]
+    target_type: EvaluationTargetType | None = None
+    adapter_name: str | None = None
+    adapter_version: str | None = None
+    metric_schema_version: str | None = None
+    execution_user_id: str | None = None
+    runner: EvaluationRunner
+    mode: EvaluationJobMode
+    status: EvaluationJobStatus
+    input_hash: str
+    max_external_calls: int
+    external_calls_used: int
+    case_total: int
+    case_completed: int
+    report_id: str | None = None
+    report_hash: str | None = None
+    error_code: str | None = None
+    cancel_requested_at: datetime | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class EvaluationJobPage(BaseModel):
+    items: list[EvaluationJobOut]
+    total: int
+    page: int
+    page_size: int
+
+
+class EvaluationCaseResultOut(BaseModel):
+    id: str
+    job_id: str
+    tenant_id: str
+    case_id: str
+    status: EvaluationCaseResultStatus
+    metrics: dict
+    assertions: list[dict]
+    evidence: dict
+    error_code: str | None = None
+    elapsed_ms: int | None = None
+    external_calls_used: int
+
+
+class EvaluationCaseResultPage(BaseModel):
+    items: list[EvaluationCaseResultOut]
+    total: int
+    page: int
+    page_size: int
+
+
+class RetrievalVariant(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    backend: Literal["native", "langchain", "llamaindex"]
+    top_k: int = Field(ge=1, le=50)
+
+
+class RetrievalComparisonCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1, max_length=2000)
+    baseline: RetrievalVariant
+    candidate: RetrievalVariant
+
+
+class RetrievalComparisonCandidate(BaseModel):
+    rank: int
+    chunk_id: str
+    document_id: str
+    source: str | None = None
+    score: float
+    similarity: float
+    version_status: str
+    retrieval_origin: str
+    parent_id: str | None = None
+    expanded_from_chunk_id: str | None = None
+    score_inherited_from_chunk_id: str | None = None
+    content_preview: str
+
+
+class RetrievalComparisonRun(BaseModel):
+    variant: RetrievalVariant
+    effective_backend: str
+    elapsed_ms: float
+    candidates: list[RetrievalComparisonCandidate]
+
+
+class RetrievalComparisonOut(BaseModel):
+    identity: dict[str, str | int | None]
+    baseline: RetrievalComparisonRun
+    candidate: RetrievalComparisonRun
+
+
+class RetrievalStrategiesOut(BaseModel):
+    backends: list[str]
+    top_k_min: int = 1
+    top_k_max: int = 50

@@ -229,6 +229,65 @@ def _ensure_quota_columns() -> None:
                 conn.execute(text("ALTER TABLE rag_documents ADD COLUMN source_bytes INTEGER"))
 
 
+def _ensure_evaluation_job_columns() -> None:
+    """修订号已到最新时，给已有评测任务表补上真实资源评测列。"""
+    from app.core.database import engine
+
+    expected_columns = {
+        "job_kind": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN job_kind VARCHAR(32) "
+            "NOT NULL DEFAULT 'internal_smoke'"
+        ),
+        "target_type": "ALTER TABLE evaluation_jobs ADD COLUMN target_type VARCHAR(32)",
+        "target_ids_json": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN target_ids_json TEXT NOT NULL DEFAULT '[]'"
+        ),
+        "target_snapshot_json": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN target_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+        ),
+        "adapter_name": "ALTER TABLE evaluation_jobs ADD COLUMN adapter_name VARCHAR(128)",
+        "adapter_version": "ALTER TABLE evaluation_jobs ADD COLUMN adapter_version VARCHAR(64)",
+        "metric_schema_version": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN metric_schema_version VARCHAR(64)"
+        ),
+        "execution_user_id": "ALTER TABLE evaluation_jobs ADD COLUMN execution_user_id VARCHAR",
+        "execution_principal_json": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN execution_principal_json TEXT"
+        ),
+        "options_json": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN options_json TEXT NOT NULL DEFAULT '{}'"
+        ),
+        "budget_json": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN budget_json TEXT NOT NULL DEFAULT '{}'"
+        ),
+        "external_calls_used": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN external_calls_used INTEGER NOT NULL DEFAULT 0"
+        ),
+        "case_total": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN case_total INTEGER NOT NULL DEFAULT 0"
+        ),
+        "case_completed": (
+            "ALTER TABLE evaluation_jobs ADD COLUMN case_completed INTEGER NOT NULL DEFAULT 0"
+        ),
+    }
+    with engine.begin() as conn:
+        tables = set(inspect(conn).get_table_names())
+        if "evaluation_jobs" not in tables:
+            return
+        columns = {column["name"] for column in inspect(conn).get_columns("evaluation_jobs")}
+        for name, ddl in expected_columns.items():
+            if name not in columns:
+                logger.warning("补齐缺失的评测任务列: %s", name)
+                conn.execute(text(ddl))
+        for index_sql in (
+            "CREATE INDEX IF NOT EXISTS ix_evaluation_jobs_job_kind ON evaluation_jobs (job_kind)",
+            "CREATE INDEX IF NOT EXISTS ix_evaluation_jobs_target_type ON evaluation_jobs (target_type)",
+            "CREATE INDEX IF NOT EXISTS ix_evaluation_jobs_execution_user_id "
+            "ON evaluation_jobs (execution_user_id)",
+        ):
+            conn.execute(text(index_sql))
+
+
 def _ensure_rag_schema_columns() -> None:
     """为历史数据库补齐 RAG 版本化与导入平台所需列。
 
@@ -418,6 +477,28 @@ def _stamp_if_schema_already_at_head() -> bool:
             {column["name"] for column in inspector.get_columns("workflows")}
             if "workflows" in inspector.get_table_names() else set()
         )
+        evaluation_tables = {
+            "evaluation_datasets": {"family"},
+            "evaluation_dataset_versions": {"cases_json"},
+            "evaluation_feedback_candidates": {"status"},
+            "evaluation_jobs": {"job_kind", "target_snapshot_json", "case_completed", "execution_user_id"},
+            "evaluation_case_results": {"metrics_json", "evidence_json"},
+            "run_history": {"events_json"},
+            "conversation_memory_snapshots": {"prefix_hash", "policy_version"},
+        }
+        tables = set(inspector.get_table_names())
+        evaluation_schema_ready = all(
+            table in tables and required.issubset(
+                {column["name"] for column in inspector.get_columns(table)}
+            )
+            for table, required in evaluation_tables.items()
+        )
+        if evaluation_schema_ready:
+            checks = [item["sqltext"].lower() for item in inspector.get_check_constraints("evaluation_jobs")]
+            evaluation_schema_ready = (
+                any("runner" in check and "'workflow'" in check for check in checks)
+                and any("mode" in check and "'real'" in check for check in checks)
+            )
     user_flags_present = {"is_test_user", "must_change_password"}.issubset(user_columns)
     if current == head:
         if not user_flags_present:
@@ -426,6 +507,10 @@ def _stamp_if_schema_already_at_head() -> bool:
             raise RuntimeError("数据库修订已到最新版本，但消息附件列缺失；请核对并恢复正确 schema。")
         if "timeout_seconds" not in workflow_columns:
             raise RuntimeError("数据库修订已到最新版本，但工作流超时列缺失；请核对并恢复正确 schema。")
+        if evaluation_schema_ready:
+            return False
+        logger.warning("数据库修订与评测结构不一致，将重新执行幂等向前迁移")
+        stamp("a3b4c5d6e7f8")
         return False
     if not _later_rag_tables_exist():
         return False
@@ -473,13 +558,16 @@ def _stamp_if_schema_already_at_head() -> bool:
         if current != "a4b7c2d9e160":
             stamp("a4b7c2d9e160")
         return False
-    logger.warning(
-        "检测到 RAG 导入平台表已存在但 Alembic 修订落后，改为标记到 head: current=%s head=%s",
-        current,
-        head,
-    )
-    stamp(head)
-    return True
+    # The legacy checks above establish only this concrete revision. Newer
+    # migrations must run even when create_all has already created their tables.
+    verified_revision = "a3b4c5d6e7f8"
+    from alembic.script import ScriptDirectory
+
+    script = ScriptDirectory.from_config(_get_alembic_config())
+    later = {revision.revision for revision in script.walk_revisions(base=verified_revision, head=head)}
+    if current not in later:
+        stamp(verified_revision)
+    return False
 
 
 def auto_migrate() -> bool:
@@ -510,6 +598,7 @@ def auto_migrate() -> bool:
         _ensure_message_columns()
         _ensure_conversation_lifecycle_columns()
         _ensure_quota_columns()
+        _ensure_evaluation_job_columns()
         logger.info("数据库 schema 已是最新版本，无需迁移。")
         return True
 
@@ -523,6 +612,7 @@ def auto_migrate() -> bool:
         _ensure_message_columns()
         _ensure_conversation_lifecycle_columns()
         _ensure_quota_columns()
+        _ensure_evaluation_job_columns()
         logger.info("数据库迁移完成（%d 个版本）。", len(pending))
         return True
     except Exception as exc:

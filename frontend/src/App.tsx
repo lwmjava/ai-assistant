@@ -8,7 +8,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { SessionNotice } from '@/components/auth/SessionNotice'
 import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary'
 import { api } from '@/lib/http'
-import { can, canManageTenants, canViewAudit } from '@/lib/permissions'
+import { can, canManageTenants } from '@/lib/permissions'
 import { ForbiddenPage } from '@/pages/Forbidden'
 import { useAuthStore } from '@/store/auth'
 import type { Role, SetupStatus } from '@/types/api'
@@ -32,6 +32,8 @@ const StatusPage = lazy(() => import('@/pages/Status'))
 const TenantSettingsPage = lazy(() => import('@/pages/TenantSettings'))
 const InvitationsPage = lazy(() => import('@/pages/Invitations'))
 const EvaluationsPage = lazy(() => import('@/pages/Evaluations'))
+const EvaluationReportsPage = lazy(() => import('@/pages/EvaluationReports'))
+const RunHistoryPage = lazy(() => import('@/pages/RunHistory'))
 
 /** 路由切换时的降级视图：保持布局稳定，避免白屏。 */
 function PageFallback() {
@@ -99,20 +101,6 @@ function RequireAdmin({ children }: { children: ReactElement }) {
       <ForbiddenPage
         title="当前角色无权打开管理页"
         description="用户、租户和系统状态只对平台管理员开放。"
-      />
-    )
-  }
-  return children
-}
-
-/** 审计日志：后端允许平台管理员与平台审计员。 */
-function RequireAudit({ children }: { children: ReactElement }) {
-  const role = useAuthStore((s) => s.user?.role)
-  if (!canViewAudit(role)) {
-    return (
-      <ForbiddenPage
-        title="当前角色无权查看审计日志"
-        description="审计日志仅对平台管理员与平台审计员开放。"
       />
     )
   }
@@ -203,9 +191,19 @@ export default function App() {
       >
         <Route path="/" element={<HomeRedirect />} />
         <Route path="/evaluations" element={
-          <RequirePermission resource="evaluations" action="read">
+          <RequireAdmin>
             <Lazy><EvaluationsPage /></Lazy>
-          </RequirePermission>
+          </RequireAdmin>
+        } />
+        <Route path="/evaluation-reports" element={
+          <RequireAdmin>
+            <Lazy><EvaluationReportsPage /></Lazy>
+          </RequireAdmin>
+        } />
+        <Route path="/run-history" element={
+          <RequireAdmin>
+            <Lazy><RunHistoryPage /></Lazy>
+          </RequireAdmin>
         } />
         <Route
           path="/chat"
@@ -260,11 +258,11 @@ export default function App() {
         <Route
           path="/audit"
           element={
-            <RequireAudit>
+            <RequireAdmin>
               <Lazy>
                 <AuditPage />
               </Lazy>
-            </RequireAudit>
+            </RequireAdmin>
           }
         />
         <Route

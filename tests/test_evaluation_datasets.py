@@ -39,7 +39,7 @@ def ctx():
         session.add(Tenant(id="t-a", name="A"))
         session.add(Tenant(id="t-b", name="B"))
         session.add(
-            User(id="admin-a", tenant_id="t-a", username="admin-a", hashed_password="", role="tenant_admin")
+            User(id="admin-a", tenant_id="t-a", username="admin-a", hashed_password="", role="system_admin")
         )
         session.add(
             User(id="viewer-a", tenant_id="t-a", username="viewer-a", hashed_password="", role="system_viewer")
@@ -69,7 +69,7 @@ def ctx():
 
     app.dependency_overrides[get_session] = database
     headers = {
-        "admin": {"Authorization": f"Bearer {create_access_token('admin-a', 't-a', 'tenant_admin')}"},
+        "admin": {"Authorization": f"Bearer {create_access_token('admin-a', 't-a', 'system_admin')}"},
         "viewer": {"Authorization": f"Bearer {create_access_token('viewer-a', 't-a', 'system_viewer')}"},
         "sys": {"Authorization": f"Bearer {create_access_token('sys', 't-a', 'system_admin')}"},
         "other": {"Authorization": f"Bearer {create_access_token('admin-b', 't-b', 'tenant_admin')}"},
@@ -79,7 +79,7 @@ def ctx():
     engine.dispose()
 
 
-def test_import_export_hash_and_holdout_redaction(ctx):
+def test_import_export_hash_and_platform_admin_detail(ctx):
     client, _, headers = ctx
     created = client.post(
         "/api/v1/evaluations/datasets",
@@ -103,8 +103,7 @@ def test_import_export_hash_and_holdout_redaction(ctx):
     )
     assert exported.status_code == 200
     holdout = next(c for c in exported.json()["cases"] if c["case_id"] == "rag-102")
-    assert holdout.get("holdout_redacted") is True
-    assert "expected_answer_points" not in holdout
+    assert holdout["expected_answer_points"] == ["秘密答案"]
     full = client.get(
         f"/api/v1/evaluations/datasets/{dataset_id}/versions/{body['id']}",
         headers=headers["sys"],
@@ -136,16 +135,10 @@ def test_ai_generated_cannot_be_gold_and_frozen_immutable(ctx):
         headers=headers["admin"],
         json={"version": "0.0.2", "cases": CASES, "is_frozen": True},
     )
-    assert frozen.status_code == 422
-    ok = client.post(
-        f"/api/v1/evaluations/datasets/{dataset_id}/versions",
-        headers=headers["sys"],
-        json={"version": "0.0.2", "cases": CASES, "is_frozen": True},
-    )
-    assert ok.status_code == 200
+    assert frozen.status_code == 200
     assert (
         client.post(
-            f"/api/v1/evaluations/datasets/{dataset_id}/versions/{ok.json()['id']}/submit",
+            f"/api/v1/evaluations/datasets/{dataset_id}/versions/{frozen.json()['id']}/submit",
             headers=headers["sys"],
         ).status_code
         == 422
@@ -204,8 +197,8 @@ def test_tenant_isolation_and_feedback_candidate_audit(ctx):
         headers=headers["admin"],
         json={"name": "隔离", "slug": "iso", "family": "agent"},
     ).json()["id"]
-    assert client.get(f"/api/v1/evaluations/datasets/{dataset_id}", headers=headers["other"]).status_code == 404
-    assert client.get("/api/v1/evaluations/datasets", headers=headers["viewer"]).status_code == 200
+    assert client.get(f"/api/v1/evaluations/datasets/{dataset_id}", headers=headers["other"]).status_code == 403
+    assert client.get("/api/v1/evaluations/datasets", headers=headers["viewer"]).status_code == 403
     assert (
         client.post(
             "/api/v1/evaluations/datasets",
@@ -238,7 +231,7 @@ def test_tenant_isolation_and_feedback_candidate_audit(ctx):
             headers=headers["other"],
             json={"source_type": "feedback", "source_id": "fb-1"},
         ).status_code
-        == 404
+        == 403
     )
 
 

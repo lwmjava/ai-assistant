@@ -86,6 +86,30 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./data/ai_assistant.db"
     DB_ECHO: bool = False
 
+    @field_validator("DATABASE_URL", mode="after")
+    @classmethod
+    def _anchor_default_database(cls, value: str) -> str:
+        """Keep the default application database independent of the launch directory."""
+        if value in {"sqlite:///./data/ai_assistant.db", "sqlite:///data/ai_assistant.db"}:
+            return "sqlite:///" + (_PROJECT_ROOT / "data" / "ai_assistant.db").as_posix()
+        return value
+
+    # 零费用评测任务执行器；真实模型模式仍由业务预算策略拒绝。
+    EVALUATION_JOB_MAX_CONCURRENCY: int = Field(default=1, ge=1, le=8)
+    EVALUATION_JOB_TIMEOUT_SECONDS: int = Field(default=900, ge=30, le=7200)
+    EVALUATION_QUALITY_ENABLED: bool = False
+    EVALUATION_PRICE_BASE_URL: str = ""
+    EVALUATION_PRICE_MODEL: str = ""
+    EVALUATION_PRICE_REFERENCE: str = ""
+    EVALUATION_INPUT_YUAN_PER_MTOK: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    EVALUATION_OUTPUT_YUAN_PER_MTOK: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    EVALUATION_EMBEDDING_PRICE_BASE_URL: str = ""
+    EVALUATION_EMBEDDING_PRICE_MODEL: str = ""
+    EVALUATION_EMBEDDING_PRICE_REFERENCE: str = ""
+    EVALUATION_EMBEDDING_YUAN_PER_MTOK: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    RUN_HISTORY_RETENTION_DAYS: int = Field(default=30, ge=1, le=365)
+    RUN_HISTORY_MAX_EVENTS: int = Field(default=200, ge=1, le=1000)
+
     # ── 安全 / JWT ──
     JWT_SECRET_KEY: str = "change-me-in-production-use-a-random-secret"
     JWT_ALGORITHM: str = "HS256"
@@ -340,6 +364,7 @@ class Settings(BaseSettings):
     MEMORY_STRATEGY: str = "summary"  # 压缩策略：summary | key_points | none
     MEMORY_MAX_SUMMARY_CHARS: int = 2000  # 压缩摘要最大字符数
     MEMORY_KEEP_RECENT: int = 5  # 压缩时保留最近 N 轮不压缩
+    MEMORY_SNAPSHOT_RETENTION_DAYS: int = Field(default=30, ge=1, le=365)
 
     # ── 审计日志（Audit Log）──
     # 可审计事件记录：DB 持久化 + structlog 降级，Admin API 查询/过滤/分页

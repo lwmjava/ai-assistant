@@ -149,8 +149,8 @@ def validate_jwt_secret() -> bool:
 # 格式：{resource: {action: [allowed_roles]}}
 ROLE_PERMISSIONS: dict[str, dict[str, list[str]]] = {
     "evaluations": {
-        "read": [Role.SYSTEM_ADMIN.value, Role.SYSTEM_VIEWER.value, Role.TENANT_ADMIN.value],
-        "write": [Role.SYSTEM_ADMIN.value, Role.TENANT_ADMIN.value],
+        "read": [Role.SYSTEM_ADMIN.value],
+        "write": [Role.SYSTEM_ADMIN.value],
         "delete": [Role.SYSTEM_ADMIN.value],
     },
     "system": {

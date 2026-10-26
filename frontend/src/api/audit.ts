@@ -1,4 +1,4 @@
-/** 审计日志查询（仅 system_admin / system_viewer 可见）。 */
+/** 审计日志查询（仅 system_admin 可见）。 */
 
 import { useQuery } from '@tanstack/react-query'
 

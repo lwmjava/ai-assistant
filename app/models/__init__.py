@@ -6,14 +6,18 @@
 from app.models.agent_state import AgentRunState  # noqa: F401
 from app.models.conversation import Conversation, Message  # noqa: F401
 from app.models.evaluation import (  # noqa: F401
+    EvaluationCaseResult,
     EvaluationDataset,
     EvaluationDatasetVersion,
     EvaluationFeedbackCandidate,
+    EvaluationJob,
 )
 from app.models.feature_flag import FeatureFlag  # noqa: F401
 from app.models.feedback import ChatAttempt, ChatFeedback, MessageRating  # noqa: F401
 from app.models.membership import Invitation, Membership  # noqa: F401
+from app.models.memory_snapshot import ConversationMemorySnapshot  # noqa: F401
 from app.models.rag import Document, DocumentChunk  # noqa: F401
+from app.models.run_history import RunHistory  # noqa: F401
 from app.models.skill import Skill  # noqa: F401
 from app.models.user import Tenant, User  # noqa: F401
 from app.models.workflow import Workflow, WorkflowExecution  # noqa: F401

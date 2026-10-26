@@ -2,6 +2,14 @@
 
 ## 2026-10-26 授权收尾批次
 
+### 最终接受与关闭
+
+最终业务提交`1c8da78e6316c719f54d34418c8743f53f5165f1`，GitHub [run40254924700](https://github.com/lwmjava/ai-assistant/actions/runs/40254924700) completed/success：Ubuntu Backend job121354619651（Ruff/mypy/完整pytest3575 passed、4 skipped、6 warnings、572.87秒及RAG gate）、Frontend job121354619758（typecheck/Vitest/ESLint/build）、Agent official job121354619743、RAG official job121354619524全部success。checkout日志SHA与本地候选一致。下文待CI描述均为该结果取得前的过程记录，已被本段补齐。
+
+独立复审、受托真实业务接受、主Agent页面8项及最终平台/CI证据已齐，六张任务按已批准范围关闭为done：MEM-003→MEM-002，EVAL-003/004→EVAL-005，以及TRACE-001；直接依赖均已done。没有生产发布、用户库迁移、删除或跨会话长期记忆接受。真实检索对照追加5/5通过（同一问题native/top5对top10、候选/来源/排序/不改默认、成员403）。累计29次真实请求保守预占0.2037865元，付费标记已撤销，隔离后端18775和Vite18776已停止，用户库SHA256未变。原始供应商账单实际扣费未知；含一次完整CI保守总上界0.493780616元；关闭记录纯文档再推送若触发一轮CI，保守累计上界0.783774732元，仍≤用户1元上限，不再自动重跑。
+
+本关闭变更仅修改tasks.yaml与验收说明，不改变业务、测试、配置、依赖或Evaluation输入，沿用上述业务SHA的有效检查，无需为状态说明重复本地业务回归。后续说明提交的SHA不冒充已运行的业务SHA；业务验证器最终输入仍匹配。临时证据路径在本记录给出，长期必要统计、来源哈希和独立结论已存于正式记录，非仅依赖会过期的CI artifacts。
+
 用户明确委托修复两项页面P2、独立复审九项修复并执行真实数据受托业务验收；模型费用累计上限1元人民币。批次覆盖EVAL-003/004/005、TRACE-001、MEM-003/002，沿既有规格及允许路径，不迁移、删除或覆盖用户库，不生产发布。基线feat/EVAL-002、2da42007588ab7b3e6c5006c3787a428abd3f429，开工工作区干净。该SHA GitHub run40248362362的Backend、Frontend、Agent official、RAG official均success；Backend 3564 passed/4 skipped。旧有效证据复用，变更后的最终输入需重新绑定适用检查和同SHA CI。
 
 方案：完成任务通过其report_id及family直达独立报告页；报告metadata从冻结dataset.version_id与target_snapshot白名单投影，多个目标身份不一致时不伪造单一身份，保留缺失值。新增回归覆盖非第一页直达、切换/刷新/权限、版本与Embedding身份、缺失/混合和脱敏。独立审查与实现并行，发现范围内P1/P2当批修复。真实数据在隔离环境验证三类资源、历史审计及记忆恢复/隔离，付费前核对价格及最大预占，累计不超1元；Mock不计真实业务接受。回滚撤销本批接线与投影，保留任务和报告，不回退权限。最终候选提交推送取得CI后逐卡判断，证据不足不标done。

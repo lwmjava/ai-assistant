@@ -71,7 +71,7 @@
 
 主Agent实际浏览器走查完成：从完成任务点击真实检索报告及生成报告，任务/报告ID和family对应；刷新保留详情，类型切换清除旧选择；冻结数据版本、text-embedding-v3/1024/local/index身份显示正常，生成趋势显示deepseek-flash。Workflow报告展示真实执行通过。成员culture无测评/报告/历史/审计/状态菜单，直接URL为403；console error为0。截图ui-completed-tasks/ui-retrieval-report/ui-generation-report/ui-workflow-report/ui-member-forbidden.png保存在同一临时证据目录。非当前列表直达及非法参数/不存在报告另有正式前端回归。
 
-独立复审见[本批记录](../reviews/2026-10-26-eval-memory-trace-closeout-review.md)：九项修复及两页面P2、空白摘要/官方输出上限/存量约束后续差异均已独立复核，无剩余P1/P2。最终组合专项299 passed、前端192 tests及typecheck/lint/build、Ruff无缓存、mypy256文件均exit0（详见implementation_eval_003.md）。最终同SHA CI仍待核验，不提前done；不对未执行的生产Milvus、真人Gold审核或跨会话长期记忆作完成声明。
+独立复审见[本批记录](../reviews/2026-10-26-eval-memory-trace-closeout-review.md)：九项修复及两页面P2、空白摘要/官方输出上限/存量约束后续差异均已独立复核，无剩余P1/P2。最终组合专项299 passed、前端192 tests及typecheck/lint/build、Ruff无缓存、mypy256文件均exit0。最终业务SHA`1c8da78e6316c719f54d34418c8743f53f5165f1`的[CI40254924700](https://github.com/lwmjava/ai-assistant/actions/runs/40254924700)四项success：Backend3575 passed/4 skipped及Ruff/mypy、Frontend、Agent official、RAG official。技术验证/独立复审/明确委托的AI业务接受已齐，六卡关闭结论见implementation_eval_003.md；不对未执行的生产Milvus、真人Gold审核或跨会话长期记忆作完成声明。
 
 ## 回滚
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import {
   useCancelEvaluationJob,
@@ -236,6 +237,7 @@ export default function EvaluationsPage() {
         <ul className="space-y-2 text-sm">{jobs.data.items.map((job) => <li key={job.id} className="rounded border border-border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-mono text-text">{job.id}</span><span className="text-text-muted">{job.target_type ?? job.runner}/{job.mode} · {job.status} · {job.case_completed}/{job.case_total}</span></div>
           {job.error_code && <p className="mt-2 text-sm text-danger">错误：{job.error_code}</p>}
+          {job.status === 'succeeded' && job.report_id && <Link className="mt-2 inline-block text-primary" to={`/evaluation-reports?${new URLSearchParams({ family: job.runner, report_id: job.report_id })}`}>查看报告</Link>}
           {canWrite && ['queued', 'running', 'cancel_requested'].includes(job.status) && <button type="button" className="mt-2 text-primary disabled:opacity-50" disabled={cancelJob.isPending || job.status === 'cancel_requested'} onClick={() => cancelJob.mutate(job.id)}>取消</button>}
         </li>)}</ul>}
     </section>

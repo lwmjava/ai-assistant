@@ -2,6 +2,10 @@ id: memory-snapshot-lifecycle-v1
 family: memory
 kind: deterministic_contract
 cases:
+  - id: blank-compression-preserves-existing-summary
+    classification: Observed Regression
+    expectation: an empty or whitespace model result preserves the previous summary and cursor and retains the full pending window; it never persists an advanced empty snapshot
+    regression: tests/test_memory_overflow.py::test_blank_summary_keeps_previous_snapshot_and_uncompressed_window
   - id: failed-compression-window
     expectation: failed compression retains the full configured pending window and does not advance the snapshot cursor
   - id: configured-policy-binding

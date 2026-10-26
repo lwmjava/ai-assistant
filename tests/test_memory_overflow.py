@@ -7,7 +7,7 @@
 import pytest
 
 from app.llm.base import ChatMessage, ChatRole, LLMOptions
-from app.memory.base import MemoryConfig
+from app.memory.base import MemoryConfig, MemorySnapshot
 from app.memory.manager import MemoryManager
 
 _FIXED_SUMMARY = "固定摘要：较早的对话已压缩。"
@@ -77,3 +77,18 @@ async def test_thirty_one_messages_compress_and_keep_last_five() -> None:
         assert body not in kept
     for index in range(27, 32):
         assert f"body-{index:02d}" not in prompt
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("existing", [None, MemorySnapshot(summary="Earlier decisions", compressed_count=2)])
+async def test_blank_summary_keeps_previous_snapshot_and_uncompressed_window(existing):
+    manager = MemoryManager(
+        llm=_FixedSummaryLLM(" \n "),
+        config=MemoryConfig(window_size=4, compression_threshold=5, keep_recent=2),
+    )
+    messages = _messages(10)
+    memory = await manager.manage(messages, existing_snapshot=existing)
+    assert memory.snapshot == (existing or MemorySnapshot())
+    assert memory.recent_messages == messages[-4:]
+    if existing is not None:
+        assert "Earlier decisions" in memory.memory_context

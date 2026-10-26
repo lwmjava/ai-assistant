@@ -1,0 +1,83 @@
+{
+  "report_schema_version": "real-evaluation-report-1.0.0",
+  "recorded_at": "2026-10-26T01:24:14.134239+00:00",
+  "job_id": "2b6715b199f4432c9d7dfe35f0dfc376",
+  "tenant_id": "1fd41e044b434621b716a9537ff96638",
+  "family": "workflow",
+  "target_type": "workflow",
+  "adapter": {
+    "name": "builtin.workflow",
+    "version": "1.0.0",
+    "metric_schema_version": "evaluation-metrics-v1"
+  },
+  "target_snapshot": {
+    "execution_principal": null,
+    "target_type": "workflow",
+    "targets": [
+      {
+        "id": "closeout-excerpt-7b5da97fc4984158a8f98c23b28d3145",
+        "metadata": {
+          "cron_expr": "0 0 1 1 *",
+          "enabled": false,
+          "owner_id": "74c83486fb724783be3175000c8ffc72",
+          "owner_role": "member",
+          "owner_token_version": 0,
+          "prompt_hash": "4657c81ae523eb213ffbd5d02c0ca8e83601aead5425aa279c012060914da434",
+          "timeout_seconds": 90,
+          "timezone": "Asia/Shanghai",
+          "webhook_configured": false
+        },
+        "name": "真实技术文档问答（隔离验收新建）",
+        "status": "available",
+        "target_type": "workflow"
+      }
+    ]
+  },
+  "dataset": {
+    "id": "78c0c53df3f44295b2aad67be6eda4ba",
+    "version_id": "a08b367ac3924e65898af32d661df946",
+    "content_hash": "caf2ffd7940ddb5111e03cdd4b8c1e1758307e58389dd492bf1d6c37549c8af4"
+  },
+  "options": {
+    "enable_generation": false,
+    "enable_judge": false,
+    "initiator_tenant_id": "1fd41e044b434621b716a9537ff96638",
+    "initiator_token_version": 21
+  },
+  "budget": {
+    "max_external_calls": 8
+  },
+  "metrics": {
+    "completion_rate": 1.0,
+    "deterministic_assertion_rate": 1.0,
+    "latency_p95_ms": 2360.252
+  },
+  "cases": [
+    {
+      "case_id": "real-workflow-doc-question",
+      "status": "passed",
+      "metrics": {
+        "workflow_completed": true,
+        "deterministic_content": true
+      },
+      "assertions": [
+        {
+          "name": "workflow_completed",
+          "passed": true
+        },
+        {
+          "name": "deterministic_content",
+          "passed": true
+        }
+      ],
+      "evidence": {
+        "isolated": true,
+        "webhook_suppressed": true,
+        "execution_status": "success",
+        "answer_present": true
+      }
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}

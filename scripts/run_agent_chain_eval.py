@@ -52,6 +52,7 @@ DATA_HASH_ALGORITHM = "sha256-utf8-crlf-to-lf-v1"
 MAX_REPORT_BYTES = 1024 * 1024
 MAX_REPLY_BYTES = 16 * 1024
 CALL_TIMEOUT = 60.0
+CALL_MAX_OUTPUT_TOKENS = 1024
 TOTAL_TIMEOUT = 780.0
 CASES_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1.1" / "cases.json"
 INDEX_PATH = REPO_ROOT / "evals" / "datasets" / "agent-chain-v0.1.1" / "index.json"
@@ -373,6 +374,7 @@ async def predict_tools(provider, cases: list[dict], calls=None) -> tuple[list[l
     """Propose once, validate, then invoke an in-memory recording Tool only."""
     options = LLMOptions(
         temperature=0,
+        max_tokens=CALL_MAX_OUTPUT_TOKENS,
         timeout=CALL_TIMEOUT,
         tools=native_tool_definitions(selection_tool_registry()),
     )
@@ -400,7 +402,7 @@ async def predict_tools(provider, cases: list[dict], calls=None) -> tuple[list[l
 
 
 async def predict(provider, cases: list[dict], calls=None) -> tuple[list[str], list[str]]:
-    options = LLMOptions(temperature=0, timeout=CALL_TIMEOUT)
+    options = LLMOptions(temperature=0, max_tokens=CALL_MAX_OUTPUT_TOKENS, timeout=CALL_TIMEOUT)
     routes: list[str] = []
     raws: list[str] = []
     for case in cases:

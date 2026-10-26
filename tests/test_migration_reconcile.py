@@ -87,6 +87,26 @@ def test_head_with_legacy_job_checks_runs_constraint_upgrade(isolated_db):
         assert conn.execute(text("SELECT id FROM evaluation_jobs")).scalar_one() == "kept"
 
 
+def test_head_with_legacy_dataset_family_runs_forward_upgrade(isolated_db):
+    from app.core.migration import stamp
+
+    with isolated_db.begin() as connection:
+        connection.execute(text("DROP TABLE evaluation_datasets"))
+        connection.execute(text(
+            "CREATE TABLE evaluation_datasets (id TEXT PRIMARY KEY, family TEXT NOT NULL, "
+            "CHECK (family IN ('retrieval','generation','agent')))"
+        ))
+        connection.execute(text("INSERT INTO evaluation_datasets VALUES ('kept','retrieval')"))
+    stamp(get_head_revision())
+    assert auto_migrate() is True
+    assert auto_migrate() is True
+    with isolated_db.begin() as connection:
+        connection.execute(text("INSERT INTO evaluation_datasets VALUES ('new','workflow')"))
+        assert connection.execute(text("SELECT id FROM evaluation_datasets ORDER BY id")).scalars().all() == [
+            "kept", "new",
+        ]
+
+
 def test_auto_migrate_adds_evaluation_job_columns_when_revision_is_head(isolated_db) -> None:
     with isolated_db.begin() as conn:
         conn.execute(text("DROP TABLE evaluation_jobs"))

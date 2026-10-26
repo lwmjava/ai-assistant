@@ -1,0 +1,219 @@
+{
+  "report_schema_version": "real-evaluation-report-1.0.0",
+  "recorded_at": "2026-10-26T01:24:11.230272+00:00",
+  "job_id": "c95a1a5468a34dd4b8ca313a876d9efc",
+  "tenant_id": "1fd41e044b434621b716a9537ff96638",
+  "family": "generation",
+  "target_type": "rag",
+  "adapter": {
+    "name": "builtin.rag",
+    "version": "1.0.0",
+    "metric_schema_version": "evaluation-rag-quality-v1"
+  },
+  "target_snapshot": {
+    "execution_principal": null,
+    "target_type": "rag",
+    "targets": [
+      {
+        "id": "272288c374cb420e83cef0ae58e6f23d",
+        "metadata": {
+          "chunk_count": 2,
+          "content_hash": null,
+          "embedding_dim": 1024,
+          "embedding_model": "text-embedding-v3",
+          "embedding_provider": "openai",
+          "index_id": "54fb527ca29345ed9c83fd394fbc9115",
+          "vector_backend": "local",
+          "version_group_id": "88ad8a376e314034b3360facdb9c55d4",
+          "version_number": 1
+        },
+        "name": "RAG模块真实原文摘录：切分策略派发（隔离验收）",
+        "status": "available",
+        "target_type": "rag"
+      }
+    ]
+  },
+  "dataset": {
+    "id": "2b8116b90b5d4bac8e94d5efb0dffb10",
+    "version_id": "8f794ea0d03f4c1d891545242488de96",
+    "content_hash": "d3775e825240d03aed8ef43827cc0834b0df3ce1bf8b8a67fc90bb7af846d9bb"
+  },
+  "options": {
+    "data_egress_confirmed": true,
+    "enable_generation": true,
+    "enable_judge": true,
+    "initiator_tenant_id": "1fd41e044b434621b716a9537ff96638",
+    "initiator_token_version": 21
+  },
+  "budget": {
+    "max_cost_yuan": 0.08,
+    "max_external_calls": 3,
+    "quality": {
+      "base_url": "https://api.deepseek.com/v1",
+      "capability_source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "capability_version": "deepseek-flash-1m-384k-20261007",
+      "context_window": 1000000,
+      "embedding_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "embedding_dim": 1024,
+      "embedding_model": "text-embedding-v3",
+      "embedding_price_reference": "https://help.aliyun.com/zh/model-studio/text-embedding-v3",
+      "embedding_yuan_per_mtok": 0.5,
+      "input_cap": 8000,
+      "input_yuan_per_mtok": 2,
+      "max_output_tokens": 384000,
+      "model": "deepseek-flash",
+      "output_cap": 1024,
+      "output_yuan_per_mtok": 8,
+      "price_reference": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "prompt_hash": "e800419afb87dfca22ed824aa957f393748c7b1b917dc4d82174ab00b4d8636c",
+      "prompt_version": "grounded-quality-v1",
+      "provider": "openai"
+    },
+    "quality_usage": [
+      {
+        "cost_yuan": "0.00001",
+        "input_estimate_method": "utf8-bytes-conservative-estimate",
+        "purpose": "embedding",
+        "status": "settled",
+        "usage": {
+          "completion_tokens": 0,
+          "prompt_tokens": 20
+        }
+      },
+      {
+        "cost_yuan": "0.001996",
+        "input_estimate_method": "utf8-bytes-conservative-estimate",
+        "purpose": "generation",
+        "status": "settled",
+        "usage": {
+          "completion_tokens": 158,
+          "prompt_tokens": 366
+        }
+      },
+      {
+        "cost_yuan": "0.001444",
+        "input_estimate_method": "utf8-bytes-conservative-estimate",
+        "purpose": "judge",
+        "status": "settled",
+        "usage": {
+          "completion_tokens": 59,
+          "prompt_tokens": 486
+        }
+      }
+    ]
+  },
+  "metrics": {
+    "recall_at_1": 1.0,
+    "recall_at_5": 1.0,
+    "recall_at_10": 1.0,
+    "mrr": 1.0,
+    "latency_p95_ms": 390.444,
+    "citation_id_validity": 1.0,
+    "external_calls_used": 3,
+    "judge_faithfulness": 1.0,
+    "judge_correctness": 1.0,
+    "cost_yuan": 0.00345
+  },
+  "cases": [
+    {
+      "case_id": "real-excerpt-code-atomic",
+      "status": "passed",
+      "metrics": {
+        "first_relevant_rank": 1,
+        "reciprocal_rank": 1.0,
+        "hit_at_5": true,
+        "latency_ms": 390.444,
+        "citations_valid": true,
+        "judge_faithfulness": 1,
+        "judge_correctness": 1
+      },
+      "evidence": {
+        "expected_document_ids": [
+          "272288c374cb420e83cef0ae58e6f23d"
+        ],
+        "retrieved": [
+          {
+            "rank": 1,
+            "chunk_id": "7ad2f763bf134c1e9925ee72cb9fa6a4",
+            "document_id": "272288c374cb420e83cef0ae58e6f23d",
+            "score": 0.03278688524590164,
+            "similarity": 0.7453520618098302
+          },
+          {
+            "rank": 2,
+            "chunk_id": "35799056a2fa477b8bc98323100dfe11",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.03225806451612903,
+            "similarity": 0.6927725874668154
+          },
+          {
+            "rank": 3,
+            "chunk_id": "9abaf28948ec4dd0ad5ad2bfb6fe6535",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.031746031746031744,
+            "similarity": 0.5599442159965561
+          },
+          {
+            "rank": 4,
+            "chunk_id": "dd93742e619c41c49943eb79a61a7388",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.030776515151515152,
+            "similarity": 0.5418863275630914
+          },
+          {
+            "rank": 5,
+            "chunk_id": "ffa2713a417c4c18a87081c36fda2bc4",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.030090497737556562,
+            "similarity": 0.5094137092684162
+          },
+          {
+            "rank": 6,
+            "chunk_id": "8ff238851c0b468c8851f4f7445f560f",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.029877369007803793,
+            "similarity": 0.538772123077115
+          },
+          {
+            "rank": 7,
+            "chunk_id": "3b4bae57a2544844a69a35d174634e23",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.0293236301369863,
+            "similarity": 0.48665835701698923
+          },
+          {
+            "rank": 8,
+            "chunk_id": "de63df6212944704983b22e25e533460",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.02904040404040404,
+            "similarity": 0.5191407693315435
+          },
+          {
+            "rank": 9,
+            "chunk_id": "118ea8b3ff8c427f9611a89e9efa5d71",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.028370221327967807,
+            "similarity": 0.5019990829387166
+          },
+          {
+            "rank": 10,
+            "chunk_id": "da3f985b22dd4c7893edf25d3d62c2e1",
+            "document_id": "e82aa688fc0c4c03bae97e85f569e554",
+            "score": 0.02819138376017471,
+            "similarity": 0.5054015407447112
+          }
+        ],
+        "generation": {
+          "answer_sha256": "a7f997dfb1fd6255078b3d308f9ef6663ba9b87fe80ff65519ae5f274e3b3c14",
+          "cited_chunk_ids": [
+            "7ad2f763bf134c1e9925ee72cb9fa6a4"
+          ],
+          "unknown_citation_count": 0,
+          "advisory_judge": true
+        }
+      }
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}

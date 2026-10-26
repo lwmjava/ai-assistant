@@ -142,6 +142,20 @@ def test_official_predict_tools_sends_native_tool_definitions():
     asyncio.run(runner.predict_tools(Capture(), [case]))
     expected = {item.name for item in pipeline.native_tool_definitions(pipeline.selection_tool_registry())}
     assert {item.name for item in captured["options"].tools} == expected
+    assert captured["options"].max_tokens == 1024
+
+
+def test_route_requests_have_explicit_output_limit():
+    options = []
+
+    class Capture:
+        async def chat(self, messages, request_options):
+            options.append(request_options)
+            return "NO"
+
+    asyncio.run(runner.predict(Capture(), [{"case_id": "bounded", "history": [], "user_input": "Hello"}]))
+    assert len(options) == 1
+    assert options[0].max_tokens == 1024
 
 
 @pytest.mark.parametrize("empty", ["", " \n", None])

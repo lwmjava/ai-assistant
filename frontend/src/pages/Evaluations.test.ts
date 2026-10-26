@@ -6,7 +6,10 @@ import { beforeEach, expect, test, vi } from 'vitest'
 
 import EvaluationsPage from './Evaluations'
 
-const state = vi.hoisted(() => ({ role: 'system_admin', error: false, empty: false }))
+const state = vi.hoisted(() => ({
+  role: 'system_admin', error: false, empty: false,
+  jobs: [] as { id: string; runner: string; status: string; report_id: string | null }[],
+}))
 vi.mock('@/store/auth', () => ({ useAuthStore: (select: (s: unknown) => unknown) => select({ user: { role: state.role } }) }))
 vi.mock('@/api/tenants', () => ({ useTenants: () => ({ data: [], isPending: false, isError: false }) }))
 vi.mock('@/api/evaluations', () => ({
@@ -29,7 +32,7 @@ vi.mock('@/api/evaluations', () => ({
   useCreateEvaluationDataset: () => ({ mutate: vi.fn(), isPending: false }),
   useReviewEvaluationCandidate: () => ({ mutate: vi.fn() }),
   useSubmitDatasetVersion: () => ({ mutate: vi.fn() }),
-  useEvaluationJobs: () => ({ isPending: false, isError: false, data: { items: [] } }),
+  useEvaluationJobs: () => ({ isPending: false, isError: false, data: { items: state.jobs } }),
   useCreateEvaluationJob: () => ({ mutate: vi.fn(), isPending: false }),
   useCancelEvaluationJob: () => ({ mutate: vi.fn(), isPending: false }),
   useRetrievalStrategies: () => ({ isPending: false, isError: false, data: { backends: ['native'] } }),
@@ -39,6 +42,7 @@ vi.mock('@/api/evaluations', () => ({
 beforeEach(() => {
   vi.stubGlobal('React', React)
   state.role = 'system_admin'; state.error = false; state.empty = false
+  state.jobs = []
 })
 
 function renderPage() {
@@ -73,4 +77,16 @@ test('unauthorized role cannot render evaluation controls', () => {
   expect(html).toContain('当前角色无权使用测评功能')
   expect(html).toContain('返回首页')
   expect(html).not.toContain('运行状态')
+})
+
+test('completed jobs link to their own report family and report ID only when available', () => {
+  state.jobs = [
+    { id: 'completed', runner: 'generation', status: 'succeeded', report_id: 'report:actual' },
+    { id: 'unfinished', runner: 'agent', status: 'running', report_id: 'not-ready' },
+    { id: 'missing-report', runner: 'workflow', status: 'succeeded', report_id: null },
+  ]
+  const html = renderPage()
+  expect(html).toContain('href="/evaluation-reports?family=generation&amp;report_id=report%3Aactual"')
+  expect(html.match(/查看报告/g)).toHaveLength(1)
+  expect(html).not.toContain('report_id=not-ready')
 })

@@ -1,5 +1,19 @@
 # 受预算评测任务实施计划
 
+## 2026-10-26 授权收尾批次
+
+用户明确委托修复两项页面P2、独立复审九项修复并执行真实数据受托业务验收；模型费用累计上限1元人民币。批次覆盖EVAL-003/004/005、TRACE-001、MEM-003/002，沿既有规格及允许路径，不迁移、删除或覆盖用户库，不生产发布。基线feat/EVAL-002、2da42007588ab7b3e6c5006c3787a428abd3f429，开工工作区干净。该SHA GitHub run40248362362的Backend、Frontend、Agent official、RAG official均success；Backend 3564 passed/4 skipped。旧有效证据复用，变更后的最终输入需重新绑定适用检查和同SHA CI。
+
+方案：完成任务通过其report_id及family直达独立报告页；报告metadata从冻结dataset.version_id与target_snapshot白名单投影，多个目标身份不一致时不伪造单一身份，保留缺失值。新增回归覆盖非第一页直达、切换/刷新/权限、版本与Embedding身份、缺失/混合和脱敏。独立审查与实现并行，发现范围内P1/P2当批修复。真实数据在隔离环境验证三类资源、历史审计及记忆恢复/隔离，付费前核对价格及最大预占，累计不超1元；Mock不计真实业务接受。回滚撤销本批接线与投影，保留任务和报告，不回退权限。最终候选提交推送取得CI后逐卡判断，证据不足不标done。
+
+本批实现及复核：两项页面P2闭合；独立审查新增空白摘要丢失旧快照P2，compressor保留旧summary/cursor并补None/已有摘要反例。真实副本暴露旧dataset family CHECK漏workflow，新增f9b5c7d8e0f1保留数据向前迁移及head-shape复核，named/anonymous、唯一/索引/其他CHECK、幂等、误标head反例通过；实际副本正式f8→f9后Workflow测试集与评测成功。原用户库指纹不变。官方Agent runner每次route/tools显式1024输出上限，冻结数据、评分/阈值/恢复策略不变。独立复核详见[审查记录](../reviews/2026-10-26-eval-memory-trace-closeout-review.md)，本批无剩余P1/P2。
+
+最终本地专项：`D:/DepTooL/anaconda3/envs/ai-assistant/python.exe scripts/validate_delivery.py targeted`，选择test_evaluation_reports/api/adapters/runtime_guards/orchestrator/quality、test_memory_overflow/snapshots/policy/smoke、test_run_history/trace_call_counts、test_real_evaluation_constraint_migration/migration_reconcile以及tests/eval下test_agent_eval_runner/gate/gate_entry，并加`--frontend`。证据data/validation/20261026T012532-046f41ca1fe8/result.json：299 passed、1 warning、pytest exit0；前端typecheck/Vitest192/lint/build全exit0。另`python -m ruff check . --no-cache`与`python -m mypy app/`（256文件）exit0；普通Ruff因本地缓存权限失败，未当通过，改无缓存验证。Windows/conda Python3.12.0，运行目录记录依赖/非敏感配置及源码测试SHA256。中间证据011728虽152断言通过但输入变化invalidated，不算最终门禁；012006首版迁移fixture反射失败也保留，已修复代表性DDL后通过。
+
+受托真实验收与边界见[清单](../checklists/evaluation-platform-acceptance.md)2026-10-26节：真实文档/摘录、真实默认Agent、隔离新建Workflow、真实模型记忆压缩与复用、运行历史/审计/权限/删除均已执行。主Agent浏览器已从完成任务点击真实RAG/生成报告，核对dataset/Embedding及生成模型展示、刷新恢复、切换类型清除选择，Workflow报告通过；真实成员culture看不到五个管理菜单，直接测评URL显示403，console error0。截图在data/validation/closeout-real-20261026/ui-*.png。属于用户明确委托的AI业务接受，不冒充真人Gold审核；不声称生产Milvus或任意数据质量达标。
+
+费用边界：真实验收HTTP统一发送前落盘保守预占，硬上限0.6元，失败不退款；DeepSeek峰值2/8元每百万输入/输出tokens、Aliyun Embedding最高0.514元每百万输入tokens，以官网2026-10-26核验价格为准。固定CI Agent12逻辑请求+至多1恢复、显式1024输出和UTF8输入保守上界0.16417元；两份RAG CI完整固定输入经离线捕获计数（非质量证据）每份57请求、40799bytes+padding，保守计各3尝试共0.125824116元。单次完整CI上界0.289994116元，结合验收硬限总≤0.889994116元；不自动重跑付费CI。最终同SHA CI尚待推送后核验，六卡暂in_review；只补验收说明不使源码检查输入失效。
+
 ## 2026-10-25 九项审查修复
 
 授权：用户明确要求修复本轮九项问题；基线 feat/EVAL-002，HEAD c4841a7754030bdd558d44c5e32eb1c7f58b5fd8，保留所有既有改动。范围为迁移对账、真实评测资源/身份/取消边界、共用聊天路由与 Skill 接线、指标缺测、记忆失败回退/配置绑定、流式历史终态及对应测试；不迁移或覆盖用户数据库，不发起真实模型费用，不提交/推送。

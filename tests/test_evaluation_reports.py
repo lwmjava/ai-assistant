@@ -160,3 +160,50 @@ def test_missing_and_corrupt_files_have_honest_list_status(reports):
     assert reports.list_reports(principal()).items[0].status == "unsupported"
     p.unlink()
     assert reports.list_reports(principal()).items[0].status == "unavailable"
+
+
+@pytest.fixture
+def real_report(tmp_path):
+    raw = {
+        "report_schema_version": "real-evaluation-report-1.0.0", "family": "retrieval",
+        "status": "passed", "cases": [], "failures": [], "metrics": {"recall_at_5": 1},
+        "dataset": {"version_id": "frozen-version", "content_hash": "frozen-hash"},
+        "adapter": {}, "target_snapshot": {"targets": [{"metadata": {
+            "embedding_provider": "openai", "embedding_model": "vendor/embedding-model",
+            "embedding_dim": 1024, "vector_backend": "milvus", "index_id": "frozen-index",
+            "document_body": "private document", "api_key": "private credential",
+        }}]},
+    }
+    path = tmp_path / "real.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    service = ReportService(tmp_path, (ReportEntry("real", "retrieval", "real.json", "global"),))
+    return service, path, raw
+
+
+def test_real_report_history_preserves_frozen_dataset_and_embedding_identity(real_report):
+    service, _, _ = real_report
+    report = service.detail(principal(), "real")
+    metadata = report.metadata
+    assert metadata["dataset_version"] == metadata["dataset_version_id"] == "frozen-version"
+    assert metadata["embedding_provider"] == "openai"
+    assert metadata["embedding_model"] == "vendor/embedding-model"
+    assert metadata["embedding_dim"] == 1024
+    assert metadata["vector_backend"] == "milvus"
+    assert metadata["index_id"] == "frozen-index"
+    assert service.trend(principal(), "retrieval", "recall_at_5").points[0].metadata == metadata
+    assert "private" not in report.model_dump_json()
+
+
+@pytest.mark.parametrize("identities", [
+    [], [{"metadata": {}}],
+    [{"metadata": {"embedding_model": "a", "embedding_dim": 64}},
+     {"metadata": {"embedding_model": "b", "embedding_dim": 128}}],
+    [{"metadata": {"embedding_model": "invalid\nmodel", "embedding_dim": True}}],
+])
+def test_real_report_missing_or_mixed_identity_is_not_invented(real_report, identities):
+    service, path, raw = real_report
+    raw["target_snapshot"]["targets"] = identities
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    metadata = service.detail(principal(), "real").metadata
+    assert metadata["embedding_model"] is None
+    assert metadata["embedding_dim"] is None

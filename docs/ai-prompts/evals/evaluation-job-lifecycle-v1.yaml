@@ -1,8 +1,12 @@
-version: "1.1.5"
+version: "1.1.6"
 classification: "Smoke/Adversarial"
 provenance: "AI-authored deterministic lifecycle scenarios; not Gold or model-quality evidence"
 execution: "pytest tests/test_evaluation_quality.py tests/test_evaluation_jobs.py tests/test_evaluation_api.py tests/test_evaluation_datasets.py tests/test_evaluation_reports.py"
 cases:
+  - id: official_agent_output_envelope
+    classification: Observed Regression
+    expected: "Official route and tool-selection requests explicitly cap model output at 1024 tokens without changing datasets, scoring thresholds or retry allowance."
+    regression: "tests/eval/test_agent_eval_runner.py::test_official_predict_tools_sends_native_tool_definitions; tests/eval/test_agent_eval_runner.py::test_route_requests_have_explicit_output_limit"
   - id: all_resource_runtime_fence
     classification: Observed Regression
     expected: "Every real target revalidates initiator, active tenant, resource and execution principal before cases and external calls. Drift rejects publication; cancellation closes an in-flight provider and prevents another call."
@@ -20,11 +24,13 @@ cases:
     expected: "A completed real-resource task provides a direct view-report action for its bound report, preserving the job/report association without manually matching identifiers in a separate report list."
     reproduction: "Start one approved RAG evaluation from /evaluations, wait for succeeded, and inspect its task card."
     observed: "The card contains only job ID/status/progress. No report action, report ID or report hash is rendered. Confirmed in the delegated browser acceptance on 2026-10-25."
+    regression: "frontend/src/pages/Evaluations.test.ts; frontend/src/pages/EvaluationReports.test.ts"
   - id: real_report_identity_projection
     classification: Observed Regression
     expected: "Real report details and history show the recorded dataset version and embedding provider/model/dimension/index/backend identity; they do not label recorded fields as missing."
     reproduction: "Open the completed job's RAG report in /evaluation-reports, compare its details/history with dataset.version_id and target_snapshot.targets[].metadata in the stored report."
     observed: "Details show dataset_version_id but history reads dataset_version and labels it missing; the real-report projection omits the stored embedding identity, so the page also labels the model missing. Confirmed with explicit local, mock/mock-embedding/64 offline fixtures, not model-quality evidence."
+    regression: "tests/test_evaluation_reports.py::test_real_report_history_preserves_frozen_dataset_and_embedding_identity; tests/test_evaluation_reports.py::test_real_report_missing_or_mixed_identity_is_not_invented"
   - id: bounded_persistent_queue
     expected: "Only available concurrency slots are submitted to the executor. Overflow remains queued in the database without in-memory task markers; success or failure frees slots to claim the oldest queued jobs. Duplicate notifications do not duplicate execution; cancelled queued jobs are skipped, and shutdown cancels active work without claiming backlog."
   - id: unexpected_dispatch_failure

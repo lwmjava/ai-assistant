@@ -53,3 +53,38 @@ def test_snapshot_downgrade_drops_only_checks_for_removed_columns(tmp_path):
         with pytest.raises(sa.exc.IntegrityError):
             connection.exec_driver_sql("INSERT INTO evaluation_jobs VALUES ('invalid',-1)")
     engine.dispose()
+
+
+@pytest.mark.parametrize("named", [False, True])
+def test_dataset_family_upgrade_preserves_rows_unique_indexes_and_other_checks(tmp_path, named):
+    path = Path(__file__).resolve().parents[1] / "alembic/versions/f9b5c7d8e0f1_expand_dataset_family_constraint.py"
+    spec = importlib.util.spec_from_file_location("dataset_family_upgrade", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'dataset.db'}")
+    with engine.begin() as connection:
+        prefix = "CONSTRAINT old_family " if named else ""
+        connection.exec_driver_sql(
+            "CREATE TABLE evaluation_datasets (\nid TEXT PRIMARY KEY,\nslug TEXT UNIQUE,\nfamily TEXT NOT NULL,\n"
+            + prefix + "CHECK (family IN ('retrieval','generation','agent')),\n"
+            "CHECK (length(slug)>0)\n)"
+        )
+        connection.exec_driver_sql("CREATE INDEX lookup_dataset_family ON evaluation_datasets(family)")
+        connection.exec_driver_sql("INSERT INTO evaluation_datasets VALUES ('old','kept','retrieval')")
+        with Operations.context(MigrationContext.configure(connection)):
+            module.upgrade()
+            module.upgrade()
+        connection.exec_driver_sql("INSERT INTO evaluation_datasets VALUES ('new','workflow-test','workflow')")
+        assert connection.exec_driver_sql("SELECT id FROM evaluation_datasets ORDER BY id").scalars().all() == [
+            "new", "old",
+        ]
+        assert "lookup_dataset_family" in {index["name"] for index in sa.inspect(connection).get_indexes(
+            "evaluation_datasets",
+        )}
+        with pytest.raises(sa.exc.IntegrityError):
+            connection.exec_driver_sql("INSERT INTO evaluation_datasets VALUES ('dup','kept','agent')")
+        with pytest.raises(sa.exc.IntegrityError):
+            connection.exec_driver_sql("INSERT INTO evaluation_datasets VALUES ('empty','','agent')")
+        with pytest.raises(sa.exc.IntegrityError):
+            connection.exec_driver_sql("INSERT INTO evaluation_datasets VALUES ('bad','invalid','unknown')")
+    engine.dispose()

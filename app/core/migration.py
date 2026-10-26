@@ -495,9 +495,12 @@ def _stamp_if_schema_already_at_head() -> bool:
         )
         if evaluation_schema_ready:
             checks = [item["sqltext"].lower() for item in inspector.get_check_constraints("evaluation_jobs")]
+            dataset_checks = [item["sqltext"].lower()
+                              for item in inspector.get_check_constraints("evaluation_datasets")]
             evaluation_schema_ready = (
                 any("runner" in check and "'workflow'" in check for check in checks)
                 and any("mode" in check and "'real'" in check for check in checks)
+                and any("family" in check and "'workflow'" in check for check in dataset_checks)
             )
     user_flags_present = {"is_test_user", "must_change_password"}.issubset(user_columns)
     if current == head:

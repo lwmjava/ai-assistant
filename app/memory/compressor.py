@@ -123,6 +123,8 @@ class MemoryCompressor:
                 LLMOptions(temperature=0.3, max_tokens=min(cfg.max_summary_chars // 2, 2048)),
             )
             summary = summary.strip()
+            if not summary:
+                return existing_snapshot or MemorySnapshot()
 
             # 截断过长摘要
             if len(summary) > cfg.max_summary_chars:

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   useEvaluationDetail,
@@ -25,10 +26,16 @@ const familyNames: Record<ReportFamily, string> = {
 export default function EvaluationReportsPage() {
   const role = useAuthStore((state) => state.user?.role)
   const allowed = can(role, 'evaluations', 'read')
-  const [family, setFamily] = useState<ReportFamily>('retrieval')
-  const [page, setPage] = useState(1)
-  const [selected, setSelected] = useState<string | null>(null)
-  const [metric, setMetric] = useState('recall_at_5')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedFamily = searchParams.get('family')
+  const validFamily = requestedFamily === null || Object.prototype.hasOwnProperty.call(familyNames, requestedFamily)
+  const family: ReportFamily = requestedFamily && validFamily ? requestedFamily as ReportFamily : 'retrieval'
+  const selected = validFamily ? searchParams.get('report_id') || null : null
+  const [pagination, setPagination] = useState({ family, page: 1 })
+  const page = pagination.family === family ? pagination.page : 1
+  const [metricSelection, setMetricSelection] = useState({ family, metric: 'recall_at_5' })
+  const metric = metricSelection.family === family && reportMetrics[family].includes(metricSelection.metric)
+    ? metricSelection.metric : reportMetrics[family][0]
   const reports = useEvaluationReports(family, page, allowed)
   const detail = useEvaluationDetail(selected, allowed)
   const jobId = typeof detail.data?.metadata.job_id === 'string' ? detail.data.metadata.job_id : null
@@ -43,10 +50,9 @@ export default function EvaluationReportsPage() {
       <select className="ml-2 rounded border border-border bg-surface p-2 text-text" value={family}
         onChange={(event) => {
           const next = event.target.value as ReportFamily
-          setFamily(next)
-          setPage(1)
-          setSelected(null)
-          setMetric(reportMetrics[next][0])
+          setSearchParams({ family: next })
+          setPagination({ family: next, page: 1 })
+          setMetricSelection({ family: next, metric: reportMetrics[next][0] })
         }}>
         {Object.entries(familyNames).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
       </select>
@@ -57,14 +63,14 @@ export default function EvaluationReportsPage() {
         reports.data.items.length === 0 ? <EmptyState title="暂无有权查看的报告" description="只展示归属明确且已登记的报告。" /> :
         <ul className="divide-y divide-border">{reports.data.items.map((report) => <li key={report.id}>
           <button className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left hover:bg-surface-2 focus-visible:outline-primary"
-            aria-pressed={selected === report.id} onClick={() => setSelected(report.id)}>
+            aria-pressed={selected === report.id} onClick={() => setSearchParams({ family, report_id: report.id })}>
             <span className="font-mono text-sm text-text">{report.id}</span>
             <span className="text-sm text-text-muted">{reportStatus[report.status]}</span>
             <span className="text-xs text-text-faint">{report.recorded_at ?? '时间未记录'}</span>
           </button>
         </li>)}</ul>}
     </section>
-    {reports.data && <Pager page={page} total={reports.data.total} pageCount={Math.max(1, Math.ceil(reports.data.total / 20))} onPage={(next) => { setPage(next); setSelected(null) }} />}
+    {reports.data && <Pager page={page} total={reports.data.total} pageCount={Math.max(1, Math.ceil(reports.data.total / 20))} onPage={(next) => { setPagination({ family, page: next }); setSearchParams({ family }) }} />}
     {selected && <section className="panel p-4" aria-label="报告详情">
       <h2 className="mb-4 font-display text-lg text-text">{selected}</h2>
       {detail.isPending ? <SkeletonRows rows={3} /> : detail.isError ? <ErrorState error={detail.error} onRetry={() => { void detail.refetch() }} /> : <div className="space-y-5">
@@ -96,7 +102,7 @@ export default function EvaluationReportsPage() {
     <section className="panel p-4" aria-label="指标趋势">
       <h2 className="mb-3 font-display text-lg text-text">指标历史</h2>
       <label className="text-sm text-text-muted">指标
-        <select value={metric} className="ml-2 max-w-full rounded border border-border bg-surface p-2 text-text" onChange={(event) => setMetric(event.target.value)}>
+        <select value={metric} className="ml-2 max-w-full rounded border border-border bg-surface p-2 text-text" onChange={(event) => setMetricSelection({ family, metric: event.target.value })}>
           {reportMetrics[family].map((name) => <option key={name}>{name}</option>)}
         </select>
       </label>
@@ -106,7 +112,7 @@ export default function EvaluationReportsPage() {
           <thead><tr className="text-text-muted"><th className="p-2">报告</th><th className="p-2">数值</th><th className="p-2">协议 / 数据 / 模型</th><th className="p-2">状态</th></tr></thead>
           <tbody>{trend.data.points.map((point) => <tr key={point.report_id} className="border-t border-border text-text">
             <td className="p-2 font-mono">{point.report_id}</td><td className="p-2">{formatReportMetric({ value: point.value, unit: metric === 'cases_failed' ? 'count' : metric === 'latency_p95_ms' ? 'ms' : 'ratio' })}</td>
-            <td className="p-2">{point.protocol ?? '未记录'} / {point.metadata.dataset_version ?? '数据版本未记录'} / {point.metadata.model ?? point.metadata.embedding_model ?? '模型未记录'}</td><td className="p-2">{reportStatus[point.status]}</td>
+            <td className="p-2">{point.protocol ?? '未记录'} / {point.metadata.dataset_version ?? '数据版本未记录'} / {point.metadata.generation_model ?? point.metadata.model ?? point.metadata.embedding_model ?? '模型未记录'}</td><td className="p-2">{reportStatus[point.status]}</td>
           </tr>)}</tbody>
         </table></div>}
     </section>

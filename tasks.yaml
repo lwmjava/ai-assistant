@@ -9195,6 +9195,7 @@ tasks:
         auto_deploy: false
 
   - id: MEM-002
+    closeout_verification: 2026-10-26用户明确委托整批受托验收及总预算1元；真实模型摘要持久化和次轮增量复用通过，独立复审空白摘要回退P2已修复，最终本地组合299passed及前端192/静态通过；最终CI待，见implementation_eval_003.md及evaluation-platform-acceptance.md本批节。
     title: 记忆增量压缩接线（existing_snapshot）
     review_fix_verification: 2026-10-25已修复压缩失败窗口丢失、Chat未消费记忆配置和快照配置指纹缺失。最终Windows全量3584passed/3skipped、静态及前端四项exit0；Linux相关专项44passed。证据data/validation/20261025T140349-58615af14e03及docs/plans/implementation_eval_003.md九项修复节；最终CI/独立审查/业务接受待完成，保持in_review。
     status: in_review
@@ -9288,6 +9289,7 @@ tasks:
       - 已批准扩卡登记models/alembic/service等必要路径；具体迁移Schema与保留期未在本次拍板
 
   - id: MEM-003
+    closeout_verification: 2026-10-26真实主体/跨租户/成员拒绝与软删除快照失效受托验收通过，源库未改；独立复审与最终本地299passed/静态/前端完成，同SHA新CI待核验，保持in_review；共享记录见implementation_eval_003.md本批节。
     title: 记忆治理：谁能读/存多久/如何删/防串租户
     review_fix_verification: 2026-10-25快照策略新增实际配置指纹，策略变化拒绝旧摘要；失败边界专项与Windows完整3584passed/3skipped、Linux专项44passed通过。最终CI/独立审查/真实业务接受仍缺，保持in_review；共享证据见implementation_eval_003.md九项修复节。
     status: in_review
@@ -11616,6 +11618,7 @@ tasks:
         auto_deploy: false
       progress: 2026-10-23用户确认「可以关闭了」后业务接受（含AI受托API 15/15）。本地门禁：专项/openapi、ruff0、mypy0、前端四项、全量pytest 3425passed/3skipped（含基线83修复）。最终业务提交df2b1ffaf09d686b595acb1883cc91cc57bd2a5b（feat/EVAL-002），同SHA GitHub run39950697792：Backend job120404143260、Frontend job120404143302、Agent official job120404143098、RAG official job120404143229均为success；用户确认CI通过后关闭为done。本条仅为验收/状态说明，不改变df2b1ff检查输入。不代表合并或生产发布。实现说明docs/plans/implementation_eval_002.md。
   - id: EVAL-003
+    closeout_verification: 2026-10-26两项页面P2闭合，九项修复独立复审及新增空白摘要/存量Workflow约束修复已复核；真实检索/生成Judge/默认Agent/隔离新增Workflow受托验收通过，源库指纹不变，预算不超1元；最终本地299passed/前端192及静态通过，同SHA新CI待，保持in_review；详见implementation_eval_003.md本批节。
     title: 受预算在线评测任务执行与取消
     review_fix_verification: 2026-10-25已修复九项审查中的迁移跳过、资源快照/主体撤销复核、Agent共用路由Skill装配、缺测指标和调用中取消。最终证据data/validation/20261025T140349-58615af14e03为passed：pytest3584passed/3skipped、Ruff/mypy及前端四项exit0；Linux专项44passed。最终CI/独立审查/业务接受及原页面两项P2仍待，保持in_review；详见implementation_eval_003.md。
     status: in_review
@@ -11720,6 +11723,7 @@ tasks:
         auto_deploy: false
       progress: 2026-10-24用户批准保守批次设计并明确开始实施。已实现租户隔离持久任务、固定零费用runner、预算拒绝、幂等、取消、重启终态、报告哈希绑定、API和页面；三类runner本地探针均exit0，真实模型调用0。候选专项/openapi 46 passed；最终工作树验证data/validation/20261024T003042-5987236549f2为passed：pytest 3442 passed/3 skipped、ruff0、mypy0、前端typecheck/Vitest 185/lint/build均exit0；空库迁移到f6d2e4a5b7c8且evaluation_jobs表存在。独立审查记review_incomplete；最终SHA Linux CI和业务接受未完成，保持in_review。实施说明docs/plans/implementation_eval_003.md。
   - id: EVAL-004
+    closeout_verification: 2026-10-26用户明确委托真实数据受托验收，本批沿真实向量/同身份策略诊断范围；独立复审及最终本地组合299passed/前端192和静态通过，同SHA新CI待；共享记录见implementation_eval_003.md与evaluation-platform-acceptance.md本批节。
     title: 受控检索策略对照与候选分析页面
     review_fix_verification: 2026-10-25九项修复组合完整回归覆盖现有检索对照：Windows3584passed/3skipped及静态/前端四项exit0；本轮未改变比较算法，业务接受与最终CI仍待，保持in_review。共享证据data/validation/20261025T140349-58615af14e03。
     status: in_review
@@ -11810,6 +11814,7 @@ tasks:
         auto_deploy: false
     progress: 2026-10-24已实现同一授权主体/租户/Embedding/向量库/活动索引下的检索策略并排比较；只暴露实际可构造且无静默降级的后端，比较前中后核对身份，返回候选/排序/来源/耗时且不改默认配置。候选专项64 passed，API专项11 passed，OpenAPI已刷新；最终工作树验证data/validation/20261024T003042-5987236549f2为passed：pytest 3442 passed/3 skipped、ruff0、mypy0、前端typecheck/Vitest 185/lint/build均exit0。最终SHA Linux CI、独立审查和业务接受未完成，保持in_review。
   - id: EVAL-005
+    closeout_verification: 2026-10-26本批两页面P2及实际旧库Workflow约束失败均已修复复验；真实文档摘录/Agent/Workflow/历史审计/记忆业务受托接受及独立复审已执行，本地299passed/前端192及静态通过，同SHA新CI未齐前仍in_review；完整边界见evaluation-platform-acceptance.md本批节。
     title: 最小评测平台组合与业务验收
     review_fix_verification: 2026-10-25九项修复完成本地候选验证，Windows完整3584passed/3skipped、Ruff/mypy和前端四项exit0，Linux边界专项44passed；证据与未通过历史保留于implementation_eval_003.md。未取得最终CI/独立审查/业务接受，原页面两项P2不在本次九项范围，保持in_review。
     status: in_review
@@ -11895,6 +11900,7 @@ tasks:
         auto_deploy: false
       progress: 2026-10-24已新增D3操作、自动矩阵、未实现能力和回滚清单及版本化确定性验收用例；组合专项47 passed，OpenAPI/YAML检查exit0，真实调用0；最终工作树验证data/validation/20261024T003042-5987236549f2为passed：pytest 3442 passed/3 skipped、ruff0、mypy0、前端typecheck/Vitest 185/lint/build均exit0。最终SHA Linux CI、独立审查和人工业务接受未完成，保持in_review。
   - id: TRACE-001
+    closeout_verification: 2026-10-26真实聊天非debug调用计数/未知usage/历史不重放/越权拒绝受托验收通过，部分流关闭终态修复已独立复核；最终本地299passed/前端192及静态通过，同SHA新CI待，保持in_review；详见implementation_eval_003.md本批节。
     title: 受权持久运行历史与脱敏 Trace 详情
     review_fix_verification: 2026-10-25已修复部分流关闭误记成功：failed配run_cancelled/run_interrupted稳定码，页面区分显示且保留实际计数。真实Chat流关闭回归、Windows完整3584passed/3skipped、静态/前端四项和Linux44项专项通过；最终CI/独立审查/业务接受仍待，保持in_review。证据见implementation_eval_003.md九项修复节。
     status: in_review

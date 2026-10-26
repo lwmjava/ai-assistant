@@ -136,12 +136,26 @@ def _project(entry: ReportEntry, raw: dict[str, Any]) -> ReportDetail:
         metadata = {
             "job_id": _token(raw.get("job_id")),
             "target_type": _token(raw.get("target_type")),
+            "dataset_version": _token(dataset.get("version_id")),
             "dataset_version_id": _token(dataset.get("version_id")),
             "dataset_hash": _token(dataset.get("content_hash")),
             "adapter": _token(adapter.get("name")),
             "adapter_version": _token(adapter.get("version")),
             "metric_schema_version": _token(adapter.get("metric_schema_version")),
         }
+        targets = _rows(_mapping(raw.get("target_snapshot", {})).get("targets", []))
+        identities = [_mapping(target.get("metadata", {})) for target in targets]
+        for key in ("embedding_provider", "embedding_model", "vector_backend", "index_id"):
+            values = [identity.get(key) for identity in identities]
+            value = values[0] if values and all(item == values[0] for item in values) else None
+            # Namespaced model identifiers are valid; arbitrary payloads are not report metadata.
+            metadata[key] = (
+                value if isinstance(value, str)
+                and re.fullmatch(r"[A-Za-z0-9_.:@+/\-]{1,256}", value) else None
+            )
+        dimensions = [identity.get("embedding_dim") for identity in identities]
+        dimension = dimensions[0] if dimensions and all(item == dimensions[0] for item in dimensions) else None
+        metadata["embedding_dim"] = dimension if type(dimension) is int and dimension > 0 else None
         quality = _mapping(raw.get("budget", {})).get("quality")
         if isinstance(quality, dict):
             metadata.update({

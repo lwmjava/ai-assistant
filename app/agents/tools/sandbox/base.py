@@ -35,13 +35,13 @@ class SandboxConfig:
 
     # ── Layer 3：资源限制 ──
     max_memory_mb: int = 256
-    """最大内存（MB），超出触发 MemoryError。Windows 上通过 Job Object 实现。"""
+    """Unix 地址空间上限（MB），超出触发 MemoryError。Windows 暂未设置。"""
     max_cpu_seconds: int = 10
     """最大 CPU 时间（秒），防止死循环耗尽 CPU。Unix 通过 setrlimit 实现。"""
     max_output_chars: int = 100_000
     """stdout+stderr 最大字符数，超出则截断并标记 truncated=True。"""
     max_disk_mb: int = 50
-    """最大写入磁盘量（MB），Unix 通过 setrlimit(RLIMIT_FSIZE) 实现。"""
+    """Unix 单个文件大小上限（MB），通过 RLIMIT_FSIZE 实现，不限制目录总用量。"""
 
     # ── Layer 1：AST 白名单 ──
     allowed_imports: list[str] = field(

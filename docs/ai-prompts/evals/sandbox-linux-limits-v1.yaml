@@ -1,0 +1,25 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial/Observed Regression"
+provenance: "AI-authored deterministic kernel-limit cases; not Gold or model-quality evidence"
+execution: "pytest tests/test_sandbox.py tests/test_sandbox_process_status.py tests/test_sandbox_limit_setup.py tests/test_sandbox_linux_limits.py"
+cases:
+  - id: effective_limits
+    expected: "A real Linux child inherits the configured CPU, address-space and per-file size limits and a zero process allowance."
+  - id: cpu_limit
+    expected: "A CPU-bound child is terminated by the kernel before the separate wall-clock timeout."
+  - id: address_space_limit
+    expected: "An allocation above the child address-space ceiling fails with MemoryError without affecting the host."
+  - id: file_size_limit
+    expected: "A write beyond one file's size ceiling fails with EFBIG and leaves that file at the limit. This is not a directory quota."
+  - id: process_limit
+    expected: "An unprivileged Linux child cannot fork under RLIMIT_NPROC=0. Root is exempt and must not be claimed as covered."
+  - id: setup_failure
+    classification: "Observed Regression"
+    expected: "ValueError or OSError while establishing limits prevents entering user code and emits only a stable failure code."
+    regression: "tests/test_sandbox_limit_setup.py"
+  - id: invalid_internal_configuration
+    classification: "Observed Regression"
+    expected: "Zero/negative CPU, memory or file ceilings passed through SandboxConfig fail before user code; CPU=-1 cannot mean RLIM_INFINITY. The public code_sandbox Tool does not expose these resource arguments."
+    regression: "tests/test_sandbox_linux_limits.py::test_linux_nonpositive_limits_cannot_run_without_restrictions"
+  - id: lifecycle
+    expected: "Existing timeout, process-tree termination, output truncation and sanitized Tool observation behavior remain valid on both applicable platforms. Output is truncated after capture, not bounded in-flight."

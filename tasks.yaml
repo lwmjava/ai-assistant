@@ -8305,7 +8305,8 @@ tasks:
 
   - id: "SAND-003"
     title: "沙箱 Linux 实机限制验证"
-    status: "backlog"
+    status: "in_review"
+    user_acceptance_20261027: "用户明确表示SAND-003可以关闭，业务接受/关闭意愿已取得，后续相关行为未变无需重复接受。实际工作区修复仍未提交，HEAD17b95f1；run40444292680重跑全绿仅覆盖该旧提交，不包含当前sandbox runtime/base和新增回归。按AGENTS第10节仍需本卡最终提交同SHA必要CI通过，暂保持in_review，不能以旧CI关闭新代码。"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -8346,6 +8347,18 @@ tasks:
         - "pytest -k \"sandbox\""
     execution:
       owner: "个人开发者"
+      implementation_20261027: "用户指定task-card-delivery实施本卡；先推送关闭记录17b95f1，再从该SHA创建codex/sand-003，开工工作区干净。仅验证现有Linux资源限制，不做SAND-004容器隔离/非特权部署或模型切换。正式Linux回归调用真实run_script/CodeSandbox，观察CPU超限、地址空间MemoryError、单文件FSIZE、非root NPROC和超时进程树/清理；同时记录getrlimit、内核/Python/UID/配置及源码指纹。临时容器只作为Linux验证宿主，禁网、只读仓库、独立临时目录和宿主资源上限，不将宿主容器限制冒充产品隔离。Linux不能用Windows或Mock替代；发现范围内P1/P2按反例最小修复，更新适用Evaluation及独立审查。无生产/用户数据或模型费用，未授权本卡完成提交推送；最终必要CI未齐不done。"
+      results_20261027:
+        implementation: "新增tests/test_sandbox_linux_limits.py验证真实内核限额，tests/test_sandbox_limit_setup.py覆盖建立失败。独立审查确认P2：setrlimit异常静默pass仍exec，且内部SandboxConfig CPU=-1会成为无限限额。最小修复runtime.py：CPU/AS/FSIZE非正拒绝，NPROC0单独允许；任一ValueError/OSError固定sandbox_resource_limit_setup_failed退出，不进入用户脚本、不输出底层异常。base.py仅纠正Windows内存未设置和FSIZE单文件语义。Tool仍只接受原code/timeout参数，不新增资源配置入口或权限变化。Evaluation docs/ai-prompts/evals/sandbox-linux-limits-v1.yaml版本1.0.0。"
+        baseline_and_red: "基线17b95f1、分支codex/sand-003、干净工作区。指定conda解释器scripts/validate_delivery.py targeted --test tests/test_sandbox.py --test tests/test_sandbox_process_status.py：29passed、exit0，data/validation/20261027T032815-2fc8962dedc5。首轮真实Linux33passed/1Windows专用skip；后续红测033336-decb19bab391为2failed/exit1，Linux red目录为33passed/5failed/1skip、exit1、输入一致，分别证明建立错误与三种负配置仍执行用户标记。红测未制造超量资源或真实外发。"
+        windows: "指定D:/DepTooL/anaconda3/envs/ai-assistant/python.exe（Python3.12.0/pytest8.4.2）执行scripts/validate_delivery.py targeted --test tests/test_sandbox.py --test tests/test_sandbox_process_status.py --test tests/test_sandbox_limit_setup.py --test tests/test_sandbox_linux_limits.py --test tests/test_agent_chain.py --test tests/test_tool_path_contract.py：121passed/11Linux专属skip、1warning、7.78秒，exit0/status=passed，data/validation/20261027T033532-4cb42c7b1406/result.json。正式拒绝、成功、超时、进程树终止、输出截断/脱敏及Agent/Tool调用方断言未降低；没有新增模型调用。"
+        linux_environment: "实际命令为指定conda解释器data/validation/sand003-linux-20261027/run.py final，在已有ai-assistant-app镜像sha256:2d7ef142392229e5a97ea565c59b77c0ce9bb818a0157a59be1faa3919bb9a03内执行正式pytest；Linux6.18.40.1-microsoft-standard-WSL2/x86_64、Python3.11.16、UID/GID65534、pytest8.3.4/pytest-asyncio0.25.0。容器仅作Linux内核验证宿主：禁网、capdropALL、仓库只读、独立tmpfs，2CPU/768MiB/96pids宿主保护上限；可见逻辑CPU12，物理CPU型号未采集。不声称裸机/生产部署或已完成SAND-004隔离加固。"
+        linux_results: "容器内pytest tests/test_sandbox.py tests/test_sandbox_process_status.py tests/test_sandbox_linux_limits.py tests/test_sandbox_limit_setup.py -q：41passed/1skipped、6.55秒、exit0、inputs_unchanged=true。唯一skip为Windows Job专用test_job_failure_does_not_run_user_code，Linux物理限额及六个零/负配置反例全部实跑。证据data/validation/sand003-linux-20261027/final/result.json、linux.log、linux.xml；初始及red证据分别保留上层与red目录。容器退出自动清理，不影响其他实例。"
+        static_checks: "同一指定conda解释器实际执行-m ruff check --no-cache .，All checks passed、exit0；-m mypy app/ --cache-dir data/validation/sand003-mypy，256 source files无错误、exit0。Ruff0.8.4/mypy1.14.1。任务与Evaluation YAML可解析、任务ID唯一、git -c core.whitespace=cr-at-eol diff --check exit0；后续仅补说明未改执行输入。"
+        observed_limits: "受测真实run_script子进程getrlimit软/硬值均等于CPU2秒、AS64MiB、FSIZE1MiB、NPROC0；CPU忙循环在6秒墙钟超时之前被SIGKILL，timed_out=false；128MiB分配触发MemoryError；超量写入EFBIG且单文件恰1MiB；非root fork返回EAGAIN；这些限额远低于宿主保护值，不能由宿主容器限额替代解释。限制为每进程CPU/虚拟地址空间和单文件大小，不是目录总磁盘配额；NPROC对root豁免。既有输出截断发生在收集后，不宣称流式输出内存上限；SIGKILL的既有公开分类不区分CPU与其他kill，本轮未扩大结果语义。"
+        independent_review: "独立审查者/root/sand003_review，未参与实现；正式报告docs/reviews/2026-10-27-sand-003-review.md。其红测033411-19e759ada38e为2failed/9passed，确认范围内P2；固定输入复核033637-00628d43b4a0为31passed、exit0/status=passed，原P2闭合、无剩余范围内P1/P2，Linux由主流程实跑并由审查者核对，不冒称审查者另跑Linux。"
+        input_binding: "候选为17b95f1加本批runtime.py/base.py及两测试/Evaluation文件，完整后端输入见Windows result.json，Linux相关输入见final/result.json。SHA256 runtime.py=3a63bd4e1d58582a7b167bd007b6461c28e63a8ff29fdc518db4b547f4bb24ad；base.py=30323df937e64554bc0e3d9985ae85feab6591fe8bb0aa509db604e9599db9c4；linux_limits.py=7a1527e8320dd69ea6350c752dcbd7c2511ebd1ca54bab9b2c4a57e86b5c708c；limit_setup.py=8e6126eb4f176fe488128b7fb917d83ae160112f24845da168abc5d897d5c837；Evaluation=51524a50c6728a2484c4e192e5c092818119374a300253a6bec6e00ca1700b4d。验证后仅补任务/审查说明，源码输入不变。"
+        remaining_and_rollback: "原始Linux限额实测交付和范围内修复技术验证已具备，适用独立审查通过；未冒称人工业务接受。无页面/前端或响应契约修改，页面和前端专项不适用；Windows/Linux专项不代替最终提交Ubuntu完整pytest与必要项目CI，证据未齐保持in_review。未改共享fixture/CI/验证执行器，完整回归留最终CI承担，不重跑无变化全量。回滚先停用沙箱并回退本批代码/测试，不以恢复静默无限制执行作为生产恢复方案；无用户库、生产数据、.env或模型外发费用。本卡未提交推送。"
       nightly:
         eligible: false
         production_access: false

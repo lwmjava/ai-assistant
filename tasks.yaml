@@ -8231,7 +8231,8 @@ tasks:
 
   - id: "MIG-001"
     title: "启动补列并入 Alembic 单轨"
-    status: "in_progress"
+    status: "in_review"
+    delegated_page_acceptance_20261027: "用户明确委托独立Agent页面验收，审查者/root/mig_eval_ui_acceptance。无独立迁移业务页面，直接页面验收不适用；新隔离SQLite经真实init_db到fb17e9f0a2b3后，lifespan重复启动、Chrome登录及评测页面访问冒烟通过。绑定当前database.py/migration.py指纹，未改实现。正式报告docs/reviews/2026-10-27-mig-001-eval-003-ui-acceptance.md；本记录不替代迁移专项/完整CI，不关闭任务。"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -8246,6 +8247,7 @@ tasks:
     scope:
       allowed_paths:
         - "app/core/migration.py"
+        - "app/core/database.py"
         - "alembic/"
         - "tests/"
         - "tasks.yaml"
@@ -8270,6 +8272,17 @@ tasks:
         - "pytest -k migrat"
     execution:
       owner: "个人开发者"
+      continuation_20261027: "用户指定task-card-delivery继续实施，并明确批准将app/core/database.py加入最小范围。基线feat/EVAL-002/63f1ca227304086d7893aabe2f2021cb6b438f02，工作区干净。默认启动仅调用Alembic，不再create_all或调用补列兼容入口；显式禁用迁移仅保留开发建表，生产只核验唯一head与当前revision且不改表。补真实入口失败/禁用/重复启动反例；沿用旧迁移与数据保留测试，专项、PG/Linux和独立迁移审查。最终CI未齐保持in_review，不操作用户库，不自行提交推送。"
+      results_20261027:
+        behavior: "默认init_db生产/开发均仅走Alembic；显式auto_migrate=False保留开发建表用途，生产仅核对唯一head、revision与关键列且不修改结构/版本。补生产错误盖章但缺关键列时拒绝启动，开发仍返回迁移失败；关键列核验不是完整schema一致性认证。原五类补列及回填仍由既有向前修订承接，不新增表业务语义。"
+        baseline_and_red: "基线63f1ca2、工作区干净。首次选择不存在tests/test_migration.py被验证器拒绝，未执行测试、不算业务结论。有效基线20261027T015733-8708d1d55fd8：29passed/1failed、exit1，已隔离为本卡真实入口create_all。新增禁用/开发入口红测015819-2dfa2549ddf4：7passed/6failed、exit1。首轮扩大专项015908-eeee13fe11af：55passed/1failed，发现继承的生产head缺超时列误通过；加只读后置校验后闭合。"
+        windows: "指定conda解释器D:/DepTooL/anaconda3/envs/ai-assistant/python.exe，Python3.12.0/pytest8.4.2/SQLModel0.0.22/SQLAlchemy2.0.36/Alembic1.14.1。实际命令scripts/validate_delivery.py targeted --test tests/test_migration_single_track.py --test tests/test_migration_reconcile.py --test tests/test_postgresql_validation.py --test tests/test_chunk_plan_migration.py --test tests/test_chat_feedback_migration.py --test tests/test_real_evaluation_constraint_migration.py --test tests/test_workflow_timeout_migration.py --test tests/test_default_database_path.py --test tests/test_rag.py --test tests/test_rag_backend.py --test tests/test_rag_import_jobs.py --test tests/test_audit_smoke.py：130passed/63.21秒，collection/pytest及验证器exit0，status=passed；证据data/validation/20261027T020202-4eef923e091a/result.json。audit_smoke为导入期断言，不伪报单独收集例数。全仓-m ruff check --no-cache .和-m mypy app/ --cache-dir data/validation/mig001-mypy均exit0、256源文件。"
+        postgres: "同解释器scripts/validate_postgresql.py --image postgres:16-alpine实际执行：真实PG16.15、16passed/0skipped、exit0/status=passed、cleanup complete，证据data/validation/20261027T020217-postgres-8502c0052610/result.json。覆盖空库迁移、真实init_db重复启动、PG事务及旧消息/整数布尔默认值保留；仅本任务随机隔离库/容器。首轮015953-postgres-68a4134369b4虽16passed，但源码变更使status=invalidated，未用作最终证据。"
+        linux: "实际运行指定conda解释器data/validation/mig001-linux-20261027/run.py，在已有ai-assistant-app镜像的临时Linux容器内禁网、仓库只读、SQLite临时内存盘；Linux6.18.40.1/Python3.11.16，pytest8.3.4/pytest-asyncio0.25.0来自已有离线wheels。pytest tests/test_migration_single_track.py tests/test_migration_reconcile.py tests/test_workflow_timeout_migration.py tests/test_postgresql_validation.py -q：48passed/9.24秒、exit0，linux.log/linux.xml已留存，容器自动清理。Linux为迁移专项，不冒充本轮Linux真实PG或最终Ubuntu完整CI。"
+        independent_review: "审查者/root/mig001_review，正式结论docs/reviews/2026-10-27-mig-001-review.md；真实入口、默认/禁用生产边界、空head、失败策略及数据保留核对无剩余P1/P2。固定输入受影响专项14passed/exit0，data/validation/20261027T020336-e18a86005d1e。首轮30passed但输入变化invalidated如实保留，不充通过证据。"
+        input_binding: "候选为基线HEAD加本批database.py/migration.py/single_track测试；完整输入指纹见最终Windows与PG result.json。SHA256 database.py=409aba812a2580bca5ea7dd750c9ac15880afaf5cc5c73bb879d2fb82233aeea；migration.py=cd2c041b2ae330860c138927231b92e5ceb7e270b209a6adc712b7887738d82d；single_track.py=ed96d9c9c32c2cae20e73d6650342ed5dba12935ed154516128a73337fd186be。验证后仅补任务/审查说明，不改变执行输入。"
+        acceptance_and_remaining: "两项原始验收分别由真实init_db禁止create_all/补列入口及空head两环境失败反例证明；空库/重复启动/旧消息保留/禁用生产漂移不修复已通过隔离确定性验证。技术验证与独立审查通过，不冒称人工业务接受；本轮无页面变更，页面不适用。依赖NFR-005及本候选最终同SHA必要CI/完整Ubuntu pytest仍未取得，保持in_review、不done、不宣称可发布。未改conftest/验证执行器，完整pytest留最终CI执行，不以本次专项代替。"
+        rollback_and_git: "仅回退本批启动接线和只读校验，保留已执行迁移与数据；不得以直接DDL或重标版本作为生产回滚。未操作用户/生产库、未读.env、无模型外发费用；本轮未提交推送，不继承上一轮保存其他改动为持续Git发布授权。"
       progress: "2026-10-26用户指定task-card-delivery开始实施。基线feat/EVAL-002/2549b43；保留AUTH-005与NFR-005全部既有未提交改动。依赖NFR-005本地全量3617 passed/18 skipped、PG15 passed和Linux37 passed及独立审查已具备，最终SHA CI仍缺，不据此关闭本卡。"
       implementation_plan: "将五类启动补列及相关回填/索引冻结为新增Alembic向前修订，不改变业务含义；auto_migrate统一错误处理，空/多head失败，升级后核对实际revision；移除运行器手写DDL调用。真实入口database.py在Alembic外仍create_all及直接补列，已请求最小范围扩展，批准前不改该文件。覆盖空库、已标旧head缺列库保数据、重复启动、失败不盖章、生产拒绝启动/开发返回False、禁用迁移模式及旧fixture；生产不自动重标版本。方案与结果只更新本卡，独立审查按技能另存正式reviews。无用户库/生产操作、无费用、无Git发布。"
       interim_results: "范围内已新增fb17e9f0a2b3迁移承接五类补列，运行器无手写DDL，错误策略集中并核对升级后revision。Windows专项7e30a83e6b2d为13 passed/1 failed；正式PG00be927765aa为15 passed/1 failed/0 skipped，唯一失败为未获准修改database.py的真实生产启动路径。独立审查pg_review发现整数默认值误用TRUE，已补真实PG缺列红测（e58d788340d4）并修正DEFAULT 1，复跑该用例通过；其他受审增量未新增P1/P2。全仓Ruff和mypy app/256文件exit0；证据data/validation/20261026T122417-7e30a83e6b2d和20261026T122810-postgres-00be927765aa。最初测试误用ENVIRONMENT字段为夹具错误，不计业务红测。尚待范围扩展回复、启动入口修复、对应复核及最终候选完整CI，不验收、不done；没有修改database.py或在docs范围外写审查报告。"
@@ -11632,6 +11645,7 @@ tasks:
         auto_deploy: false
       progress: 2026-10-23用户确认「可以关闭了」后业务接受（含AI受托API 15/15）。本地门禁：专项/openapi、ruff0、mypy0、前端四项、全量pytest 3425passed/3skipped（含基线83修复）。最终业务提交df2b1ffaf09d686b595acb1883cc91cc57bd2a5b（feat/EVAL-002），同SHA GitHub run39950697792：Backend job120404143260、Frontend job120404143302、Agent official job120404143098、RAG official job120404143229均为success；用户确认CI通过后关闭为done。本条仅为验收/状态说明，不改变df2b1ff检查输入。不代表合并或生产发布。实现说明docs/plans/implementation_eval_002.md。
   - id: EVAL-003
+    delegated_page_acceptance_20261027: "用户明确委托独立Agent页面验收，审查者/root/mig_eval_ui_acceptance。实际Chrome/React/FastAPI、隔离SQLite和本机受控HTTP Embedding：预算/确认门禁、启动/自动进度、成功报告直达与身份展示、HTTP400失败后队列继续、排队取消、运行取消、刷新终态保留均通过，无新增P1/P2。任务对应新会话持久调用成功1/失败1/运行取消94/排队取消0；累计次数核对来自DB，非页面显示。六张截图及复制报告见data/validation/mig-eval-ui-20261027，正式结论docs/reviews/2026-10-27-mig-001-eval-003-ui-acceptance.md。0真实供应商外发/费用，服务已清理；非真实模型质量/Agent或Workflow质量接受。此前待浏览器项已由本记录补齐，最终候选CI仍待，保持in_review。"
     repair_verification: 2026-10-27四项缺陷及复审发现的两项边界已修复，最终专项106passed和前端四项exit0，Ruff/mypy均exit0；独立受影响复核8passed无剩余P1/P2，受托后端/API验收通过。保留历史关闭证据，本次重开in_review；浏览器点击验收及最终候选完整Ubuntu CI/Linux仍待。候选指纹、实际命令与缺口见implementation_eval_003.md首节，最终run20261027T002054-0f3b938c0e03。
     closeout_verification: 2026-10-26用户明确委托受托验收后关闭。两页面P2、九项修复及存量Workflow约束已复核闭合，三类真实资源和显式预算受托验收通过；独立复审无剩余P1/P2，本地299passed/前端192及静态通过；最终业务SHA1c8da78e6316c719f54d34418c8743f53f5165f1的GitHub run40254924700四项CI均success，Ubuntu3575passed/4skipped。源库未改，真实验收保守预占0.2037865元。此前日期记录为历史，最终证据见implementation_eval_003.md及evaluation-platform-acceptance.md本批节。
     title: 受预算在线评测任务执行与取消

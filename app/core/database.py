@@ -2,7 +2,7 @@
 
 提供：
 - ``engine``：全局数据库引擎（SQLite / PostgreSQL 由 DATABASE_URL 决定）；
-- ``init_db``：创建所有表（应在应用启动时调用一次）；
+- ``init_db``：通过版本化迁移初始化结构（应在应用启动时调用一次）；
 - ``get_session``：FastAPI 依赖，按请求提供数据库会话。
 """
 
@@ -35,12 +35,12 @@ engine = create_engine(
 
 
 def init_db(*, auto_migrate: bool = True) -> None:
-    """创建所有数据表并执行自动迁移。
+    """通过 Alembic 初始化结构，显式开发建表仅用于关闭自动迁移的场景。
 
     必须在使用模型之前导入模型模块，以确保 SQLModel.metadata 已注册对应表。
 
     Args:
-        auto_migrate: 是否在启动时自动执行 Alembic 迁移（默认 True）。
+        auto_migrate: 自动执行 Alembic；禁用时开发环境建表，生产环境只核验版本。
     """
     # 导入模型以注册表结构（Side-effect import）。
     from app.audit import models as _audit_models  # noqa: F401
@@ -56,21 +56,18 @@ def init_db(*, auto_migrate: bool = True) -> None:
         workflow,  # noqa: F401
     )
 
-    # 1. 创建表（SQLModel.metadata.create_all 幂等）
-    SQLModel.metadata.create_all(engine)
-    # SQLite + QueuePool 会把连接留在池里。Alembic 再开一条连接做 DDL 时，
-    # 可能一直等不到写锁，表现为启动卡在某条 upgrade。先释放池中连接。
-    engine.dispose()
-
-    # 2. 执行 Alembic 自动迁移
     if auto_migrate:
         from app.core.migration import auto_migrate as _auto_migrate
 
         _auto_migrate()
-    from app.core.migration import _ensure_evaluation_job_columns, _ensure_rag_schema_columns
+    elif settings.is_production:
+        from app.core.migration import get_current_revision, get_head_revision, validate_current_schema
 
-    _ensure_rag_schema_columns()
-    _ensure_evaluation_job_columns()
+        if get_current_revision() != get_head_revision():
+            raise RuntimeError("生产环境已禁用自动迁移，但数据库未到最新修订，请先执行 Alembic 升级。")
+        validate_current_schema()
+    else:
+        SQLModel.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session, None, None]:

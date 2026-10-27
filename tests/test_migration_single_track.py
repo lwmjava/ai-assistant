@@ -34,6 +34,46 @@ def test_production_startup_never_creates_tables_outside_alembic(monkeypatch):
     assert calls == ["alembic"]
 
 
+def test_default_development_startup_uses_only_alembic(monkeypatch):
+    from app.core import database
+
+    monkeypatch.setattr(settings, "ENV", "development")
+    calls = []
+    monkeypatch.setattr(database.SQLModel.metadata, "create_all",
+                        lambda *a, **kw: pytest.fail("unversioned schema write"))
+    monkeypatch.setattr(migration, "auto_migrate", lambda: calls.append("alembic") or False)
+    database.init_db()
+    assert calls == ["alembic"]
+
+
+def test_disabled_development_migration_preserves_explicit_test_setup(monkeypatch):
+    from app.core import database
+
+    monkeypatch.setattr(settings, "ENV", "development")
+    calls = []
+    monkeypatch.setattr(database.SQLModel.metadata, "create_all", lambda engine: calls.append("create"))
+    monkeypatch.setattr(migration, "auto_migrate", lambda: pytest.fail("migration disabled"))
+    database.init_db(auto_migrate=False)
+    assert calls == ["create"]
+
+
+@pytest.mark.parametrize("current", [None, "old", "head"])
+def test_disabled_production_migration_only_checks_revision(monkeypatch, current):
+    from app.core import database
+
+    monkeypatch.setattr(settings, "ENV", "production")
+    monkeypatch.setattr(database.SQLModel.metadata, "create_all",
+                        lambda *a, **kw: pytest.fail("production unversioned schema write"))
+    monkeypatch.setattr(migration, "auto_migrate", lambda: pytest.fail("migration disabled"))
+    monkeypatch.setattr(migration, "get_head_revision", lambda: "head")
+    monkeypatch.setattr(migration, "get_current_revision", lambda: current)
+    if current == "head":
+        database.init_db(auto_migrate=False)
+    else:
+        with pytest.raises(RuntimeError):
+            database.init_db(auto_migrate=False)
+
+
 @pytest.mark.parametrize("production", [False, True])
 def test_pending_lookup_errors_follow_environment_failure_policy(monkeypatch, production):
     monkeypatch.setattr(settings, "ENV", "production" if production else "development")
@@ -78,10 +118,29 @@ def migration_database(tmp_path, monkeypatch):
 def test_empty_store_uses_complete_chain_and_repeat_is_idempotent(migration_database):
     from sqlalchemy import inspect
 
-    assert migration.auto_migrate() is True
+    from app.core.database import init_db
+
+    init_db()
     assert migration.get_current_revision() == migration.get_head_revision()
     assert "agent_run_states" in inspect(migration_database).get_table_names()
-    assert migration.auto_migrate() is True
+    init_db()
+
+
+def test_disabled_production_startup_rejects_schema_drift_without_repair(migration_database):
+    from sqlalchemy import inspect, text
+
+    from app.core.database import init_db
+
+    init_db()
+    revision = migration.get_current_revision()
+    with migration_database.begin() as connection:
+        connection.execute(text("ALTER TABLE workflows DROP COLUMN timeout_seconds"))
+    with pytest.raises(RuntimeError, match="实际结构不一致"):
+        init_db(auto_migrate=False)
+    assert migration.get_current_revision() == revision
+    assert "timeout_seconds" not in {
+        column["name"] for column in inspect(migration_database).get_columns("workflows")
+    }
 
 
 def test_forward_revision_repairs_old_stamped_store_without_losing_messages(migration_database):

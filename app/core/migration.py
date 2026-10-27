@@ -356,6 +356,25 @@ def _stamp_if_schema_already_at_head() -> bool:
     return False
 
 
+def validate_current_schema() -> None:
+    """Verify critical persisted columns without changing schema or revision."""
+    from app.core.database import engine
+
+    required = {
+        "users": {"is_test_user", "must_change_password"},
+        "messages": {"attachments"},
+        "workflows": {"timeout_seconds"},
+    }
+    with engine.connect() as connection:
+        inspector = inspect(connection)
+        tables = set(inspector.get_table_names())
+        for table, columns in required.items():
+            if table not in tables or not columns.issubset(
+                {column["name"] for column in inspector.get_columns(table)}
+            ):
+                raise RuntimeError("数据库修订与实际结构不一致，请核对迁移记录和 schema。")
+
+
 def auto_migrate() -> bool:
     """Run versioned migrations; production errors reject startup."""
     try:
@@ -371,6 +390,7 @@ def auto_migrate() -> bool:
             upgrade("head")
         if get_current_revision() != head:
             raise RuntimeError("数据库迁移后版本与唯一 head 不一致")
+        validate_current_schema()
         logger.info("数据库迁移完成，schema revision=%s", head)
         return True
     except Exception as exc:

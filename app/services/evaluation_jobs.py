@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, func, select
@@ -28,6 +29,7 @@ from app.models.evaluation import (
     EvaluationJob,
 )
 from app.models.user import User
+from app.rag.embeddings.factory import embedding_availability
 from app.services.evaluation_adapters import EvaluationAdapterError, builtin_evaluation_adapters
 from app.services.evaluation_datasets import canonical_cases_hash
 from app.services.evaluation_orchestrator import run_real_evaluation
@@ -199,11 +201,14 @@ class EvaluationJobService:
             raise EvaluationJobAccessError
         if not _IDEMPOTENCY.fullmatch(idempotency_key):
             raise EvaluationJobValidationError("invalid_idempotency_key")
-        paid_runtime = target_type in {"agent", "workflow"}
-        if max_external_calls and not (enable_generation or enable_judge or paid_runtime):
+        retrieval_external = target_type == "rag" and not embedding_availability()["is_mock"]
+        paid_runtime = target_type in {"agent", "workflow"} or retrieval_external
+        if max_external_calls and not (enable_generation or enable_judge or paid_runtime or target_type == "rag"):
             raise EvaluationJobValidationError("external_budget_without_paid_stage")
         if (enable_generation or enable_judge or paid_runtime) and max_external_calls < 1:
             raise EvaluationJobValidationError("external_budget_required")
+        if retrieval_external and not (enable_generation or enable_judge) and not data_egress_confirmed:
+            raise EvaluationJobValidationError("external_data_confirmation_required")
         quality: dict[str, Any] | None = None
         if enable_generation or enable_judge:
             if target_type != "rag":
@@ -262,6 +267,7 @@ class EvaluationJobService:
             "enable_judge": enable_judge,
             "initiator_token_version": user.token_version,
             "initiator_tenant_id": user.tenant_id,
+            "data_egress_confirmed": data_egress_confirmed,
         }
         if quality is not None:
             if not 1 <= version.case_count <= 10:
@@ -545,6 +551,12 @@ async def execute_job(
         except TimeoutError:
             row.status = "failed"
             row.error_code = "runner_timeout"
+        except httpx.HTTPError:
+            row.status = "failed"
+            row.error_code = "external_request_failed"
+        except (ValueError, TypeError, KeyError, IndexError):
+            row.status = "failed"
+            row.error_code = "runner_protocol_invalid"
         except (OSError, RuntimeError) as exc:
             row.status = "failed"
             code = str(exc)

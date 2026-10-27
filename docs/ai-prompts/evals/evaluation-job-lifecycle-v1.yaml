@@ -1,8 +1,24 @@
-version: "1.1.6"
+version: "1.1.7"
 classification: "Smoke/Adversarial"
 provenance: "AI-authored deterministic lifecycle scenarios; not Gold or model-quality evidence"
 execution: "pytest tests/test_evaluation_quality.py tests/test_evaluation_jobs.py tests/test_evaluation_api.py tests/test_evaluation_datasets.py tests/test_evaluation_reports.py"
 cases:
+  - id: retrieval_external_request_authorization
+    classification: Observed Regression
+    expected: "Non-mock retrieval requires positive request budget and explicit data egress confirmation, including legacy queued jobs at runtime. Each embedding retry reserves a separate attempt. Offline Mock can accept a request ceiling while consuming zero external calls."
+    regression: "tests/test_evaluation_request_budget.py"
+  - id: external_failure_queue_continuation
+    classification: Observed Regression
+    expected: "HTTP and malformed provider responses finish as failed with a safe error code; the dispatcher continues to the next queued job."
+    regression: "tests/test_evaluation_request_budget.py"
+  - id: fallback_attempt_budget
+    classification: Observed Regression
+    expected: "Each fallback hop reserves shared request budget independently; exhaustion prevents the next attempt."
+    regression: "tests/test_evaluation_request_budget.py::test_each_fallback_attempt_must_reserve_budget"
+  - id: failed_attempt_durable_accounting
+    classification: Observed Regression
+    expected: "Reservations commit before provider execution; failure, timeout and cancellation retain consumed calls without requiring a successful case result."
+    regression: "tests/test_evaluation_request_budget.py::test_agent_failure_keeps_attempt_in_persistent_task"
   - id: official_agent_output_envelope
     classification: Observed Regression
     expected: "Official route and tool-selection requests explicitly cap model output at 1024 tokens without changing datasets, scoring thresholds or retry allowance."

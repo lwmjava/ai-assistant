@@ -59,6 +59,9 @@ test('keeps evaluation configuration separate from historical reports', () => {
   expect(html).toContain('value="generation"')
   expect(html).toContain('最多 10 条用例、30 次模型请求、5 元')
   expect(html).toContain('不评判生成答案质量')
+  expect(html).toContain('模型请求上限（含 Embedding）')
+  expect(html).toContain('检索也会调用 Embedding')
+  expect(html).toContain('授权发送到当前配置的模型服务')
   expect(html).not.toContain('报告列表')
 })
 

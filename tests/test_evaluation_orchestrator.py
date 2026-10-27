@@ -100,7 +100,7 @@ def test_real_rag_orchestrator_uses_runtime_search_and_persists_evidence(
         session.commit()
 
         class FakeRAG:
-            def __init__(self, bound_session, tenant_id):
+            def __init__(self, bound_session, tenant_id, *, embedding_provider):
                 assert bound_session is session
                 assert tenant_id == "orchestrator-tenant"
 

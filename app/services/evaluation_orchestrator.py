@@ -23,11 +23,17 @@ from app.agents.tools.base import Tool, ToolRegistry
 from app.core import log_context
 from app.llm.base import ChatMessage, LLMOptions, LLMProvider
 from app.llm.factory import llm_availability
+from app.llm.routing import FallbackChain
 from app.models.evaluation import EvaluationCaseResult, EvaluationDatasetVersion, EvaluationJob
 from app.models.rag import DocumentChunk
 from app.models.user import Tenant, User
 from app.models.workflow import Workflow
+from app.rag.embeddings.base import EmbeddingProvider
+from app.rag.embeddings.factory import get_embedding_provider
+from app.rag.embeddings.openai_compatible import OpenAICompatibleEmbeddingProvider
+from app.rag.resilience import Deadline
 from app.rag.service import RAGService
+from app.services.chat_retrieval import ChatRetriever
 from app.services.chat_service import ChatService
 from app.services.chat_skills import make_skill_runtime
 from app.services.evaluation_adapters import builtin_evaluation_adapters
@@ -45,13 +51,57 @@ class _ExternalBudget:
     maximum: int
     used: int = 0
     check: Callable[[], None] | None = None
+    record: Callable[[int], None] | None = None
+    egress_confirmed: bool = True
 
     def consume(self) -> None:
         if self.check is not None:
             self.check()
+        if not self.egress_confirmed:
+            raise EvaluationOrchestratorError("external_data_confirmation_required")
         if self.used >= self.maximum:
             raise EvaluationOrchestratorError("external_budget_exhausted")
         self.used += 1
+        if self.record is not None:
+            self.record(self.used)
+
+
+def _request_budget(session: Session, job: EvaluationJob, cancelled: threading.Event) -> _ExternalBudget:
+    def record(used: int) -> None:
+        job.external_calls_used = used
+        session.add(job)
+        session.commit()
+
+    return _ExternalBudget(
+        maximum=job.max_external_calls, used=job.external_calls_used,
+        check=lambda: _validate_job(session, job, cancelled), record=record,
+        egress_confirmed=(job.target_type != "rag" or bool(json.loads(job.options_json).get("data_egress_confirmed"))),
+    )
+
+
+class _BudgetedEmbedding(OpenAICompatibleEmbeddingProvider):
+    def __init__(self, provider: OpenAICompatibleEmbeddingProvider, budget: _ExternalBudget):
+        super().__init__(provider.base_url, provider.api_key, provider.model, provider.dim,
+                         provider.timeout, provider.batch_size, provider.input_policy)
+        self._budget = budget
+
+    async def _post_batch(self, client, batch: list[str], deadline: Deadline) -> list[list[float]]:
+        self._budget.consume()
+        try:
+            return await super()._post_batch(client, batch, deadline)
+        except AttributeError as exc:
+            raise EvaluationOrchestratorError("runner_protocol_invalid") from exc
+
+
+def _budgeted_embedding(budget: _ExternalBudget) -> EmbeddingProvider:
+    provider = get_embedding_provider()
+    if isinstance(provider, OpenAICompatibleEmbeddingProvider):
+        return _BudgetedEmbedding(provider, budget)
+    from app.rag.embeddings.mock import MockEmbeddingProvider
+
+    if not isinstance(provider, MockEmbeddingProvider):
+        raise EvaluationOrchestratorError("embedding_provider_not_supported")
+    return provider
 
 
 def _validate_job(session: Session, job: EvaluationJob, cancelled: threading.Event) -> None:
@@ -100,6 +150,11 @@ async def _guarded_call(call: Awaitable[Any], budget: _ExternalBudget) -> Any:
 
 class _BudgetedLLM(LLMProvider):
     def __init__(self, delegate: LLMProvider, budget: _ExternalBudget) -> None:
+        self._owns_attempt = not isinstance(delegate, FallbackChain)
+        if isinstance(delegate, FallbackChain):
+            delegate = FallbackChain(delegate.task, [
+                (name, _BudgetedLLM(provider, budget)) for name, provider in delegate.hops
+            ])
         self._delegate = delegate
         self._budget = budget
         self.model = delegate.model
@@ -110,13 +165,15 @@ class _BudgetedLLM(LLMProvider):
     async def chat(
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> str:
-        self._budget.consume()
+        if self._owns_attempt:
+            self._budget.consume()
         return await _guarded_call(self._delegate.chat(messages, options), self._budget)
 
     async def stream_chat(
         self, messages: list[ChatMessage], options: LLMOptions | None = None
     ) -> AsyncIterator[str]:
-        self._budget.consume()
+        if self._owns_attempt:
+            self._budget.consume()
         async for chunk in self._delegate.stream_chat(messages, options):
             yield chunk
 
@@ -163,9 +220,12 @@ async def _run_rag(
     hits_at = {1: 0, 5: 0, 10: 0}
     options = json.loads(job.options_json)
     quality = QualitySession(session, job, cancelled) if options.get("enable_generation") else None
+    budget = _request_budget(session, job, cancelled)
     rag = (
         RAGService(session, job.tenant_id, embedding_provider=QualityEmbeddingProvider(quality))
-        if quality is not None else RAGService(session, job.tenant_id)
+        if quality is not None else RAGService(
+            session, job.tenant_id, embedding_provider=_budgeted_embedding(budget),
+        )
     )
     judgments: list[dict[str, float | None]] = []
     if quality is not None and not 1 <= len(cases) <= 10:
@@ -179,7 +239,7 @@ async def _run_rag(
             raise EvaluationOrchestratorError("rag_case_invalid")
         started = perf_counter()
         calls_before = job.external_calls_used
-        hits = await rag.search(query, top_k=10)
+        hits = await _guarded_call(rag.search(query, top_k=10), budget)
         _validate_job(session, job, cancelled)
         elapsed_ms = round((perf_counter() - started) * 1000, 3)
         latencies.append(elapsed_ms)
@@ -314,7 +374,22 @@ async def _run_isolated_agent(
     if llm_availability() != "real":
         raise EvaluationOrchestratorError("real_llm_unavailable")
     production = ChatService()
-    service = ChatService(
+    class EvaluationChatService(ChatService):
+        def _build_retriever(self, session: Session, user: User):
+            from app.core.config import settings
+
+            if not settings.RAG_ENABLED:
+                return None
+            reader = User(
+                id=user.id, tenant_id=user.tenant_id, username=user.username, hashed_password="",
+                role=user.role, token_version=user.token_version, is_active=user.is_active,
+                must_change_password=user.must_change_password,
+            )
+            return ChatRetriever(lambda: RAGService(
+                session, reader.tenant_id, embedding_provider=_budgeted_embedding(budget), reader=reader,
+            ).make_retriever())
+
+    service = EvaluationChatService(
         _BudgetedLLM(production.llm, budget),
         intent_llm_provider=_BudgetedLLM(production._intent_llm(), budget),
     )
@@ -392,7 +467,6 @@ def _persist_case(
     )
     session.add(result)
     job.case_completed += 1
-    job.external_calls_used += external_calls_used
     session.add(job)
     session.commit()
     return {
@@ -424,7 +498,7 @@ async def _run_agent(
         principal.get("token_version"),
     ) != (user.id, user.username, user.role, user.token_version):
         raise EvaluationOrchestratorError("execution_principal_changed")
-    budget = _ExternalBudget(job.max_external_calls, check=lambda: _validate_job(session, job, cancelled))
+    budget = _request_budget(session, job, cancelled)
     rows: list[dict[str, Any]] = []
     route_hits = 0
     route_expected = 0
@@ -524,7 +598,7 @@ async def _run_workflow(
     tenant = session.get(Tenant, job.tenant_id)
     if owner is None or tenant is None or not owner.is_active or not tenant.is_active:
         raise EvaluationOrchestratorError("execution_user_unavailable")
-    budget = _ExternalBudget(job.max_external_calls, check=lambda: _validate_job(session, job, cancelled))
+    budget = _request_budget(session, job, cancelled)
     isolated_engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )

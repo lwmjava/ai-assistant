@@ -322,7 +322,7 @@ RAG 页面可选择生成质量并启用 Judge。两者复用当前 `LLM_BASE_UR
 
 质量任务须确认所选文档与问题为合成或已脱敏数据并允许外发，最多 10 条用例、30 次模型请求、5 元。每次调用先持久化最坏费用预占，成功后按 usage 结算，失败/取消/未知 usage 保留预占；不重试、不使用回答缓存。报告保留模型/Prompt 版本、逐调用用途、usage 和费用，不保存答案正文。费用是配置价格下的计算值，供应商账单仍是最终依据。Judge 与生成使用同一模型，仅作辅助评分；无参考答案时正确性记缺测，不能据此宣称业务验收或生产质量达标。Agent/Workflow 的生成/Judge 质量开关暂不支持。
 
-检索用到的 Embedding 请求也计入上述同一预算，沿用当前 `EMBEDDING_*` 服务及活动索引。启用质量任务还须配置 `EVALUATION_EMBEDDING_PRICE_BASE_URL`、`EVALUATION_EMBEDDING_PRICE_MODEL`、`EVALUATION_EMBEDDING_PRICE_REFERENCE`、`EVALUATION_EMBEDDING_YUAN_PER_MTOK`（最高嵌入单价，元/百万 tokens）；缺失则在创建前拒绝。每条用例按至少 1 次 Embedding、1 次生成及可选 1 次 Judge 检查请求预算。质量任务使用计费 Embedding 适配器，不重试或更换模型；普通检索路径不受影响。`citation_id_validity` 只衡量引用 ID 是否来自选入证据，语义支持程度由辅助 Judge 单独表达。
+检索用到的 Embedding 请求也计入上述同一预算，沿用当前 `EMBEDDING_*` 服务及活动索引。普通真实检索也须正请求上限和数据外发确认，每次重试分别计数；失败、取消及超时保留请求前持久化的预占。Agent/Workflow 模型 fallback 每跳同样分别占用预算。未知费用不视为零费用。启用质量任务还须配置 `EVALUATION_EMBEDDING_PRICE_BASE_URL`、`EVALUATION_EMBEDDING_PRICE_MODEL`、`EVALUATION_EMBEDDING_PRICE_REFERENCE`、`EVALUATION_EMBEDDING_YUAN_PER_MTOK`（最高嵌入单价，元/百万 tokens）；缺失则在创建前拒绝。每条用例按至少 1 次 Embedding、1 次生成及可选 1 次 Judge 检查请求预算。质量任务使用计费 Embedding 适配器，不重试或更换模型。`citation_id_validity` 只衡量引用 ID 是否来自选入证据，语义支持程度由辅助 Judge 单独表达。
 
 定时执行以实际数据库 Engine、租户、工作流和 UTC 到期时间区分周期，同一周期在本进程只消费一次；失败、超时或取消的周期也不会重放。容量拒绝不消费周期，下次扫描可重试。扫描仍为串行，长任务可能延迟后续任务；进程重启后的去重和多进程协调尚未实现，不承诺跨重启的 exactly-once。删除成功会清理本进程周期标记，升级或回滚前须排空活动执行。
 

@@ -69,7 +69,8 @@ export default function EvaluationsPage() {
   const canStart = Boolean(
     tenantId && targetId && (targetType !== 'agent' || executionUserId)
       && (targetType === 'rag' || (datasetId && jobVersionId))
-      && (targetType === 'rag' || maxExternalCalls > 0)
+      && maxExternalCalls > 0
+      && (targetType !== 'rag' || dataEgressConfirmed)
       && (!qualityEnabled || (dataEgressConfirmed && maxExternalCalls >= 1
         && maxExternalCalls <= 30 && maxCostYuan > 0 && maxCostYuan <= 5)),
   )
@@ -80,11 +81,11 @@ export default function EvaluationsPage() {
       executionUserId: executionUserId ?? undefined,
       datasetId: jobVersionId ? datasetId ?? undefined : undefined,
       versionId: jobVersionId ?? undefined,
-      maxExternalCalls: targetType === 'rag' && !qualityEnabled ? 0 : maxExternalCalls,
+      maxExternalCalls,
       enableGeneration: qualityEnabled,
       enableJudge: qualityEnabled && enableJudge,
       maxCostYuan: qualityEnabled ? maxCostYuan : 0,
-      dataEgressConfirmed: qualityEnabled && dataEgressConfirmed,
+      dataEgressConfirmed: targetType === 'rag' && dataEgressConfirmed,
     })
   }
 
@@ -117,11 +118,12 @@ export default function EvaluationsPage() {
         </label>
         <p className="text-sm text-text-muted">检索评测检查相关文档是否被召回及其排名，不评判生成答案质量。</p>
         <p className="text-sm text-text-muted">生成与 Judge 复用当前模型服务；管理员需先配置模型价格并启用。首次验证最多 10 条用例、30 次模型请求、5 元。</p>
+        <label className="block text-sm text-text-muted">模型请求上限（含 Embedding）<input type="number" min="1" max={qualityEnabled ? 30 : 1000} className="ml-2 w-24 rounded border border-border bg-surface p-2" value={maxExternalCalls || ''} onChange={(event) => setMaxExternalCalls(Number(event.target.value) || 0)} /></label>
+        <label className="block text-sm text-text-muted"><input type="checkbox" checked={dataEgressConfirmed} onChange={(event) => setDataEgressConfirmed(event.target.checked)} /> 确认所选文档和测试集为合成或已脱敏数据，并授权发送到当前配置的模型服务</label>
+        <p className="text-sm text-text-muted">检索也会调用 Embedding；达到请求上限后停止。纯检索只确认请求次数，费用未知时不会显示为零。</p>
         {qualityEnabled && <div className="space-y-3 rounded border border-border p-3">
           <label className="block text-sm text-text-muted"><input type="checkbox" checked={enableJudge} onChange={(event) => setEnableJudge(event.target.checked)} /> 启用 Judge 辅助评分（同模型评分，不能替代业务验收）</label>
-          <label className="block text-sm text-text-muted">模型请求上限（含 Embedding）<input type="number" min="1" max="30" className="ml-2 w-24 rounded border border-border bg-surface p-2" value={maxExternalCalls || ''} onChange={(event) => setMaxExternalCalls(Number(event.target.value) || 0)} /></label>
           <label className="block text-sm text-text-muted">费用上限（元）<input type="number" min="0.01" max="5" step="0.01" className="ml-2 w-24 rounded border border-border bg-surface p-2" value={maxCostYuan || ''} onChange={(event) => setMaxCostYuan(Number(event.target.value) || 0)} /></label>
-          <label className="block text-sm text-text-muted"><input type="checkbox" checked={dataEgressConfirmed} onChange={(event) => setDataEgressConfirmed(event.target.checked)} /> 确认所选文档和测试集为合成或已脱敏数据，并授权发送到当前配置的模型服务</label>
         </div>}
       </div>}
       {tenantId && (targets.isPending ? <div className="mt-3"><SkeletonRows rows={2} /></div> : targets.isError ? <div className="mt-3"><ErrorState error={targets.error} onRetry={() => { void targets.refetch() }} /></div> :

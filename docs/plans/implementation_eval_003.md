@@ -1,5 +1,25 @@
 # 受预算评测任务实施计划
 
+## 2026-10-27 四项审查缺陷修复
+
+### 本批验证结果
+
+四项已修复；独立复审额外发现的畸形 JSON 响应和 Mock 检索正预算兼容问题也已补回归闭合。技术验证通过，受托后端/API业务验收通过；浏览器点击验收、本候选完整 Ubuntu CI/Linux 证据未取得，当前保持 in_review。本次未提交、推送或真实外发，未授权付费；历史 done 关闭记录不作为新候选证据。
+
+基线专项 `data/validation/20261027T001004-7e064b492222` exit0；新增反例首次 `20261027T001153-246aa465f9c4` 为9失败/1通过、exit1。修复后最终 `data/validation/20261027T002054-0f3b938c0e03/result.json` passed：后端106 passed/19.93秒，前端typecheck/Vitest/ESLint/build均exit0。实际命令为 `D:/DepTooL/anaconda3/envs/ai-assistant/python.exe scripts/validate_delivery.py targeted --test tests/test_evaluation_request_budget.py --test tests/test_evaluation_jobs.py --test tests/test_evaluation_runtime_guards.py --test tests/test_evaluation_orchestrator.py --test tests/test_evaluation_quality.py --test tests/test_evaluation_api.py --test tests/test_evaluation_adapters.py --test tests/test_llm.py --test tests/test_llm_circuit.py --test tests/test_llm_task_profiles.py --frontend`。同一解释器实际执行 `-m ruff check --no-cache .`、`-m mypy app/ --cache-dir data/validation/eval003-fourfix-mypy`，均exit0（256源文件）；`git -c core.whitespace=cr-at-eol diff --check` exit0。默认Ruff缓存目录一次访问拒绝，改无缓存执行成功，未修改配置。
+
+平台win32，Python3.12.0/pytest8.4.2/SQLModel0.0.22/Ruff0.8.4/mypy1.14.1；隔离SQLite位于本run的pytest.db，HTTP使用MockTransport、无真实Embedding质量结论。最终绑定为本节基线HEAD加result.json中的源码/测试/配置/依赖指纹；本节后续仅补说明，不改变验证输入。核心源码SHA256：evaluation_jobs.py `06c75b299cf124e47b653108d497cac01aef143056ed52e6dfaaee41053de269`；evaluation_orchestrator.py `519d599f8804a45af3dd464c207958e4c33e3dca72905bf51ea7528a0ba01a9e`；新增测试 `d01bb280f7ad95ac675fb11de3cfb9de3b24d912e38d836294af9306dd03aa93`。
+
+独立审查者 `/root/eval003_independent_review`：首次58 passed后报告两个P2；修复后只复核受影响范围，8 passed/9 deselected、exit0，无剩余P1/P2。审查覆盖预算/外发、每跳fallback、持久预占、失败队列及畸形响应；未验证浏览器/CI。独立受托验收者 `/root/eval003_business_acceptance`：41后端及4前端页面专项通过；额外API探针缺预算/确认均422、授权后202、HTTP失败failed且计数1、fallback两跳计数2、Embedding重试被预算拦截。证据 `data/validation/20261027T001839-d72b7fa46af7`、`data/validation/eval003-business-fix-20261027`。前端页面断言为SSR加提交字段源码核对，不能替代实际浏览器接受。
+
+用户明确要求修复 `docs/reviews/2026-10-26-eval-003-review.md` 的一项 P1、三项 P2。基线 `feat/EVAL-002` / `2549b43cf94e3a2f8ea0be0a8df618432bdd10a3`，保护已有 NFR-005 迁移、模型及 RAG 摄取等混合修改。沿已批准的调用预算/外发确认/确定终态，不新增供应商、费用授权或模型请求。
+
+方案：普通真实 RAG 检索在创建及实际调用前要求正请求预算和外发确认；显式 Mock 离线回归维持零调用路径。评测专用 Embedding 适配器在每批 HTTP 尝试前预占，覆盖既有有限重试，保留端点/模型/输入策略/索引身份。Agent/Workflow 复用现有运行链与 RAG Service，注入同一预算；模型 fallback 各 hop 分别预占，禁止超额度尝试下一跳。每次 consume 前后同步持久调用数，不等用例完成再记账，成功路径不得重复累加。Quality 的既有费用/usage 预占保持独立语义，不把未知费用算成零。
+
+执行器分别收敛 httpx 外部异常、确定性协议/输入异常为稳定脱敏 failed/finished_at；取消保持 cancelled，真正的数据库/执行器基础设施异常仍沿原停机策略。普通检索页面提供请求上限和外发确认，不再固定提交0。不新增数据库列或迁移，不改生产聊天工厂/客户端，不触碰未授权路径。
+
+先将四项临时反例落入正式回归，记录修复前失败；再执行评测/预算/身份撤销/直接调用方、缓存与重试专项、静态检查及适用前端验证；无关全量不机械重跑，必要最终 SHA CI/Linux 证据未齐时不重申 done。复用此前独立 Agent 只复核四项修复及新增差异，不无限轮审。回滚仅回退本批评测适配/页面接线并关闭新任务入口，保留任务、报告和预占；不得恢复零预算外发作为生产方案。本次不提交/推送，不运行真实付费模型。
+
 ## 2026-10-26 授权收尾批次
 
 ### 最终接受与关闭

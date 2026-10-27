@@ -132,6 +132,8 @@ def _job_http(exc: Exception) -> HTTPException:
     if isinstance(exc, EvaluationJobConflictError):
         return HTTPException(409, "任务状态或幂等键冲突")
     messages = {
+        "external_budget_required": "请填写正数的外部请求上限；真实检索的 Embedding 也会消耗请求次数。",
+        "external_data_confirmation_required": "请确认文档与测试集已获授权外发到当前模型服务。",
         "quality_disabled": (
             'RAG 生成质量评测尚未启用，请管理员配置价格并启用 EVALU'
             'ATION_QUALITY_ENABLED，或改选 RAG 检索。'

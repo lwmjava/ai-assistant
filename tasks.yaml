@@ -11618,10 +11618,11 @@ tasks:
         auto_deploy: false
       progress: 2026-10-23用户确认「可以关闭了」后业务接受（含AI受托API 15/15）。本地门禁：专项/openapi、ruff0、mypy0、前端四项、全量pytest 3425passed/3skipped（含基线83修复）。最终业务提交df2b1ffaf09d686b595acb1883cc91cc57bd2a5b（feat/EVAL-002），同SHA GitHub run39950697792：Backend job120404143260、Frontend job120404143302、Agent official job120404143098、RAG official job120404143229均为success；用户确认CI通过后关闭为done。本条仅为验收/状态说明，不改变df2b1ff检查输入。不代表合并或生产发布。实现说明docs/plans/implementation_eval_002.md。
   - id: EVAL-003
+    repair_verification: 2026-10-27四项缺陷及复审发现的两项边界已修复，最终专项106passed和前端四项exit0，Ruff/mypy均exit0；独立受影响复核8passed无剩余P1/P2，受托后端/API验收通过。保留历史关闭证据，本次重开in_review；浏览器点击验收及最终候选完整Ubuntu CI/Linux仍待。候选指纹、实际命令与缺口见implementation_eval_003.md首节，最终run20261027T002054-0f3b938c0e03。
     closeout_verification: 2026-10-26用户明确委托受托验收后关闭。两页面P2、九项修复及存量Workflow约束已复核闭合，三类真实资源和显式预算受托验收通过；独立复审无剩余P1/P2，本地299passed/前端192及静态通过；最终业务SHA1c8da78e6316c719f54d34418c8743f53f5165f1的GitHub run40254924700四项CI均success，Ubuntu3575passed/4skipped。源库未改，真实验收保守预占0.2037865元。此前日期记录为历史，最终证据见implementation_eval_003.md及evaluation-platform-acceptance.md本批节。
     title: 受预算在线评测任务执行与取消
     review_fix_verification: 2026-10-25已修复九项审查中的迁移跳过、资源快照/主体撤销复核、Agent共用路由Skill装配、缺测指标和调用中取消。最终证据data/validation/20261025T140349-58615af14e03为passed：pytest3584passed/3skipped、Ruff/mypy及前端四项exit0；Linux专项44passed。最终CI/独立审查/业务接受及原页面两项P2仍待，保持in_review；详见implementation_eval_003.md。
-    status: done
+    status: in_review
     current_verification: 2026-10-25无界队列修复已专项及独立复验。用户委托页面验收已走查真实React/FastAPI及隔离SQLite：13项中11通过、2项P2未通过；启动/轮询/排队/排队取消/运行取消/失败终态/进程重启interrupted/权限及费用前置拒绝有效，外部调用0。新P2为完成任务缺报告直达入口，以及报告历史错误显示已记录的数据版本/Embedding身份为未记录；已登记生命周期Evaluation1.1.3 Observed Regression，未修改业务实现。证据data/validation/eval003-ui-20261025及docs/plans/implementation_eval_003.md末节，页面暂不接受、保持in_review。最终SHA完整Ubuntu CI和代表性真实业务质量接受仍缺；旧专项/全量为历史输入，不能代替新候选门禁；未提交推送/新增付费调用。
     priority: P1
     depends_on:

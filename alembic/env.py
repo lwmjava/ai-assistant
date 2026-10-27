@@ -10,6 +10,7 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from alembic import context
+from app.core.config import settings
 from app.models import (
     conversation,  # noqa: F401, E402
     rag,  # noqa: F401, E402
@@ -25,17 +26,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
-# 延迟导入应用配置以避免循环依赖
-# 注意：此处仅导入配置获取 DATABASE_URL，不导入业务模块
-try:
-    from app.core.config import settings
-
-    _db_url = settings.DATABASE_URL
-except Exception:
-    _db_url = "sqlite:///./data/ai_assistant.db"
+_db_url = settings.DATABASE_URL
 
 # 将数据库 URL 注入 Alembic 配置（优先于 alembic.ini 中的硬编码值）
-config.set_main_option("sqlalchemy.url", _db_url)
+config.set_main_option("sqlalchemy.url", _db_url.replace("%", "%%"))
 
 # ---- 导入所有 SQLModel 表模型 ----
 # 必须在运行 autogenerate 之前导入，确保 SQLModel.metadata 已注册所有表
@@ -46,7 +40,7 @@ target_metadata = SQLModel.metadata
 
 # 排除 Alembic 自身的版本表（避免 autogenerate 误检）
 # SQLite 下可使用 render_as_batch 确保 ALTER 兼容
-# SKELETON：生产 PostgreSQL 环境应移除 render_as_batch
+# PostgreSQL 使用原生 ALTER，只有 SQLite 启用批量兼容模式。
 _IS_SQLITE = _db_url.startswith("sqlite")
 
 

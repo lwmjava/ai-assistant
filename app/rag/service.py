@@ -95,6 +95,9 @@ def demote_other_current_versions(session: Session, version_group_id: str, *, ke
         row.is_current = False
         row.version_state = "replaced"
         session.add(row)
+    # 先释放当前版本的唯一键；仍在调用方事务内，后续失败可整体回滚。
+    if rows:
+        session.flush()
 
 
 logger = logging.getLogger(__name__)
@@ -472,6 +475,10 @@ class RAGService:
                 chunk_count=len(chunk_objs),
                 chunk_plan=json.dumps(chunk_plan, ensure_ascii=False) if chunk_plan else None,
             )
+            if document.is_current:
+                demote_other_current_versions(
+                    self.session, document.version_group_id, keep_id=document.id
+                )
             self.session.add(document)
             self.session.flush()
             if cleaning is not None:
@@ -536,8 +543,6 @@ class RAGService:
             # 空操作（分块已随主库持久化），Milvus 实现才真正把向量同步进集合。
             await self._vector_store.add(persisted_rows)
 
-            if document.is_current:
-                demote_other_current_versions(self.session, document.version_group_id, keep_id=document.id)
             self.session.commit()
             self.session.refresh(document)
             return document

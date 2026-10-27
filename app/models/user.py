@@ -2,6 +2,7 @@
 
 import uuid
 
+from sqlalchemy import BigInteger
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.core.security import Role
@@ -22,11 +23,11 @@ class Tenant(SQLModel, TimestampMixin, table=True):
     name: str = Field(index=True)
     is_active: bool = Field(default=True)
     # 空值表示不限制。0 表示该维度不允许新增。
-    message_limit: int | None = Field(default=None)
-    storage_limit_bytes: int | None = Field(default=None)
-    token_limit: int | None = Field(default=None)
+    message_limit: int | None = Field(default=None, sa_type=BigInteger)
+    storage_limit_bytes: int | None = Field(default=None, sa_type=BigInteger)
+    token_limit: int | None = Field(default=None, sa_type=BigInteger)
     # 自然月周期内已消耗 Token；跨月时清零。
-    tokens_used_period: int = Field(default=0)
+    tokens_used_period: int = Field(default=0, sa_type=BigInteger)
     # 当前计量周期，格式 YYYY-MM（UTC）。
     quota_period_ym: str | None = Field(default=None)
 

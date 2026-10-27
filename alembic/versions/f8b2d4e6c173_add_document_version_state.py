@@ -24,7 +24,7 @@ def upgrade() -> None:
         sa.Column("version_state", sa.String(), nullable=False, server_default="published"),
     )
     op.create_index("ix_rag_documents_version_state", "rag_documents", ["version_state"])
-    op.execute("UPDATE rag_documents SET version_state = 'replaced' WHERE is_current = 0")
+    op.execute("UPDATE rag_documents SET version_state = 'replaced' WHERE NOT is_current")
     op.create_table(
         "rag_operation_confirmations",
         sa.Column("id", sa.String(), nullable=False),

@@ -5962,7 +5962,7 @@ tasks:
 
   - id: "NFR-005"
     title: "PostgreSQL 生产路径验证"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -5979,6 +5979,8 @@ tasks:
         - "alembic/"
         - "app/core/"
         - "app/models/"
+        - "app/rag/service.py"
+        - "app/rag/import_jobs.py"
         - "scripts/"
         - "docs/"
         - "tests/"
@@ -6008,6 +6010,7 @@ tasks:
         - "pytest -k 'db or migration'"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-26按指定task-card-delivery技能实施；用户批准扩展RAG发布路径修复唯一约束写入顺序，实际仅改service.py。交付记录docs/plans/implementation_nfr_005.md；独立审查docs/reviews/2026-10-26-nfr-005-postgresql-review.md无未闭合P1/P2。真实PG16.15隔离专项15 passed/0 skipped，Linux PG与验证器37 passed；发布调用方110 passed；本地完整pytest3617 passed/18 skipped（15项PG显式门控已独立实跑，3项Windows平台限制），Ruff/mypy通过。未提交推送、未切换生产、未操作用户数据、零模型费用。候选为HEAD2549b43加记录中源码指纹；最终提交对应Ubuntu CI尚未取得，不done。"
       nightly:
         eligible: false
         production_access: false
@@ -7785,7 +7788,7 @@ tasks:
 
   - id: "AUTH-005"
     title: "对话读取权限与矩阵一致"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     target_date: ""
     depends_on: []
@@ -7822,7 +7825,15 @@ tasks:
         - "pytest -k \"permission or conversation\""
     execution:
       owner: "个人开发者"
-      progress: "2026-10-22用户页面验收：访客与平台审计员访问对话均显示403页；矩阵未改写。实现仍在未提交工作区，与其他卡混在 HEAD 82c5c6e6a1eae7a929721cf609cca0771b03e5b5。最终提交的 Ubuntu CI 与 L2 独立审查未完成，保持 in_review。"
+      progress: "2026-10-26用户明确要求收尾后关闭。实现已随既有提交入库，当前业务SHA2549b43cf94e3a2f8ea0be0a8df618432bdd10a3；此前2026-10-22未提交/缺CI及审查为历史状态。本轮矩阵、业务、测试和前端均未修改；独立复审及实际JWT/DB受托验收通过，与PRD§5.3.2一致。viewer/system_viewer无对话读取权限；system_admin/tenant_admin/member保留既有租户和会话归属过滤。"
+      closeout_20261026:
+        baseline: "feat/EVAL-002，HEAD2549b43cf94e3a2f8ea0be0a8df618432bdd10a3，开工工作区干净。无业务/测试/配置/依赖/Evaluation输入变化；本次只更新当前卡，复用同输入完整CI与2026-10-22已取得的两角色403页面接受。"
+        plan_and_scope: "核对PRD§5.3.2、后端conversations.read及列表/详情/运行结果/事件入口、导出独立准入与前端/chat镜像；专项和独立复审核对拒绝先于读取、允许角色本人访问、跨租户和角色降级。只收尾这两类角色对话读取格子，不扩展令牌撤销语义或其他矩阵权限。"
+        local_checks: "指定conda ai-assistant/Python3.12.0运行scripts/validate_delivery.py targeted：--test tests/test_auth_005_conversation_read.py --test tests/test_security_smoke.py --test tests/test_export_conversations.py --test tests/test_auth_revoke.py --test tests/test_switch_tenant.py --test tests/test_admin_tenant_lifecycle.py，16 passed/exit0（data/validation/20261026T021631-91c797a1c540）；--test tests/test_chat.py --test tests/test_chat_controls.py --test tests/test_sse_active_runs.py --test tests/test_sse_active_runs_review.py，40 passed/exit0（021740-d0cf6e707867）。npm run test -- --run src/App.forbidden.test.ts src/lib/permissions.test.ts，12 passed/exit0。验证器记录解释器、依赖、隔离库和源码SHA256，summary均passed。"
+        independent_review: "审查者/root/auth005_review，输入SHA2549b43cf94e3a2f8ea0be0a8df618432bdd10a3；核对真实守卫、fresh DB角色、租户及会话边界、前端/chat，无剩余P1/P2。独立conda解释器scripts/validate_delivery.py targeted选择test_auth_005_conversation_read、test_chat、test_chat_resume、test_admin_tenant_lifecycle、test_auth_revoke、test_export_conversations六文件：42 passed、collection/pytest exit0、summary passed；证据data/validation/20261026T021920-52f62972f229。首次审查额度中断未当完成证据，恢复后核对已有产物及补齐结论，不重复全量。"
+        delegated_acceptance: "实际登录/JWT/DB隔离探针python data/validation/auth005-independent-20261026/probe.py，exit0、27/27通过、外部请求0；viewer/system_viewer读列表/本人详情/runs/events/两种导出均403，毒化读取方法确认拒绝未进入相应取数；三个允许角色本人列表/详情200、跨租户详情404；DB角色降级后旧JWT列表/详情403。result.json为辅助受托证据，不替代正式回归、不冒充真人操作。初版探针误拦Windows asyncio本地socketpair，修正loopback白名单后通过，失败日志保留且不归为业务缺陷。"
+        final_ci: "https://github.com/lwmjava/ai-assistant/actions/runs/40256120463 ，checkout日志已核对同SHA2549b43。Backend job121358220008、Frontend job121358220045、Agent official job121358220006、RAG official job121358219808均completed/success；Ubuntu完整pytest3575 passed/4 skipped/6 warnings（454.50秒），Ruff/mypy与前端四项通过。此次纯台账更新不改变这些检查输入，不重复全量或新增付费CI。"
+        acceptance_and_rollback: "技术验证、独立审查及用户委托的业务验收已齐。原用户数据库/.env未操作，零模型费用，无新能力或权限扩张。本次回滚只撤销关闭记录；不把放宽viewer/system_viewer读取当成回滚步骤。未执行合并、生产发布或其他backlog。"
       nightly:
         eligible: false
         production_access: false
@@ -8220,7 +8231,7 @@ tasks:
 
   - id: "MIG-001"
     title: "启动补列并入 Alembic 单轨"
-    status: "backlog"
+    status: "in_progress"
     priority: "P0"
     target_date: ""
     depends_on:
@@ -8259,6 +8270,9 @@ tasks:
         - "pytest -k migrat"
     execution:
       owner: "个人开发者"
+      progress: "2026-10-26用户指定task-card-delivery开始实施。基线feat/EVAL-002/2549b43；保留AUTH-005与NFR-005全部既有未提交改动。依赖NFR-005本地全量3617 passed/18 skipped、PG15 passed和Linux37 passed及独立审查已具备，最终SHA CI仍缺，不据此关闭本卡。"
+      implementation_plan: "将五类启动补列及相关回填/索引冻结为新增Alembic向前修订，不改变业务含义；auto_migrate统一错误处理，空/多head失败，升级后核对实际revision；移除运行器手写DDL调用。真实入口database.py在Alembic外仍create_all及直接补列，已请求最小范围扩展，批准前不改该文件。覆盖空库、已标旧head缺列库保数据、重复启动、失败不盖章、生产拒绝启动/开发返回False、禁用迁移模式及旧fixture；生产不自动重标版本。方案与结果只更新本卡，独立审查按技能另存正式reviews。无用户库/生产操作、无费用、无Git发布。"
+      interim_results: "范围内已新增fb17e9f0a2b3迁移承接五类补列，运行器无手写DDL，错误策略集中并核对升级后revision。Windows专项7e30a83e6b2d为13 passed/1 failed；正式PG00be927765aa为15 passed/1 failed/0 skipped，唯一失败为未获准修改database.py的真实生产启动路径。独立审查pg_review发现整数默认值误用TRUE，已补真实PG缺列红测（e58d788340d4）并修正DEFAULT 1，复跑该用例通过；其他受审增量未新增P1/P2。全仓Ruff和mypy app/256文件exit0；证据data/validation/20261026T122417-7e30a83e6b2d和20261026T122810-postgres-00be927765aa。最初测试误用ENVIRONMENT字段为夹具错误，不计业务红测。尚待范围扩展回复、启动入口修复、对应复核及最终候选完整CI，不验收、不done；没有修改database.py或在docs范围外写审查报告。"
       nightly:
         eligible: false
         production_access: false

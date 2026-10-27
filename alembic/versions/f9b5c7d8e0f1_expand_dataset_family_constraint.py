@@ -18,8 +18,10 @@ def upgrade() -> None:
         return
     table = sa.Table("evaluation_datasets", sa.MetaData(), autoload_with=bind)
     checks = [constraint for constraint in table.constraints if isinstance(constraint, sa.CheckConstraint)]
-    family_checks = [constraint for constraint in checks
-                     if re.search(r"\bfamily\b.*\bin\s*\(", str(constraint.sqltext).lower())]
+    family_checks = [constraint for constraint in checks if re.search(
+        r'^\(*\s*"?family"?\s*\)*(?:::\s*(?:text|character varying))?\s*(?:in\s*\(|=\s*any\s*\()',
+        str(constraint.sqltext).lower(),
+    )]
     if family_checks and all("'workflow'" in str(constraint.sqltext).lower() for constraint in family_checks):
         return
     for index, constraint in enumerate(checks):

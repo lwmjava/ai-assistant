@@ -1,5 +1,7 @@
 """Expand existing evaluation job constraints for real resource runs."""
 
+import re
+
 from alembic import op
 
 revision = "f8a4b6c7d9e0"
@@ -24,7 +26,10 @@ def upgrade() -> None:
         for constraint in table.constraints:
             if isinstance(constraint, sa.CheckConstraint):
                 sql = str(constraint.sqltext).lower()
-                if "runner in" in sql or "mode in" in sql:
+                if any(re.search(
+                    rf'^\(*\s*"?{column}"?\s*\)*(?:::\s*(?:text|character varying))?\s*(?:in\s*\(|=\s*any\s*\()',
+                    sql,
+                ) for column in ("runner", "mode")):
                     batch.drop_constraint(constraint.name, type_="check")
         batch.create_check_constraint("ck_eval_job_runner", "runner IN ('retrieval','generation','agent','workflow')")
         batch.create_check_constraint("ck_eval_job_mode", "mode IN ('smoke','synthetic','real')")

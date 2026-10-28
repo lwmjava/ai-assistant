@@ -37,6 +37,58 @@ project:
   source_comment_policy: "每次改代码都必须遵守：源代码、测试、前端和迁移脚本里的注释与文档字符串只描述当前行为。不得写入任务编号、ADR 编号、需求或设计文档名称、修订日期，以及依据哪份文档实现的说明。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   commit_message_policy: "每次 git 提交都必须遵守：提交说明只写实现了什么功能，或修复了什么问题。不得写入需求编号、任务编号、ADR 编号，也不得写依据哪份需求、设计或计划文档。文档追溯只放在 tasks.yaml、ADR 和计划文档中。"
   capacity_policy: "个人开发按理论产能的60%-70%排期，其余用于取证、联调、返工、审核和发布。"
+  release_plan:
+    version: '1.0'
+    approved_on: '2026-10-29'
+    plan: docs/plans/plan_v1_scope_priority_20261029.md
+    frozen_pending_tasks:
+    - PAGT-008
+    - NFR-007
+    - SAND-004
+    - RAG-041
+    - AGT-004
+    - PWFL-005
+    - PWFL-006
+    - MCP-REQ-001
+    - PMCP-001
+    - MEM-004
+    - MEM-005
+    - MEM-006
+    - MEM-007
+    - SKILL-005
+    - HITL-001
+    - HITL-002
+    - PMCP-004
+    - PMCP-002
+    - PMCP-003
+    - PMCP-005
+    - EVAL-006
+    - PROMPT-002
+    - RAG-045
+    - PRAG-002
+    - RAG-018
+    - EVO-001
+    - EVO-002
+    - SKILL-004
+    - AGT-005
+    - V1C-006
+    - NFR-013
+    - NFR-008
+    - NFR-004
+    - OPS-007
+    - NFR-009
+    - OPS-006
+    - OPS-005
+    - INV-004
+    - DOC-001
+    - NFR-010
+    - OPS-004
+    - OPS-003
+    - REL-005
+    ordering: 先按V1-1至V1-5阶段，再按delivery_order推进；depends_on始终为硬依赖，优先级不替代准入条件。
+    priority_policy: P0为核心能力及安全前置，P1为联动/质量/体验，P2为上线与发布后段；43项均属1.0，P2不代表可省略。
+    authorization: 本次只批准版本范围、优先级和排程；实施仍逐卡明确授权，架构、费用、数据外发、生产和Git操作不因排程自动批准。
+    completion: 全部范围项按验收完成；条件未触发/实验不采纳须按原契约取证并由用户明确决定范围处置，未实现不得自行标done。REL-005最后执行。
 
 status_values:
   - "backlog"
@@ -317,10 +369,12 @@ tasks:
       progress: "2026-10-19按用户批准计划/允许路径/ADR-0016实现calculator-only知识库组合：当前选块与用户参数核验、现有Executor真实执行、固定金额/来源模板、权限技能与取消/缓存/重新生成边界。独立工程三P2已真实红复现并修复；独立反例126通过，最终无筛选pytest3043 passed/3 skipped/3既有warnings，800.71秒，exit0；Ruff全库no-cache与mypy218文件exit0；531最终输入一致。新独立final_audit实际154 passed/75.18秒/exit0，另3条真实分隔符探针，无未修复P1/P2。实现说明docs/plans/implementation_v1c_005_20261019.md；证据/验收/人工审核见docs/reviews/2026-10-19-v1c-005-*。E2合成提取/Mock64维只证链路，真实模型质量未验证。2026-10-20用户明确委托新独立Agent业务接受，/root/v1c005_business_acceptance已通过：154项/64.15秒/exit0，另12条真实Service业务探针全通过（四入口2人4天3040.00和复杂政策受控拒绝），531输入及17原日志指纹一致；报告docs/reviews/2026-10-20-v1c-005-business-acceptance.md。E2隔离范围，未验证真实模型质量；最终候选尚未提交，GitHub Backend/Frontend/Agent official baseline未验证，旧SHA CI仅基线，故in_review不得done。未提交/推送/合并/部署。 2026-10-20用户明确要求关闭：候选d20136edde18423a1eb0f0ede505601e6a290815，GitHub run39344521725同SHA Backend(job118373795678)/Frontend(job118373795484)/Agent official baseline(job118373795249)全部success。531工作区输入、531提交blob与17原日志指纹匹配，技术独立审核及受托业务接受均通过，无未修复P1/P2，批准范围内done。此前pending/in_review为历史；关闭记录docs/reviews/2026-10-20-v1c-005-closure.md及closure-evidence.json。仅新增关闭元数据，不改执行输入；未合并/部署。"
 
   - id: "V1C-006"
-    title: "1.0收尾：测量并优化技能匹配与意图分流开销"
+    title: "测量并优化技能匹配与意图分流开销"
     status: "backlog"
-    priority: "P2"
-    depends_on: ["SKILL-003", "PAGT-007", "V1C-005"]
+    priority: "P1"
+    module: "Agent/响应效率"
+    target_version: "1.0"
+    depends_on: ["SKILL-003", "PAGT-007", "V1C-005", "EVAL-003", "TRACE-001"]
     scope:
       deliverables: ["分阶段延迟与模型调用次数基线", "单变量优化与质量回归结论"]
       non_goals: ["不为减少调用降低鉴权或安全检查", "不预先决定合并模型决策或开启缓存"]
@@ -330,8 +384,16 @@ tasks:
       - "真实模型与Mock结果分开记录；取消、缓存、预算和重试回归不退化。"
     risk: {level: "L1", side_effect: "先测量后决策；实际付费调用另按已批准预算执行"}
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 30
       plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
-      progress: "仅登记Planned；P2为实现优先级，仍属于用户要求的1.0收尾清单，不自动移出范围。"
+      reuse_package: "A03"
+      delivery_stage: "V1-3"
+      estimate_person_days: [3, 6]
+      admission:
+        authorization: "2026-10-27仅授权把A03映射及依赖补入现有任务；真实模型、费用、生产启用和业务实现仍须另行授权。"
+        condition: "先形成真实基线，只选择一项模型档位路由策略做单变量实验；有效负结果允许关闭而不采纳。"
+      progress: "2026-10-29纳入1.0第三阶段、P1，测量与单变量优化仍须逐卡实施和费用授权。"
 
   - id: "RAG-044"
     title: "修复索引不可用时对话初始化失败"
@@ -5474,11 +5536,14 @@ tasks:
   - id: "PRAG-002"
     title: "重排落地：开关、灰度与开销评估"
     status: "backlog"
-    priority: "P2"
+    priority: "P1"
+    module: "RAG"
+    target_version: "1.0"
     target_date: ''
     depends_on:
     - "REL-004"
     - "NFR-002"
+    - "RAG-045"
     context:
       problem: "重排实验由 REL-004 承担；REL-004 已记录当前词面覆盖重排不采纳。用户 2026-10-04 拍板：本卡恢复为待办（backlog）、降为 P2，保留重排落地路径（开关/灰度/开销），不重复已做实验。"
       facts:
@@ -5532,7 +5597,15 @@ tasks:
       commands:
       - "pytest tests/test_rag.py -v"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 24
       owner: "个人开发者"
+      reuse_package: "R06"
+      delivery_stage: "V1-3"
+      estimate_person_days: [4, 7]
+      admission:
+        authorization: "2026-10-27仅授权补充R06映射与采纳门禁，不授权实施重排、真实调用或生产灰度。"
+        condition: "RAG-045完成且形成明确采纳决定后才可开工；负结果或未采纳时保持backlog。"
       nightly:
         eligible: false
         production_access: false
@@ -5657,7 +5730,9 @@ tasks:
   - id: "PMCP-001"
     title: "MCP 连接超时、重连、心跳与优雅降级"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "MCP"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "MCP-REQ-001"
@@ -5687,7 +5762,6 @@ tasks:
       non_goals:
         - "不实现服务发现"
         - "不改传输协议支持范围"
-        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "模拟 server 无响应时请求在超时后返回"
       - "单 server 故障后其他工具仍可用"
@@ -5701,7 +5775,14 @@ tasks:
       commands:
         - "pytest -k 'mcp'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 9
       owner: "个人开发者"
+      reuse_package: "C01"
+      delivery_stage: "V1-1"
+      estimate_person_days: [3, 5]
+      admission:
+        authorization: "2026-10-27仅授权登记C01映射，不授权连接真实外部MCP或实施。"
       nightly:
         eligible: false
         production_access: false
@@ -5711,12 +5792,17 @@ tasks:
   - id: "PMCP-002"
     title: "MCP 工具权限与风险分级接入"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "MCP"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "MCP-REQ-001"
       - "PMCP-001"
       - "PAGT-002"
+      - "HITL-001"
+      - "HITL-002"
+      - "PAGT-008"
     context:
       problem: "外部工具的能力边界与内置工具不一致，无法统一管控风险。"
       facts:
@@ -5737,7 +5823,6 @@ tasks:
       non_goals:
         - "不做人工审批界面"
         - "不改 MCP 传输层"
-        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "MCP 工具与内置工具共用同一风险分级口径"
       - "L2 及以上默认不自动执行"
@@ -5751,7 +5836,15 @@ tasks:
       commands:
         - "pytest -k 'mcp or risk'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 18
       owner: "个人开发者"
+      reuse_package: "C02"
+      delivery_stage: "V1-2"
+      estimate_person_days: [3, 5]
+      admission:
+        authorization: "2026-10-27仅授权登记C02映射与安全前置，不授权开放MCP高风险工具。"
+        condition: "审批服务、审批交互和统一参数策略未完成时，高风险MCP工具保持拒绝。"
       nightly:
         eligible: false
         production_access: false
@@ -5761,7 +5854,9 @@ tasks:
   - id: "PMCP-003"
     title: "MCP 调用进入审计日志"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "MCP"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "MCP-REQ-001"
@@ -5784,7 +5879,6 @@ tasks:
       non_goals:
         - "不记录完整请求体中的敏感字段"
         - "不做审计查询界面"
-        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "调用后可查询到对应审计记录"
       - "敏感字段不落入审计"
@@ -5798,7 +5892,14 @@ tasks:
       commands:
         - "pytest -k 'mcp or audit'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 19
       owner: "个人开发者"
+      reuse_package: "C03"
+      delivery_stage: "V1-2"
+      estimate_person_days: [2, 3]
+      admission:
+        authorization: "2026-10-27仅授权登记C03映射，不授权实施或写入生产审计数据。"
       nightly:
         eligible: false
         production_access: false
@@ -5808,7 +5909,9 @@ tasks:
   - id: "PMCP-004"
     title: "MCP 凭据管理：不落明文配置"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "MCP"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-007"
@@ -5834,7 +5937,6 @@ tasks:
       non_goals:
         - "不引入第三方密钥托管服务"
         - "不改模型密钥之外的配置读取方式"
-        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "配置文件中不含 MCP 明文凭据"
       - "日志样本无凭据"
@@ -5848,7 +5950,14 @@ tasks:
       commands:
         - "pytest -k 'secret or credential'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 17
       owner: "个人开发者"
+      reuse_package: "C04"
+      delivery_stage: "V1-2"
+      estimate_person_days: [3, 5]
+      admission:
+        authorization: "2026-10-27仅授权登记C04映射，不授权处理真实凭据或变更生产密钥。"
       nightly:
         eligible: false
         production_access: false
@@ -5858,9 +5967,12 @@ tasks:
   - id: "PMCP-005"
     title: "MCP 工具版本与兼容性声明"
     status: "backlog"
-    priority: "P2"
+    priority: "P1"
+    module: "MCP"
+    target_version: "1.0"
     target_date: ""
     depends_on:
+      - "PMCP-001"
       - "PMCP-002"
     context:
       problem: "外部工具变更契约后，调用方无法感知不兼容。"
@@ -5879,7 +5991,6 @@ tasks:
         - "工具声明版本，不兼容时给出明确提示而非静默失败"
       non_goals:
         - "不做版本自动迁移"
-        - "不计入 v1.0.0 锁定清单"
     acceptance:
       - "版本不匹配时返回明确错误"
     risk:
@@ -5892,7 +6003,14 @@ tasks:
       commands:
         - "pytest -k 'mcp'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 20
       owner: "个人开发者"
+      reuse_package: "C05"
+      delivery_stage: "V1-2"
+      estimate_person_days: [2, 4]
+      admission:
+        authorization: "2026-10-27仅授权登记C05映射，不授权连接或升级真实MCP服务。"
       nightly:
         eligible: false
         production_access: false
@@ -6216,7 +6334,9 @@ tasks:
   - id: "NFR-007"
     title: "API Key 与模型密钥加密存储"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "密钥安全"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-006"
@@ -6258,6 +6378,9 @@ tasks:
       commands:
         - "pytest -k 'secret'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 2
+      delivery_stage: "V1-1"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6268,7 +6391,9 @@ tasks:
   - id: "NFR-008"
     title: "审计日志保留不少于 90 天"
     status: "backlog"
-    priority: "P1"
+    priority: "P2"
+    module: "审计日志"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "REL-004"
@@ -6307,6 +6432,9 @@ tasks:
       commands:
         - "pytest -k 'audit'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 32
+      delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6318,6 +6446,8 @@ tasks:
     title: "数据合规删除：个人信息与租户彻底清除"
     status: "backlog"
     priority: "P2"
+    module: "数据合规"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-008"
@@ -6365,6 +6495,9 @@ tasks:
       commands:
         - "pytest -k 'purge or tenant'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 37
+      delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6376,6 +6509,8 @@ tasks:
     title: "依赖许可证与漏洞审计"
     status: "backlog"
     priority: "P2"
+    module: "依赖合规"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-006"
@@ -6413,6 +6548,9 @@ tasks:
       commands:
         - "pip list"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 36
+      delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -6424,6 +6562,8 @@ tasks:
     title: "性能基准与压测：五项指标验证"
     status: "backlog"
     priority: "P2"
+    module: "性能压测"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-005"
@@ -6473,6 +6613,9 @@ tasks:
       commands:
         - "pytest -k 'perf or benchmark'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 35
+      delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6547,6 +6690,8 @@ tasks:
     title: "反向代理与 SSE 长连接配置"
     status: "backlog"
     priority: "P2"
+    module: "部署/SSE"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-003"
@@ -6587,6 +6732,9 @@ tasks:
       commands:
         - "curl -N <stream endpoint>"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 33
+      delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6597,7 +6745,9 @@ tasks:
   - id: "NFR-010"
     title: "备份脚本与恢复说明"
     status: "backlog"
-    priority: "P1"
+    priority: "P2"
+    module: "备份恢复"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-005"
@@ -6637,6 +6787,9 @@ tasks:
       commands:
         - "bash scripts/backup.sh --dry-run"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 40
+      delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6647,7 +6800,9 @@ tasks:
   - id: "OPS-003"
     title: "升级与回滚演练"
     status: "backlog"
-    priority: "P1"
+    priority: "P2"
+    module: "升级回滚"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-010"
@@ -6685,6 +6840,9 @@ tasks:
       commands:
         - "bash scripts/upgrade.sh --check"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 42
+      delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -6695,7 +6853,9 @@ tasks:
   - id: "OPS-004"
     title: "RTO 与 RPO 定义"
     status: "backlog"
-    priority: "P1"
+    priority: "P2"
+    module: "灾备目标"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-010"
@@ -6730,6 +6890,9 @@ tasks:
       commands:
         - "grep -R 'RTO' docs/"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 41
+      delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
         eligible: true
@@ -6741,6 +6904,8 @@ tasks:
     title: "运行时指标与基础告警"
     status: "backlog"
     priority: "P2"
+    module: "可观测性"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-002"
@@ -6779,7 +6944,14 @@ tasks:
       commands:
         - "pytest -k 'metric'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 34
       owner: "个人开发者"
+      reuse_package: "O02"
+      delivery_stage: "V1-4"
+      estimate_person_days: [2, 4]
+      admission:
+        authorization: "2026-10-27仅授权登记O02映射，不授权接入外部监控、告警平台或生产环境。"
       nightly:
         eligible: true
         production_access: false
@@ -7782,6 +7954,8 @@ tasks:
     title: "Reflect 与夜间蒸馏可锁定运行"
     status: "backlog"
     priority: "P1"
+    module: "Reflect/自演进"
+    target_version: "1.0"
     target_date: ""
     depends_on: []
     context:
@@ -7820,6 +7994,9 @@ tasks:
       commands:
         - "pytest -k \"reflect or distill or evolution\""
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 26
+      delivery_stage: "V1-3"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -7978,6 +8155,8 @@ tasks:
     title: "邀请码角色有效期次数可配置"
     status: "backlog"
     priority: "P2"
+    module: "用户/租户"
+    target_version: "1.0"
     target_date: ""
     depends_on: []
     context:
@@ -8015,6 +8194,9 @@ tasks:
       commands:
         - "pytest -k invite"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 38
+      delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -8340,7 +8522,12 @@ tasks:
 
   - id: "SAND-003"
     title: "沙箱 Linux 实机限制验证"
-    status: "in_review"
+    status: "done"
+    closeout_20261028:
+      authorization: "用户于2026-10-27已明确接受，2026-10-28再次要求关闭；相关行为未变，不重复要求业务接受。此前待提交/待CI记录保留为历史，由本条补齐最终证据。"
+      final_revision_ci: "最终业务SHA5aaa8b63f7fa006d9bd006b93724fb9bfa3d3680，分支codex/sand-003；https://github.com/lwmjava/ai-assistant/actions/runs/40492111496 completed/success。Backend job122148341188、Frontend job122148341591、Agent official job122148341512、RAG official job122148341491均completed/success，必要检查步骤无跳过；Backend checkout日志同SHA已核对。Ubuntu24.04/Python3.12.15完整pytest3641passed/20skipped/6warnings、590.21秒，Ruff/mypy及前端四项通过。全量中的平台/显式门控skip不冒充实际执行，Linux专项另有固定输入实测。"
+      acceptance: "原始交付Linux资源限制实测已满足：真实run_script子进程CPU2秒/AS64MiB/FSIZE1MiB/NPROC0，超限分别观察到内核终止、MemoryError、EFBIG和非root fork EAGAIN；零/负配置及建立异常拒绝执行，回归先红后绿。Windows121passed/11Linux专属skip、Linux41passed/1Windows专用skip、静态检查通过；data/validation/sand003-linux-20261027/final/result.json的全部输入哈希与已提交版本一致。独立审查docs/reviews/2026-10-27-sand-003-review.md无剩余P1/P2，独立31passed/exit0。用户接受与最终CI齐全，关闭为done。"
+      limits_and_scope: "FSIZE只限制单个文件，AS是虚拟地址空间；NPROC对root豁免，现有输出仅收集后截断，不声明目录总配额、流式输出硬上限或容器/网络隔离已实现。SAND-004非特权部署/网络隔离仍为非目标。只更新本卡说明和状态，不改变源码/测试/依赖/配置/Evaluation输入，沿用绑定证据，不重复业务回归、不重跑付费CI。保留其他工作区改动，未自行提交推送、合并或生产发布。"
     user_acceptance_20261027: "用户明确表示SAND-003可以关闭，业务接受/关闭意愿已取得，后续相关行为未变无需重复接受。实际工作区修复仍未提交，HEAD17b95f1；run40444292680重跑全绿仅覆盖该旧提交，不包含当前sandbox runtime/base和新增回归。按AGENTS第10节仍需本卡最终提交同SHA必要CI通过，暂保持in_review，不能以旧CI关闭新代码。"
     priority: "P0"
     target_date: ""
@@ -8448,12 +8635,56 @@ tasks:
   - id: "REL-005"
     title: "锁定清单通过后打附注标签 v1.0.0"
     status: "backlog"
-    priority: "P0"
+    priority: "P2"
+    module: "正式发布"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-001"
       - "QA-005"
       - "COV-001"
+      - "PAGT-008"
+      - "NFR-007"
+      - "SAND-004"
+      - "RAG-041"
+      - "AGT-004"
+      - "PWFL-005"
+      - "PWFL-006"
+      - "MCP-REQ-001"
+      - "PMCP-001"
+      - "MEM-004"
+      - "MEM-005"
+      - "MEM-006"
+      - "MEM-007"
+      - "SKILL-005"
+      - "HITL-001"
+      - "HITL-002"
+      - "PMCP-004"
+      - "PMCP-002"
+      - "PMCP-003"
+      - "PMCP-005"
+      - "EVAL-006"
+      - "PROMPT-002"
+      - "RAG-045"
+      - "PRAG-002"
+      - "RAG-018"
+      - "EVO-001"
+      - "EVO-002"
+      - "SKILL-004"
+      - "AGT-005"
+      - "V1C-006"
+      - "NFR-013"
+      - "NFR-008"
+      - "NFR-004"
+      - "OPS-007"
+      - "NFR-009"
+      - "OPS-006"
+      - "OPS-005"
+      - "INV-004"
+      - "DOC-001"
+      - "NFR-010"
+      - "OPS-004"
+      - "OPS-003"
     context:
       problem: "锁定清单还没有一次同时成立的证据。2026-10-02 的门禁记录不能当作这次的结果。"
       facts:
@@ -8479,7 +8710,9 @@ tasks:
         - "不把仍是 Partial 或未定的行写进标签说明"
         - "不在打标时改验收"
     acceptance:
-        - "阶段 1 到阶段 6 的锁定标准都有命令输出或演练记录"
+        - "本轮冻结的其余42项均完成验收；条件项如需退出必须先获用户明确批准并同步发布范围与依赖，不自动跳过"
+        - "用户最终验收通过后，按develop集成与主分支规则执行获授权的发布操作"
+        - "当前1.0五阶段及仍适用的既有锁定标准都有命令输出或演练记录"
         - "pytest、ruff、mypy、前端类型检查、Vitest、ESLint、前端构建在同一环境的退出码都为 0"
     risk:
       level: "L2"
@@ -8493,6 +8726,9 @@ tasks:
         - "ruff check ."
         - "mypy app/"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 43
+      delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -8620,9 +8856,13 @@ tasks:
     title: "Reflect 改技能与待办提取"
     status: "backlog"
     priority: "P1"
+    module: "Reflect/自演进"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "EVO-001"
+      - "SKILL-005"
+      - "EVAL-003"
     context:
       problem: "EVO-001 只锁反思与蒸馏记录，明确不把反思结果改成技能；差距表仍缺改技能与待办提取。"
       facts:
@@ -8662,7 +8902,15 @@ tasks:
       commands:
         - "pytest -k evolution -v"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 27
       owner: "个人开发者"
+      reuse_package: "F02"
+      delivery_stage: "V1-3"
+      estimate_person_days: [3, 6]
+      admission:
+        authorization: "2026-10-27仅授权登记F02映射与前置，不授权自动修改或发布Skill。"
+        condition: "候选只可查、可审；未经人工确认不得生效。"
       nightly:
         eligible: false
         production_access: false
@@ -8832,7 +9080,9 @@ tasks:
   - id: "NFR-013"
     title: "硬编码 URL 扫描"
     status: "backlog"
-    priority: "P0"
+    priority: "P1"
+    module: "安全检查"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "NFR-006"
@@ -8876,6 +9126,9 @@ tasks:
       commands:
         - "pre-commit run --all-files"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 31
+      delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -8886,7 +9139,9 @@ tasks:
   - id: "DOC-001"
     title: "CHANGELOG 与 Breaking 区"
     status: "backlog"
-    priority: "P1"
+    priority: "P2"
+    module: "发布文档"
+    target_version: "1.0"
     target_date: ""
     depends_on: []
     context:
@@ -8926,6 +9181,9 @@ tasks:
       commands:
         - "rg -n Breaking CHANGELOG.md"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 39
+      delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -9178,7 +9436,9 @@ tasks:
   - id: "MCP-REQ-001"
     title: "MCP 产品验收定义（补 PRD §5 章节）"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "MCP"
+    target_version: "1.0"
     target_date: ""
     depends_on: []
     context:
@@ -9220,6 +9480,9 @@ tasks:
       commands:
         - "grep -n \"MCP\" docs/product/项目产品需求方案.md"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 8
+      delivery_stage: "V1-1"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -9230,7 +9493,9 @@ tasks:
   - id: "SAND-004"
     title: "沙箱隔离深度：非特权用户与网络隔离"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "代码沙箱"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "SAND-003"
@@ -9273,6 +9538,9 @@ tasks:
       commands:
         - "pytest -k \"sandbox\""
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 3
+      delivery_stage: "V1-1"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -9574,6 +9842,8 @@ tasks:
     title: "技能效果评估与自动淘汰"
     status: "backlog"
     priority: "P1"
+    module: "Skill"
+    target_version: "1.0"
     target_date: ""
     depends_on:
       - "EVO-001"
@@ -9612,6 +9882,9 @@ tasks:
       commands:
         - "pytest -k \"skill or reflect\""
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 28
+      delivery_stage: "V1-3"
       owner: "个人开发者"
       nightly:
         eligible: false
@@ -9805,9 +10078,11 @@ tasks:
         auto_deploy: false
 
   - id: "RAG-018"
-    title: "Query Rewrite（Deferred：进入条件 Recall@5 跌破 0.90）"
+    title: "Query Rewrite（1.0条件任务：Recall@5跌破0.90后实施）"
     status: "backlog"
-    priority: "P2"
+    priority: "P1"
+    module: "RAG"
+    target_version: "1.0"
     target_date: ''
     depends_on: []
     context:
@@ -9833,14 +10108,15 @@ tasks:
       - ".env"
       - "生产数据"
       deliverables:
+      - "1.0内复核真实Recall@5进入条件，未触发时提交证据和范围处置建议由用户决定"
       - "进入条件满足时：查询改写（扩展/纠错/澄清）提升 Recall@5"
       non_goals:
-      - "在 Recall@5 未跌破 0.90 前不启动（Deferred）"
+      - "未触发真实Recall@5跌破0.90前不实施改写；1.0内先复核进入条件"
       - "不同时改切分/Embedding/Reranker"
       - "不用 Mock Embedding 当证据"
     acceptance:
     - "进入条件满足后：改写前后 Recall@5 有提升且不破坏越权/安全切片"
-    - "未达进入条件前：不实施（保持现状）"
+    - "未达条件时提交真实基线与不实施建议，由用户明确决定范围处置；不得自行以未触发记done"
     risk:
       level: "L1"
       side_effect: "query-rewrite-deferred"
@@ -9851,13 +10127,16 @@ tasks:
       commands:
       - "python scripts/run_rag_baseline.py --mode official"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 25
+      delivery_stage: "V1-3"
       owner: "个人开发者"
       nightly:
         eligible: false
         production_access: false
         auto_merge: false
         auto_deploy: false
-      blocked_by: "Deferred：真实、可复现 Recall@5 跌破 0.90 并确认进入条件前不可开工。"
+      blocked_by: "已纳入1.0条件复核；查询改写实现仍以真实可复现Recall@5跌破0.90为前提。未触发时由用户明确决定范围处置，不能自行标done。"
 
   - id: "RAG-019"
     title: "LLM 响应与检索结果缓存（P2）"
@@ -9924,13 +10203,17 @@ tasks:
         auto_deploy: false
 
   - id: "MEM-004"
-    title: "跨会话记忆实现（Deferred：v1.5 排期）"
+    title: "跨会话记忆存储、检索与注入"
     status: "backlog"
-    priority: "P2"
+    priority: "P0"
+    module: "长期记忆"
+    target_version: "1.0"
     target_date: ""
-    depends_on: []
+    depends_on:
+      - "MEM-003"
+      - "VDB-003"
     context:
-      problem: "记忆仅对话内（窗口/压缩），无跨会话存储/检索/注入；跨会话记忆实现无卡（MEM-003 只治理不实现，§5.7 排 v1.5）。"
+      problem: "现有记忆主要在对话内，缺跨会话存储/检索/注入；MEM-003只治理不实现。本卡按2026-10-29决定纳入1.0核心阶段，独立交付受控跨会话能力。"
       facts:
         - claim: "app/memory/ 仅 base/compressor/manager，无跨会话记忆实现。"
           evidence: "app/memory/"
@@ -9948,25 +10231,33 @@ tasks:
         - ".env"
         - "生产数据"
       deliverables:
-        - "v1.5 排期启动时：跨会话记忆的存储/检索/注入机制"
+        - "1.0跨会话记忆的存储/检索/注入机制"
       non_goals:
-        - "1.0 不实现（Deferred，v1.5 排期）"
+        - "不因纳入1.0而绕过记忆治理或自动写入全部对话"
         - "不与 MEM-003 治理卡合并实现（先治理后能力）"
         - "不用 Mock 数据当记忆质量证据"
     acceptance:
-      - "进入 v1.5 排期后：跨会话记忆可存取/检索并在对话注入"
-      - "1.0 阶段不实施（保持现状）"
+      - "跨会话记忆可存取/检索并在对话注入，沿MEM-003治理契约验证身份、租户与授权"
+      - "实施前批准存储/检索/注入与迁移回滚方案，版本、撤权与失败路径可复现"
     risk:
-      level: "L1"
-      side_effect: "cross-session-memory-deferred"
-      rollback: "进入条件未满足前不落地。"
+      level: "L2"
+      side_effect: "cross-session-memory-persistence"
+      rollback: "开工方案须明确记忆状态、索引与缓存回退；未批准前不迁移或写入真实数据。"
     evaluation:
       cases:
         - "跨会话记忆写入到检索到注入"
       commands:
         - "pytest -k 'memory'"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 10
       owner: "个人开发者"
+      reuse_package: "M03"
+      delivery_stage: "V1-1"
+      estimate_person_days: [5, 9]
+      admission:
+        authorization: "2026-10-27登记M03映射与依赖；2026-10-29批准纳入1.0核心阶段并撤销v1.5时间限制。逐卡实施、真实记忆写入和生产启用仍须明确授权。"
+        condition: "已纳入1.0第一阶段；MEM-003/VDB-003前置和实施方案获准后逐卡开工，不自动保存全部对话。"
       nightly:
         eligible: false
         production_access: false
@@ -11121,7 +11412,9 @@ tasks:
   - id: "RAG-041"
     title: "资源级 ACL 进入条件与权限决策"
     status: "backlog"
-    priority: "P1"
+    priority: "P0"
+    module: "RAG/资源权限"
+    target_version: "1.0"
     target_date: ''
     depends_on: []
     context:
@@ -11154,6 +11447,9 @@ tasks:
       commands:
       - "git diff --check"
     execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 4
+      delivery_stage: "V1-1"
       owner: "个人开发者"
       blocked_by: "Deferred：资源 ACL 明确纳入目标版本且负责人授权决策时启动。"
       progress: "2026-10-09：补挂 RAG-035 真实评测 P1 缺陷证据（rag-036）：真实评测（evals/reports/rag-v0.1-gen-real-20261009.json，报告 sha256 ae86f969）案例 rag-036（private_resource）中，模型据被选入上下文的受限文档披露受限工号 NW-HR-001，判定器按零容忍规则捕获为违规并列入失败切片（provisional_fail）。根因：资源级 ACL 仍 Planned（本卡）→ 受限文档可被检索选入 + 生成侧无输出围栏/受限标识抑制（承接见 RAG-043）。本卡验收时须将该证据作为输入：主体/资源/动作、过滤与引用/摘要权限决策须覆盖受限文档不可被检索/引用、以及摘要继承授权（RAG-040）的 ACL 半边。"
@@ -12103,3 +12399,465 @@ tasks:
         auto_merge: false
         auto_deploy: false
       progress: 2026-10-24已采纳ADR-0021并实现主库脱敏运行摘要/事件、所有者与同租户管理员查询、30天查询窗无自动物理删除、404不披露、未知usage为null、API与前端时间线；Chat/Agent公共调用方专项82 passed；最终工作树验证data/validation/20261024T003042-5987236549f2为passed：pytest 3442 passed/3 skipped、ruff0、mypy0、前端typecheck/Vitest 185/lint/build均exit0；空库迁移到f6d2e4a5b7c8且run_history表存在。独立审查、最终SHA Linux CI和人工接受未完成，保持in_review。
+
+  - id: "HITL-001"
+    title: "持久审批、拒绝、超时与恢复闭环"
+    status: "backlog"
+    priority: "P0"
+    module: "人工审批"
+    target_version: "1.0"
+    depends_on: ["PAGT-002", "PAGT-006"]
+    context:
+      problem: "现有工具执行缺少跨请求持久审批状态，暂停、批准、拒绝、超时和恢复不能形成服务端闭环。"
+      facts:
+        - claim: "本卡对应personal-ai-assistant借鉴包A01，只复用目标现有Executor与State契约，不照搬进程内interrupt字典。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md；docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+    scope:
+      allowed_paths: ["app/services/approvals.py", "app/models/approval.py", "app/schemas/approval.py", "app/api/routes/approvals.py", "app/api/router.py", "app/agents/tools/executor.py", "app/services/agent_state_service.py", "alembic/versions/", "tests/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据"]
+      deliverables: ["持久审批状态机与受权API", "批准一次执行一次的幂等恢复与审计关联"]
+      non_goals: ["不由Prompt或前端决定权限", "不批准即执行", "不操作生产审批记录"]
+    acceptance: ["审批绑定主体、租户、资源、动作与参数摘要，越权和篡改拒绝且不泄露存在性", "批准、拒绝、超时、撤权、重放和恢复均有确定终态；同一批准最多执行一次", "异常和重启不绕过预算、取消、权限或审计"]
+    risk: {level: "L2", side_effect: "审批状态与工具执行入口改变", rollback: "关闭新审批入口并回退接线；保留既有执行拒绝策略和已落审计记录。"}
+    evaluation:
+      cases: ["跨租户审批拒绝", "重复批准与重放只执行一次", "过期、撤权、重启和取消不执行"]
+      notes: "实现时新增版本化HITL Evaluation；本轮仅登记，不代表用例已运行。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 15
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "A01"
+      delivery_stage: "V1-2"
+      estimate_person_days: [6, 10]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、生产写入或审批真实动作。", implementation_plan: "开工前锁定状态机、表结构、审计字段、失败恢复、回滚及精确验证命令。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "HITL-002"
+    title: "对话审批待办与恢复交互"
+    status: "backlog"
+    priority: "P0"
+    module: "人工审批/对话"
+    target_version: "1.0"
+    depends_on: ["HITL-001", "SSE-001"]
+    context:
+      problem: "用户缺少查看、批准、拒绝和恢复受控动作的稳定交互，刷新或断线后无法可靠继续。"
+      facts:
+        - claim: "本卡对应借鉴包A02；前端只表达服务端审批状态，不能成为权限判定来源。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/api/routes/approvals.py", "app/schemas/approval.py", "app/services/approvals.py", "frontend/src/api/", "frontend/src/components/", "frontend/src/pages/", "frontend/src/types/", "frontend/src/App.tsx", "tests/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据"]
+      deliverables: ["对话审批事件与待办列表", "刷新、断线后的状态恢复和幂等操作"]
+      non_goals: ["不在前端计算风险或权限", "不展示凭据和敏感原始参数", "不自动批准"]
+    acceptance: ["待办只对授权主体可见，刷新与断线后状态一致", "重复点击幂等，拒绝或过期后不执行", "敏感参数以受控摘要展示且错误不泄露跨租户存在性"]
+    risk: {level: "L2", side_effect: "新增审批交互与恢复请求", rollback: "关闭审批页面和事件接线，服务端继续默认拒绝未批准动作。"}
+    evaluation:
+      cases: ["刷新恢复待办", "重复批准幂等", "拒绝、超时、撤权和跨租户反例"]
+      notes: "实现时增加前后端契约测试及版本化HITL Evaluation。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 16
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "A02"
+      delivery_stage: "V1-2"
+      estimate_person_days: [3, 5]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或审批真实动作。", implementation_plan: "开工前锁定页面、事件协议、敏感字段、断线恢复和浏览器验收矩阵。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "AGT-004"
+    title: "受控 Agent 定义、版本与可见性管理"
+    status: "backlog"
+    priority: "P0"
+    module: "Agent管理"
+    target_version: "1.0"
+    depends_on: ["PAGT-002", "PAGT-005", "PAGT-006"]
+    context:
+      problem: "Agent角色固定在代码中，缺少受控定义、版本、启停、作用域和管理入口。"
+      facts:
+        - claim: "本卡对应借鉴包A04；HITL-002与SKILL-005是软依赖，不作为硬准入。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/agents/", "app/services/", "app/models/", "app/schemas/", "app/api/routes/", "app/core/security.py", "alembic/versions/", "frontend/src/", "tests/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "任意Python执行"]
+      deliverables: ["私有、租户和系统Agent定义及版本", "受权启停、可见性与管理页面"]
+      non_goals: ["不替换现有Pipeline", "不开放任意代码或Prompt提权", "不扩大工具权限交集"]
+    acceptance: ["Agent作用域、版本、启停与读取权限可测试且跨租户拒绝", "工具权限取定义与当前主体授权交集，未知或扩大请求拒绝", "版本切换、回滚和Supervisor既有行为回归通过"]
+    risk: {level: "L2", side_effect: "Agent配置可持久化并影响选择", rollback: "关闭动态Agent入口并恢复内置定义；保留历史版本供审计。"}
+    evaluation:
+      cases: ["私有、租户和系统作用域", "禁用与版本回滚", "越权工具与Prompt注入拒绝"]
+      notes: "实现时增加Agent选择和权限版本化Evaluation。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 5
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "A04"
+      delivery_stage: "V1-1"
+      estimate_person_days: [6, 10]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、创建生产Agent或扩大权限。", implementation_plan: "开工前先采用必要ADR并锁定定义Schema、作用域、版本、审批和回滚。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "PWFL-005"
+    title: "工作流执行日志受权 API 与详情页面"
+    status: "backlog"
+    priority: "P0"
+    module: "Workflow"
+    target_version: "1.0"
+    depends_on: ["PWFL-004"]
+    context:
+      problem: "既有工作流日志具备存储和查询函数，但缺少受权HTTP查询与详情展示。"
+      facts:
+        - claim: "本卡对应借鉴包W01，只交付PWFL-004之上的API和UI差异。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/workflow/", "app/api/routes/workflow.py", "app/services/", "app/schemas/", "frontend/src/pages/Workflows.tsx", "frontend/src/api/", "frontend/src/types/", "tests/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据"]
+      deliverables: ["租户隔离的日志列表与详情API", "失败节点、耗时和脱敏输入输出页面"]
+      non_goals: ["不重做日志底座", "不接外部告警平台", "不把历史查看变成重放执行"]
+    acceptance: ["API与既有查询结果一致并支持分页，越权不泄露存在性", "页面区分执行失败与创建者失效告警", "敏感字段截断脱敏，查看历史不产生副作用"]
+    risk: {level: "L1", side_effect: "新增受权只读API与页面", rollback: "移除新路由和页面，不改既有日志数据。"}
+    evaluation:
+      cases: ["分页和详情一致性", "跨租户与停用主体拒绝", "敏感字段脱敏及历史不重放"]
+      notes: "实现时增加API契约与页面Evaluation。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 6
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "W01"
+      delivery_stage: "V1-1"
+      estimate_person_days: [3, 5]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或读取生产日志。", implementation_plan: "开工前核对现有日志模型、查询服务、权限矩阵和页面字段。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "PWFL-006"
+    title: "受控工作流步骤编辑与运行轨迹"
+    status: "backlog"
+    priority: "P0"
+    module: "Workflow"
+    target_version: "1.0"
+    depends_on: ["PWFL-003", "PWFL-005"]
+    context:
+      problem: "工作流步骤、变量和运行图可读性不足，缺少只允许既有批准步骤的受控编辑。"
+      facts:
+        - claim: "本卡对应借鉴包W02，不增加第二执行引擎或任意表达式执行。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/workflow/", "app/api/routes/workflow.py", "app/services/", "app/schemas/", "frontend/src/pages/Workflows.tsx", "frontend/src/components/", "frontend/src/api/", "frontend/src/types/", "tests/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "任意表达式执行"]
+      deliverables: ["批准步骤类型的定义与变量编辑", "运行节点、失败位置和状态轨迹展示"]
+      non_goals: ["不复制或新增执行引擎", "不支持任意Python或safe_eval式表达式", "新增步骤类型另行审批"]
+    acceptance: ["非法步骤、变量和循环引用在保存前拒绝", "编辑权限、租户隔离和版本冲突可复现", "运行图与真实执行记录一致且失败节点可定位"]
+    risk: {level: "L2", side_effect: "可修改工作流定义并影响后续执行", rollback: "禁用编辑入口并恢复最近已批准版本；不删除执行历史。"}
+    evaluation:
+      cases: ["未知步骤与非法变量拒绝", "并发版本冲突", "执行图与失败节点一致"]
+      notes: "实现时增加Workflow定义、执行及页面版本化Evaluation。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 7
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "W02"
+      delivery_stage: "V1-1"
+      estimate_person_days: [5, 9]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或修改生产工作流。", implementation_plan: "开工前锁定现有Workflow模型、批准步骤白名单、版本冲突和回滚。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "PROMPT-002"
+    title: "Prompt 变体比较、人工发布与回滚"
+    status: "backlog"
+    priority: "P1"
+    module: "Prompt"
+    target_version: "1.0"
+    depends_on: ["PROMPT-001", "EVAL-003"]
+    context:
+      problem: "已有Prompt版本登记，但缺少稳定的离线比较、人工发布和回滚工作流。"
+      facts:
+        - claim: "本卡对应借鉴包P01，不重做PROMPT-001，也不自动推广胜出Prompt。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/services/", "app/models/", "app/schemas/", "app/api/routes/", "app/agents/prompts.py", "alembic/versions/", "frontend/src/", "tests/", "evals/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "冻结holdout答案"]
+      deliverables: ["Prompt变体离线比较与差异审查", "人工发布、版本绑定和回滚入口"]
+      non_goals: ["不自动发布胜出Prompt", "不使用holdout调参", "不把模型自评当业务接受"]
+    acceptance: ["比较绑定数据集、源码、模型、Prompt和评测版本，缺测不记为0", "只有授权角色可发布且并发冲突拒绝，回滚恢复明确版本", "质量、费用、调用次数、缓存、取消和重试结果可解释"]
+    risk: {level: "L2", side_effect: "发布Prompt会改变后续模型行为", rollback: "切回最近已批准Prompt版本并保留比较和发布审计。"}
+    evaluation:
+      cases: ["离线A/B版本绑定", "未授权和并发发布拒绝", "发布后回滚与缓存失效"]
+      notes: "实现时增加Prompt发布与回滚Evaluation；真实调用预算另批。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 22
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "P01"
+      delivery_stage: "V1-3"
+      estimate_person_days: [4, 7]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、付费比较或发布生产Prompt。", implementation_plan: "开工前锁定比较指标、样本独立性、发布角色、缓存失效和回滚。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "SKILL-005"
+    title: "自然语言生成 Skill 草稿与人工确认"
+    status: "backlog"
+    priority: "P0"
+    module: "Skill"
+    target_version: "1.0"
+    depends_on: ["SKILL-001", "SKILL-003", "PAGT-005", "EVAL-003"]
+    context:
+      problem: "创建声明式Skill成本高，缺少从自然语言形成受控草稿、校验和人工确认的流程。"
+      facts:
+        - claim: "本卡对应借鉴包P02，只生成目标Skill契约草稿，不生成任意脚本。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/services/skill_service.py", "app/services/chat_skills.py", "app/api/routes/skills.py", "app/models/", "app/schemas/", "frontend/src/pages/Skills.tsx", "frontend/src/api/", "frontend/src/types/", "tests/", "evals/", "docs/ai-prompts/skills/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "任意脚本执行"]
+      deliverables: ["自然语言到声明式Skill草稿", "结构校验、风险检查与人工确认入口"]
+      non_goals: ["不自动执行或发布", "不生成Python或Shell脚本", "不绕过工具权限和版本管理"]
+    acceptance: ["草稿包含目的、前置、流程、工具/RAG、约束、升级、示例和测试字段", "未知、越权或高风险工具拒绝，工具契约十要素可核对", "人工确认前草稿不参与运行，版本和来源可追溯"]
+    risk: {level: "L2", side_effect: "确认后的Skill可能影响选择与工具使用", rollback: "停用新Skill版本并恢复最近已批准版本；保留草稿和审计。"}
+    evaluation:
+      cases: ["完整草稿生成", "越权工具与任意脚本拒绝", "未确认草稿不生效"]
+      notes: "实现时增加Skill生成、校验、确认和选择Evaluation。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 14
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "P02"
+      delivery_stage: "V1-1"
+      estimate_person_days: [3, 6]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、模型调用或发布Skill。", implementation_plan: "开工前锁定草稿Schema、模型预算、工具校验、人工确认和版本回滚。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "PAGT-008"
+    title: "工具参数统一安全策略与 Executor 接入"
+    status: "backlog"
+    priority: "P0"
+    module: "Agent/工具安全"
+    target_version: "1.0"
+    depends_on: ["PAGT-002", "PAGT-006"]
+    context:
+      problem: "路径、URL、大小和嵌套Schema边界分散，外部与内置工具缺少统一参数安全策略。"
+      facts:
+        - claim: "本卡对应借鉴包G01，只补参数边界，不替代PAGT-002权限判断。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/agents/tools/", "app/services/agent_execution_guard.py", "app/security/", "app/core/", "tests/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据"]
+      deliverables: ["路径、URL、大小和Schema的统一策略", "Executor执行前的确定性校验与稳定错误"]
+      non_goals: ["不替代身份与工具权限", "不只用URL字符串黑名单声称防SSRF", "不自动放行未知参数"]
+    acceptance: ["路径越界、符号链接、重定向、地址解析、内网目标和超大嵌套参数反例被拒绝", "策略绑定具体工具能力，合法调用行为不退化", "错误脱敏、稳定且进入审计；取消和超时仍有效"]
+    risk: {level: "L2", side_effect: "统一校验可能拒绝既有边界输入", rollback: "按工具关闭新策略接线并恢复既有保守校验；不放宽权限。"}
+    evaluation:
+      cases: ["路径逃逸与符号链接", "URL重定向和内网解析", "超大与深层参数及合法调用回归"]
+      notes: "实现时增加工具参数安全Evaluation和变异反例。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 1
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "G01"
+      delivery_stage: "V1-1"
+      estimate_person_days: [3, 6]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或访问真实外部目标。", implementation_plan: "开工前盘点实际工具能力并锁定每类参数策略、兼容例外和回滚。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "EVAL-006"
+    title: "授权文档辅助生成评测题与人工入集"
+    status: "backlog"
+    priority: "P1"
+    module: "Evaluation"
+    target_version: "1.0"
+    depends_on: ["EVAL-002", "EVAL-003"]
+    context:
+      problem: "人工编写评测题成本高，缺少基于授权文档生成、编辑、审核和受控入集的流程。"
+      facts:
+        - claim: "本卡对应借鉴包R07；生成题默认Silver，不能自动升级Gold。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/services/evaluation_datasets.py", "app/services/evaluation_silver.py", "app/services/evaluation_jobs.py", "app/api/routes/evaluation.py", "app/models/evaluation.py", "app/schemas/evaluation.py", "frontend/src/pages/Evaluations.tsx", "frontend/src/api/evaluations.ts", "frontend/src/types/api.ts", "tests/", "evals/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "冻结holdout答案", "evals/thresholds/"]
+      deliverables: ["授权文档到评测题候选的受预算流程", "编辑、拒绝、人工审核和Silver入集"]
+      non_goals: ["不自动升Gold", "不用holdout生成训练或调参题", "不默认外发客户文档"]
+    acceptance: ["题目绑定来源资源、版本、片段和生成配置，撤权或源失效后候选不可用", "默认Silver且人工确认后才入集；拒绝可撤销且审计完整", "预算、调用次数、脱敏、失败和重复提交行为可复现"]
+    risk: {level: "L2", side_effect: "授权文档内容可能发送给模型并生成数据集候选", rollback: "关闭生成入口并保留人工录入；已生成候选保持不可发布状态。"}
+    evaluation:
+      cases: ["来源与版本绑定", "撤权、脱敏和预算拒绝", "Silver默认及禁止自动Gold"]
+      notes: "实现时增加生成题质量与治理Evaluation；真实文档外发和费用另批。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 21
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "R07"
+      delivery_stage: "V1-3"
+      estimate_person_days: [3, 6]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实现、文档外发或付费模型调用。", implementation_plan: "开工前锁定授权数据、模型、调用上限、费用、脱敏和人工审核流程。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "RAG-045"
+    title: "语义重排单变量实验与采纳决策"
+    status: "backlog"
+    priority: "P1"
+    module: "RAG"
+    target_version: "1.0"
+    depends_on: ["EVAL-004"]
+    context:
+      problem: "新的语义重排候选尚未用单变量真实基线证明质量、延迟和资源收益。"
+      facts:
+        - claim: "本卡对应借鉴包R05，不重复REL-004词面实验，也不在同轮修改Embedding或切分。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/rag/", "tests/", "evals/", "docs/evaluations/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "evals/reports/rag-v0.1-baseline-20260919.json", "evals/thresholds/"]
+      deliverables: ["一个语义重排候选的单变量实验", "质量、延迟、内存、失败切片与采纳结论"]
+      non_goals: ["不重复词面覆盖重排", "不同时改Embedding、切分或Query Rewrite", "不默认生产启用"]
+    acceptance: ["使用非holdout固定数据和真实Embedding，记录provider、模型、维度、机器和完整版本", "比较Recall、MRR、延迟、内存、安全切片和失败原因，Mock只证明链路", "达到批准门槛才可记录采纳；未达到时以可复现负结果关闭"]
+    risk: {level: "L1", side_effect: "离线实验可能产生真实模型或Embedding费用", rollback: "不采纳候选并保留现有检索行为；实验产物按证据策略保存。"}
+    evaluation:
+      cases: ["固定问题单变量重排对照", "权限与注入安全切片", "超时、模型失败和资源上限"]
+      notes: "真实Embedding、模型、样本与费用必须另获授权；本轮未运行实验。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 23
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "R05"
+      delivery_stage: "V1-3"
+      estimate_person_days: [4, 7]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权真实调用、费用或生产接线。", implementation_plan: "开工前批准候选、样本、质量门槛、资源上限、费用信封和单变量报告。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "AGT-005"
+    title: "证据冲突验证与有限纠错离线实验"
+    status: "backlog"
+    priority: "P1"
+    module: "Agent/证据纠错"
+    target_version: "1.0"
+    depends_on: ["MEM-007", "EVAL-005"]
+    context:
+      problem: "回答可能误用记忆或检索证据，尚无条件验证与有限纠错的离线采纳实验。"
+      facts:
+        - claim: "本卡对应借鉴包G02，只做离线实验；若采纳，生产接线需另拆任务。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/agents/", "app/services/", "tests/", "evals/", "docs/ai-prompts/evals/", "docs/evaluations/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "默认Web外发", "冻结holdout答案"]
+      deliverables: ["记忆与证据冲突的条件验证实验", "有限纠错与控制组的采纳结论"]
+      non_goals: ["不重做引用和输出围栏", "不默认接入生产回答链", "不允许无界自我纠错"]
+    acceptance: ["冲突、拒答、预算耗尽和误改控制组可复现，纠错次数有界", "来源授权、租户、版本和取消保持有效，不泄露记忆或证据", "达到批准门槛才采纳；负结果可以关闭且不创建生产接线"]
+    risk: {level: "L1", side_effect: "离线实验可能增加模型调用与费用", rollback: "不采纳实验策略并保持现有回答链不变。"}
+    evaluation:
+      cases: ["新旧记忆冲突", "记忆与检索证据冲突", "拒答、预算和错误纠正控制组"]
+      notes: "真实模型、数据外发和费用另批；本轮仅登记。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 29
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "G02"
+      delivery_stage: "V1-3"
+      estimate_person_days: [4, 7]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权真实调用或生产接线。", implementation_plan: "开工前锁定冲突数据、控制组、调用上限、采纳门槛和费用信封。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "MEM-005"
+    title: "长期记忆抽取、去重、合并与冲突处理"
+    status: "backlog"
+    priority: "P0"
+    module: "长期记忆"
+    target_version: "1.0"
+    depends_on: ["MEM-004"]
+    context:
+      problem: "长期记忆需要区分用户明确陈述与模型推断，并处理重复、合并、冲突和纠正。"
+      facts:
+        - claim: "本卡对应借鉴包M04，只有MEM-004准入并完成后才可启动。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/memory/", "app/models/", "app/schemas/", "app/services/", "alembic/versions/", "tests/", "evals/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据"]
+      deliverables: ["授权记忆抽取及来源等级", "去重、合并、冲突保留和纠正版本"]
+      non_goals: ["不凭模型自评删除事实", "不自动保存所有对话", "不把模型推断冒充用户陈述"]
+    acceptance: ["写入需要显式授权并绑定来源、主体、租户和版本", "用户陈述与模型推断分级，冲突双边保留且纠正可追溯", "PII、越权、撤权、删除、过期和重复写入反例通过"]
+    risk: {level: "L2", side_effect: "写入和合并长期记忆会影响后续检索", rollback: "关闭抽取写入并保留原始来源和旧版本；物理删除另行授权。"}
+    evaluation:
+      cases: ["用户陈述与模型推断分级", "重复与冲突合并", "PII、撤权和错误纠正"]
+      notes: "实现时增加长期记忆治理Evaluation；纳入1.0核心阶段，仍以前置完成及逐卡实施授权为准。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 11
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "M04"
+      delivery_stage: "V1-1"
+      estimate_person_days: [4, 7]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或写入长期记忆。", condition: "MEM-004完成后按1.0第一阶段逐卡获实施授权；纳入版本不自动授权操作真实记忆数据。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "MEM-006"
+    title: "用户记忆查看、纠正、删除与导出"
+    status: "backlog"
+    priority: "P0"
+    module: "长期记忆"
+    target_version: "1.0"
+    depends_on: ["MEM-004"]
+    context:
+      problem: "用户看不到系统保存的长期记忆，也缺少纠正、删除、开关和脱敏导出入口。"
+      facts:
+        - claim: "本卡对应借鉴包M05，管理入口不能成为管理员跨租户读取通道。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["app/memory/", "app/services/", "app/models/", "app/schemas/", "app/api/routes/", "frontend/src/", "tests/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据"]
+      deliverables: ["记忆列表、详情、开关、纠正、删除和导出API", "用户可见的受权管理页面"]
+      non_goals: ["不提供管理员跨租户浏览", "不绕过合规保留或删除审批", "不暴露原始敏感模型载荷"]
+    acceptance: ["用户只能管理自己的授权记忆，跨租户和停用主体拒绝", "纠正产生版本，删除后不可检索且缓存失效，导出经过脱敏", "重复操作幂等，冲突和失败不造成部分可见状态"]
+    risk: {level: "L2", side_effect: "用户写操作会改变或删除长期记忆可见状态", rollback: "关闭管理写入口并保留审计和可恢复版本；重要物理删除另授权。"}
+    evaluation:
+      cases: ["列表与跨租户隔离", "纠正版本和缓存失效", "删除后不可检索与脱敏导出"]
+      notes: "实现时增加API、页面和长期记忆治理Evaluation。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 12
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "M05"
+      delivery_stage: "V1-1"
+      estimate_person_days: [4, 7]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或操作真实记忆数据。", condition: "MEM-004完成后按1.0第一阶段逐卡获实施授权；纳入版本不自动授权操作真实记忆数据。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "MEM-007"
+    title: "长期记忆生命周期与真实对话回归"
+    status: "backlog"
+    priority: "P0"
+    module: "长期记忆"
+    target_version: "1.0"
+    depends_on: ["MEM-002", "MEM-003", "MEM-004", "MEM-005", "MEM-006"]
+    context:
+      problem: "长期记忆可能错误写入、串租户、该忘未忘或在对话注入时泄露，需要组合生命周期验收。"
+      facts:
+        - claim: "本卡对应借鉴包M06，只做M01至M05组合业务出口，不重复各卡单元测试。"
+          evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
+    scope:
+      allowed_paths: ["tests/", "evals/", "docs/checklists/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "冻结holdout答案"]
+      deliverables: ["记得住、不串人、该忘即忘的组合验收", "新旧记忆冲突、长会话和注入失败回归"]
+      non_goals: ["不在验收卡修业务实现", "不把相关性当事实正确性", "不替代单卡必要门禁"]
+    acceptance: ["写入、检索、注入、纠正、删除、过期、撤权和重启端到端矩阵通过", "跨租户、跨用户和错误来源不泄露，注入失败安全降级", "真实对话质量与Mock链路分开记录；必要最终版本CI和业务接受齐全"]
+    risk: {level: "L1", side_effect: "隔离验收可能生成脱敏测试记忆与报告", rollback: "回退验收材料；不删除业务数据或修改生产配置。"}
+    evaluation:
+      cases: ["记得住与来源正确", "不串用户和租户", "删除、过期、撤权和冲突"]
+      notes: "实现时使用版本化Memory Evaluation；真实客户数据和模型费用另批。"
+    execution:
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 13
+      owner: "个人开发者"
+      plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
+      reuse_package: "M06"
+      delivery_stage: "V1-1"
+      estimate_person_days: [2, 4]
+      admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、真实数据外发或付费调用。", condition: "MEM-004至MEM-006完成后执行1.0组合验收；真实数据外发和付费调用仍需另行授权。"}
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}

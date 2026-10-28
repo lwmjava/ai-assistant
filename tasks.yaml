@@ -6132,7 +6132,9 @@ tasks:
 
   - id: "NFR-006"
     title: "pre-commit 密钥扫描与依赖漏洞扫描"
-    status: "backlog"
+    status: "in_review"
+    followup_authorization_20261028: "用户要求处理前端12项已知漏洞、Python在线审计、Linux验证及最终CI；本卡增加frontend/。在线发现7依赖149条漏洞后，用户明确答复纳入修复，允许必要的兼容升级与回归；增加requirements.txt、app/必要兼容修复和docs/reviews/适用独立审查。逐项指定修复版本，覆盖认证/撤销/租户、上传与PDF解析、流式取消和LangGraph直接调用方，再做完整回归；不自动audit fix、不忽略失败、不降低门禁，最终证据未齐仍in_review。"
+    baseline_20261028: "指定conda Python3.12实际运行scripts/validate_delivery.py targeted --test tests/test_validation_runner.py --test tests/test_validation_isolation.py，32passed/17.59秒，exit0/status=passed，data/validation/20261028T075517-295cdd30f845/result.json。npm10.9.3在frontend执行npm audit --json --package-lock-only --ignore-scripts，exit1，data/validation/nfr006-baseline-npm.json报告20项存量漏洞（critical2/high7/moderate11）；未安装/改写前端依赖，无自动fix或忽略。依赖/API扫描仅使用项目公开依赖元数据，未读取.env或调用模型。开发工具及scripts/tests范围扩展已通过异步问题请求批准，未收到答复前暂停相关实施，不把等待视为批准；已有无关工作区修改保留。"
     priority: "P1"
     target_date: ""
     depends_on:
@@ -6147,6 +6149,13 @@ tasks:
         - ".pre-commit-config.yaml"
         - ".github/"
         - "pyproject.toml"
+        - "frontend/"
+        - "requirements.txt"
+        - "app/"
+        - "docs/reviews/"
+        - "README.md"
+        - "scripts/"
+        - "tests/"
         - "docs/AI辅助开发迭代指导.md"
         - "tasks.yaml"
       forbidden_paths:
@@ -6172,6 +6181,25 @@ tasks:
         - "pre-commit run --all-files"
     execution:
       owner: "个人开发者"
+      approved_extension_20261028: "用户明确批准pre-commit4.7.0、detect-secrets1.5.0、pip-audit2.10.1仅开发依赖，并将scripts/、tests/加入最小范围。固定版本工具已安装在指定conda环境，未升级项目运行依赖；通过已批准范围实施。脚本密钥检查读取Git暂存blob而非未暂存文件，CI比较before/base与HEAD，仅阻断新增发现，不扫描历史提交或自动建立忽略基线；不读.env、不验证凭据有效性、不输出密钥正文。Python依赖覆盖requirements加pyproject运行依赖及当前CI的dev/langgraph extras，前端审计覆盖package-lock全部依赖。两个依赖审计只查询公开元数据，不fix、不吞失败；本地hook和新独立Security CI使用同一入口。正式临时Git提交反例覆盖正常/新增密钥/历史不阻断/暂存与未暂存差异及扫描基础设施失败；CI行为首次变更执行一次本地full，最终同SHA必要CI仍待。"
+      followup_results_20261028:
+        publish_gate_followup: "首次真实Git提交被staged-secrets拒绝，合成测试值赋值被Secret Keyword命中，Python/npm审计均pass，提交未产生。统一将两测试文件内合成AWS值改为运行时join组装，值与断言不变，未加忽略、未改scanner规则；重新暂存15files/0findings/exit0。变更后停止旧输入full20261028T132516-ba6d9d61b11a的自有pytest子进程，执行器如实保存failed并释放锁，不沿用旧输入通过。最终不筛选full20261028T133526-cd54500044b1（每命令2400秒）与Linux publish-candidate重新验证。保留合成数据拦截、超时、无效参数和失效结果，不将其称通过。"
+        full_timeout_followup: "第一轮新依赖full收集3716项，pytest因执行器每命令固定1200秒预算退出timeout（1205.172秒），停于87%，不能称完整通过。原日志/result保留。取消清理单用例在隔离探针20261028T132341-2744d95ec6fb实际1passed/7.90秒，未复现业务挂起，不改Supervisor。用忽略目录内单次包装器nfr006-full-with-budget.py调用同一validate_delivery full，将每命令预算2400秒、mypy缓存放另一授权工作目录；不筛选pytest、不改任何断言/安全门禁/仓库执行器。新full为20261028T132516-ba6d9d61b11a，完成前保持in_review。用户要求最终CI，本次仅推送本卡待验收候选触发一轮现有CI，国内模型/Embedding沿既有配置计费，不自动重跑、不合并或部署。其他任务改动不提交。"
+        python_remediation: "用户明确批准7依赖漏洞纳入修复后，定向更新FastAPI0.133.0（最早支持Starlette1.x的系列）/Starlette1.3.1、PyJWT2.15.1、python-dotenv1.2.2、python-multipart0.0.31、pypdf6.21.3、pytest9.0.3/pytest-asyncio1.4.1；LangGraph原1.0/1.1系列限制SDK<0.4，故配套锁定LangGraph1.2.18/SDK0.4.10。requirements与pyproject运行依赖对齐，README同步可选安装版本，未改变默认编排或启用开关。指定conda环境安装及editable元数据刷新成功，pip check退出0；共享在线python-audit解析113依赖、0漏洞、0skip、退出0，data/validation/nfr006-python-remediation.json；最终冻结后另取nfr006-python-final.json。原149条失败报告保留，不使用fix/ignore/禁用功能。"
+        security_regression_and_review: "独立审查者/root/nfr006_dependency_review复现P2：Git链接变为普通文件的T类型被ACMR过滤遗漏。正式tests/test_security_type_changes.py用真实Git对象索引覆盖暂存和CI范围，20261028T105559-0865074c5da0为2failed；改ACMRT后20261028T105707-d661a9c25c10为2passed。新增JWT9类exp/nbf/iat的null/list/dict经真实解码与API401，不输出token。测试初次误用未版本化路径而404的9failed未当业务红测；更正真实/api/v1/auth/me后联合11passed，20261028T110155-92dbff0dc09c/statuspassed。原171专项全部断言pass但因新增输入而invalidated；182专项含错误测试路径时173pass/9fail，保留失败。独立修复复核已通过，正式结论docs/reviews/2026-10-28-nfr006-dependency-review.md，未冒充人工接受或最终CI。"
+        final_validation_pending: "冻结候选后启动scripts/validate_delivery.py full，data/validation/20261028T110332-28d18c989655；同工作区无第二轮full。Linux早期环境失败均保留；升级环境57项虽pass但期间T修复使输入失效，明确不作最终证据。最终Linux在nfr006-linux/final-candidate独立容器执行，Python3.11.16、Linux6.18.40.1/glibc2.41、Git2.47.3、非root UID65534、测试断网：含类型变更/JWT真实入口68passed、pytest退出0、driver退出0、inputs_unchanged=true、cleanup=true。最终冻结后Python审计113依赖0漏洞/0skip/退出0，nfr006-python-final.json；npm最终0漏洞/退出0，nfr006-npm-final.json。完整回归及最终同SHA CI未齐前保持in_review，不绕过hook。"
+        frontend: "基线仍5aaa8b63加本卡工作区。逐项指定修复版本：react-router-dom7.18.5（6.30.6复查仍有开放重定向/SSR漏洞，故升7）、zod4.6.7、配套@hookform/resolvers5.2.2/react-hook-form7.55.0、vite6.4.4、配套@vitejs/plugin-react4.7.0、vitest5.0.5、postcss8.5.32；定向刷新传递postcss-selector-parser6.1.5/source-map-js1.2.2。未运行npm audit fix、未加overrides/漏洞忽略或降级。修复Zod4知识检索表单输入与转换后输出类型声明，保持字符串数字转number行为。共享入口npm-audit --output data/validation/nfr006-npm-final.json退出0、漏洞0（原12项）；npm run typecheck/test/lint均0，24文件192测试通过；初次build因真实类型不兼容退出2，修复后npm run build退出0。最终日志nfr006-frontend-{typecheck,tests,lint}-final.log及nfr006-frontend-build-final.log。Node22.20.0/npm10.9.3；只改前端依赖与Knowledge表单类型，无授权/角色判定变化。"
+        python_online: "指定conda Python3.12执行共享python-audit --output data/validation/nfr006-python-online.json完成，退出1，完整报告149条漏洞记录，7个依赖：pyjwt2.10.1=22、python-dotenv1.0.1=2、python-multipart0.0.20=12、pytest8.3.4=2、pypdf5.9.0=96、langgraph-sdk0.3.15=1、starlette0.41.3=14。审计报告解析全部解析后依赖，不按本机安装库替代；Windows旧网络/GBK失败保留。Python修复涉及框架/解析/测试兼容升级，已请求用户决定，未擅自升级或忽略。此失败会使新Security CI和本地Python依赖hook阻断；最终CI尚未取得，不能关闭任务。"
+      results_20261028:
+        behavior: "新增.pre-commit-config.yaml、scripts/security_checks.py、.github/workflows/security.yml、tests/test_security_checks.py；pyproject只新增已批准的三个开发工具，docs/AI辅助开发迭代指导.md第14节同步安装/扫描/失败与范围说明。本地读暂存blob，CI逐个检查本次before/base之后的新提交，密钥在后续删除也仍阻断；既有值不回溯阻断，重命名用旧路径比较。凭据验证禁网、日志无正文，.env仅按文件名拒绝不读取；无忽略基线。Python审计完整解析requirements及项目/CI extras；npm扫描lock全部依赖，两者不fix、不吞失败。Windows修复npm无扩展名shell脚本不能直接CreateProcess，改Node.exe执行npm-cli.js；Python子进程设UTF-8，修复中文清单被GBK误解码。"
+        hook_and_contracts: "当前克隆原无hook；指定conda Python在PRE_COMMIT_HOME=data/validation/pre-commit-cache下实际安装pre_commit hook并validate-config，exit0。项目环境PATH下pre_commit run staged-secrets --all-files exit0；当前无暂存内容，不能解释为全库历史零密钥。正式临时Git仓库实际提交含合成AWS格式凭据被拒、正常提交成功；覆盖暂存/未暂存差异、旧值保留、重命名、无效base、扫描异常安全拒绝、新提交密钥后续删除仍被发现及凭据不在线验证。真实当前17b95f1..5aaa8b6范围扫描7文件、0新增发现、exit0。未暂存/提交用户文件，不影响其已有内容；后续提交需激活项目Python环境。"
+        red_and_targeted: "新增真实提交反例084341-e3a6f638ebd6为1failed/1passed、exit1，证明未安装hook时新密钥可提交；后续新提交泄露被后续删除的反例090301-1eb478fd7619先失败再修复。最终指定D:/DepTooL/anaconda3/envs/ai-assistant/python.exe（Python3.12.0/pytest8.4.2）实际执行scripts/validate_delivery.py targeted --test tests/test_security_checks.py --test tests/test_validation_runner.py --test tests/test_validation_isolation.py：57passed/54.27秒、exit0/status=passed，data/validation/20261028T093357-b68d8dbf9572/result.json。"
+        full_and_storage_failure: "首次CI行为变化已实际执行scripts/validate_delivery.py full，同解释器、独立SQLite；data/validation/20261028T093741-65456ea3e4cc：完整pytest3675passed/30skipped/5warnings、1184.09秒，收集/pytest/Ruff各exit0，JUnit共3705用例且无failure/error。其后磁盘E满导致mypy缓存/最终汇总落盘失败，验证器进程exit1，原result.json保留running中间态，不改标passed。已核验绝对路径并仅删除本轮tmp及mypy-cache（约0.9GB），保留日志/JUnit/数据库/指纹。未改源输入，不重复同等全量；独立重跑Ruff和mypy app/均exit0、256源文件；恢复证明data/validation/nfr006-recovery.json保留原验证器失败、pytest退出码、全部输入哈希一致及新静态命令/日志，不冒称原full执行器通过。"
+        actual_audits: "前端初始npm audit报告20项（critical2/high7/moderate11），共享入口最新实际报告12项（critical2/high7/moderate3）、exit1，data/validation/nfr006-npm-audit.json；同一lockfile未修改，外部库更新/结果差异不解释为已修复。最新直接受影响的high/critical包括postcss、react-router-dom、vite、vitest、zod，尚未做可利用性分级或修复。Python审计曾有临时pip初始化失败及已修复的GBK问题；最新未在限定时间内取得完整报告，入口返回安全错误，不能称零漏洞或通过。宿主PyPI5秒探针失败后停止重复Windows审计。未自动升级业务依赖或添加忽略项。"
+        linux_gap: "既有两个Linux镜像无Git，WSL仅docker-desktop。临时Linux标准库探针可达PyPI200，随后自有容器第一次因默认非root无法apt安装Git而未进入测试；第二次仅准备阶段显式容器root，但扫描工具安装240秒超时，仍未进入pytest/Python审计。data/validation/nfr006-linux/result.json及final/result.json均记录linux_setup_failed、cleanup=true、输入未变；未将准备失败或Windows结果称Linux通过，不反复换环境重试。任务容器按所属标签核验并清理，无用户卷/生产数据。最终Ubuntu同SHA真实门禁与Linux证据仍待。"
+        input_and_self_review: "基线仍5aaa8b63f7fa006d9bd006b93724fb9bfa3d3680加本批差异；data/validation/nfr006-candidate.json固定六输入和工具版本，完整后端输入见原full记录并已逐项核对一致。核心SHA256：.pre-commit-config.yaml=e3035735fb9908ca954ff2e5b0d46e49bbce4c22676c6308bb25d31e3664e48d；security.yml=21dbabc6f6bdeb6d6d6fd74f736a42c847ed0d197b5c20a7d6e9e07bde7def35；security_checks.py=ed1606479edbb4f5cb0de8c0efe8f97c0b45d1250d75b3a0615a0c04cfdd3570；测试=09c3a82c5c2bff716e6f140620294f0989f304cdd49ee32b5b5456f4d88b6ee6。实现者自审L1开发hook/CI差异、实际暂存blob、逐提交范围、无效输入/网络/依赖失败、脱敏、只读权限和原CI兼容；未冒充独立审查。无产品运行时授权、租户、执行链或API变化，无页面验收场景，不重跑无变化前端业务检查。"
+        remaining_and_rollback: "实现和本地提交拦截已具备，但原始CI审计运行验收、最终同SHA必要CI/Linux及完整Python漏洞报告未取得；npm存量漏洞失败未修复，不能done或声称可发布，保持in_review。修复业务依赖不在本卡非目标授权内，特别是requirements.txt与frontend/package*.json需另明确范围；不以忽略/降级门禁换通过。当前已装hook会检查后续配置/清单提交；不绕过hook保存失败交付。回滚先用pre_commit uninstall移除本克隆hook，再撤回本卡配置/脚本/工作流，保留审计证据。未读.env或调用模型，无费用/生产操作，未提交推送；其他任务拆分与关闭记录全部保留。"
+      implementation_20261028: "用户指定task-card-delivery实施本卡。基线codex/sand-003/5aaa8b63f7fa006d9bd006b93724fb9bfa3d3680；已有tasks.yaml剩余任务拆分/SAND关闭记录、proposal_cross_project_reuse_20261021.md及未跟踪个人助手拆分spec全部保留，不合并提交。依赖NFR-001已done，原CI四项及同输入完整Ubuntu回归3641passed/20skipped可作开发前业务基线。现无pre-commit配置/现装扫描依赖，已请求批准开发依赖pre-commit4.7.0/detect-secrets1.5.0/pip-audit2.10.1和scripts/tests最小范围扩展；批准前不安装或改范围外文件。拟本地与CI共用受控入口，只扫描当前暂存/版本范围，历史不追溯阻断；合成密钥实际commit失败、正常commit成功作为验收。依赖审计不使用--fix、不忽略漏洞或吞失败，网络/解析失败也不称通过。若存量漏洞命中，保留门禁失败并按本卡非目标另行决策，不自动升级业务依赖。首次CI行为变更须本地完整回归，最终SHA CI未齐不得done；本卡无Git发布/模型费用/生产授权。"
       nightly:
         eligible: true
         production_access: false

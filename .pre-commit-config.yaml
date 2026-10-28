@@ -1,0 +1,25 @@
+minimum_pre_commit_version: "4.7.0"
+repos:
+  - repo: local
+    hooks:
+      - id: staged-secrets
+        name: staged secret scan
+        entry: python scripts/security_checks.py secrets --staged
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: python-dependency-audit
+        name: Python dependency audit
+        entry: python scripts/security_checks.py python-audit
+        language: system
+        pass_filenames: false
+        files: '(^|/)(requirements[^/]*\.txt|pyproject\.toml)$|^scripts/security_checks\.py$|^\.pre-commit-config\.yaml$'
+        stages: [pre-commit]
+      - id: npm-dependency-audit
+        name: npm dependency audit
+        entry: python scripts/security_checks.py npm-audit
+        language: system
+        pass_filenames: false
+        files: '^frontend/package(-lock)?\.json$|^scripts/security_checks\.py$|^\.pre-commit-config\.yaml$'
+        stages: [pre-commit]

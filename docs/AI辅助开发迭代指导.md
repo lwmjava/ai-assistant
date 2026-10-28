@@ -634,3 +634,37 @@ Answer Correctness、安全、延迟和成本。
 ## 13. 当前推进入口
 
 任务状态、依赖与未决缺口只维护在 `tasks.yaml`。当前有效决定与进入条件由 `AGENTS.md` 第14节索引；历史日期、比例和排期不复制为当前事实。开发治理减负的效果通过后续真实任务试运行验证，不把文档缩短视为已提升质量。
+
+## 14. 提交前密钥与依赖扫描
+
+前端开发与测试使用 Node.js 22.12+（22 LTS，或 Vitest 支持的 24/26+）；`frontend/package.json` 的 engines 与修复后的 Vitest 版本一致。现有 CI 使用 Node 22，本机验证使用 22.20.0。依赖升级逐项指定修复版本并验证类型、测试、lint 与构建，不执行 `npm audit fix` 或增加漏洞忽略项。
+
+在项目 Python 环境中安装开发依赖并安装本克隆的 hook：
+
+```powershell
+conda activate ai-assistant
+python -m pip install -e ".[dev]"
+python -m pre_commit install
+python -m pre_commit validate-config
+```
+
+激活环境使 hook 的 `python` 指向同一环境；工具缺失或扫描异常时提交失败，不退化为空扫描。受限环境可将 `PRE_COMMIT_HOME` 设为仓库内被忽略的 `data/validation/pre-commit-cache`。安装配置不等于所有克隆都已安装 hook，每个克隆需要执行安装；CI 是独立后备门禁，不据本地安装宣称远程分支保护已生效。
+
+本地与 `.github/workflows/security.yml` 共用 `scripts/security_checks.py`：
+
+```powershell
+python scripts/security_checks.py secrets --staged
+python scripts/security_checks.py python-audit
+python scripts/security_checks.py npm-audit
+python -m pre_commit run --all-files
+```
+
+密钥入口读取 Git 暂存 blob，不以未暂存的工作文件代替。使用 [detect-secrets](https://github.com/Yelp/detect-secrets) 的检测规则，禁用凭据在线有效性验证，不发送源码或凭据、不输出密钥正文；`.env` 等本机配置只按文件名拒绝，内容不读取。当前暂存内容与 HEAD 中同一文件的既有发现比较，既有值不追溯阻断，新增值阻断；重命名保留旧路径比较，复制到新位置按新暴露检查。不自动生成或扩大忽略基线。
+
+CI 在 push 的 before SHA、PR 的 base SHA 与 HEAD 范围内逐提交检查，因此新增密钥即使在后续提交删除也会失败。新分支 before SHA 全零时从 HEAD 父提交开始；不回扫分支创建之前的全部历史。`pre-commit run --all-files` 中的密钥入口仍检查暂存内容；依赖入口则按完整当前清单审计，不能把“无暂存文件”当作全库历史无密钥证明。
+
+Python 审计合并 `requirements.txt`、`pyproject.toml` 的运行依赖及当前 CI 使用的 `dev`/`langgraph` extras，交由 [pip-audit](https://github.com/pypa/pip-audit) 解析和检查传递依赖；不扫描本机 conda 环境中的无关包。尚未启用的其他 extras 不在此清单，启用时应同步审计范围。Windows 子进程强制 UTF-8，避免中文清单被 GBK 误解码。前端使用 Node/npm 对 `frontend/package-lock.json` 全部依赖审计（含开发依赖），不安装依赖、不运行生命周期脚本。两者会向公开包元数据服务查询包名/版本；不上传源码、模型密钥或 `.env`。
+
+退出码 0 代表本次完整检查通过；1 代表有新密钥或已知漏洞；2 代表工具、解析、网络或输入不完整，不能记为通过。Python/前端结果分别写入 `data/validation/python-audit.json` 和 `npm-audit.json`，CI 即使一项失败仍执行另一项并上传依赖审计产物。密钥日志仅含路径、检测类型和位置，不上传正文。漏洞库会更新，过去的零发现不保证后续仍为零。
+
+默认每次提交检查新增密钥；Python/前端清单及扫描配置变更时运行对应依赖审计。命中存量漏洞仍返回失败，不使用自动修复、忽略列表或吞退出码来制造通过；先评估并明确授权升级范围。纯源代码提交不重复在线依赖审计，CI 则每次独立执行完整依赖审计。回滚需移除本克隆 hook 及对应配置/工作流，保留已有报告；关闭或回退工具不是漏洞已修复的证据。

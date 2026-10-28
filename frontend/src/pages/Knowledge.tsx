@@ -119,7 +119,7 @@ function SearchPanel() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SearchValues>({
+  } = useForm<z.input<typeof searchSchema>, unknown, SearchValues>({
     resolver: zodResolver(searchSchema),
     defaultValues: { query: '', top_k: 5 },
   })

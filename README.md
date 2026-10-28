@@ -326,7 +326,7 @@ RAG 页面可选择生成质量并启用 Judge。两者复用当前 `LLM_BASE_UR
 
 定时执行以实际数据库 Engine、租户、工作流和 UTC 到期时间区分周期，同一周期在本进程只消费一次；失败、超时或取消的周期也不会重放。容量拒绝不消费周期，下次扫描可重试。扫描仍为串行，长任务可能延迟后续任务；进程重启后的去重和多进程协调尚未实现，不承诺跨重启的 exactly-once。删除成功会清理本进程周期标记，升级或回滚前须排空活动执行。
 
-Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[langgraph]"`（`langgraph>=1.0.0,<1.1`），再把 `AGENT_ORCHESTRATION` 设为 `langgraph`。这时只有明确要求多轮调研的问题才进入 Supervisor；不需要工具和知识库的问题只生成一次。没装这个包时，多轮请求回退五阶段管线。默认配置仍是 `self`。
+Supervisor 不在默认安装里。要启用它，执行 `pip install -e ".[langgraph]"`（锁定 `langgraph==1.2.18` 及已修复的 SDK），再把 `AGENT_ORCHESTRATION` 设为 `langgraph`。这时只有明确要求多轮调研的问题才进入 Supervisor；不需要工具和知识库的问题只生成一次。没装这个包时，多轮请求回退五阶段管线。默认配置仍是 `self`。
 
 init 已生成 `JWT_SECRET_KEY`；采用已有配置时须确认它不是空白或仓库默认值。要让对话调用真实模型，再填 `LLM_API_KEY`。可选：在空用户库中同时填写 `INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`，启动时会创建系统管理员和名为 `default` 的租户。单管理员模式下任一项为空时跳过管理员引导，改由下一步的 `/setup` 创建。示例密码留空，请在本地或秘密管理中设置自主口令，勿提交仓库。
 

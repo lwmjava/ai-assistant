@@ -201,6 +201,7 @@ Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Sm
 ## 14. 有效决定与推进入口
 
 任务、依赖与未决缺口查 tasks.yaml，不在规则复制完成流水账。
+- 2026-10-29用户批准当前43项未完成任务全部纳入1.0；范围、优先级与阶段顺序见 `docs/plans/plan_v1_scope_priority_20261029.md` 及 tasks.yaml 的 release_plan/delivery_stage/delivery_order。Agent、RAG、Workflow、MCP、记忆和Skill优先；HITL在MCP完整执行闭环前完成，备份恢复/升级回滚与REL-005后置。原记忆v1.5、MCP与邀请码增强移出1.0的排期由该决定替换；本次排程不自动授权实施、架构、费用或生产操作。条件未触发/未采纳项须明确范围决定，不得以版本纳入自行标done。
 - 2026-10-06 RAG决定：docs/plans/plan_rag_remaining_order_20261006.md 第8、9节；引用、索引身份、预算/来源/摘要沿 ADR-0007/0008/0005第9节。真实费用、重要数据重建和生产启用仍须授权。
 - PRAG-002须新明确采纳决定；REL-004历史不采纳。Query Rewrite进入条件为Recall@5跌破0.90；OPS-004先于OPS-003；NFR-011不改变生产缺密钥失败行为；NFR-009用真实Embedding测性能。
 - 后1.0测评仅开展该方向时读 docs/reviews/2026-10-01-1.0后测评大盘分级.md，未登记项不自动实施。

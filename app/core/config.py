@@ -9,10 +9,19 @@
 
 import functools
 import logging
+import os
 from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.security.secret_storage import (
+    API_KEY_FIELDS,
+    MASTER_KEY_ENV,
+    PREFIX,
+    SecretStorageError,
+    decrypt_secret,
+)
 
 # 项目根目录下的 .env（相对路径会随进程工作目录变化，这里固定为绝对路径）
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -68,7 +77,39 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        hide_input_in_errors=True,
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings,
+    ):
+        def checked_persisted(source):
+            values = source()
+            if any(str(name).upper() == MASTER_KEY_ENV for name in values):
+                raise SecretStorageError("Encryption key must be injected independently of dotenv")
+            for name, value in values.items():
+                if str(name).upper() in API_KEY_FIELDS and value:
+                    if not isinstance(value, str) or not value.startswith(PREFIX):
+                        raise SecretStorageError("Persisted API credentials must be encrypted")
+                    decrypt_secret(str(name).upper(), value, os.environ.get(MASTER_KEY_ENV, ""))
+            return values
+        return (
+            init_settings, env_settings,
+            lambda: checked_persisted(dotenv_settings),
+            lambda: checked_persisted(file_secret_settings),
+        )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _decrypt_credentials(cls, values):
+        if isinstance(values, dict):
+            values = dict(values)
+            for field in API_KEY_FIELDS:
+                value = values.get(field)
+                if isinstance(value, str) and value.startswith("enc:"):
+                    values[field] = decrypt_secret(field, value, os.environ.get(MASTER_KEY_ENV, ""))
+        return values
 
     # ── 应用 ──
     APP_NAME: str = "ai-assistant"
@@ -138,7 +179,7 @@ class Settings(BaseSettings):
     # 以下为代码默认值，运行时会被 .env / 环境变量覆盖
     LLM_PROVIDER: str = "openai"  # openai | ollama | mock（兼容 OpenAI 接口的均可）
     LLM_BASE_URL: str = "https://api.deepseek.com/v1"
-    LLM_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
+    LLM_API_KEY: str = Field(default="", repr=False, exclude=True)
     LLM_DEFAULT_MODEL: str = "deepseek-chat"
     LLM_TEMPERATURE: float = 0.7
     # Process caches are opt-in, bounded, and restricted to authenticated requests.
@@ -168,12 +209,12 @@ class Settings(BaseSettings):
     # 第二家。密钥为空表示没有兜底。
     LLM_FALLBACK_PROVIDER: str = "openai"
     LLM_FALLBACK_BASE_URL: str = ""
-    LLM_FALLBACK_API_KEY: str = ""
+    LLM_FALLBACK_API_KEY: str = Field(default="", repr=False, exclude=True)
     LLM_FALLBACK_MODEL: str = ""
     # 意图分流。密钥为空表示复用对话主配置。
     LLM_INTENT_PROVIDER: str = ""
     LLM_INTENT_BASE_URL: str = ""
-    LLM_INTENT_API_KEY: str = ""
+    LLM_INTENT_API_KEY: str = Field(default="", repr=False, exclude=True)
     LLM_INTENT_MODEL: str = ""
     # 失败后的尝试顺序。只认 chat、intent、fallback。
     LLM_CHAT_FALLBACK_CHAIN: str = "chat,fallback"
@@ -181,7 +222,7 @@ class Settings(BaseSettings):
     # 重排仅登记独立配置，不自动启用检索路径或套用 chat 协议。
     LLM_RERANK_PROVIDER: str = ""
     LLM_RERANK_BASE_URL: str = ""
-    LLM_RERANK_API_KEY: str = ""
+    LLM_RERANK_API_KEY: str = Field(default="", repr=False, exclude=True)
     LLM_RERANK_MODEL: str = ""
     LLM_CIRCUIT_FAILURE_THRESHOLD: int = Field(default=3, ge=1, le=100)
     LLM_CIRCUIT_COOLDOWN_SECONDS: float = Field(default=30.0, gt=0, le=3600, allow_inf_nan=False)
@@ -213,7 +254,7 @@ class Settings(BaseSettings):
     RAG_ENABLED: bool = True  # 是否将检索上下文注入对话管线
     EMBEDDING_PROVIDER: str = "openai"  # openai | ollama | mock（千问走 openai 兼容模式）
     EMBEDDING_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    EMBEDDING_API_KEY: str = ""  # 通过环境变量注入；为空且为开发环境时自动降级为 Mock
+    EMBEDDING_API_KEY: str = Field(default="", repr=False, exclude=True)
     EMBEDDING_MODEL: str = "text-embedding-v3"  # 千问通用向量模型
     # 必须与模型实际返回维度一致：text-embedding-v3 默认 1024（可选 1024/768/512）
     EMBEDDING_DIM: int = 1024
@@ -343,7 +384,7 @@ class Settings(BaseSettings):
     RAG_OCR_LANGUAGES: str = "chi_sim+eng"
     RAG_OCR_TIMEOUT_SECONDS: float = 60.0
     RAG_OCR_BASE_URL: str = ""
-    RAG_OCR_API_KEY: str = ""
+    RAG_OCR_API_KEY: str = Field(default="", repr=False, exclude=True)
     RAG_OCR_MODEL: str = ""
 
     # ── Agent 工具调用（Function Calling）──
@@ -421,10 +462,10 @@ class Settings(BaseSettings):
     # ── 国内联网搜索与共享资料只读工具 ──
     # 未配置密钥时搜索不注册，不影响服务启动。未知 provider 在可用性检查中拒绝。
     SEARCH_PROVIDER: str = "dashscope"
-    SEARCH_DASHSCOPE_API_KEY: str = ""
-    SEARCH_ZHIPU_API_KEY: str = ""
-    SEARCH_BOCHA_API_KEY: str = ""
-    SEARCH_BAIDU_API_KEY: str = ""
+    SEARCH_DASHSCOPE_API_KEY: str = Field(default="", repr=False, exclude=True)
+    SEARCH_ZHIPU_API_KEY: str = Field(default="", repr=False, exclude=True)
+    SEARCH_BOCHA_API_KEY: str = Field(default="", repr=False, exclude=True)
+    SEARCH_BAIDU_API_KEY: str = Field(default="", repr=False, exclude=True)
     SEARCH_DASHSCOPE_MODEL: str = "qwen-plus"
     SEARCH_ZHIPU_MODEL: str = "web-search-pro"
     SEARCH_BAIDU_MODEL: str = "ernie-4.5-turbo-32k"

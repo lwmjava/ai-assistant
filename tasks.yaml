@@ -6333,7 +6333,7 @@ tasks:
 
   - id: "NFR-007"
     title: "API Key 与模型密钥加密存储"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "密钥安全"
     target_version: "1.0"
@@ -6349,6 +6349,11 @@ tasks:
           evidence: "docs/plans/plan_v1_task_split_20261002.md C11"
     scope:
       allowed_paths:
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "scripts/migrate_api_secrets.py"
+      - "docs/plans/plan_nfr007_delivery_20261031.md"
+      - "docs/reviews/review_nfr007_20261031.md"
         - "app/core/config.py"
         - "app/security/"
         - "app/models/"
@@ -6378,7 +6383,9 @@ tasks:
       commands:
         - "pytest -k 'secret'"
     execution:
-      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      acceptance_state: "本地专项171通过，ruff/mypy通过，独立审查P2已闭合；Linux、最终SHA CI与业务接受待完成，禁止关闭。未提交推送，未读取真实.env或迁移真实密钥。"
+    delivery_record: "docs/plans/plan_nfr007_delivery_20261031.md"
+    release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
       delivery_order: 2
       delivery_stage: "V1-1"
       owner: "个人开发者"

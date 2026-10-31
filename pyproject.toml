@@ -23,6 +23,7 @@ dependencies = [
     "pydantic-settings==2.7.0",
     "pyjwt==2.15.1",
     "bcrypt==4.2.1",
+    "cryptography==50.0.2",
     "python-dotenv==1.2.2",
     "python-multipart==0.0.31",
     "httpx==0.28.1",
@@ -31,7 +32,7 @@ dependencies = [
     "openpyxl>=3.1,<4.0",
     "python-pptx>=1.0,<2.0",
     "xlrd>=2.0,<3.0",
-    "pypdf==6.21.3",
+    "pypdf==6.21.4",
     "pymupdf>=1.26,<2.0",
 ]
 

@@ -12,7 +12,7 @@ def test_plan_migration_preserves_legacy_document(tmp_path, monkeypatch):
     url = f"sqlite:///{(tmp_path / 'migration.db').as_posix()}"
     monkeypatch.setattr(settings, "DATABASE_URL", url)
     config = Config("alembic.ini")
-    command.upgrade(config, "f9a014c6e001")
+    command.upgrade(config, "f9a014c6e001")  # pragma: allowlist secret
     engine = create_engine(url)
     table = Table("rag_documents", MetaData(), autoload_with=engine)
     row = Document(id="legacy", tenant_id="audit", user_id="audit", title="legacy")

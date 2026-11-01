@@ -868,6 +868,8 @@ RAG_OCR_TIMEOUT_SECONDS=60
 
 ## 开发
 
+以下为常用命令速查；测试环境、专项/全量选择、CI 与关闭门禁统一见 [AGENTS.md 第10节](AGENTS.md#10-测试与-evaluation)。当前 Windows 工作区使用该节指定的 conda 解释器执行后端验证。
+
 ```bash
 # 安装开发依赖（不含 croniter；调度依赖见快速开始，或 pip install -e ".[workflow]"）
 pip install -e ".[dev]"
@@ -884,7 +886,10 @@ mypy app/
 
 | 文档 | 用途 |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | 当前代码事实、分层边界、AI 协作规则 |
+| [`AGENTS.md`](AGENTS.md) | 项目规则权威入口、按需阅读路由与验证门禁 |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | 人类贡献者环境示例、提交与 PR 指南 |
+| [`frontend/README.md`](frontend/README.md) | 前端目录、运行与实现说明 |
+| [`.cursor/rules/`](.cursor/rules/) | Cursor 专项规则；其他 Agent 按 AGENTS.md 按需读取 |
 | [`tasks.yaml`](tasks.yaml) | 当前任务契约、状态和允许/禁止路径 |
 | [`docs/product/as-is-capability-matrix.md`](docs/product/as-is-capability-matrix.md) | 当前能力状态、证据和文档漂移 |
 | [`docs/product/项目产品需求方案.md`](docs/product/项目产品需求方案.md) | 产品目标、TARGET 架构/时序/能力清单 |

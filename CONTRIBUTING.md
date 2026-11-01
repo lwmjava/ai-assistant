@@ -46,6 +46,9 @@
 
 ## 开发环境搭建
 
+以下为外部贡献者的通用环境示例。本项目当前 Windows 工作区的 AI 验证须使用 `AGENTS.md` 第10节指定的 conda `ai-assistant` 环境，不使用 PATH 上的 base 解释器。依赖与启动配置以 README 和实际依赖声明为准。
+
+
 ```bash
 # 1. Fork 并克隆仓库
 git clone https://github.com/<你的用户名>/ai-assistant.git
@@ -76,10 +79,12 @@ npm run dev
 ## 贡献流程
 
 1. **Fork** 本仓库并克隆到本地；
-2. 基于 `main` 分支创建特性分支：`git checkout -b feat/xxx` 或 `fix/xxx`；
+2. 基于更新后的 `develop` 分支创建特性分支，默认命名 `codex/<简短描述>`；
 3. 完成开发与自测；
 4. 按规范提交代码并推送到你的 Fork；
-5. 向 `lwmjava/ai-assistant` 的 `main` 分支发起 **Pull Request**。
+5. 向 `lwmjava/ai-assistant` 的 `develop` 分支发起 **Pull Request**。
+
+单任务先集成到 `develop`；项目全部任务完成且经用户最终验收后才将 `develop` 合入 `main`。分支、授权与合并要求以 [AGENTS.md 第5节](AGENTS.md#5-修改范围) 为准。
 
 ## 代码规范
 
@@ -123,11 +128,11 @@ fix(auth): 修复多租户场景下 token 刷新失败的问题
 2. 保持 PR 聚焦单一改动，过大的改动请拆分；
 3. 提交前同步官方仓库最新代码：
    ```bash
-   # Windows PowerShell 请用 ; 替换 &&
-   git fetch upstream && git rebase upstream/main
+   git fetch upstream
+   git rebase upstream/develop
    ```
    如提示 `upstream` 不存在，请先执行 `git remote add upstream https://github.com/lwmjava/ai-assistant.git`；
-4. 确保 CI 检查（测试、lint）全部通过；
+4. 验证与合并门禁统一执行 [AGENTS.md 第10节](AGENTS.md#10-测试与-evaluation)，检查结果须绑定最终候选；
 5. 维护者会在合理时间内进行 Review，请按评审意见迭代修改。
 
 ## 版本发布

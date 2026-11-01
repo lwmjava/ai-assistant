@@ -19,7 +19,7 @@ def test_feedback_upgrade_is_idempotent(tmp_path, monkeypatch, created, target):
         SQLModel.metadata.create_all(engine)
     cfg = Config("alembic.ini")
     if created:
-        command.stamp(cfg, "c6d9e2f10a33")
+        command.stamp(cfg, "c6d9e2f10a33")  # pragma: allowlist secret
     command.upgrade(cfg, target)
     command.upgrade(cfg, target)
     assert {"chat_attempts", "chat_feedbacks", "message_ratings"} <= set(inspect(engine).get_table_names())
@@ -32,7 +32,7 @@ def test_feedback_upgrade_is_idempotent(tmp_path, monkeypatch, created, target):
         )
     refusal = "data exists" if target != "head" else "data exists|Authorization confirmations must be retained"
     with pytest.raises(RuntimeError, match=refusal):
-        command.downgrade(cfg, "c6d9e2f10a33")
+        command.downgrade(cfg, "c6d9e2f10a33")  # pragma: allowlist secret
     with engine.connect() as connection:
         assert connection.execute(text("SELECT COUNT(*) FROM chat_attempts")).scalar() == 1
     engine.dispose()

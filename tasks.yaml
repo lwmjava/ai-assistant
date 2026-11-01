@@ -62,6 +62,7 @@ project:
     - PMCP-002
     - PMCP-003
     - PMCP-005
+    - PAGT-009
     - EVAL-006
     - PROMPT-002
     - RAG-045
@@ -86,7 +87,7 @@ project:
     - OPS-003
     - REL-005
     ordering: 先按V1-1至V1-5阶段，再按delivery_order推进；depends_on始终为硬依赖，优先级不替代准入条件。
-    priority_policy: P0为核心能力及安全前置，P1为联动/质量/体验，P2为上线与发布后段；43项均属1.0，P2不代表可省略。
+    priority_policy: P0为核心能力及安全前置，P1为联动/质量/体验，P2为上线与发布后段；44项均属1.0，P2不代表可省略。
     authorization: 本次只批准版本范围、优先级和排程；实施仍逐卡明确授权，架构、费用、数据外发、生产和Git操作不因排程自动批准。
     completion: 全部范围项按验收完成；条件未触发/实验不采纳须按原契约取证并由用户明确决定范围处置，未实现不得自行标done。REL-005最后执行。
 
@@ -385,7 +386,7 @@ tasks:
     risk: {level: "L1", side_effect: "先测量后决策；实际付费调用另按已批准预算执行"}
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 30
+      delivery_order: 31
       plan: "docs/plans/plan_v1_chat_chain_closure_20261016.md"
       reuse_package: "A03"
       delivery_stage: "V1-3"
@@ -5598,7 +5599,7 @@ tasks:
       - "pytest tests/test_rag.py -v"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 24
+      delivery_order: 25
       owner: "个人开发者"
       reuse_package: "R06"
       delivery_stage: "V1-3"
@@ -6433,7 +6434,7 @@ tasks:
         - "pytest -k 'audit'"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 32
+      delivery_order: 33
       delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
@@ -6496,7 +6497,7 @@ tasks:
         - "pytest -k 'purge or tenant'"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 37
+      delivery_order: 38
       delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
@@ -6549,7 +6550,7 @@ tasks:
         - "pip list"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 36
+      delivery_order: 37
       delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
@@ -6614,7 +6615,7 @@ tasks:
         - "pytest -k 'perf or benchmark'"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 35
+      delivery_order: 36
       delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
@@ -6733,7 +6734,7 @@ tasks:
         - "curl -N <stream endpoint>"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 33
+      delivery_order: 34
       delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
@@ -6788,7 +6789,7 @@ tasks:
         - "bash scripts/backup.sh --dry-run"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 40
+      delivery_order: 41
       delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
@@ -6841,7 +6842,7 @@ tasks:
         - "bash scripts/upgrade.sh --check"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 42
+      delivery_order: 43
       delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
@@ -6891,7 +6892,7 @@ tasks:
         - "grep -R 'RTO' docs/"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 41
+      delivery_order: 42
       delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
@@ -6945,7 +6946,7 @@ tasks:
         - "pytest -k 'metric'"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 34
+      delivery_order: 35
       owner: "个人开发者"
       reuse_package: "O02"
       delivery_stage: "V1-4"
@@ -7995,7 +7996,7 @@ tasks:
         - "pytest -k \"reflect or distill or evolution\""
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 26
+      delivery_order: 27
       delivery_stage: "V1-3"
       owner: "个人开发者"
       nightly:
@@ -8195,7 +8196,7 @@ tasks:
         - "pytest -k invite"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 38
+      delivery_order: 39
       delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
@@ -8644,6 +8645,7 @@ tasks:
       - "QA-005"
       - "COV-001"
       - "PAGT-008"
+      - "PAGT-009"
       - "NFR-007"
       - "SAND-004"
       - "RAG-041"
@@ -8727,7 +8729,7 @@ tasks:
         - "mypy app/"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 43
+      delivery_order: 44
       delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
@@ -8903,7 +8905,7 @@ tasks:
         - "pytest -k evolution -v"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 27
+      delivery_order: 28
       owner: "个人开发者"
       reuse_package: "F02"
       delivery_stage: "V1-3"
@@ -9127,7 +9129,7 @@ tasks:
         - "pre-commit run --all-files"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 31
+      delivery_order: 32
       delivery_stage: "V1-4"
       owner: "个人开发者"
       nightly:
@@ -9182,7 +9184,7 @@ tasks:
         - "rg -n Breaking CHANGELOG.md"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 39
+      delivery_order: 40
       delivery_stage: "V1-5"
       owner: "个人开发者"
       nightly:
@@ -9883,7 +9885,7 @@ tasks:
         - "pytest -k \"skill or reflect\""
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 28
+      delivery_order: 29
       delivery_stage: "V1-3"
       owner: "个人开发者"
       nightly:
@@ -10128,7 +10130,7 @@ tasks:
       - "python scripts/run_rag_baseline.py --mode official"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 25
+      delivery_order: 26
       delivery_stage: "V1-3"
       owner: "个人开发者"
       nightly:
@@ -11532,7 +11534,7 @@ tasks:
     - "31项跳过按Linux/PostgreSQL/Windows互斥条件在真实对应环境执行，未执行项明确阻断。"
     - "共享conftest变化须完成最新候选本地全量、静态检查和适用独立审查。"
     execution:
-      progress: "2026-11-01：基线3b0e322b0775bcc4e18f03eeb005570e251ebeef。原全量3851通过/19失败/31跳过；修复后Windows全量3871通过/0失败/31跳过，证据data/validation/20261101-fix19-full-pre-ci。31项为16 PostgreSQL、11 Linux资源限制、3 CLI文件系统和1目录移动。用户选择Ubuntu CI且确认无真实模型费用授权。候选分支codex/qa-platform-regression包含真实PostgreSQL16隔离服务及原31项JUnit强制核验；三处官方评测须费用批准/预算记录/精确SHA匹配，否则明确失败，不调用真实模型。未设置授权变量。独立审查的TCP就绪竞态已修复；候选54文件密钥扫描通过。CI配置变更后的候选Windows全量正在隔离环境执行，真实Ubuntu、官方评测、最终SHA证据未满足，保持in_review。仅发布待验收WIP以获取CI，不合并、不发布。原工作区无关治理改动保留。"
+      progress: "2026-11-01：基线3b0e322b0775bcc4e18f03eeb005570e251ebeef，原全量3851通过/19失败/31跳过。最终WIP提交e5906084e49550aa9f622259d5f365efdc8968b4，分支codex/qa-platform-regression；Windows指定conda隔离全量退出0：3894通过/31平台跳过/0失败；Ubuntu3.12.15+PostgreSQL16全量退出0：3902通过/4跳过/0失败。按原始JUnit逐条核实原19失败均已通过，原31项平台用例均在真实Ubuntu通过，PLATFORM_VALIDATION_PASS。最终CI https://github.com/lwmjava/ai-assistant/actions/runs/41310174217；Backend ruff/mypy/pytest/平台核验和前端四项均通过。证据data/validation/20261101-windows-e590608及20261101-ci-e590608/summary.json，含完整命令、退出码、依赖、SHA和54文件指纹。提交hook与远端新增密钥扫描通过，独立审查的TCP就绪问题修复复核。官方RAG/Agent job因用户无费用授权在调用前明确失败，未设置授权变量；Security依赖审计Python3项/npm12项失败，最终产物已保存；随后用户批准SEC-DEP-001，6da40b6已修复并在正式CI验证Python/npm均0漏洞；Ubuntu另有可选依赖缺失和Windows专属的4项跳过，未伪报覆盖。保持in_review，未合并、未发布。原工作区其他治理改动保留，隔离候选仅包含本批依赖变更。"
 
   - id: "RAG-043"
     title: "生成输出围栏与受限标识抑制"
@@ -12664,7 +12666,7 @@ tasks:
       notes: "实现时增加Prompt发布与回滚Evaluation；真实调用预算另批。"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 22
+      delivery_order: 23
       owner: "个人开发者"
       plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
       reuse_package: "P01"
@@ -12708,7 +12710,7 @@ tasks:
 
   - id: "PAGT-008"
     title: "工具参数统一安全策略与 Executor 接入"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "Agent/工具安全"
     target_version: "1.0"
@@ -12719,7 +12721,7 @@ tasks:
         - claim: "本卡对应借鉴包G01，只补参数边界，不替代PAGT-002权限判断。"
           evidence: "docs/plans/proposal_cross_project_reuse_20261021.md"
     scope:
-      allowed_paths: ["app/agents/tools/", "app/services/agent_execution_guard.py", "app/security/", "app/core/", "tests/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
+      allowed_paths: ["app/agents/route.py", "app/agents/pipeline.py", "app/agents/tools/", "app/services/agent_execution_guard.py", "app/security/", "app/core/", "tests/", "docs/adr/", "docs/ai-prompts/evals/", "docs/plans/", "docs/reviews/", "tasks.yaml"]
       forbidden_paths: [".env", "生产数据"]
       deliverables: ["路径、URL、大小和Schema的统一策略", "Executor执行前的确定性校验与稳定错误"]
       non_goals: ["不替代身份与工具权限", "不只用URL字符串黑名单声称防SSRF", "不自动放行未知参数"]
@@ -12734,6 +12736,105 @@ tasks:
       owner: "个人开发者"
       plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
       reuse_package: "G01"
+      implementation_20261029:
+        authorization: "用户明确要求创建分支并使用task-card-delivery开始实现。基线develop/3b0e322b0775bcc4e18f03eeb005570e251ebeef，工作区初始干净，已创建codex/pagt-008；develop已合计划PR26，与3fe7b26源码树一致。当前授权为单卡实施，不自动实施MCP权限/审批、真实外网访问、付费模型、生产或Git发布。"
+        baseline: "指定conda Python3.12.0、pytest9.0.3执行validate_delivery targeted，选择test_tool_executor/contract/path_contract/pagt001_tools/tools，132passed/1warning/6.04秒，exit0/statuspassed，data/validation/20261029T011452-8fdc5b2abe39。计划分支同源码CI40791090991四项success可复用开发前业务证据，最终候选仍须另绑定。"
+        approach: "复用ToolRegistry/ToolExecutor，在两入口共享有界JSON与嵌套Schema策略，增加显式工具参数守卫供文件/联网能力绑定；维持RBAC与审计四键，不另建执行链。普通缺参/顶层类型保留ADR-0010的内置兼容文案，安全预算、未知字段、路径与URL边界始终硬拒绝；开放对象必须Schema显式声明additionalProperties=true。"
+        limits: "默认每次参数JSON最多131072 UTF8字节、16层、4096节点、单字符串65536字节；先迭代验证再序列化/递归Schema，拒绝循环、非JSON对象及非有限数。模型工具信封先控大小并捕获递归异常，防止到达Executor前崩溃。新错误统一复用invalid_arguments等现有公共码，细分原因仅用稳定脱敏审计码。"
+        resources: "file_ops复用根别名、路径成分与实际打开对象守卫，在执行前及实际I/O复核；写入补最终对象绑定和失败清理，维持create-only及默认关闭。web_fetch仅http/https与80/443，DNS全部地址必须公网，连接使用已验证IP并保留Host/TLS SNI；关闭环境代理与自动重定向，每跳重新验证，最多3跳、有限字节读取和总超时。固定服务端web_search endpoint不因来源metadata额外联网；远端MCP内部网络不在本卡控制能力内。"
+        verification: "先增加真实入口失败反例，再最小实现；专项覆盖Legacy/Executor、文件读写、DNS与重定向、嵌套/大小/未知字段、审计脱敏、取消/重试/预算、旧Fixture及Pipeline/Supervisor直接调用方；更新版本化Evaluation。Windows路径与Linux相关专项都需要。复用既有ADR-0010/0015/0016执行边界，不变更权限与架构；独立审查由非实现者复核最终diff。无产品页面变更，最终CI/业务接受缺失时不done。"
+      business_acceptance_20261029: "用户明确表示可以关闭；业务接受已获得。随后明确暂不提交，允许先本地实现PAGT-009；最终SHA CI仍待，状态保留in_review，不冒充done。"
+      named_site_followup_20261029:
+        trigger: 用户复测读取百度首页仍得到simple，日志及纯路由探针复现；带https URL为tools。此前修复与验收指导遗漏未显式给URL的站点首页表达。
+        scope: 在用户已批准的PAGT-008 route.py/pipeline.py范围内补原功能缺口；仅改route.py及相关测试/Evaluation，不扩展PAGT-009源码范围，不硬编码站点URL，不改权限/私网守卫或增加模型调用。
+        approach: 读取动词结合http(s)URL或明确首页/网页/网站目标启用web_fetch；保留否定/文本代码提及拒绝，_short_path_policy复用同一判断。覆盖用户原句、其他命名站点、两编排同步/流式及私网拒绝；两卡当前共同候选重新验证。
+        result: 先红测19failed/43passed，data/validation/20261029T062013-f63f45f2b6cc。根agent补充官网及网站概念问答红测3failed/17passed，062422-3859fb4ca563；无URL分支收紧为读取/抓取/访问/打开/浏览+首页/官网/网页/网站/网址，原带URL摘要分支保留，不硬编码站点域名。
+        verification: 同步/流式×self/langgraph×公网/内网×HTML/纯文本×命名站点/显式URL共32真实HTTP入口组合；原句、官网、其他命名站点、否定/代码/概念问答专项通过。脚本模型域名不代表真实模型名称解析质量；独立复核见review_pagt_008_20261029.md追加。
+        shared_candidate: data/validation/20261029T062632-273bd43bd49a；Windows922passed/1Linuxskip；Linux312passed；Ruff/mypy exit0。等待实际模型原句复测，未提交推送。
+      web_route_acceptance_fix:
+        authorization: "用户批准最小扩展app/agents/route.py及app/agents/pipeline.py，仅用于明确网页读取请求接入受控web_fetch。"
+        evidence: "原句route=simple/tools=[]；无配置/生产数据读取的网页工具直测百度HTTP200。先补真实聊天入口红测，保留普通聊天/否定/引用不启用网页工具、权限/内网/预算边界；修复后复跑专项与独立复核。扩展前830/207证据不当作新候选通过证据。"
+      delivery_20261029:
+        state: 本次命名站点补修已本地验证，in_review；保留原安全行为接受，本次网页原句复测及最终SHA CI仍待。
+        behavior: Registry未绑定Executor时也复用同一执行器；硬拒绝参数预算、未知字段和嵌套Schema边界；网页每跳复核DNS全部答案，以验证后数字IP连接并保留Host/TLS域名；文件读写复核真实对象，create-only完整写入且失败时清空新inode并清理。保留身份/租户、撤销、取消、超时及普通缺参兼容；计划准入诊断将保留身份字段交原权限拒绝与审计处理，执行时仍按原始参数拒绝伪造身份。
+          明确的当前用户网页读取请求在self及langgraph同步/流式入口提供受控web_fetch；普通网址提及、否定访问、代码/文本引用不扩展短路白名单。
+        red_regressions: 最初20项反例19failed/1passed、exit1，data/validation/20261029T012322-8ff372c16bd0；文件硬链接失败残留及真实API伪造tenant审计路径均有有效红测，已修复并进入正式回归。开发中失败/指纹失效运行不作最终通过证据。 用户页面验收发现网页工具未接入短路径：原句路由simple/tools=[]，工具直测百度HTTP200；新增路由/真实API红测12failed/17passed，data/validation/20261029T031331-1b621a318bdb。独立审查补充读取后否定访问/代码引用反例并修复。
+        candidate: HEAD3b0e322 + 下列共同工作区指纹；含获准保留的PAGT-009本地叠加，009正文提取审查另见其报告，不将其源码归属本卡。
+        windows:
+          environment: win32，指定conda Python3.12.0/pytest9.0.3/httpx0.28.1/SQLModel0.0.22，隔离SQLite；无真实模型或外部业务请求。
+          command: D:\DepTooL\anaconda3\envs\ai-assistant\python.exe scripts/validate_delivery.py targeted --test tests/test_tool_parameter_safety.py --test tests/test_public_tool_http.py
+            --test tests/test_tool_file_parameter_safety.py --test tests/test_tool_executor.py --test tests/test_tool_contract.py --test tests/test_tool_path_contract.py --test tests/test_pagt001_tools.py
+            --test tests/test_tools.py --test tests/test_tool_dsml_protocol.py --test tests/test_tool_audit.py --test tests/test_mcp.py --test tests/test_supervisor_tool_contract.py --test
+            tests/test_supervisor_tool_contract_review.py --test tests/test_structured_plan_runtime.py --test tests/test_plan_tool_outcomes.py --test tests/test_pipeline_budget.py --test tests/test_combined_tool_contract.py
+            --test tests/test_chat_combined_tools.py --test tests/test_supervisor.py --test tests/test_llm_native_tools.py --test tests/test_sse_pipeline_events.py --test tests/test_agent_chain.py
+            --test tests/test_agent_state.py --test tests/test_agent_state_resume.py --test tests/test_agent_runtime_recovery.py --test tests/test_empty_action_reply.py --test tests/test_sandbox.py
+            --test tests/test_skill_path_contract_review.py --test tests/test_skill_version_entry.py --test tests/test_rag_028_model_capability.py --test tests/test_plan_entry_acceptance.py
+            --test tests/eval/test_rag006_pipeline.py --test tests/test_fast_route.py --test tests/test_web_fetch_route.py --test tests/test_web_content.py
+          exit_code: 0
+          result: 922passed/1skipped/1warning，322.94秒，35模块；skip为Linux目录移动专项，已在Linux执行，warning为既有ast.NameConstant弃用。
+          report: data/validation/20261029T062632-273bd43bd49a/result.json、pytest.log、pytest.xml；含PAGT-008命名站点补修及PAGT-009正文提取的共同候选。
+          cache: TIKTOKEN_CACHE_DIR=工作区/data/validation/pagt008-tokenizer-cache。扩展旧调用方检查曾因tiktoken已安装但无词表缓存失败；补公开o200k词表并校验SHA256=446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d，复用公开cl100k缓存并校验223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7后专项通过；未改依赖、断言或调用模型。
+        linux:
+          command: D:\DepTooL\anaconda3\envs\ai-assistant\python.exe data/validation/pagt008-linux/run.py
+          environment: 本地已有ai-assistant-app:latest镜像，Linux6.18.40.1/WSL2/x86_64/Python3.11.16/pytest9.0.3/httpx0.28.1/SQLModel0.0.22；UID65534、无网络、只读源码、临时可执行tmpfs、隔离SQLite；仅临时安装已声明测试包，无新增项目依赖。
+          exit_code: 0
+          result: 312passed/1warning，23.02秒，inputs_unchanged=true；包含命名/URL站点、原安全守卫和正文提取；warning为镜像Starlette既有弃用。
+          report: data/validation/pagt009-linux/result.json、linux.log、linux.xml；补修前结果已另存before-named-site-fix-*。
+        static:
+          commands:
+          - D:\DepTooL\anaconda3\envs\ai-assistant\python.exe -m ruff check . --no-cache
+          - D:\DepTooL\anaconda3\envs\ai-assistant\python.exe -m mypy app/ --cache-dir data/validation/pagt008-mypy
+          - git diff --check
+          result: Ruff和mypy均exit0，mypy258源码无问题；git diff --check退出0。初次Ruff默认缓存目录权限拒绝exit1，--no-cache实际通过；未放宽配置。
+          frontend: 不适用：无页面、前端依赖、API响应结构或新增公共错误码变化。
+          backend_full: 未执行本地不筛选pytest；验证执行器/共享conftest/CI配置未改，直接调用方与失败路径由34模块专项覆盖。最终SHA Ubuntu Backend全量为关闭前必需，专项不替代全量。
+        review:
+          reviewer: 独立非实现者 /root/pagt008_review
+          report: docs/reviews/review_pagt_008_20261029.md
+          result: 4项P2已复核修复：组合Schema误拒绝、失败硬链接正文残留、计划身份审计路径、明确否定/代码引用误启用网页工具。用户批准的路由扩展与8个真实API组合已独立复核，当前已审范围无未解决P1/P2。 命名站点补修及官网/抽象网站问答收紧已增量复核，无开放P1/P2；最新route/测试/Eval指纹见报告追加段。
+        acceptance_mapping:
+        - 路径越界/链接/实际对象变更/硬链接及超大嵌套反例：Windows/Linux通过；混合DNS、重定向/重绑定、压缩响应和有界正文通过。
+        - 能力绑定与合法兼容：组合Schema/自由对象、内置兼容、真实MCP stdio、Pipeline/Supervisor/续跑/Skill调用方专项通过。HTTP为受控backend经过真实httpx/httpcore，不代表互联网或生产连通。
+        - 稳定脱敏/四键审计、真实API身份拒绝、取消/超时/重试/预算专项通过；人工业务接受及最终SHA必要CI待完成。
+        - 新增真实HTTP聊天入口：self/langgraph × 同步/流式 × 公网/内网，共8例通过；断言工具调用、实际回复内容及审计；脚本模型/隔离HTTP不冒充真实国内模型页面验收。等待用户加载新代码后复测原句。
+        evaluation: docs/ai-prompts/evals/tool-parameter-safety-v1.yaml：12个版本化Smoke/Adversarial/Observed Regression场景；AI合成确定性反例，不是Gold或真实质量指标。
+        limits: Schema为有界子集，未知关键字拒绝；普通顶层required/type保留非strict兼容。文件根须由可信运维控制；检测失败清空新inode，不宣称隔离恶意本机进程或绝对阻止瞬时观察，底层I/O故障可影响清理。URL策略不约束远端MCP内部网络。 网页+RAG组合仍按现有规则拒绝，不在本次接入范围；路由只识别明确读取表达，不宣称完整语义理解。
+        remaining: 用户此前安全场景接受保留；本次命名站点页面路由补修需重试原句，009正文展示接受仍待；最终SHA CI未取得。遵循用户暂不提交的决定，两卡保留in_review，不自动Git或done。
+        rollback: 回退本卡提交（未提交时恢复列出的本卡文件基线），保留原RBAC和文件根保守守卫，不降低权限或测试门禁。
+        candidate_inputs_sha256:
+          app/agents/pipeline.py: 1af9ee1bfdc362a55baeb749209255bd05a43d273837e70cfbafcfcfee1c83e3  # pragma: allowlist secret
+          app/agents/route.py: 704e9ab9523b7b03709e5abc524a0120e3001ee46652a5f2a372726f4eb16b34  # pragma: allowlist secret
+          app/agents/tools/base.py: ca53a30f7a5673b53d488e9a523d39118868090b156a231b3aeea884f7a013d5  # pragma: allowlist secret
+          app/agents/tools/builtin.py: a16603710db11d583c47ef9b1d001e525f90bd3c359bc7a29237b76d74c38663  # pragma: allowlist secret
+          app/agents/tools/executor.py: 44e5b767e19130ca20f1e8e3f139c6b6fc39512e2e87ad0b0f80c09c6b284209  # pragma: allowlist secret
+          app/agents/tools/file_ops.py: 47ed4d147684f3d7a1943e1cb41b141f269b0145c324a4670305e77adea20fc0  # pragma: allowlist secret
+          app/agents/tools/parameter_policy.py: 5c97bb51626eb58373c99232439c2ce3bb3011d32d7651aa2e9f4219e04d499d  # pragma: allowlist secret
+          app/agents/tools/web_content.py: f91e9c4eeb5e7f1c2749d5c4ca31c3f5f7a63994f9044bc88049c014bda06773  # pragma: allowlist secret
+          app/security/public_http.py: 4687220d1778ee6eca412f556d949fe26068adce1473329900da574610b494a4  # pragma: allowlist secret
+          docs/ai-prompts/evals/tool-parameter-safety-v1.yaml: 7a6cdd44986f97d28d2076b7d89d9fcaaefdaeec34953e6a25cf716ec41307c3  # pragma: allowlist secret
+          docs/ai-prompts/evals/web-readable-content-v1.yaml: 0d306f96161b380a30933957c80336d22b7e482026c97eb27cf6cdf484d6d790  # pragma: allowlist secret
+          tests/test_agent_chain.py: f96867d663f2ed46da85c93eeeee21da008d4904d91ee1b137232e1ea5f25902  # pragma: allowlist secret
+          tests/test_agent_runtime_recovery.py: 3c8677a01babc6c8bcf60ae93472e7469823fe785055212b00988e77c5e92e66  # pragma: allowlist secret
+          tests/test_agent_state.py: 4b929e6af7dfce2c1497cdaefbe81a0b79b7790c4bf8bb05be6ef36f56cbd4e3  # pragma: allowlist secret
+          tests/test_agent_state_resume.py: e57f92a36a61563d1270d7e63bc0a6dcb1f0565ffeacd0578062413467543dac  # pragma: allowlist secret
+          tests/test_empty_action_reply.py: 4efaf280bf3817d3a57eab1ed5b71c31a9eef9785af0ac0d93ad035ffd986f43  # pragma: allowlist secret
+          tests/test_mcp.py: 9ac66cc7096712b0c46f38640cedd3bc4787ec76702cab6e5caeebd6ee4a4f84  # pragma: allowlist secret
+          tests/test_pipeline_budget.py: 5f2cea41719f2cc7cf5068436d0cb6e905af2158335d0361281dd12e042d76fb  # pragma: allowlist secret
+          tests/test_plan_entry_acceptance.py: 0e9422b2bad32f1c99c2d4fc2eeba430ff55dc553b2db49af45ed06beb3c5576  # pragma: allowlist secret
+          tests/test_plan_tool_outcomes.py: 6f34220faef7d1a0a5bbf630122ba19b43d9bebb5a9c2ffc2f3ed08552287e8d  # pragma: allowlist secret
+          tests/test_public_tool_http.py: 9a512060fb92eeb6ff7c62d5ec86473ad8b862e6404531525a414e4b7b3e9bea  # pragma: allowlist secret
+          tests/test_sandbox.py: d460634540e7d8bf073bc97593e2720c9add6e52630dbb65b30889408acc25cf  # pragma: allowlist secret
+          tests/test_sse_pipeline_events.py: 7919d5577dbdfafd9dba4700b1acfd180fe1735940f6040e44c0d24814e18144  # pragma: allowlist secret
+          tests/test_tool_audit.py: dc50da035ac6afe9d32a29a8fde328ef727d89a02c1a97f1e91a90563b5e113b  # pragma: allowlist secret
+          tests/test_tool_file_parameter_safety.py: d1ca5508ed14477caae6ca478b2bd8e68e1667656b5af565cbb659c0fc8579c8  # pragma: allowlist secret
+          tests/test_tool_parameter_safety.py: a654990e7a920c9821488b46a041d7f98ec22dc468fa5db042d0983afd5bd834  # pragma: allowlist secret
+          tests/test_tool_path_contract.py: 19b9f2c1579802903cb2048e936c9831dd8de93236fbb1f29fd0bbc9b6867edd  # pragma: allowlist secret
+          tests/test_web_content.py: 4862b6ea9cea1fed279e6b43b62f82f3aa2a1bb0b4e6bef92abac2d9516a2cb1  # pragma: allowlist secret
+          tests/test_web_fetch_route.py: ae21f5cae4590e7a092bfd51f82e424d799c00345ef93734abf8eba1acf4d178  # pragma: allowlist secret
+          pyproject.toml: 75fa22f44831b41a0515161d76e31d1925abd35374ac77f4e541b3371048d1fd  # pragma: allowlist secret
+          requirements.txt: bd2903b51f3a2fda7993a5dfd0bb2d27b61eaf8f2a6dff0afb80f4500d1c0cee  # pragma: allowlist secret
+          tests/conftest.py: c90aac2c8724116166cd2b869d1b90cacdae180c4b78fefc8533932d9fc95d4a  # pragma: allowlist secret
+          .github/workflows/ci.yml: 7e3997e1113dc28bb616261e8ca863754258090b9f75f41e1c19372dd37a1118  # pragma: allowlist secret
       delivery_stage: "V1-1"
       estimate_person_days: [3, 6]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或访问真实外部目标。", implementation_plan: "开工前盘点实际工具能力并锁定每类参数策略、兼容例外和回滚。"}
@@ -12763,7 +12864,7 @@ tasks:
       notes: "实现时增加生成题质量与治理Evaluation；真实文档外发和费用另批。"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 21
+      delivery_order: 22
       owner: "个人开发者"
       plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
       reuse_package: "R07"
@@ -12796,7 +12897,7 @@ tasks:
       notes: "真实Embedding、模型、样本与费用必须另获授权；本轮未运行实验。"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 23
+      delivery_order: 24
       owner: "个人开发者"
       plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
       reuse_package: "R05"
@@ -12829,7 +12930,7 @@ tasks:
       notes: "真实模型、数据外发和费用另批；本轮仅登记。"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
-      delivery_order: 29
+      delivery_order: 30
       owner: "个人开发者"
       plan: "docs/superpowers/specs/2026-10-27-personal-ai-assistant-remaining-packages-task-split-design.md"
       reuse_package: "G02"
@@ -12937,6 +13038,143 @@ tasks:
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、真实数据外发或付费调用。", condition: "MEM-004至MEM-006完成后执行1.0组合验收；真实数据外发和付费调用仍需另行授权。"}
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
+  - id: "PAGT-009"
+    title: "网页可读正文提取与截断状态说明"
+    status: "in_review"
+    priority: "P1"
+    module: "Agent/网页工具"
+    target_version: "1.0"
+    depends_on: ["PAGT-008"]
+    context:
+      problem: "web_fetch默认截取原始响应前2000字符，HTML头部、脚本和样式可耗尽预算，用户读不到可见正文，且缺少准确截断状态。"
+      facts:
+        - claim: "用户在百度首页验收中确认能抓取但主要返回HTML头部；已明确同意单独新增任务，不继续扩张PAGT-008。"
+          evidence: "2026-10-29用户会话；app/agents/tools/builtin.py:web_fetch；app/security/public_http.py:fetch_public"
+    scope:
+      allowed_paths: ["app/agents/tools/", "app/security/public_http.py", "tests/", "docs/ai-prompts/evals/", "docs/reviews/", "tasks.yaml"]
+      forbidden_paths: [".env", "生产数据", "登录凭据及Cookie", "冻结评测基线"]
+      deliverables: ["有界HTML到可读正文提取，保留标题和主要文本", "提取后施加文本预算，并明确下载/正文截断状态与原因", "动态页面、空正文、内容类型及抓取失败的准确降级提示"]
+      non_goals: ["不做整站爬取、自动翻页或登录抓取", "不引入浏览器执行JavaScript或绕过反爬", "不更改身份、租户、工具准入或开放内网", "不承诺所有站点完整正文或真实模型质量"]
+    acceptance:
+      - "构造头部/脚本/样式超过旧2000字符的HTML，仍能在原始响应预算内提取可见正文；去除脚本、样式和注释，正确处理实体及中文，不执行HTML或脚本。"
+      - "先提取再按正文预算截断；明确区分原始下载预算不足与提取后文本截断，说明原因及返回长度；只有读到完整响应且未触及限制时才声明完整，不凭正文非空认定完整。"
+      - "JSON/纯文本正常读取兼容；空正文、畸形HTML、编码异常及依赖JavaScript的页面给出准确、可复现降级，不把缺失正文或失败包装为成功全文。"
+      - "同步/流式真实聊天入口能消费正文及截断说明；长HTML、恶意脚本、提示注入、超大响应、取消/超时与合法网页均有正式回归和版本化Evaluation。"
+      - "复用PAGT-008的公网解析、连接地址固定、逐跳重定向校验、代理禁用和总超时；原始响应及解析资源有界，不通过提高/取消上限代替正文提取，日志不落完整网页或敏感参数。"
+    risk:
+      level: "L2"
+      side_effect: "外部不可信内容解析与工具观测语义变化，可能影响Agent回答及公共工具调用方。"
+      rollback: "回退本卡正文提取与观测变更，保留PAGT-008安全守卫和既有有界读取；准确说明退回原始响应模式。"
+    evaluation:
+      cases: ["长头部与脚本后正文", "提取后截断与下载受限分别说明", "JSON/纯文本/中文与畸形HTML", "动态空正文、提示注入与资源上限", "真实聊天入口与公网守卫回归"]
+      notes: "确定性提取优先用固定HTML/HTTP夹具；AI合成数据不标Gold。真实公网冒烟与隔离测试分开记录，真实模型调用及费用另行授权。"
+    execution:
+      implementation_20261029:
+        authorization: "用户明确要求使用task-card-delivery开始实现，并选择暂不提交PAGT-008、继续当前工作区本地实现；保留codex/pagt-008上的既有改动，不擅自提交/推送/合并或创建混合基线分支。"
+        baseline: "HEAD3b0e322 + PAGT-008当前未提交源码；复用输入匹配的34模块862passed/1Linuxskip及Linux252passed、Ruff/mypy通过证据。将本卡接触的既有文件原样快照到data/validation/pagt009-baseline供差异审查与回滚，不覆盖前卡改动。"
+        approach: "复用原公网连接与10秒总超时，新增有界原始响应结果并保留fetch_public旧二元组兼容包装；标准库HTMLParser提取title/main/article/body可读文本，去脚本/样式/注释/隐藏块，事件数与深度设限；JSON/纯文本兼容，二进制/无正文/编码失败准确降级。"
+        limits: "原始响应上限仍262144字节，不再以正文字符数预截HTML头部；解析最多20000事件、128层，标题256字符，提取后正文按原max_chars默认2000/最大20000截断。分别输出download_truncated/text_truncated/parse_limited及complete、返回字符数和原因，未知或受限不声称完整。"
+        verification: "先真实工具入口红测，再专项覆盖长头部、预算边界、内容类型/编码、畸形/动态/恶意HTML、超时/取消及原公网安全；同步/流式真实API用固定HTTP和脚本模型验证，不冒充真实模型。L2由非实现者独立审查，必要Linux/最终CI/用户接受缺失不done；不新增依赖或自动调用付费模型。"
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      delivery_order: 21
+      delivery_stage: "V1-3"
+      owner: "个人开发者"
+      admission:
+        authorization: "2026-10-29用户随后明确授权技能实现，并选择暂不提交、先在当前工作区本地推进；不授权新增依赖、付费模型或Git发布。"
+        implementation_plan: "实施前锁定原始字节/解析/正文预算、支持内容类型、截断契约和兼容行为；复用已有依赖，新增依赖须另获批准。"
+      delivery_20261029:
+        state: 正文提取本地完成；本次008命名站点路由补修后的共同候选已重验。009源码未再修改，仍in_review等待业务接受与最终CI。
+        version: 用户明确暂不提交，授权在codex/pagt-008现有未提交改动上本地推进；HEAD3b0e322b0775bcc4e18f03eeb005570e251ebeef + 下列整体工作区输入指纹，未提交/推送/合并。
+        own_files:
+        - app/agents/tools/builtin.py
+        - app/security/public_http.py
+        - app/agents/tools/web_content.py
+        - tests/test_web_content.py
+        - tests/test_public_tool_http.py
+        - tests/test_plan_tool_outcomes.py
+        - tests/test_plan_entry_acceptance.py
+        - docs/ai-prompts/evals/web-readable-content-v1.yaml
+        baseline: data/validation/pagt009-baseline/保存2份既有源码、3份既有测试及台账副本和inputs.json；本卡审查以此增量为准，不将整个HEAD diff归为PAGT-009，保留前卡与用户改动。
+        behavior: web_fetch1.1.0先在原262144字节预算内下载，再用标准库HTMLParser去脚本/样式/注释/隐藏块并提取title和main/article/body文本，最后施加max_chars。JSON/纯文本与声明编码兼容，二进制/空动态页面/无效编码/畸形声明准确降级；保留fetch_public旧二元组包装和全部公网、DNS/IP固定/TLS、重定向、代理、压缩及10秒超时守卫；无新依赖、无真实模型调用。
+        output_contract: 结构化JSON观测含http_status/content_type/title/text/characters/untrusted、download_truncated/text_truncated/title_truncated/parse_limited、complete/reasons/notice。正文默认2000/最大20000、标题256字符、解析20000事件/128层；任何预算或错误均不标complete。可省略head/p结束兼容，隐式/显式结束不能跨模板抑制边界，显式隐藏标题不进文档元数据。相关旧观测断言按1.1.0契约更新，不改权限和调用计数。
+        regressions: 最初8项真实工具红测8failed（20261029T044311-99046c4cfe39）。独立发现两组P2：可省略标签隐藏正文、模板/隐藏标题或闭合越界；正式红测3failed/19passed和3failed/21passed已修复。Linux首次285passed/1failed暴露Python3.11/3.12非法声明差异，显式统一拒绝并补声明/PI事件预算；失败日志保留pagt009-linux/before-declaration-fix-*。旧Windows运行源码变化被invalidated，另有超时缩放预算先耗于DNS调度的夹具失败，仅该测试固定异步已知公网地址隔离响应流时序，保留10秒预算/恰关闭一次/network_error断言；生产守卫及DNS反例不变。最终运行全部专项通过，失败/失效证据不作最终成功。
+        windows:
+          command: D:\DepTooL\anaconda3\envs\ai-assistant\python.exe scripts/validate_delivery.py targeted --test tests/test_tool_parameter_safety.py --test tests/test_public_tool_http.py
+            --test tests/test_tool_file_parameter_safety.py --test tests/test_tool_executor.py --test tests/test_tool_contract.py --test tests/test_tool_path_contract.py --test tests/test_pagt001_tools.py
+            --test tests/test_tools.py --test tests/test_tool_dsml_protocol.py --test tests/test_tool_audit.py --test tests/test_mcp.py --test tests/test_supervisor_tool_contract.py --test
+            tests/test_supervisor_tool_contract_review.py --test tests/test_structured_plan_runtime.py --test tests/test_plan_tool_outcomes.py --test tests/test_pipeline_budget.py --test tests/test_combined_tool_contract.py
+            --test tests/test_chat_combined_tools.py --test tests/test_supervisor.py --test tests/test_llm_native_tools.py --test tests/test_sse_pipeline_events.py --test tests/test_agent_chain.py
+            --test tests/test_agent_state.py --test tests/test_agent_state_resume.py --test tests/test_agent_runtime_recovery.py --test tests/test_empty_action_reply.py --test tests/test_sandbox.py
+            --test tests/test_skill_path_contract_review.py --test tests/test_skill_version_entry.py --test tests/test_rag_028_model_capability.py --test tests/test_plan_entry_acceptance.py
+            --test tests/eval/test_rag006_pipeline.py --test tests/test_fast_route.py --test tests/test_web_fetch_route.py --test tests/test_web_content.py
+          exit_code: 0
+          result: 922passed/1skipped/1warning，322.94秒，35模块；skip为Linux目录移动专项，已在Linux执行，warning为既有ast.NameConstant弃用。
+          environment: Windows/win32；指定conda Python3.12.0、pytest9.0.3、httpx0.28.1、SQLModel0.0.22；隔离SQLite；复用公开tiktoken缓存，无真实模型或外部业务请求。
+          report: data/validation/20261029T062632-273bd43bd49a/result.json、pytest.log、pytest.xml；含PAGT-008命名站点补修及PAGT-009正文提取的共同候选。
+        linux:
+          command: D:\DepTooL\anaconda3\envs\ai-assistant\python.exe data/validation/pagt009-linux/run.py
+          exit_code: 0
+          result: 312passed/1warning，23.02秒，inputs_unchanged=true；包含命名/URL站点、原安全守卫和正文提取；warning为镜像Starlette既有弃用。
+          environment: 本地已有ai-assistant-app:latest，Linux6.18.40.1/WSL2/x86_64、Python3.11.16/pytest9.0.3/httpx0.28.1/SQLModel0.0.22；UID65534、无网络、只读源码、临时tmpfs、隔离SQLite；临时复用已声明测试包，无新项目依赖。
+          report: data/validation/pagt009-linux/result.json、linux.log、linux.xml；补修前结果已另存before-named-site-fix-*。
+        static:
+          commands:
+          - D:\DepTooL\anaconda3\envs\ai-assistant\python.exe -m ruff check . --no-cache
+          - D:\DepTooL\anaconda3\envs\ai-assistant\python.exe -m mypy app/ --cache-dir data/validation/pagt009-mypy
+          - git diff --check
+          result: 均exit0；mypy259源码无问题，YAML/范围/版本摘要核对通过。无前端/API响应Schema/权限/CI配置改变，前端检查不适用。未跑本地不筛选pytest；最终SHA Ubuntu完整Backend仍待，专项不替代门禁。
+        public_smoke:
+          result: 最终源码受控读取用户提供的https://www.baidu.com/：HTTP200，原始17143字节，标题“百度一下，你就知道”，148字符可读正文，无下载/解析/正文截断，Unicode断言通过。仅公开页面HTTP，无模型/Cookie/生产配置；不是动态渲染或真实模型业务验收。初次控制台显示编码乱码已由Unicode断言及UTF8结果文件澄清。
+          report: data/validation/pagt009-public-smoke/result.json，含最终3源码SHA256。
+        review:
+          reviewer: 独立非实现者 /root/pagt009_review
+          report: docs/reviews/review_pagt_009_20261029.md
+          result: 两组P2及作用域/跨平台声明修复已复核；8个解析及2个声明/事件纯探针通过，超时夹具隔离已只读复核。当前已审范围无未解决P1/P2；报告后续追加摘要替代先前对应输入。 本次008路由与新增named_site API参数化增量由008独立报告复核，本卡3份源码摘要未变；不重新审查未变化的正文提取实现。
+        acceptance_mapping:
+        - 长HTML头部后中文正文/实体/标题、去活动隐藏内容及可省略标签正式回归通过。
+        - 下载/解析/标题/正文预算分别说明；恰好下载上限EOF、UTF8尾部、JSON/纯文本/GBK、异常编码/二进制/HTTP失败及动态空正文通过。
+        - 同步/流式×self/langgraph×公网/内网×HTML/纯文本共32真实HTTP聊天入口通过，断言正文回复、HTML头部不入模型上下文、拒绝及审计；脚本模型不证明真实模型质量。
+        - 既有混合DNS/逐跳重定向/IP固定/TLS/代理/压缩/权限/预算/取消及超时关闭响应回归通过；外部指令文本保留untrusted，不授予权限。
+        evaluation: docs/ai-prompts/evals/web-readable-content-v1.yaml，8个Smoke/Adversarial/Observed Regression情景，合成确定性数据，不标Gold。
+        limits: HTMLParser不是浏览器DOM/CSS/JS渲染器；仅处理结构/属性/内联隐藏，不保证所有畸形HTML、外部样式或动态站点全文。complete表示受支持静态响应未触及预算/错误，notice明确未渲染/执行JS；空正文只提示可能依赖JS，不断言一定如此。
+        remaining: 用户此前安全场景接受保留；本次命名站点页面路由补修需重试原句，009正文展示接受仍待；最终SHA CI未取得。遵循用户暂不提交的决定，两卡保留in_review，不自动Git或done。
+        rollback: 仅恢复pagt009-baseline保存的本卡既有源码/测试，删除本卡新增提取器、新测试和Evaluation，保留008守卫/执行器/路由及接受记录；不要用HEAD整份恢复误删前卡，实际Git交付需保留层次。
+        candidate_inputs_sha256:
+          app/agents/pipeline.py: 1af9ee1bfdc362a55baeb749209255bd05a43d273837e70cfbafcfcfee1c83e3  # pragma: allowlist secret
+          app/agents/route.py: 704e9ab9523b7b03709e5abc524a0120e3001ee46652a5f2a372726f4eb16b34  # pragma: allowlist secret
+          app/agents/tools/base.py: ca53a30f7a5673b53d488e9a523d39118868090b156a231b3aeea884f7a013d5  # pragma: allowlist secret
+          app/agents/tools/builtin.py: a16603710db11d583c47ef9b1d001e525f90bd3c359bc7a29237b76d74c38663  # pragma: allowlist secret
+          app/agents/tools/executor.py: 44e5b767e19130ca20f1e8e3f139c6b6fc39512e2e87ad0b0f80c09c6b284209  # pragma: allowlist secret
+          app/agents/tools/file_ops.py: 47ed4d147684f3d7a1943e1cb41b141f269b0145c324a4670305e77adea20fc0  # pragma: allowlist secret
+          app/agents/tools/parameter_policy.py: 5c97bb51626eb58373c99232439c2ce3bb3011d32d7651aa2e9f4219e04d499d  # pragma: allowlist secret
+          app/agents/tools/web_content.py: f91e9c4eeb5e7f1c2749d5c4ca31c3f5f7a63994f9044bc88049c014bda06773  # pragma: allowlist secret
+          app/security/public_http.py: 4687220d1778ee6eca412f556d949fe26068adce1473329900da574610b494a4  # pragma: allowlist secret
+          docs/ai-prompts/evals/tool-parameter-safety-v1.yaml: 7a6cdd44986f97d28d2076b7d89d9fcaaefdaeec34953e6a25cf716ec41307c3  # pragma: allowlist secret
+          docs/ai-prompts/evals/web-readable-content-v1.yaml: 0d306f96161b380a30933957c80336d22b7e482026c97eb27cf6cdf484d6d790  # pragma: allowlist secret
+          tests/test_agent_chain.py: f96867d663f2ed46da85c93eeeee21da008d4904d91ee1b137232e1ea5f25902  # pragma: allowlist secret
+          tests/test_agent_runtime_recovery.py: 3c8677a01babc6c8bcf60ae93472e7469823fe785055212b00988e77c5e92e66  # pragma: allowlist secret
+          tests/test_agent_state.py: 4b929e6af7dfce2c1497cdaefbe81a0b79b7790c4bf8bb05be6ef36f56cbd4e3  # pragma: allowlist secret
+          tests/test_agent_state_resume.py: e57f92a36a61563d1270d7e63bc0a6dcb1f0565ffeacd0578062413467543dac  # pragma: allowlist secret
+          tests/test_empty_action_reply.py: 4efaf280bf3817d3a57eab1ed5b71c31a9eef9785af0ac0d93ad035ffd986f43  # pragma: allowlist secret
+          tests/test_mcp.py: 9ac66cc7096712b0c46f38640cedd3bc4787ec76702cab6e5caeebd6ee4a4f84  # pragma: allowlist secret
+          tests/test_pipeline_budget.py: 5f2cea41719f2cc7cf5068436d0cb6e905af2158335d0361281dd12e042d76fb  # pragma: allowlist secret
+          tests/test_plan_entry_acceptance.py: 0e9422b2bad32f1c99c2d4fc2eeba430ff55dc553b2db49af45ed06beb3c5576  # pragma: allowlist secret
+          tests/test_plan_tool_outcomes.py: 6f34220faef7d1a0a5bbf630122ba19b43d9bebb5a9c2ffc2f3ed08552287e8d  # pragma: allowlist secret
+          tests/test_public_tool_http.py: 9a512060fb92eeb6ff7c62d5ec86473ad8b862e6404531525a414e4b7b3e9bea  # pragma: allowlist secret
+          tests/test_sandbox.py: d460634540e7d8bf073bc97593e2720c9add6e52630dbb65b30889408acc25cf  # pragma: allowlist secret
+          tests/test_sse_pipeline_events.py: 7919d5577dbdfafd9dba4700b1acfd180fe1735940f6040e44c0d24814e18144  # pragma: allowlist secret
+          tests/test_tool_audit.py: dc50da035ac6afe9d32a29a8fde328ef727d89a02c1a97f1e91a90563b5e113b  # pragma: allowlist secret
+          tests/test_tool_file_parameter_safety.py: d1ca5508ed14477caae6ca478b2bd8e68e1667656b5af565cbb659c0fc8579c8  # pragma: allowlist secret
+          tests/test_tool_parameter_safety.py: a654990e7a920c9821488b46a041d7f98ec22dc468fa5db042d0983afd5bd834  # pragma: allowlist secret
+          tests/test_tool_path_contract.py: 19b9f2c1579802903cb2048e936c9831dd8de93236fbb1f29fd0bbc9b6867edd  # pragma: allowlist secret
+          tests/test_web_content.py: 4862b6ea9cea1fed279e6b43b62f82f3aa2a1bb0b4e6bef92abac2d9516a2cb1  # pragma: allowlist secret
+          tests/test_web_fetch_route.py: ae21f5cae4590e7a092bfd51f82e424d799c00345ef93734abf8eba1acf4d178  # pragma: allowlist secret
+          pyproject.toml: 75fa22f44831b41a0515161d76e31d1925abd35374ac77f4e541b3371048d1fd  # pragma: allowlist secret
+          requirements.txt: bd2903b51f3a2fda7993a5dfd0bb2d27b61eaf8f2a6dff0afb80f4500d1c0cee  # pragma: allowlist secret
+          tests/conftest.py: c90aac2c8724116166cd2b869d1b90cacdae180c4b78fefc8533932d9fc95d4a  # pragma: allowlist secret
+          .github/workflows/ci.yml: 7e3997e1113dc28bb616261e8ca863754258090b9f75f41e1c19372dd37a1118  # pragma: allowlist secret
+      nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
   - id: "SEC-DEP-001"
     title: "修复PDF与前端开发工具依赖漏洞"
     status: "in_review"
@@ -12949,4 +13187,4 @@ tasks:
     - "PDF正常/畸形输入和lint匹配/既有拒绝规则保持有效；前端四项与最终SHA后端CI通过适用检查。"
     execution:
       plan: "用户2026-11-01批准依赖修复。基线e590608，origin/develop核对为3b0e322；从develop创建独立codex/dependency-security后快进复用上批验证前置（未合入develop）。现有Windows3894通过/31平台跳过、Ubuntu3902通过/4跳过作为输入匹配基线；审计Python3/npm12失败证据见data/validation/20261101-ci-e590608。修复pypdf6.21.4、Vite6.4.5；minimatch无旧分支补丁，升级ESLint10及兼容Hooks插件，限定minimatch11并保留既有lint规则，验证所有直接调用方。回滚仅本卡依赖/配置diff，锁文件同步。"
-      progress: "2026-11-01已实现pypdf6.21.4、Vite6.4.5、ESLint10.14.0、Hooks7.1.1、typescript-eslint8.72.1和限定minimatch11.0.3；Node22最低22.13，本机22.20满足。Python/npm正式审计均0漏洞；PDF/RAG专项132通过，旧版对照两个循环5秒超时、资源配置缺失失败，正常PDF成功；Vite真实loopback文件拒绝和ESLint反例通过；有效lint规则升级前后90条且未降严重级别。最终前端四项通过（202项测试），提交hook密钥扫描与Python/npm审计均通过；最终SHA完整后端CI待执行。保持待验收，真实模型授权关闭；原工作区其他改动保留。"
+      progress: "2026-11-01最终候选6da40b633a650a2be6fe8d8c63a3ff021bd752c0已推送codex/dependency-security；原工作区依赖声明、锁文件和node_modules同步，保留其他用户改动。pypdf6.21.4、Vite6.4.5、ESLint10.14.0、Hooks7.1.1、typescript-eslint8.72.1，minimatch限定11.0.3；Node22最低22.13。Windows PDF/RAG专项132通过，前端四项通过/202测试，旧版对照复现两类PDF循环5秒超时；真实Vite查询绕过反例和lint拒绝规则有效。升级前后有效lint规则均90条，无严重级别下降。最终Ubuntu完整3906通过/4既有跳过/0失败，31平台用例核验通过；ruff/mypy260文件/前端四项通过。Security CI https://github.com/lwmjava/ai-assistant/actions/runs/41314125032 全绿，Python与npm正式审计均0漏洞，新增密钥扫描通过。Backend证据 https://github.com/lwmjava/ai-assistant/actions/runs/41314125047；整体CI仍因官方RAG/Agent无费用授权在调用前失败，未设置授权变量、未调用真实模型，保持in_review，不合并、不发布。最终本地/CI命令、版本、退出码、JUnit、审计原始JSON与9文件SHA256保留data/validation/20261101-dependency-security/summary.json及配套产物。回滚仅本卡依赖/锁文件/兼容配置与测试diff。"

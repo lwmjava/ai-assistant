@@ -23,6 +23,7 @@ dependencies = [
     "pydantic-settings==2.7.0",
     "pyjwt==2.15.1",
     "bcrypt==4.2.1",
+    "cryptography==50.0.2",
     "python-dotenv==1.2.2",
     "python-multipart==0.0.31",
     "httpx==0.28.1",

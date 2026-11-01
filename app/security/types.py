@@ -5,8 +5,6 @@
 
 from dataclasses import dataclass, field
 
-from app.core.config import settings
-
 
 class SecurityRejectedError(ValueError):
     """请求被安全策略拒绝。
@@ -61,6 +59,8 @@ class SecurityContext:
         该开关默认关闭（仅告警），因此此处不能无条件把 ``injection_detected``
         计入阻断，否则线上默认行为会从「告警」突变为「拒绝服务」。
         """
+        from app.core.config import settings
+
         if self.input_flagged or self.output_flagged or self.rate_limited:
             return True
         return self.injection_detected and settings.SECURITY_BLOCK_ON_INJECTION

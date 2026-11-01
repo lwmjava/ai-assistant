@@ -16,7 +16,6 @@
 - ``get_rate_limiter`` / ``get_log_sanitizer``：进程级单例（限流必须跨请求共享桶状态）
 """
 
-from app.core.config import settings
 from app.security.input_filter import InputFilter, InputFilterResult
 from app.security.log_sanitizer import LogSanitizer
 from app.security.output_filter import OutputFilter, OutputFilterResult
@@ -36,6 +35,8 @@ def get_rate_limiter() -> RateLimiter:
 
     限流器必须跨请求共享：每次请求新建实例会让桶状态归零，限流形同虚设。
     """
+    from app.core.config import settings
+
     global _rate_limiter
     if _rate_limiter is None:
         _rate_limiter = RateLimiter(

@@ -32,7 +32,11 @@ def test_timeout_migration_preserves_legacy_workflow(tmp_path, monkeypatch):
             ]
 
         execution_columns = execution_schema()
-        for target, present in [("b5c8d3e0f271", True), ("a4b7c2d9e160", False), ("b5c8d3e0f271", True)]:  # pragma: allowlist secret
+        for target, present in [
+            ('b5c8d3e0f271', True),  # pragma: allowlist secret
+            ('a4b7c2d9e160', False),  # pragma: allowlist secret
+            ('b5c8d3e0f271', True),  # pragma: allowlist secret
+        ]:
             if target == "b5c8d3e0f271":
                 command.upgrade(config, target)
             else:

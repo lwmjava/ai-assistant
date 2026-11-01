@@ -30,7 +30,9 @@ def network(monkeypatch):
 
 
 @pytest.mark.parametrize("url", ["http://127.0.0.1/", "http://169.254.169.254/latest", "http://[::1]/",
-                                     "http://mixed.example/", "http://user:password@public.example/"])  # pragma: allowlist secret
+                                     "http://mixed.example/",
+                                     "http://user:password@public.example/",  # pragma: allowlist secret
+                                     ])
 async def test_private_or_credential_targets_never_connect(network, url):
     requests, _ = network
     result = await web_fetch({"url": url})

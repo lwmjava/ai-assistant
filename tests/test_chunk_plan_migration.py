@@ -19,7 +19,11 @@ def test_plan_migration_preserves_legacy_document(tmp_path, monkeypatch):
     with engine.begin() as connection:
         values = {key: value for key, value in row.model_dump().items() if key in table.c}
         connection.execute(table.insert().values(**values))
-    for target, present in [("a1b2c3d4e5f6", True), ("f9a014c6e001", False), ("a1b2c3d4e5f6", True)]:  # pragma: allowlist secret
+    for target, present in [
+        ('a1b2c3d4e5f6', True),  # pragma: allowlist secret
+        ('f9a014c6e001', False),  # pragma: allowlist secret
+        ('a1b2c3d4e5f6', True),  # pragma: allowlist secret
+    ]:
         if target == "a1b2c3d4e5f6":  # pragma: allowlist secret
             command.upgrade(config, target)
         else:

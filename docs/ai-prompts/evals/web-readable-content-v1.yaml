@@ -1,0 +1,29 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial/Observed Regression"
+provenance: "AI-authored synthetic deterministic fixtures, not Gold or real-model quality evidence"
+execution: "pytest tests/test_web_content.py tests/test_public_tool_http.py tests/test_plan_tool_outcomes.py tests/test_plan_entry_acceptance.py"
+contract:
+  tool_version: "web_fetch 1.1.0"
+  raw_bytes: 262144
+  parser_events: 20000
+  parser_depth: 128
+  title_characters: 256
+  text_characters: "max_chars: default 2000, maximum 20000, applied after extraction"
+  trust: "External content remains untrusted; no JS execution or browser/CSS rendering"
+cases:
+  - id: long_head
+    expected: "Long scripts/styles do not consume the post-extraction text budget; readable main/body and title survive."
+  - id: distinct_limits
+    expected: "Download, parse, title and text limits are explicit and separately classified; any limit prevents complete=true. Exact byte limit at EOF is not a false download truncation."
+  - id: text_types_encoding
+    expected: "JSON/plain text and declared Chinese encoding work; unsupported binary, invalid/unknown encoding and control bytes fail safely. Incomplete UTF-8 tail of a download-limited response is not falsely classified as corrupt."
+  - id: dynamic_and_malformed
+    expected: "Empty/dynamic pages and malformed declarations do not claim a successful full reading. Optional head/p endings retain visible text."
+  - id: inert_scope
+    expected: "Template/hidden titles do not enter document metadata; implicit or mismatched end tags cannot escape template suppression."
+  - id: trust_boundary
+    expected: "Scripts/styles/comments/hidden blocks are omitted; instruction-like visible text stays marked untrusted and grants no tool permission."
+  - id: network_and_lifecycle
+    expected: "IP pinning, TLS name, per-hop DNS/redirect checks, no environment proxy, compression refusal and bounded download remain; cancel/timeout closes the response."
+  - id: real_chat_entry
+    expected: "Sync/stream and self/langgraph HTTP chat entry consume extracted HTML/plain content and preserve guarded private-target refusal/audit; scripted model does not prove real model quality."

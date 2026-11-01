@@ -9,8 +9,9 @@ from alembic.config import Config
 from app.core.config import settings
 
 
+@pytest.mark.parametrize("target", ["head", "d7e0f3a21b44"])  # pragma: allowlist secret
 @pytest.mark.parametrize("created", [False, True])
-def test_feedback_upgrade_is_idempotent(tmp_path, monkeypatch, created):
+def test_feedback_upgrade_is_idempotent(tmp_path, monkeypatch, created, target):
     url = f"sqlite:///{tmp_path / 'migration.db'}"
     monkeypatch.setattr(settings, "DATABASE_URL", url)
     engine = create_engine(url)
@@ -19,8 +20,8 @@ def test_feedback_upgrade_is_idempotent(tmp_path, monkeypatch, created):
     cfg = Config("alembic.ini")
     if created:
         command.stamp(cfg, "c6d9e2f10a33")
-    command.upgrade(cfg, "head")
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, target)
+    command.upgrade(cfg, target)
     assert {"chat_attempts", "chat_feedbacks", "message_ratings"} <= set(inspect(engine).get_table_names())
     with engine.begin() as connection:
         connection.execute(
@@ -29,7 +30,8 @@ def test_feedback_upgrade_is_idempotent(tmp_path, monkeypatch, created):
                 "VALUES ('test','t','u','pending',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"
             )
         )
-    with pytest.raises(RuntimeError, match="data exists"):
+    refusal = "data exists" if target != "head" else "data exists|Authorization confirmations must be retained"
+    with pytest.raises(RuntimeError, match=refusal):
         command.downgrade(cfg, "c6d9e2f10a33")
     with engine.connect() as connection:
         assert connection.execute(text("SELECT COUNT(*) FROM chat_attempts")).scalar() == 1

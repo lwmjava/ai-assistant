@@ -134,7 +134,8 @@ def test_api_create_list_cancel_and_non_disclosure(jobs_ctx):
     assert client.post(f"/api/v1/evaluations/jobs/{job_id}/cancel", headers=headers["a"]).status_code == 409
 
 
-def test_execute_success_failure_cancel_and_restart(jobs_ctx, tmp_path: Path):
+def test_execute_success_failure_cancel_and_restart(jobs_ctx, tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(evaluation_jobs, "_ROOT", tmp_path)
     _, engine, _ = jobs_ctx
     ids: list[str] = []
     with Session(engine) as session:

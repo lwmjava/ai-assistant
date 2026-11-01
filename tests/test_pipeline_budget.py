@@ -25,7 +25,12 @@ def _echo_registry() -> tuple[ToolRegistry, dict[str, int]]:
         counter["n"] += 1
         return f"echo:{arguments.get('q', '')}"
 
-    tool = Tool(name="echo", description="回显", parameters={"type": "object"}, func=echo)
+    tool = Tool(
+        name="echo",
+        description="回显",
+        parameters={"type": "object", "properties": {"q": {"type": "string"}}},
+        func=echo,
+    )
     return ToolRegistry([tool]), counter
 
 
@@ -36,7 +41,12 @@ def _boom_registry() -> tuple[ToolRegistry, dict[str, int]]:
         counter["n"] += 1
         raise RuntimeError(f"boom:{arguments.get('q', '')}")
 
-    tool = Tool(name="boom", description="抛错工具", parameters={"type": "object"}, func=boom)
+    tool = Tool(
+        name="boom",
+        description="抛错工具",
+        parameters={"type": "object", "properties": {"q": {"type": "string"}}},
+        func=boom,
+    )
     return ToolRegistry([tool]), counter
 
 

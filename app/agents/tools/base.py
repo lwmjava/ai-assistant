@@ -11,12 +11,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import inspect
 import json
 import logging
 import re
-import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -24,7 +22,7 @@ from typing import TYPE_CHECKING
 from app.agents.tools.contract import ToolContract
 from app.agents.tools.dsml import decode_dsml
 from app.agents.tools.outcome import ToolOutput
-from app.core import log_context
+from app.agents.tools.parameter_policy import MAX_ARGUMENT_BYTES, bounded_json
 
 if TYPE_CHECKING:
     from app.agents.tools.executor import ToolExecutor
@@ -69,6 +67,7 @@ class Tool:
     parameters: dict
     func: Callable[[dict], str | Awaitable[str]]
     contract: ToolContract | None = None
+    argument_guard: Callable[[dict], None | Awaitable[None]] | None = None
 
     async def execute(self, arguments: dict) -> str:
         """执行工具，返回供模型阅读的观测文本。"""
@@ -81,13 +80,13 @@ class Tool:
 def format_tool_observation(name: str, arguments: dict, observation: str) -> str:
     """把一次工具执行结果拼装成给模型的观测文本（bound/legacy 两路径唯一实现）。
 
-    打码与路径净化规则与 PAGT-002 保持一致：web_search/file_ops/file_ops_write
-    的参数整体打码；code_sandbox 的宿主路径净化。观测格式
+    联网和文件工具的参数整体打码；
+    code_sandbox 的宿主路径净化。观测格式
     ``[name] 参数={shown} 结果={observation}`` 是模型 Prompt 与 golden 回归的契约，
     不得拆分出第二份实现。
     """
     shown: dict = dict(arguments or {})
-    if name in {"web_search", "file_ops", "file_ops_write"}:
+    if name in {"web_search", "web_fetch", "file_ops", "file_ops_write"}:
         shown = {"input": "[redacted]"}
     if name == "code_sandbox":
         from app.agents.tools.sandbox.runtime import sanitize_host_paths
@@ -227,49 +226,17 @@ class ToolRegistry:
             logger.exception("工具调用审计写入失败：tool=%s", call.name)
 
     def bind_executor(self, executor: ToolExecutor) -> None:
-        """绑定独立 Tool Executor；绑定后 run() 薄委托给它（PAGT-006）。"""
+        """绑定共享工具执行器。"""
         self._executor = executor
 
     async def run(self, call: ToolCall) -> str:
         """执行一次工具调用，返回结构化观测文本。"""
-        bound = getattr(self, "_executor", None)
-        if bound is not None:
-            result = await bound.execute(call)
-            return ToolOutput(result.observation, status=result.status)
-        tool = self.get(call.name)
-        if tool is None:
-            return ToolOutput(f"[工具调用失败] 未找到名为「{call.name}」的工具。", status="error")
-        arguments = call.arguments or {}
-        user_id = log_context.get_user_id() or None
-        tenant_id = log_context.get_tenant_id() or None
-        risk = tool.contract.risk.value if tool.contract else "unlisted"
+        from app.agents.tools.executor import ToolExecutor
 
-        reason = self._denied_reason(call, tool, user_id, tenant_id)
-        started = time.monotonic()
-        if reason is not None:
-            latency_ms = (time.monotonic() - started) * 1000
-            await self._record_audit(call, user_id, tenant_id, risk, False, reason, latency_ms)
-            logger.info("工具调用被拒绝：%s reason=%s", call.name, reason)
-            return ToolOutput(f"[工具调用被拒绝] {call.name}：调用未授权。", status="denied")
+        executor = self._executor or ToolExecutor(self)
+        result = await executor.execute(call)
+        return ToolOutput(result.observation, status=result.status, error_code=result.error_code)
 
-        timeout = tool.contract.timeout_seconds if tool.contract else 30.0
-        try:
-            async with asyncio.timeout(timeout):
-                observation = await tool.execute(arguments)
-        except TimeoutError:
-            observation = ToolOutput(f"[工具执行错误] {call.name}：执行超时。", status="timeout")
-        except Exception as exc:  # noqa: BLE001 — 工具异常不应中断整个管线
-            if call.name in {"web_search", "file_ops", "file_ops_write"}:
-                logger.warning("工具执行失败：%s type=%s", call.name, type(exc).__name__)
-                observation = ToolOutput(f"[工具执行错误] {call.name}：工具暂时不可用。", status="error")
-            else:
-                logger.exception("工具执行失败：%s", call.name)
-                observation = ToolOutput(f"[工具执行错误] {call.name}：{exc}", status="error")
-        latency_ms = (time.monotonic() - started) * 1000
-        await self._record_audit(call, user_id, tenant_id, risk, True, None, latency_ms)
-
-        return ToolOutput(format_tool_observation(call.name, arguments, observation),
-                          status=getattr(observation, "status", "ok"))
 
 
 def inspect_tool_call(text: str) -> ToolIntent:
@@ -281,6 +248,7 @@ def inspect_tool_call(text: str) -> ToolIntent:
     if "DSML" in body and any(token in body for token in ("<｜", "</｜")):
         try:
             name, arguments = decode_dsml(body)
+            bounded_json(arguments)
         except (ValueError, RecursionError):
             return ToolIntent("invalid")
         return ToolIntent("ok", ToolCall(name=name, arguments=arguments))
@@ -290,12 +258,14 @@ def inspect_tool_call(text: str) -> ToolIntent:
         return ToolIntent("none")
     if opens != 1 or closes != 1:
         return ToolIntent("invalid")
+    if len(body) > MAX_ARGUMENT_BYTES or len(body.encode("utf-8", errors="replace")) > MAX_ARGUMENT_BYTES:
+        return ToolIntent("invalid")
     match = _TOOL_CALL_PATTERN.search(body)
     if not match:
         return ToolIntent("invalid")
     try:
         data = json.loads(match.group(1).strip())
-    except json.JSONDecodeError:
+    except (ValueError, RecursionError):
         return ToolIntent("invalid")
     if not isinstance(data, dict):
         return ToolIntent("invalid")
@@ -309,6 +279,10 @@ def inspect_tool_call(text: str) -> ToolIntent:
     else:
         args = {}
     if not isinstance(args, dict):
+        return ToolIntent("invalid")
+    try:
+        bounded_json(args)
+    except ValueError:
         return ToolIntent("invalid")
     return ToolIntent("ok", ToolCall(name=name.strip(), arguments=args))
 

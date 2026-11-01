@@ -11411,7 +11411,7 @@ tasks:
 
   - id: "RAG-041"
     title: "资源级 ACL 进入条件与权限决策"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     module: "RAG/资源权限"
     target_version: "1.0"
@@ -11451,13 +11451,88 @@ tasks:
       delivery_order: 4
       delivery_stage: "V1-1"
       owner: "个人开发者"
-      blocked_by: "Deferred：资源 ACL 明确纳入目标版本且负责人授权决策时启动。"
-      progress: "2026-10-09：补挂 RAG-035 真实评测 P1 缺陷证据（rag-036）：真实评测（evals/reports/rag-v0.1-gen-real-20261009.json，报告 sha256 ae86f969）案例 rag-036（private_resource）中，模型据被选入上下文的受限文档披露受限工号 NW-HR-001，判定器按零容忍规则捕获为违规并列入失败切片（provisional_fail）。根因：资源级 ACL 仍 Planned（本卡）→ 受限文档可被检索选入 + 生成侧无输出围栏/受限标识抑制（承接见 RAG-043）。本卡验收时须将该证据作为输入：主体/资源/动作、过滤与引用/摘要权限决策须覆盖受限文档不可被检索/引用、以及摘要继承授权（RAG-040）的 ACL 半边。"
+      blocked_by: ""
+      acceptance_record: "2026-10-31：用户已批准ADR-0024、独立拆分、第一阶段schema/allowed_paths及同人确认规则。权限主体/资源/动作、过滤/引用/摘要、迁移与失败关闭回滚决定齐备；按纯文档契约关闭。实施由RAG-046及后续阶段承接，不宣称ACL已实现或启用；未改变业务门禁结论。文档引用/一致性与git diff --check通过。"
+      progress: "2026-10-31：用户批准提案并要求实施；ADR-0024 已标 Accepted，追加第一阶段两张 ACL 表、版本冲突、审批审计事务与 allowed_paths 具体规格。遵循已批准拆分第1项要求，具体 schema 待批准，未执行数据迁移或生产启用。 2026-10-31：用户要求启动；已形成 ADR-0024 Proposed，覆盖权限矩阵、检索前过滤、引用/摘要继承、撤销缓存、迁移与失败关闭回滚，以及四阶段独立实施拆分。未改业务实现/配置/数据；待权限决策批准，不宣称 ACL 已实现。基线分支 codex/pagt-008、HEAD 3b0e322b0775bcc4e18f03eeb005570e251ebeef，工作区存在其他任务未提交修改，保留。验证为文档范围/引用及 git diff --check；不触发业务回归。 2026-10-09：补挂 RAG-035 真实评测 P1 缺陷证据（rag-036）：真实评测（evals/reports/rag-v0.1-gen-real-20261009.json，报告 sha256 ae86f969）案例 rag-036（private_resource）中，模型据被选入上下文的受限文档披露受限工号 NW-HR-001，判定器按零容忍规则捕获为违规并列入失败切片（provisional_fail）。根因：资源级 ACL 仍 Planned（本卡）→ 受限文档可被检索选入 + 生成侧无输出围栏/受限标识抑制（承接见 RAG-043）。本卡验收时须将该证据作为输入：主体/资源/动作、过滤与引用/摘要权限决策须覆盖受限文档不可被检索/引用、以及摘要继承授权（RAG-040）的 ACL 半边。"
       nightly:
         eligible: false
         production_access: false
         auto_merge: false
         auto_deploy: false
+
+  - id: "RAG-046"
+    title: "资源 ACL 数据模型与受控授权服务"
+    status: "in_review"
+    priority: "P0"
+    module: "RAG/资源权限"
+    target_version: "1.0"
+    depends_on: ["RAG-041"]
+    scope:
+      allowed_paths:
+      - "app/models/rag.py"
+      - "app/rag/access.py"
+      - "app/rag/resource_acl.py"
+      - "alembic/versions/"
+      - "tests/test_rag_resource_acl.py"
+      - "tests/test_chat_feedback_migration.py"
+      - "tests/test_chunk_plan_migration.py"
+      - "tests/quota_downgrade_probe.py"
+      - "tests/test_workflow_timeout_migration.py"
+      - "evals/resource_acl/"
+      - "docs/adr/0024-resource-knowledge-permission.md"
+      - "tasks.yaml"
+      non_goals:
+      - "本阶段不接线主检索、缓存、摘要，不执行历史数据回填或生产启用。"
+    acceptance:
+    - "文档 ACL 与同租户显式授权模型；缺失或畸形授权拒绝读取。"
+    - "当前主体/租户/撤销版本复核，scope 与 ACL 取交集；管理员不豁免。"
+    - "审批与审计可核验后方可提供原子版本更新；无设施则阻断写入口。"
+    execution:
+      plan: "docs/adr/0024-resource-knowledge-permission.md"
+      blocked_by: "最终提交的完整后端/Ubuntu CI、Linux迁移证据和业务接受未完成；API/主链路接线属后续阶段。"
+      progress: "2026-11-01最新结果：原工作区源码+C盘短临时目录完整pytest已结束，3851通过/19失败/31跳过，退出1；完整输入与日志保留data/validation/20261101-latest-source-full。失败归因未全部隔离，不能关闭；扩大专项74通过，workflow/quota迁移调用方修正保留升级与数据断言，独立复核通过。 2026-11-01继续收尾：本地full收集3895项，E盘空间耗尽中断，不能算通过；发现ACL迁移与create_all已有表不兼容已修复，校验关键PK/FK/非空/索引。独立审查P2已修复复核。旧反馈迁移补目标版本直接测试，分块计划迁移测试限定自身往返，保留全部数据断言。当前58项迁移/ACL/API专项通过、ruff与mypy app/退出0；C盘隔离副本全量仍在运行，尚非最终候选通过证据。 2026-10-31补充：用户批准同人确认，已实现限时提案、内容/文档/版本绑定、当前管理员复核、单次原子消费与ACL/grants/audit同事务、版本CAS及失败回滚。最终专项88 passed，全仓ruff与mypy（260文件）退出0；独立审查P2锁等待到期已修复并复核。完整记录与最终指纹见ADR-0024人工确认验证章节；仍in_review，未提交或启用。 2026-10-31 用户批准具体规格。基线 HEAD 3b0e322b0775bcc4e18f03eeb005570e251ebeef；分支 codex/rag-resource-acl 从 fetch 后相同 SHA 的 origin/develop 建立，保留其他任务未提交修改但不纳入本卡。preflight 与原权限专项基线通过；新增模型、仅建空表迁移、独立读取判定及确定性反例；不开放写接口、不宣称主链路 ACL 生效。最终专项29 passed（新增20/既有9）、范围ruff及服务mypy退出0、迁移单head、diff检查退出0；独立审查P2已修复并复核。完整证据/候选SHA256见ADR-0024第一阶段验证记录，最终targeted输入绑定data/validation/20261031T095641-0383ac814515。未关闭。"
+
+  - id: "RAG-047"
+    title: "资源ACL后端入口与检索引用接线"
+    status: "in_progress"
+    priority: "P0"
+    target_version: "1.0"
+    depends_on: ["RAG-046"]
+    scope:
+      allowed_paths:
+      - "app/api/routes/rag.py"
+      - "app/schemas/"
+      - "app/rag/"
+      - "app/core/config.py"
+      - "app/services/"
+      - "tests/"
+      - "evals/resource_acl/"
+      - "docs/adr/0024-resource-knowledge-permission.md"
+      - "tasks.yaml"
+      non_goals:
+      - "不执行历史资料回填、生产启用、真实模型费用或生产数据迁移；管理页面与跨会话记忆另阶段。"
+    acceptance:
+    - "鉴权管理员通过受控API提出与人工确认ACL，禁止Agent自动确认；沿用版本/内容绑定、时限和事务审计。"
+    - "API/Agent三种检索后端的候选在重排/模型前授权；未授权、缺失ACL与复核失败均不得传入上下文。"
+    - "父块、引用、摘要和缓存复用执行一致授权；无主体不能绕过；撤销后下一次读取拒绝。"
+    - "隔离迁移/单元/契约与Adversarial回归覆盖rag-036，最终候选满足必要CI与独立审查。"
+    execution:
+      plan: "docs/adr/0024-resource-knowledge-permission.md"
+      progress: "2026-11-01用户授权继续收尾RAG-046并推进后端接线。已完成真实入口调查与范围登记，并新增管理员提案/人工确认API和HTTP契约回归（3项）；迁移/ACL/API专项58通过，独立审查完成已实施范围。主检索候选授权、父块/引用、摘要与缓存接线尚未实施，不宣称运行时ACL生效。"
+
+  - id: "QA-REG-001"
+    title: "修复全量回归19项失败并补齐31项平台数据库验证"
+    status: "in_review"
+    priority: "P0"
+    scope:
+      allowed_paths: ["tests/", "scripts/validate_delivery.py", "scripts/run_agent_chain_eval.py", "scripts/agent_gate_probe.py", "app/agents/tools/", "app/llm/counters.py", "app/llm/capabilities.py", "app/services/evaluation_jobs.py", ".github/workflows/ci.yml", "scripts/check_platform_validation.py", "CONTRIBUTING.md", "tasks.yaml"]
+      non_goals: ["不删除平台跳过条件、不放宽安全门禁、不连接生产数据库、不自动发布"]
+    acceptance:
+    - "原19项失败逐项复现与修复/环境归因，保留拒绝和副作用断言。"
+    - "31项跳过按Linux/PostgreSQL/Windows互斥条件在真实对应环境执行，未执行项明确阻断。"
+    - "共享conftest变化须完成最新候选本地全量、静态检查和适用独立审查。"
+    execution:
+      progress: "2026-11-01：基线3b0e322b0775bcc4e18f03eeb005570e251ebeef。原全量3851通过/19失败/31跳过；修复后Windows全量3871通过/0失败/31跳过，证据data/validation/20261101-fix19-full-pre-ci。31项为16 PostgreSQL、11 Linux资源限制、3 CLI文件系统和1目录移动。用户选择Ubuntu CI且确认无真实模型费用授权。候选分支codex/qa-platform-regression包含真实PostgreSQL16隔离服务及原31项JUnit强制核验；三处官方评测须费用批准/预算记录/精确SHA匹配，否则明确失败，不调用真实模型。未设置授权变量。独立审查的TCP就绪竞态已修复；候选54文件密钥扫描通过。CI配置变更后的候选Windows全量正在隔离环境执行，真实Ubuntu、官方评测、最终SHA证据未满足，保持in_review。仅发布待验收WIP以获取CI，不合并、不发布。原工作区无关治理改动保留。"
 
   - id: "RAG-043"
     title: "生成输出围栏与受限标识抑制"
@@ -12861,3 +12936,17 @@ tasks:
       estimate_person_days: [2, 4]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、真实数据外发或付费调用。", condition: "MEM-004至MEM-006完成后执行1.0组合验收；真实数据外发和付费调用仍需另行授权。"}
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "SEC-DEP-001"
+    title: "修复PDF与前端开发工具依赖漏洞"
+    status: "in_review"
+    priority: "P0"
+    scope:
+      allowed_paths: ["pyproject.toml", "frontend/package.json", "frontend/package-lock.json", "frontend/eslint.config.js", "frontend/src/lib/eslint-compat.test.ts", "frontend/src/lib/vite-file-access.test.ts", "tests/test_pdf_dependency_security.py", "CONTRIBUTING.md", "tasks.yaml"]
+      non_goals: ["不放宽审计或lint规则", "不调用真实模型", "不改产品权限或接口", "不发布或合并"]
+    acceptance:
+    - "pypdf、Vite和minimatch已知漏洞在实际解析/安装依赖中修复，Python与npm审计退出0。"
+    - "PDF正常/畸形输入和lint匹配/既有拒绝规则保持有效；前端四项与最终SHA后端CI通过适用检查。"
+    execution:
+      plan: "用户2026-11-01批准依赖修复。基线e590608，origin/develop核对为3b0e322；从develop创建独立codex/dependency-security后快进复用上批验证前置（未合入develop）。现有Windows3894通过/31平台跳过、Ubuntu3902通过/4跳过作为输入匹配基线；审计Python3/npm12失败证据见data/validation/20261101-ci-e590608。修复pypdf6.21.4、Vite6.4.5；minimatch无旧分支补丁，升级ESLint10及兼容Hooks插件，限定minimatch11并保留既有lint规则，验证所有直接调用方。回滚仅本卡依赖/配置diff，锁文件同步。"
+      progress: "2026-11-01已实现pypdf6.21.4、Vite6.4.5、ESLint10.14.0、Hooks7.1.1、typescript-eslint8.72.1和限定minimatch11.0.3；Node22最低22.13，本机22.20满足。Python/npm正式审计均0漏洞；PDF/RAG专项132通过，旧版对照两个循环5秒超时、资源配置缺失失败，正常PDF成功；Vite真实loopback文件拒绝和ESLint反例通过；有效lint规则升级前后90条且未降严重级别。最终前端四项通过（202项测试），提交hook密钥扫描与Python/npm审计均通过；最终SHA完整后端CI待执行。保持待验收，真实模型授权关闭；原工作区其他改动保留。"

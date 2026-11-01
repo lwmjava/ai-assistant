@@ -46,7 +46,9 @@ def _echo_tool():
         calls["n"] += 1
         return f"echo:{arguments.get('q', '')}"
 
-    return Tool(name="echo", description="", parameters={"type": "object"}, func=echo), calls
+    return Tool(name="echo", description="",
+        parameters={"type": "object", "properties": {"q": {"type": "string"}}},
+        func=echo), calls
 
 
 @pytest.fixture()

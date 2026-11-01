@@ -1142,3 +1142,83 @@ async def search(
         )
         for r in results
     ]
+
+
+class ACLProposalRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    expected_revision: int = Field(ge=0, strict=True)
+    visibility: Literal["tenant", "private", "restricted"]
+    user_ids: list[str] = Field(default_factory=list, max_length=1000)
+
+
+class ACLConfirmationRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    reviewed_digest: str = Field(min_length=64, max_length=64, pattern="^[0-9a-f]{64}$")
+
+
+class ACLProposalOut(BaseModel):
+    id: str
+    document_id: str
+    expected_revision: int
+    visibility: str
+    user_ids: list[str]
+    reviewed_digest: str
+    expires_at: datetime
+
+
+@router.post("/documents/{document_id}/acl-proposals", response_model=ACLProposalOut, status_code=201)
+def propose_document_acl(
+    document_id: str,
+    req: ACLProposalRequest,
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
+    session: Session = Depends(get_db),
+) -> ACLProposalOut:
+    """Prepare the exact permission change for an administrator to review."""
+    from app.rag.resource_acl import ACLChangeConflictError, propose_acl_change
+
+    try:
+        proposal = propose_acl_change(
+            session, current_user, document_id, expected_revision=req.expected_revision,
+            visibility=req.visibility, user_ids=req.user_ids,
+        )
+        result = ACLProposalOut(
+            id=proposal.id, document_id=document_id, expected_revision=proposal.expected_revision,
+            visibility=req.visibility, user_ids=sorted(set(req.user_ids)),
+            reviewed_digest=proposal.payload_digest, expires_at=proposal.expires_at,
+        )
+        session.commit()
+        return result
+    except PermissionError as exc:
+        session.rollback()
+        raise HTTPException(status_code=403, detail="无权变更文档授权") from exc
+    except ACLChangeConflictError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="授权版本已变化，请重新提出变更") from exc
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="授权变更参数无效") from exc
+
+
+@router.post("/acl-proposals/{proposal_id}/confirm")
+def confirm_document_acl(
+    proposal_id: str,
+    req: ACLConfirmationRequest,
+    current_user: User = Depends(require_permission("knowledge_bases", "write")),
+    session: Session = Depends(get_db),
+) -> dict[str, int]:
+    """Apply the content explicitly confirmed by the authenticated administrator."""
+    from app.rag.resource_acl import ACLChangeConflictError, confirm_acl_change
+
+    try:
+        revision = confirm_acl_change(session, current_user, proposal_id, reviewed_digest=req.reviewed_digest)
+        session.commit()
+        return {"revision": revision}
+    except PermissionError as exc:
+        session.rollback()
+        raise HTTPException(status_code=403, detail="无权确认文档授权") from exc
+    except ACLChangeConflictError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="确认已失效，请重新提出并审核变更") from exc
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="授权确认参数无效") from exc

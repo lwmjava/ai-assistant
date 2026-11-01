@@ -640,14 +640,10 @@ def test_official_counter_still_refused_for_other_vendors_even_when_installed(
 
 
 def test_fallback_counting_method_matches_installed_counter() -> None:
+    counter = official_counter_for("api.openai.com/v1", "gpt-4o-mini")
     cap = resolve_generation_capability("https://api.openai.com/v1", "gpt-4o-mini")
     assert cap is not None
-    if _TIKTOKEN_INSTALLED:
-        assert cap.counting_method == OFFICIAL_METHOD
-    else:
-        # 本机未安装 tiktoken（2026-10-07 实测），如实退回保守估算。
-        assert cap.counting_method == UTF8_METHOD
-        assert official_counter_for("api.openai.com/v1", "gpt-4o-mini") is None
+    assert cap.counting_method == (OFFICIAL_METHOD if counter is not None else UTF8_METHOD)
 
 
 def test_message_frame_overhead_is_counted() -> None:

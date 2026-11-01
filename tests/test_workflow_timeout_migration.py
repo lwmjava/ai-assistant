@@ -14,7 +14,7 @@ def test_timeout_migration_preserves_legacy_workflow(tmp_path, monkeypatch):
     url = f"sqlite:///{(tmp_path / 'legacy.db').as_posix()}"
     monkeypatch.setattr(settings, "DATABASE_URL", url)
     config = Config("alembic.ini")
-    command.upgrade(config, "a4b7c2d9e160")
+    command.upgrade(config, "a4b7c2d9e160")  # pragma: allowlist secret
     engine = create_engine(url)
     try:
         table = Table("workflows", MetaData(), autoload_with=engine)
@@ -37,7 +37,7 @@ def test_timeout_migration_preserves_legacy_workflow(tmp_path, monkeypatch):
             ('a4b7c2d9e160', False),  # pragma: allowlist secret
             ('b5c8d3e0f271', True),  # pragma: allowlist secret
         ]:
-            if target == "b5c8d3e0f271":
+            if target == "b5c8d3e0f271":  # pragma: allowlist secret
                 command.upgrade(config, target)
             else:
                 command.downgrade(config, target)
@@ -67,7 +67,7 @@ def test_timeout_model_and_create_all_schema_upgrade_are_compatible(tmp_path, mo
         )
         assert getattr(row, "timeout_seconds", None) == 300
         config = Config("alembic.ini")
-        command.stamp(config, "a4b7c2d9e160")
+        command.stamp(config, "a4b7c2d9e160")  # pragma: allowlist secret
         command.upgrade(config, "head")
         command.upgrade(config, "head")
         columns = {column["name"] for column in inspect(engine).get_columns("workflows")}
@@ -76,13 +76,13 @@ def test_timeout_model_and_create_all_schema_upgrade_are_compatible(tmp_path, mo
         engine.dispose()
 
 
-@pytest.mark.parametrize("recorded_revision", ["a4b7c2d9e160", "9a5f2c0e1c3b"])
+@pytest.mark.parametrize("recorded_revision", ["a4b7c2d9e160", "9a5f2c0e1c3b"])  # pragma: allowlist secret
 def test_startup_migration_adds_timeout_to_previous_schema(tmp_path, monkeypatch, recorded_revision):
     from app.core.migration import auto_migrate
 
     url = f"sqlite:///{(tmp_path / 'startup.db').as_posix()}"
     monkeypatch.setattr(settings, "DATABASE_URL", url)
-    command.upgrade(Config("alembic.ini"), "a4b7c2d9e160")
+    command.upgrade(Config("alembic.ini"), "a4b7c2d9e160")  # pragma: allowlist secret
     command.stamp(Config("alembic.ini"), recorded_revision)
     engine = create_engine(url)
     monkeypatch.setattr("app.core.database.engine", engine)
@@ -114,14 +114,14 @@ def test_head_revision_with_missing_timeout_fails_safely(tmp_path, monkeypatch, 
 
     url = f"sqlite:///{(tmp_path / 'drift.db').as_posix()}"
     monkeypatch.setattr(settings, "DATABASE_URL", url)
-    command.upgrade(Config("alembic.ini"), "a4b7c2d9e160")
+    command.upgrade(Config("alembic.ini"), "a4b7c2d9e160")  # pragma: allowlist secret
     command.stamp(Config("alembic.ini"), "head")
     engine = create_engine(url)
     monkeypatch.setattr("app.core.database.engine", engine)
     monkeypatch.setattr(settings, "ENV", environment)
     try:
         if environment == "production":
-            with pytest.raises(RuntimeError, match="杩佺Щ澶辫触"):
+            with pytest.raises(RuntimeError, match="迁移失败"):
                 auto_migrate()
         else:
             assert auto_migrate() is False

@@ -6,7 +6,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 /**
  * ESLint flat config。
  *
- * 规则集：ESLint recommended + typescript-eslint recommended + React Hooks recommended。
+ * 规则集：ESLint recommended + typescript-eslint recommended + React Hooks 调用与依赖检查。
  * 前端源文件按浏览器全局；配置文件（vite/vitest/tailwind/postcss）按 Node 全局，
  * 避免 CommonJS 配置被 no-undef 误报。
  */

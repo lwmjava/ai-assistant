@@ -151,3 +151,5 @@ Ubuntu Backend 配置在非 root 的真实 Linux runner 上执行完整 pytest�
 Windows 的条件跳过不能作为对应 Linux/PostgreSQL 场景的通过证据。以同一最终提交的 Ubuntu job 实际结果为准；既有真实 RAG/Agent 官方门禁仍保留，其费用授权按项目规则执行。
 
 费用授权缺失时，官方评测授权步骤会在调用 API 前明确失败。只有项目负责人已有明确授权与预算记录后，才应配置 `OFFICIAL_EVALUATION_AUTHORIZED=true` 、`OFFICIAL_EVALUATION_BUDGET_REF` 与精确绑定提交的 `OFFICIAL_EVALUATION_AUTHORIZED_SHA`；本批没有设置它们。平台测试仍先执行，平台结果通过不代表官方门禁或合并条件已通过。
+
+前端开发使用 Node.js 22.13+（22.x）、24.x 或 26+。ESLint 工具链使用 minimatch 11.0.3 的安全匹配实现；在上游依赖声明全面支持安全版本前保留 package.json 中的 override，更新时运行 lint 兼容回归与 npm 审计。React Hooks 检查保持规则调用错误和依赖警告的既有级别。

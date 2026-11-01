@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 
 /**
- * ESLint 9 flat config。
+ * ESLint flat config。
  *
  * 规则集：ESLint recommended + typescript-eslint recommended + React Hooks recommended。
  * 前端源文件按浏览器全局；配置文件（vite/vitest/tailwind/postcss）按 Node 全局，
@@ -30,7 +30,8 @@ export default tseslint.config(
       'react-hooks': reactHooks,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 )

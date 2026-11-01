@@ -12936,3 +12936,17 @@ tasks:
       estimate_person_days: [2, 4]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、真实数据外发或付费调用。", condition: "MEM-004至MEM-006完成后执行1.0组合验收；真实数据外发和付费调用仍需另行授权。"}
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+
+  - id: "SEC-DEP-001"
+    title: "修复PDF与前端开发工具依赖漏洞"
+    status: "in_review"
+    priority: "P0"
+    scope:
+      allowed_paths: ["pyproject.toml", "frontend/package.json", "frontend/package-lock.json", "frontend/eslint.config.js", "frontend/src/lib/eslint-compat.test.ts", "frontend/src/lib/vite-file-access.test.ts", "tests/test_pdf_dependency_security.py", "CONTRIBUTING.md", "tasks.yaml"]
+      non_goals: ["不放宽审计或lint规则", "不调用真实模型", "不改产品权限或接口", "不发布或合并"]
+    acceptance:
+    - "pypdf、Vite和minimatch已知漏洞在实际解析/安装依赖中修复，Python与npm审计退出0。"
+    - "PDF正常/畸形输入和lint匹配/既有拒绝规则保持有效；前端四项与最终SHA后端CI通过适用检查。"
+    execution:
+      plan: "用户2026-11-01批准依赖修复。基线e590608，origin/develop核对为3b0e322；从develop创建独立codex/dependency-security后快进复用上批验证前置（未合入develop）。现有Windows3894通过/31平台跳过、Ubuntu3902通过/4跳过作为输入匹配基线；审计Python3/npm12失败证据见data/validation/20261101-ci-e590608。修复pypdf6.21.4、Vite6.4.5；minimatch无旧分支补丁，升级ESLint10及兼容Hooks插件，限定minimatch11并保留既有lint规则，验证所有直接调用方。回滚仅本卡依赖/配置diff，锁文件同步。"
+      progress: "2026-11-01已实现pypdf6.21.4、Vite6.4.5、ESLint10.14.0、Hooks7.1.1、typescript-eslint8.72.1和限定minimatch11.0.3；Node22最低22.13，本机22.20满足。Python/npm正式审计均0漏洞；PDF/RAG专项132通过，旧版对照两个循环5秒超时、资源配置缺失失败，正常PDF成功；Vite真实loopback文件拒绝和ESLint反例通过；有效lint规则升级前后90条且未降严重级别。最终前端四项运行中，最终SHA完整后端CI待执行。保持待验收，真实模型授权关闭；原工作区其他改动保留。"

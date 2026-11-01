@@ -13,10 +13,14 @@ import ast
 import datetime
 import math
 from contextvars import ContextVar
+from dataclasses import replace
 
 from app.agents.tools.base import Tool
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 from app.agents.tools.outcome import ToolOutput
+from app.agents.tools.parameter_policy import ParameterRejectedError
+from app.agents.tools.web_content import readable_observation
+from app.security.public_http import fetch_page, fetch_parameters
 
 # 只在这一次工具调用里交接界面结果。管线取走后清空，不在进程里攒列表。
 _pending_code_results: ContextVar[list[dict[str, str]] | None] = ContextVar(
@@ -129,24 +133,17 @@ async def code_sandbox(arguments: dict) -> str:
 
 
 async def web_fetch(arguments: dict) -> str:
-    """对给定 URL 发起 GET 请求并返回截断后的响应正文。"""
-    import httpx
-
-    url = str(arguments.get("url", "")).strip()
-    if not url:
+    """读取公网网页的可读正文，并明确下载、解析及文本预算限制。"""
+    if not arguments.get("url"):
         return ToolOutput("未提供 url 参数。", status="error", error_code="missing_url")
-    max_chars = int(arguments.get("max_chars", 2000))
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url, follow_redirects=True)
-            text = resp.text
-    except Exception as exc:  # noqa: BLE001 — 网络不可达等异常统一为观测文本
-        return ToolOutput(f"请求失败：{exc}", status="error", error_code="network_error")
-    snippet = text[: max_chars]
-    observation = f"HTTP {resp.status_code}，正文前 {len(snippet)} 字符：\n{snippet}"
-    if resp.status_code >= 400:
-        return ToolOutput(observation, status="error", error_code="http_error")
-    return observation
+        fetch_parameters(arguments)
+        page = await fetch_page(arguments["url"])
+    except ParameterRejectedError:
+        return ToolOutput("请求参数不符合安全策略。", status="invalid", error_code="invalid_arguments")
+    except Exception:  # noqa: BLE001
+        return ToolOutput("请求失败：网络暂时不可用。", status="error", error_code="network_error")
+    return readable_observation(page, arguments.get("max_chars", 2000))
 
 
 def default_tools() -> list[Tool]:
@@ -223,20 +220,21 @@ def default_tools() -> list[Tool]:
         ),
         Tool(
             name="web_fetch",
-            description="对给定 URL 发起 HTTP GET 请求并取回截断后的正文，便于调用外部 API / 网页。",
+            description="读取公网网页可读正文或JSON/纯文本；结果标明下载/解析/正文截断，不执行脚本。",
             parameters={
                 "type": "object",
                 "properties": {
                     "url": {"type": "string", "description": "目标 URL"},
                     "max_chars": {
                         "type": "integer",
-                        "description": "返回的最大字符数，默认 2000",
+                        "description": "提取后正文的最大字符数，默认 2000；截断会明确标记",
                     },
                 },
                 "required": ["url"],
             },
             func=web_fetch,
-            contract=l1,
+            argument_guard=fetch_parameters,
+            contract=replace(l1, version="1.1.0"),
         ),
     ]
     from app.agents.tools.file_ops import file_ops_tool, file_ops_write_tool

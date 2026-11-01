@@ -83,7 +83,9 @@ def registry(calls):
     async def execute(args):
         calls.append(args["n"])
         return "result"
-    return QuietRegistry([Tool("calculator", "synthetic", {"type": "object"}, execute)])
+    return QuietRegistry([Tool(
+        "calculator", "synthetic",
+        {"type": "object", "properties": {"n": {"type": "integer"}}}, execute)])
 
 
 def test_live_checkpoint_resume_does_not_repeat_completed_tool(runtime):

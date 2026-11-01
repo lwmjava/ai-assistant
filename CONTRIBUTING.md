@@ -46,6 +46,9 @@
 
 ## 开发环境搭建
 
+以下为外部贡献者的通用环境示例。本项目当前 Windows 工作区的 AI 验证须使用 `AGENTS.md` 第10节指定的 conda `ai-assistant` 环境，不使用 PATH 上的 base 解释器。依赖与启动配置以 README 和实际依赖声明为准。
+
+
 ```bash
 # 1. Fork 并克隆仓库
 git clone https://github.com/<你的用户名>/ai-assistant.git
@@ -76,10 +79,12 @@ npm run dev
 ## 贡献流程
 
 1. **Fork** 本仓库并克隆到本地；
-2. 基于 `main` 分支创建特性分支：`git checkout -b feat/xxx` 或 `fix/xxx`；
+2. 基于更新后的 `develop` 分支创建特性分支，默认命名 `codex/<简短描述>`；
 3. 完成开发与自测；
 4. 按规范提交代码并推送到你的 Fork；
-5. 向 `lwmjava/ai-assistant` 的 `main` 分支发起 **Pull Request**。
+5. 向 `lwmjava/ai-assistant` 的 `develop` 分支发起 **Pull Request**。
+
+单任务先集成到 `develop`；项目全部任务完成且经用户最终验收后才将 `develop` 合入 `main`。分支、授权与合并要求以 [AGENTS.md 第5节](AGENTS.md#5-修改范围) 为准。
 
 ## 代码规范
 
@@ -123,11 +128,11 @@ fix(auth): 修复多租户场景下 token 刷新失败的问题
 2. 保持 PR 聚焦单一改动，过大的改动请拆分；
 3. 提交前同步官方仓库最新代码：
    ```bash
-   # Windows PowerShell 请用 ; 替换 &&
-   git fetch upstream && git rebase upstream/main
+   git fetch upstream
+   git rebase upstream/develop
    ```
    如提示 `upstream` 不存在，请先执行 `git remote add upstream https://github.com/lwmjava/ai-assistant.git`；
-4. 确保 CI 检查（测试、lint）全部通过；
+4. 验证与合并门禁统一执行 [AGENTS.md 第10节](AGENTS.md#10-测试与-evaluation)，检查结果须绑定最终候选；
 5. 维护者会在合理时间内进行 Review，请按评审意见迭代修改。
 
 ## 版本发布
@@ -141,3 +146,15 @@ fix(auth): 修复多租户场景下 token 刷新失败的问题
 ---
 
 再次感谢你的贡献！🎉 如有疑问，欢迎随时在 Issue 中讨论。
+
+## 平台与数据库验证
+
+Ubuntu Backend 配置在非 root 的真实 Linux runner 上执行完整 pytest，并创建仅绑定本机动态端口的 PostgreSQL 16 临时容器。CI 专用数据库适配器在工作流内安装，不改变应用运行依赖；临时口令运行时生成并掩码，连接配置仅进入 runner 环境。容器按本次运行的名称及标签核对后清理，不使用业务数据库。
+
+`POSTGRES_VALIDATION_REQUIRED=1` 使缺少数据库目标成为失败。`tests/platform_validation_cases.json` 记录需要补齐的原 31 项平台场景；`scripts/check_platform_validation.py` 核对 JUnit，任一目标缺失、跳过、失败、错误或重复都拒绝通过。PostgreSQL 就绪检查使用 TCP，避免把镜像初始化期间的 Unix socket 临时服务误认为已就绪。
+
+Windows 的条件跳过不能作为对应 Linux/PostgreSQL 场景的通过证据。以同一最终提交的 Ubuntu job 实际结果为准；既有真实 RAG/Agent 官方门禁仍保留，其费用授权按项目规则执行。
+
+费用授权缺失时，官方评测授权步骤会在调用 API 前明确失败。只有项目负责人已有明确授权与预算记录后，才应配置 `OFFICIAL_EVALUATION_AUTHORIZED=true` 、`OFFICIAL_EVALUATION_BUDGET_REF` 与精确绑定提交的 `OFFICIAL_EVALUATION_AUTHORIZED_SHA`；本批没有设置它们。平台测试仍先执行，平台结果通过不代表官方门禁或合并条件已通过。
+
+前端开发使用 Node.js 22.13+（22.x）、24.x 或 26+。ESLint 工具链使用 minimatch 11.0.3 的安全匹配实现；在上游依赖声明全面支持安全版本前保留 package.json 中的 override，更新时运行 lint 兼容回归与 npm 审计。React Hooks 检查保持规则调用错误和依赖警告的既有级别。

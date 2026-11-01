@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "expected_count": 31,
+  "cases": [
+    {
+      "classname": "tests.test_cli_init",
+      "name": "test_init_refuses_symlink_without_touching_target"
+    },
+    {
+      "classname": "tests.test_cli_init",
+      "name": "test_init_file_permissions_are_private"
+    },
+    {
+      "classname": "tests.test_cli_init_review",
+      "name": "test_write_failure_does_not_delete_replacement_file"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_empty_postgresql_migrates_once_to_real_head"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_migrated_schema_covers_registered_models"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_application_startup_preserves_partial_unique_document_index"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_legacy_postgresql_checks_expand_without_retaining_narrow_values[jobs]"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_legacy_postgresql_checks_expand_without_retaining_narrow_values[datasets]"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_real_auth_chat_reads_keep_tenant_and_role_boundaries"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_evaluation_workflow_audit_memory_and_history_roundtrip"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_constraint_failure_rolls_back_without_poisoning_next_transaction"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_concurrent_message_quota_is_atomic"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_forward_repair_of_stamped_store_preserves_integer_and_boolean_defaults"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_document_versions_enforce_one_current_but_keep_archived_versions"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_large_storage_and_token_quotas_survive_postgresql_roundtrip"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_historical_document_republish_releases_current_unique_key_first"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_new_version_failure_after_demotion_restores_prior_current"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_existing_store_without_current_version_index_is_repaired_or_rejected[False]"
+    },
+    {
+      "classname": "tests.test_postgresql_integration",
+      "name": "test_existing_store_without_current_version_index_is_repaired_or_rejected[True]"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_effective_limits_match_configuration"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_cpu_limit_terminates_before_wall_timeout"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_address_space_limit_prevents_large_allocation"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_file_size_limit_stops_write_at_boundary"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_nonroot_process_limit_rejects_fork"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_nonpositive_limits_cannot_run_without_restrictions[-1-max_cpu_seconds]"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_nonpositive_limits_cannot_run_without_restrictions[-1-max_memory_mb]"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_nonpositive_limits_cannot_run_without_restrictions[-1-max_disk_mb]"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_nonpositive_limits_cannot_run_without_restrictions[0-max_cpu_seconds]"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_nonpositive_limits_cannot_run_without_restrictions[0-max_memory_mb]"
+    },
+    {
+      "classname": "tests.test_sandbox_linux_limits",
+      "name": "test_linux_nonpositive_limits_cannot_run_without_restrictions[0-max_disk_mb]"
+    },
+    {
+      "classname": "tests.test_tool_file_parameter_safety",
+      "name": "test_detected_directory_move_erases_payload_before_cleanup"
+    }
+  ]
+}

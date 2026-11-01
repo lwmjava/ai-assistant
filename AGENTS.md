@@ -1,6 +1,6 @@
 # AGENTS.md — AI 开发规则
 
-> 项目级协作入口；适用于所有 AI Coding Agent。更新：2026-10-22。
+> 项目级协作入口；适用于所有 AI Coding Agent。更新：2026-11-01。
 > 目标：更快交付可验收的功能，保留缺陷发现能力，控制用户等待与 Token 成本。
 
 ## 1. 规则优先级
@@ -11,7 +11,7 @@
 ## 2. 每次任务的最小上下文
 
 先核对 Git 分支、HEAD 和已有改动，保护用户修改。只读取：
-- 本文件、匹配的 `.cursor/rules/*.mdc`。
+- 本文件；按任务涉及的路径和领域读取匹配的 `.cursor/rules/*.mdc`，不加载全部规则。已由宿主提供且内容未变化时不重复读取。
 - `tasks.yaml` 全局策略、当前卡及直接依赖的状态/验收/未决摘要；按 ID 定位，不通读历史卡。
 - 当前入口、实现、测试及直接调用方；已有上下文未变化时不重复读取。
 
@@ -21,8 +21,10 @@
 | 产品运行时 Agent/RAG/MCP/状态/权限边界 | `docs/governance/agent-harness-engineering.md` 对应章节及适用已批准 ADR |
 | 评测数据方法、历史设计 | `docs/AI辅助开发迭代指导.md` 对应章节；历史事实不当当前待办 |
 | 当前卡已有计划或审查 | 卡内指定文件；plans/reviews 只是检索目录 |
-| SQLModel/mypy/子进程类型 | `docs/reviews/2026-09-29-mypy类型错误复盘.md` |
+| SQLModel/mypy/子进程类型 | `docs/governance/python-typecheck-conventions.md`；历史原因按需查该文链接的复盘 |
 | 缺陷、夜间、生产操作 | `docs/workflows/` 对应文档；普通白天开发不读夜间/发布流程 |
+
+文件引用是按需阅读入口，不代表被引用文件会自动全文进入上下文。Cursor 的规则匹配由其宿主负责；其他 Agent 按本节主动读取适用规则，不假定 `.mdc` 自动加载。
 
 本节是阅读路由唯一来源。历史通用 must_read 清单按本节解释，任务专属要求保留。只读问答和未要求落盘的调查不建卡、不新增报告。
 
@@ -156,18 +158,7 @@ npm run build
 
 ### 类型检查
 
-2026-09-29 对 `mypy app/rag/access.py app/rag/import_jobs.py app/rag/service.py` 的复盘见 `docs/reviews/2026-09-29-mypy类型错误复盘.md`。当时 40 条报错、退出码 1。编写或修改 SQLModel 查询、注解和子进程错误处理时遵守：
-
-- 条件、排序、连接使用 `sqlmodel.col`。`is_current`、`deleted_at`、`updated_at`、`created_at`、`id` 的注解是 Python 类型，查询里仍要包 `col()` 再调用 `.is_()`、`.asc()`、`.desc()` 或做 `==` / `<`。新增调用同时补上 `col` 的 import。
-- `Session.exec` 只用于 `select`。`delete` 与 `update` 使用 `session.execute`。行数用 `getattr(result, "rowcount", 0)`。不用错误码对不上的 `type: ignore` 去压 `exec(delete(...))`。当前配置 `warn_unused_ignores = false`，忽略是否生效以命令输出里的错误码为准。
-- `session.exec(...).all()` 按 `Sequence` 接收。文件没有 `from __future__ import annotations` 时，注解里的 `Sequence`、模型名和其他名字必须有运行时 import。
-- 键固定的返回值用 `TypedDict`。需要符合既定值类型的字典写出注解。同一变量在不同分支要赋 `str` 和 `str | None` 时，先声明目标类型。
-- `subprocess` 超时异常的 stdout、stderr 按 `bytes | None` 解码后再交给 `str | None`。已经是 `list[str]` 的命令变量不要再赋成拼接后的字符串。
-- 数据类按字段构造，不用 `**dict`。未知键抛出带键名的 `ValueError`。
-- 可选依赖缺失时，不把 `None` 赋给 `import` 进来的类名。先 `Name: Any = None`，再 `import ... as _Name`。`Any` 要导入。
-- 用逐个 `is None` 收窄，不用 `None in (a, b, c)`。
-- 把可能为空的 Alembic head 收成 `str` 时，空值要失败。这个异常若发生在启动迁移路径上，必须进入开发环境「迁移失败不阻塞启动」的既有处理，不能留在那段 `try` 之外。
-- 不放宽 mypy 配置，不改 `follow_imports`，不用整文件 `type: ignore` 换退出码 0。
+修改 SQLModel 查询、注解、可选导入、Alembic head 或子进程错误处理前，读取 [Python 类型检查约定](docs/governance/python-typecheck-conventions.md)。不得放宽 mypy 配置或使用整文件忽略换取通过。
 
 Evaluation 数据分为 Gold、Silver、Adversarial、Observed Regression 和 Smoke。AI 生成数据默认不是 Gold。
 

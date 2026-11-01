@@ -7,7 +7,7 @@ Document 表示一次摄取得到的文档（一篇文本 / 一个上传文件�
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from sqlalchemy import Index, text
@@ -109,6 +109,45 @@ class Document(SQLModel, TimestampMixin, table=True):
     ingestion_snapshots: list["DocumentIngestionSnapshot"] = Relationship(
         back_populates="document", cascade_delete=True
     )
+
+
+class DocumentACL(SQLModel, table=True):
+    """Authoritative document visibility; absent rows grant no access."""
+
+    __tablename__ = "rag_document_acl"
+    document_id: str = Field(primary_key=True, foreign_key="rag_documents.id")
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    visibility: str
+    revision: int = Field(default=1, ge=1)
+    updated_by: str = Field(foreign_key="users.id")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class DocumentACLGrant(SQLModel, table=True):
+    """Explicit same-tenant read grant; does not grant control permissions."""
+
+    __tablename__ = "rag_document_acl_grants"
+    document_id: str = Field(primary_key=True, foreign_key="rag_document_acl.document_id")
+    user_id: str = Field(primary_key=True, foreign_key="users.id")
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+
+
+class DocumentACLProposal(SQLModel, table=True):
+    """Single-use, expiring document permission change awaiting human confirmation."""
+
+    __tablename__ = "rag_document_acl_proposals"
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    document_id: str = Field(index=True, foreign_key="rag_documents.id")
+    tenant_id: str = Field(index=True, foreign_key="tenants.id")
+    proposed_by: str = Field(foreign_key="users.id")
+    proposer_token_version: int
+    expected_revision: int = Field(ge=0)
+    payload: str
+    payload_digest: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime
+    confirmed_by: str | None = Field(default=None, foreign_key="users.id")
+    consumed_at: datetime | None = None
 
 
 class DocumentIngestionSnapshot(SQLModel, TimestampMixin, table=True):

@@ -223,6 +223,7 @@ def test_agent_failure_keeps_attempt_in_persistent_task(adapter_session, monkeyp
 
 
 def test_expected_external_failure_does_not_stop_queue(quality_ctx, monkeypatch, tmp_path):
+    monkeypatch.setattr(evaluation_jobs, "_ROOT", tmp_path)
     session, _, _ = quality_ctx
     first = _rag_job(quality_ctx)
     second = _rag_job(quality_ctx, idempotency_key="second")

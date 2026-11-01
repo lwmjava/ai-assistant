@@ -15,6 +15,7 @@ from sqlmodel import Session, SQLModel, col, create_engine, select
 from app.agents.pipeline import AgentPipeline
 from app.agents.prompts import SYSTEM_ACT, SYSTEM_PLAN, SYSTEM_PLAN_LEGACY, SYSTEM_PREFLOW
 from app.agents.tools.base import Tool, ToolRegistry
+from app.agents.tools.builtin import default_tools
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 from app.agents.tools.outcome import ToolOutput
 from app.api.deps import get_current_user, get_db
@@ -28,6 +29,69 @@ from app.models.agent_state import AgentRunState
 from app.models.conversation import Message
 from app.models.user import Tenant, User
 from app.services.chat_service import ChatService
+
+
+@pytest.mark.parametrize("orchestration", ["self", "langgraph"])
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("private", [False, True])
+@pytest.mark.parametrize("html", [False, True])
+@pytest.mark.parametrize("named_site", [False, True])
+def test_web_reading_uses_guarded_tool_at_real_chat_entry(
+    entry, monkeypatch, orchestration, stream, private, html, named_site,
+):
+    client, db, _, provider, _, _, _ = entry
+    monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", orchestration)
+    calls = []
+    used = False
+    url = "http://service.internal/" if private else "https://www.baidu.com/"
+
+    from app.security.public_http import FetchedPage
+
+    async def fetch(url):
+        calls.append(url)
+        if html:
+            source = "<head><style>" + "STYLE_SECRET" * 1000 + "</style></head>"
+            source += "<body><main>SYNTHETIC_PUBLIC_PAGE</main></body>"
+            return FetchedPage(200, source.encode(), "text/html")
+        return FetchedPage(200, b"SYNTHETIC_PUBLIC_PAGE")
+
+    async def tools(self):
+        return ToolRegistry(default_tools())
+
+    async def chat(messages, options=None):
+        nonlocal used
+        system = messages[0].content
+        body = messages[-1].content
+        assert "STYLE_SECRET" not in body, "raw HTML head must not consume model context"
+        if system == SYSTEM_PREFLOW:
+            return "NO"
+        if system == SYSTEM_ACT and not used and "web_fetch" in body:
+            used = True
+            return '<tool_call>' + json.dumps({"name": "web_fetch", "arguments": {"url": url}}) + '</tool_call>'
+        return "内容已读取" if "SYNTHETIC_PUBLIC_PAGE" in body or "内容已读取" in body else "读取被拒绝"
+
+    monkeypatch.setattr(provider, "chat", chat)
+    monkeypatch.setattr(ChatService, "_build_tools", tools)
+    monkeypatch.setattr("app.agents.tools.builtin.fetch_page", fetch)
+    message = ("读取内网站点首页" if private else "读取百度首页") if named_site else f"读取 {url} 首页的内容"
+    response = client.post("/api/v1/chat/stream" if stream else "/api/v1/chat",
+                           json={"message": message})
+    assert response.status_code == 200
+    assert used, "real chat must advertise and enter web_fetch"
+    assert calls == ([] if private else [url])
+    expected = "读取被拒绝" if private else "内容已读取"
+    if stream:
+        decoded = [json.loads(line[5:].strip()) for line in response.text.splitlines()
+                   if line.startswith("data:")]
+        assert expected in json.dumps(decoded, ensure_ascii=False)
+    else:
+        assert expected in response.json()["reply"]
+    with Session(db) as session:
+        audits = session.exec(select(AuditLog).where(col(AuditLog.action) == "tool_call")).all()
+        assert len(audits) == 1
+        detail = json.loads(audits[0].details)
+        assert detail["allowed"] is (not private)
+        assert detail["reason"] == ("invalid_arguments" if private else None)
 
 
 def _terminal_status(body):

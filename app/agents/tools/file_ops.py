@@ -11,12 +11,15 @@ import os
 import re
 import stat
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from app.agents.tools.base import Tool
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 from app.agents.tools.outcome import ToolOutput
+from app.agents.tools.parameter_policy import ParameterRejectedError
 from app.core.config import get_settings
 from app.core.security import Role
 
@@ -136,7 +139,7 @@ def _handle_path(fd: int) -> Path:
     return Path(os.readlink(f"/proc/self/fd/{fd}"))
 
 
-def _read(root: Path, relative: str, maximum: int) -> tuple[str, bool]:
+def _target_path(root: Path, relative: str) -> Path:
     windows = PureWindowsPath(relative)
     if (
         not relative
@@ -154,6 +157,11 @@ def _read(root: Path, relative: str, maximum: int) -> tuple[str, bool]:
     target = root.joinpath(*parts)
     if target.suffix.casefold() not in _EXTENSIONS:
         raise ValueError("unsupported_file")
+    return target
+
+
+def _read(root: Path, relative: str, maximum: int) -> tuple[str, bool]:
+    target = _target_path(root, relative)
     _check_chain(target)
     canonical = target.resolve(strict=True)
     if not canonical.is_relative_to(root):
@@ -241,6 +249,7 @@ def file_ops_tool() -> Tool | None:
             "additionalProperties": False,
         },
         func=file_ops,
+        argument_guard=file_read_parameters,
         contract=ToolContract(
             version="1.0.0",
             permission=ToolPermission(authenticated=False),
@@ -268,37 +277,149 @@ def file_ops_write_availability() -> dict[str, str]:
     return {"status": "available", "reason": "ok"}
 
 
+@contextmanager
+def _locked_directories(parent: Path) -> Iterator[None]:
+    """Prevent Windows directory replacement while a new file is being written."""
+    if sys.platform != "win32":
+        yield
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    handles = []
+    try:
+        for item in (*reversed(parent.parents), parent):
+            # Share read/write, but not DELETE: renaming any ancestor is refused.
+            handle = create(str(item), 0x80, 0x3, None, 3, 0x02200000, None)
+            if handle == ctypes.c_void_p(-1).value:
+                raise OSError("directory_lock_failed")
+            handles.append(handle)
+        _check_chain(parent)
+        yield
+    finally:
+        for handle in reversed(handles):
+            close(handle)
+
+
+def _verify_created(fd: int, root: Path, target: Path) -> None:
+    opened = os.fstat(fd)
+    final = _handle_path(fd)
+    if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+            or final != target or not final.is_relative_to(root)):
+        raise ValueError("file_changed")
+    _check_chain(final)
+
+
 def _write(root: Path, relative: str, content: str, maximum: int) -> str:
-    """新建 UTF-8 文本文件；目标已存在即冲突，不覆盖（重试不重复副作用）。"""
-    windows = PureWindowsPath(relative)
-    if (
-        not relative
-        or len(relative) > 1024
-        or windows.drive
-        or windows.root
-        or "\\" in relative
-        or any(c in relative for c in ":\x00")
-        or any(ord(c) < 32 for c in relative)
-    ):
-        raise ValueError("invalid_path")
-    parts = relative.split("/")
-    if any(p in {"", ".", ".."} or p.endswith((".", " ")) or _private_component(p) for p in parts):
-        raise ValueError("invalid_path")
-    target = root.joinpath(*parts)
-    if target.suffix.casefold() not in _EXTENSIONS:
-        raise ValueError("unsupported_file")
+    """Create a bounded file, binding checks and cleanup to the opened object."""
+    target = _target_path(root, relative)
     _check_chain(target.parent)
-    # 先编码并校验长度：超限直接抛错，不落盘、不留 0 字节空壳。
     data = content.encode("utf-8")
     if len(data) > maximum:
         raise ValueError("content_too_large")
-    # create-only：目标已存在即冲突，不覆盖。
-    fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0))
-    try:
-        os.write(fd, data)
-    finally:
-        os.close(fd)
+    parent_fd = None
+    with _locked_directories(target.parent):
+        if sys.platform != "win32":
+            flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            parent_fd = os.open(target.parent, flags)
+            try:
+                if _handle_path(parent_fd) != target.parent:
+                    raise ValueError("file_changed")
+            except BaseException:
+                os.close(parent_fd)
+                raise
+        fd = None
+        created = None
+        success = False
+        try:
+            flags = (os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                     | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0))
+            fd = (os.open(target, flags, 0o600) if parent_fd is None
+                  else os.open(target.name, flags, 0o600, dir_fd=parent_fd))
+            info = os.fstat(fd)
+            created = (info.st_dev, info.st_ino)
+            _verify_created(fd, root, target)
+            remaining = memoryview(data)
+            while remaining:
+                count = os.write(fd, remaining)
+                if count <= 0:
+                    raise OSError("incomplete_write")
+                remaining = remaining[count:]
+            _verify_created(fd, root, target)
+            success = True
+        finally:
+            try:
+                if fd is not None:
+                    try:
+                        # Erase the new inode on failure: another hard link must
+                        # not retain content after a detected replacement race.
+                        if not success:
+                            os.ftruncate(fd, 0)
+                    finally:
+                        os.close(fd)
+            finally:
+                try:
+                    if not success and created is not None:
+                        try:
+                            current = (target.lstat() if parent_fd is None
+                                       else os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False))
+                            if (current.st_dev, current.st_ino) == created:
+                                if parent_fd is None:
+                                    target.unlink()
+                                else:
+                                    os.unlink(target.name, dir_fd=parent_fd)
+                        except FileNotFoundError:
+                            pass
+                finally:
+                    if parent_fd is not None:
+                        os.close(parent_fd)
     return relative
+
+
+def _check_file_arguments(arguments: dict, *, writing: bool) -> None:
+    availability = file_ops_write_availability() if writing else file_ops_availability()
+    if availability["status"] != "available":
+        raise ParameterRejectedError("file_unavailable")
+    alias, relative = arguments.get("root"), arguments.get("path")
+    maximum = arguments.get("max_bytes", get_settings().FILE_OPS_MAX_BYTES)
+    if (not isinstance(alias, str) or not isinstance(relative, str)
+            or type(maximum) is not int or not 1 <= maximum <= get_settings().FILE_OPS_MAX_BYTES):
+        raise ParameterRejectedError("invalid_arguments")
+    try:
+        root = _approved_roots().get(alias)
+        if root is None:
+            raise ValueError("unknown_root")
+        target = _target_path(root, relative)
+        _check_chain(target.parent)
+        if target.exists():
+            _check_chain(target)
+        canonical = target.parent.resolve(strict=True)
+        if not canonical.is_relative_to(root):
+            raise ValueError("outside_root")
+        if target.exists() and _linked(target):
+            raise ValueError("linked_path")
+        if writing:
+            content = arguments.get("content", "")
+            if not isinstance(content, str) or len(content.encode("utf-8")) > maximum:
+                raise ValueError("content_too_large")
+    except (OSError, ValueError, TypeError) as exc:
+        raise ParameterRejectedError("file_arguments_rejected") from exc
+
+
+async def file_read_parameters(arguments: dict) -> None:
+    await asyncio.to_thread(_check_file_arguments, arguments, writing=False)
+
+
+async def file_write_parameters(arguments: dict) -> None:
+    await asyncio.to_thread(_check_file_arguments, arguments, writing=True)
 
 
 async def file_ops_write(arguments: dict) -> str:
@@ -356,6 +477,7 @@ def file_ops_write_tool() -> Tool | None:
             "additionalProperties": False,
         },
         func=file_ops_write,
+        argument_guard=file_write_parameters,
         contract=ToolContract(
             version="1.0.0",
             permission=ToolPermission(

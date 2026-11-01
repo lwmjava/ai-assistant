@@ -42,30 +42,22 @@ async def test_calculator_business_failure_is_not_success(expression, code):
     ("empty", "missing_url"), ("network", "network_error"), ("http", "http_error"),
 ])
 async def test_web_failure_is_structured_and_keeps_text(monkeypatch, mode, code):
-    class Client:
-        def __init__(self, **kwargs):
-            pass
+    from app.security.public_http import FetchedPage
 
-        async def __aenter__(self):
-            return self
+    async def fetch(url):
+        if mode == "network":
+            raise httpx.ConnectError("offline")
+        return FetchedPage(503, b"unavailable")
 
-        async def __aexit__(self, *args):
-            pass
-
-        async def get(self, *args, **kwargs):
-            if mode == "network":
-                raise httpx.ConnectError("offline")
-            return httpx.Response(503, text="unavailable")
-
-    monkeypatch.setattr(httpx, "AsyncClient", Client)
+    monkeypatch.setattr("app.agents.tools.builtin.fetch_page", fetch)
     args = {"url": "" if mode == "empty" else "https://example.invalid"}
     result = await ToolExecutor(QuietRegistry(default_tools())).execute(ToolCall("web_fetch", args))
     if mode == "empty":
         assert result.observation.endswith("未提供 url 参数。")
     elif mode == "network":
-        assert result.observation.endswith("请求失败：offline")
+        assert result.observation.endswith("请求失败：网络暂时不可用。")
     else:
-        assert result.observation.endswith("HTTP 503，正文前 11 字符：\nunavailable")
+        assert '"http_status": 503' in result.observation and '"text": "unavailable"' in result.observation
     assert result.status == "error"
     assert getattr(result, "error_code", None) == code
 
@@ -139,6 +131,9 @@ async def test_real_file_ops_failure_is_not_success(monkeypatch, tmp_path, path)
     raw = await tool.execute(args)
     assert json.loads(raw)["code"] == "access_denied"
     result = await ToolExecutor(QuietRegistry([tool])).execute(ToolCall("file_ops", args))
+    if path.startswith(".."):
+        assert result.status == "invalid" and result.error_code == "invalid_arguments"
+        return
     assert result.observation == format_tool_observation("file_ops", args, raw)
     assert result.status == "error"
     assert result.error_code == "access_denied"
@@ -169,7 +164,7 @@ async def test_real_search_local_failures_are_structured_without_network(monkeyp
     settings = get_settings()
     monkeypatch.setattr(settings, "SEARCH_PROVIDER", "dashscope" if configured else "disabled")
     monkeypatch.setattr(settings, "SEARCH_DASHSCOPE_API_KEY", "synthetic-test-only")
-    tool = Tool("web_search", "", {}, web_search)
+    tool = Tool("web_search", "", {"type": "object", "properties": {"query": {"type": "string"}}}, web_search)
     args = {"query": ""}
     raw = await tool.execute(args)
     result = await ToolExecutor(QuietRegistry([tool])).execute(ToolCall("web_search", args))

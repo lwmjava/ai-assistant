@@ -12,15 +12,19 @@ def test_plan_migration_preserves_legacy_document(tmp_path, monkeypatch):
     url = f"sqlite:///{(tmp_path / 'migration.db').as_posix()}"
     monkeypatch.setattr(settings, "DATABASE_URL", url)
     config = Config("alembic.ini")
-    command.upgrade(config, "f9a014c6e001")
+    command.upgrade(config, "f9a014c6e001")  # pragma: allowlist secret
     engine = create_engine(url)
     table = Table("rag_documents", MetaData(), autoload_with=engine)
     row = Document(id="legacy", tenant_id="audit", user_id="audit", title="legacy")
     with engine.begin() as connection:
         values = {key: value for key, value in row.model_dump().items() if key in table.c}
         connection.execute(table.insert().values(**values))
-    for target, present in [("head", True), ("f9a014c6e001", False), ("head", True)]:
-        if target == "head":
+    for target, present in [
+        ('a1b2c3d4e5f6', True),  # pragma: allowlist secret
+        ('f9a014c6e001', False),  # pragma: allowlist secret
+        ('a1b2c3d4e5f6', True),  # pragma: allowlist secret
+    ]:
+        if target == "a1b2c3d4e5f6":  # pragma: allowlist secret
             command.upgrade(config, target)
         else:
             command.downgrade(config, target)

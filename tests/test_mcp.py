@@ -38,7 +38,7 @@ def _spec(name: str, server: str = "crm", description: str = "desc", schema: dic
         server=server,
         name=name,
         description=description,
-        input_schema=schema or {"type": "object", "properties": {}},
+        input_schema=schema or {"type": "object", "properties": {"id": {"type": "integer"}}},
     )
 
 

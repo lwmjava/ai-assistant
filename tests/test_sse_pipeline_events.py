@@ -72,7 +72,9 @@ async def test_structured_tool_call_precedes_execution_and_result_reports_real_o
             raise ConnectionError("private-provider-detail")
         return "private-result"
 
-    registry = QuietRegistry([Tool("probe", "synthetic", {"type": "object"}, probe)])
+    registry = QuietRegistry([Tool(
+        "probe", "synthetic",
+        {"type": "object", "properties": {"value": {"type": "string"}}}, probe)])
     pipeline = AgentPipeline(Script(), tools=registry, executor=ToolExecutor(registry))
     async for event in pipeline.run_stream(AgentState(user_input="perform check")):
         events.append(event)

@@ -244,7 +244,9 @@ def _echo_registry() -> tuple[ToolRegistry, dict[str, int]]:
         return f"echo:{arguments.get('q', '')}"
 
     denied = Tool(name="refund_tool", description="退款", parameters={}, func=lambda arguments: "no")
-    tool = Tool(name="echo", description="回显", parameters={"type": "object"}, func=echo)
+    tool = Tool(name="echo", description="回显",
+        parameters={"type": "object", "properties": {"q": {"type": "string"}}},
+        func=echo)
     return ToolRegistry([tool, denied]), counter
 
 
@@ -510,10 +512,16 @@ def _mixed_registry() -> tuple[ToolRegistry, dict[str, int]]:
         return run
 
     tools = [
-        Tool(name="calculator", description="计算", parameters={}, func=make("calculator")),
-        Tool(name="code_sandbox", description="沙箱", parameters={}, func=make("code_sandbox")),
+        Tool(name="calculator", description="计算",
+            parameters={"properties": {"expression": {"type": "string"}}},
+            func=make("calculator")),
+        Tool(name="code_sandbox", description="沙箱",
+            parameters={"properties": {"code": {"type": "string"}}},
+            func=make("code_sandbox")),
         Tool(name="get_current_datetime", description="时间", parameters={}, func=lambda arguments: "now"),
-        Tool(name="web_fetch", description="网页", parameters={}, func=make("web_fetch")),
+        Tool(name="web_fetch", description="网页",
+            parameters={"properties": {"url": {"type": "string"}}},
+            func=make("web_fetch")),
         Tool(name="mcp__crm__get_order", description="订单", parameters={}, func=make("mcp")),
         Tool(name="refund_tool", description="退款", parameters={}, func=make("unknown")),
     ]

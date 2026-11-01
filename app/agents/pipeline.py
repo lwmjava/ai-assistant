@@ -38,6 +38,7 @@ from app.agents.prompts import (
     SYSTEM_RESPOND,
     SYSTEM_UNDERSTAND,
 )
+from app.agents.route import route_message
 from app.agents.skills.base import SkillBindingRejected, SkillRuntime, empty_skill_binding, valid_skill_binding
 from app.agents.state import AgentStateStore, StateManager
 from app.agents.tools.base import Tool, ToolIntent, ToolRegistry, inspect_tool_call
@@ -435,6 +436,14 @@ _SHORT_PATH_TOOLS = frozenset({"calculator", "code_sandbox", "get_current_dateti
 _SHORT_PATH_POLICY = ExecutionPolicy(allowed_tool_names=_SHORT_PATH_TOOLS)
 
 
+def _short_path_policy(state: AgentState) -> ExecutionPolicy:
+    """Expose public-page reading only for an explicit current-user request."""
+    if "web_fetch" in route_message(state.user_input).tool_names:
+        return ExecutionPolicy(allowed_tool_names=_SHORT_PATH_TOOLS | {"web_fetch"})
+    return _SHORT_PATH_POLICY
+
+
+
 def tool_fingerprint(name: str, arguments: dict) -> str:
     """同一请求内按工具名和排序后的参数判断是否重复。"""
     try:
@@ -577,7 +586,7 @@ class AgentPipeline:
     def _skill_notice(self, state: AgentState) -> str:
         if self.skill_runtime is None:
             return ""
-        policy = ExecutionPolicy() if state.needs_full_pipeline else _SHORT_PATH_POLICY
+        policy = ExecutionPolicy() if state.needs_full_pipeline else _short_path_policy(state)
         registry = self._tools_for_policy(policy)
         return self.skill_runtime.notice(self.skill_path, [t.name for t in registry.all()] if registry else [])
 
@@ -1038,7 +1047,7 @@ class AgentPipeline:
                 # 简单问题：跳过规划/检索/反思，直接行动 → 响应
                 if self.trace:
                     self.trace.stage_start("行动（短路）")
-                state.draft = await self._run_action_loop(state, _SHORT_PATH_POLICY)
+                state.draft = await self._run_action_loop(state, _short_path_policy(state))
                 self._apply_budget_notice(state)
                 if self.trace:
                     self.trace.stage_end("行动（短路）")
@@ -1370,7 +1379,7 @@ class AgentPipeline:
                                  shortcut=not state.needs_full_pipeline)
             if not state.needs_full_pipeline:
                 yield AgentEvent("stage", "行动")
-                async for event in self._iter_action_loop(state, _SHORT_PATH_POLICY):
+                async for event in self._iter_action_loop(state, _short_path_policy(state)):
                     yield event
                 self._apply_budget_notice(state)
                 yield AgentEvent("stage", "响应")

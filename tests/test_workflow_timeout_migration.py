@@ -32,8 +32,8 @@ def test_timeout_migration_preserves_legacy_workflow(tmp_path, monkeypatch):
             ]
 
         execution_columns = execution_schema()
-        for target, present in [("head", True), ("a4b7c2d9e160", False), ("head", True)]:
-            if target == "head":
+        for target, present in [("b5c8d3e0f271", True), ("a4b7c2d9e160", False), ("b5c8d3e0f271", True)]:  # pragma: allowlist secret
+            if target == "b5c8d3e0f271":
                 command.upgrade(config, target)
             else:
                 command.downgrade(config, target)
@@ -117,7 +117,7 @@ def test_head_revision_with_missing_timeout_fails_safely(tmp_path, monkeypatch, 
     monkeypatch.setattr(settings, "ENV", environment)
     try:
         if environment == "production":
-            with pytest.raises(RuntimeError, match="迁移失败"):
+            with pytest.raises(RuntimeError, match="杩佺Щ澶辫触"):
                 auto_migrate()
         else:
             assert auto_migrate() is False

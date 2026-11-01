@@ -43,6 +43,24 @@ _MULTI_MARKS = ("先调研", "分步调研", "多轮")
 _POLICY_MARKS = ("报销标准", "差旅标准", "企业标准")
 _POLICY_CALCULATION = re.compile(r"(?:计算|核算)[^。\n]{0,20}(?:金额|费用|报销|合计|总计|差旅)")
 
+_WEB_READ_REQUEST = re.compile(
+    r"^(?:(?:请帮我|请|帮我|麻烦|你能|能否)\s*)?"
+    r"(?:读取|抓取|访问|打开|浏览|总结|提取|获取)"
+    r"|^(?:please\s+)?(?:read|fetch|open|visit|summari[sz]e)\b",
+    re.IGNORECASE,
+)
+_WEB_READ_NEGATION = re.compile(
+    r"(?:不要|禁止|不许|不需要|别|勿)\s*(?:读取|访问|打开|抓取|浏览|获取|联网)"
+    r"|\b(?:do\s+not|don't|never)\s+(?:read|fetch|open|visit|browse|access)",
+    re.IGNORECASE,
+)
+_WEB_READ_QUOTED = re.compile(r"(?:代码|字符串|以下文字|以下文本|这段文字|这段文本|```)")
+_WEB_SITE_REQUEST = re.compile(
+    r"^(?:(?:请帮我|请|帮我|麻烦|你能|能否)\s*)?(?:读取|抓取|访问|打开|浏览)",
+)
+_WEB_PAGE_TARGET = re.compile(r"首页|官网|网页|网站|网址")
+_WEB_URL = re.compile(r"https?://[^\s<>]+", re.IGNORECASE)
+
 
 class RouteKind(str, Enum):
     """代码强制执行的四条路径。"""
@@ -72,6 +90,11 @@ def route_message(text: str) -> ChatRoute:
         tool_names.add("code_sandbox")
     if any(mark in raw for mark in _TIME_MARKS):
         tool_names.add("get_current_datetime")
+    explicit_url = _WEB_READ_REQUEST.search(raw.strip()) and _WEB_URL.search(raw)
+    named_page = _WEB_SITE_REQUEST.search(raw.strip()) and _WEB_PAGE_TARGET.search(raw)
+    if ((explicit_url or named_page)
+            and not _WEB_READ_NEGATION.search(raw) and not _WEB_READ_QUOTED.search(raw)):
+        tool_names.add("web_fetch")
     knowledge = any(mark in raw for mark in (*_RAG_MARKS, *_POLICY_MARKS))
     if knowledge and _POLICY_CALCULATION.search(raw):
         tool_names.add("calculator")

@@ -1,0 +1,34 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial/Observed Regression"
+provenance: "AI-authored deterministic synthetic cases; no real external requests, model scoring or Gold quality claims"
+execution: "pytest tests/test_tool_parameter_safety.py tests/test_public_tool_http.py tests/test_tool_file_parameter_safety.py tests/test_tool_path_contract.py"
+policy:
+  arguments: "131072 UTF-8 JSON bytes, depth 16, 4096 nodes, each string <=65536 UTF-8 bytes; finite JSON values only"
+  schema: "Bounded local refs, object/array/scalar constraints and allOf/anyOf/oneOf. Unknown keywords fail closed; default unknown object fields reject, explicit additionalProperties permits freeform. Ordinary required/top-level type metadata retains strict_validation compatibility."
+  public_fetch: "HTTP(S), ports 80/443, public DNS answers only, pinned numeric destination with original Host and TLS name, max 3 redirects, no environment proxy or compressed responses, bounded prefix and total timeout"
+  files: "Operator-controlled approved shared roots only, lexical and actual-object validation, no links, create-only writes with failure cleanup; not a sandbox against an actor with host filesystem administration rights"
+cases:
+  - id: shared_entrance
+    expected: "Registry with and without an explicitly bound Executor rejects unknown, oversized, deeply nested and non-finite input before function execution; output and audit omit argument values."
+  - id: schema_composition
+    expected: "Declared allOf, anyOf, local-reference and explicit freeform calls remain usable; undeclared fields, nested type and range failures reject."
+  - id: model_envelope
+    expected: "Oversized and recursion-depth envelopes return invalid before downstream fingerprint serialization."
+  - id: public_address
+    expected: "Loopback, metadata, IPv6 private, mixed DNS and credential targets do not connect."
+  - id: redirect_and_rebinding
+    expected: "Valid public redirect succeeds, private or rebound targets reject, loops stop after four requests."
+  - id: transport_identity
+    expected: "The real HTTP transport calls a controlled backend with verified numeric IP while passing original Host/TLS name and retaining certificate verification; no external socket opens."
+  - id: response_budget
+    expected: "Large identity responses return a bounded prefix; compressed streams reject before reading their body."
+  - id: file_side_effect
+    expected: "Path escape, links and excessive encoded content reject; partial writes finish correctly; I/O failure cleans only the newly created object and existing files remain unchanged."
+  - id: lifecycle
+    expected: "Resource guards remain cancellable and bounded by timeout; existing identity, revocation, retry and per-request budget regressions remain effective."
+  - id: plan_identity_audit
+    expected: "A structured plan with forged tenant/user arguments reaches the existing permission denial and one audit, without execution or substituting schema rejection for the permission outcome."
+  - id: explicit_web_read_chat_entry
+    expected: "Explicit webpage reading advertises guarded web_fetch in self and langgraph synchronous/streaming chat. Private destinations reject with one audit and no fetch; ordinary URL mentions, negation and code explanation retain the original short-path whitelist. Webpage plus RAG composition is outside this change."
+  - id: named_site_read_chat_entry
+    expected: "Current-user requests such as 读取百度首页 select guarded web_fetch even without a literal URL; generic website mentions, negation and quoted text stay outside the tool route. No website-domain mapping or private-network permission is added. Sync/stream and self/langgraph HTTP entry retain request/result/audit assertions."

@@ -1,0 +1,61 @@
+{
+  "version": "1.1.0",
+  "classification": "Adversarial",
+  "real_calls_made": false,
+  "scope": "isolated resource authorization service; runtime integration pending",
+  "runner": "tests/test_rag_resource_acl.py",
+  "cases": [
+    {
+      "id": "missing-acl",
+      "expect": "deny even owner"
+    },
+    {
+      "id": "restricted-peer",
+      "expect": "deny without current same-tenant grant"
+    },
+    {
+      "id": "revoked-grant",
+      "expect": "deny next read"
+    },
+    {
+      "id": "uploader-admin",
+      "expect": "no administrator retrieval exemption"
+    },
+    {
+      "id": "invalid-subject-resource",
+      "expect": "deny inactive, cross-tenant, deleted or noncurrent"
+    },
+    {
+      "id": "private-grant",
+      "expect": "grant cannot override private visibility"
+    },
+    {
+      "id": "same-human-confirmation",
+      "expect": "same authorized tenant administrator can propose and confirm once"
+    },
+    {
+      "id": "proposal-binding",
+      "expect": "wrong digest, changed payload or expired proposal cannot execute"
+    },
+    {
+      "id": "approval-revalidation",
+      "expect": "revoked/demoted proposer or unavailable grantee denies execution"
+    },
+    {
+      "id": "revision-conflict",
+      "expect": "stale ACL revision cannot consume proposal or change grants"
+    },
+    {
+      "id": "audit-atomicity",
+      "expect": "audit failure or caller rollback retains old ACL and unconsumed proposal"
+    },
+    {
+      "id": "concurrent-confirmation",
+      "expect": "at most one permission transition and one change audit"
+    }
+  ],
+  "limitations": [
+    "rag-036 selected/model/citation/summary integration not yet exercised",
+    "no production quality claim"
+  ]
+}

@@ -141,3 +141,13 @@ fix(auth): 修复多租户场景下 token 刷新失败的问题
 ---
 
 再次感谢你的贡献！🎉 如有疑问，欢迎随时在 Issue 中讨论。
+
+## 平台与数据库验证
+
+Ubuntu Backend 配置在非 root 的真实 Linux runner 上执行完整 pytest，并创建仅绑定本机动态端口的 PostgreSQL 16 临时容器。CI 专用数据库适配器在工作流内安装，不改变应用运行依赖；临时口令运行时生成并掩码，连接配置仅进入 runner 环境。容器按本次运行的名称及标签核对后清理，不使用业务数据库。
+
+`POSTGRES_VALIDATION_REQUIRED=1` 使缺少数据库目标成为失败。`tests/platform_validation_cases.json` 记录需要补齐的原 31 项平台场景；`scripts/check_platform_validation.py` 核对 JUnit，任一目标缺失、跳过、失败、错误或重复都拒绝通过。PostgreSQL 就绪检查使用 TCP，避免把镜像初始化期间的 Unix socket 临时服务误认为已就绪。
+
+Windows 的条件跳过不能作为对应 Linux/PostgreSQL 场景的通过证据。以同一最终提交的 Ubuntu job 实际结果为准；既有真实 RAG/Agent 官方门禁仍保留，其费用授权按项目规则执行。
+
+费用授权缺失时，官方评测授权步骤会在调用 API 前明确失败。只有项目负责人已有明确授权与预算记录后，才应配置 `OFFICIAL_EVALUATION_AUTHORIZED=true` 、`OFFICIAL_EVALUATION_BUDGET_REF` 与精确绑定提交的 `OFFICIAL_EVALUATION_AUTHORIZED_SHA`；本批没有设置它们。平台测试仍先执行，平台结果通过不代表官方门禁或合并条件已通过。

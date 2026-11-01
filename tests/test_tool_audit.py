@@ -179,7 +179,8 @@ def test_write_invalid_path_rejected_no_file(monkeypatch, tmp_path, created) -> 
     registry = ToolRegistry([tool])
     args = {"root": "public", "path": "../escape.txt", "content": "x\n"}
     out = asyncio.run(registry.run(ToolCall(name="file_ops_write", arguments=args)))
-    assert "error" in out
+    assert out.status == "invalid"
+    assert out.error_code == "invalid_arguments"
     assert not (tmp_path / "escape.txt").exists()
     _cleanup(_audit_rows())
 
@@ -198,7 +199,8 @@ def test_write_oversize_leaves_no_empty_shell_and_later_legal_write_succeeds(mon
     # 超限写：500 字符、max_bytes=10
     big = {"root": "public", "path": "big.txt", "content": "x" * 500, "max_bytes": 10}
     out_big = asyncio.run(registry.run(ToolCall(name="file_ops_write", arguments=big)))
-    assert "content_too_large" in out_big, out_big
+    assert out_big.status == "invalid"
+    assert out_big.error_code == "invalid_arguments"
     assert not (tmp_path / "big.txt").exists(), "超限写不得残留 0 字节空壳"
 
     # 同路径合法写仍应成功（空壳未占坑）

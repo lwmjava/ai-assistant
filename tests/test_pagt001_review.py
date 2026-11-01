@@ -95,7 +95,8 @@ def test_review_windows_junction_escape_is_refused(monkeypatch, tmp_path):
     try:
         configure_files(monkeypatch, public)
         result = run_tool("file_ops", {"root": "public", "path": "shortcut/notice.txt"})
-        assert '"status": "error"' in result and "ISOLATED_PRIVATE_DATA" not in result
+        assert result.status == "invalid" and result.error_code == "invalid_arguments"
+        assert "ISOLATED_PRIVATE_DATA" not in result
     finally:
         os.rmdir(junction)
 
@@ -109,7 +110,7 @@ def test_review_registry_rejected_arguments_are_not_echoed(monkeypatch, tmp_path
     configure_files(monkeypatch, tmp_path)
     (tmp_path / "public.txt").write_text("PUBLIC", encoding="utf-8")
     result = run_tool("file_ops", arguments)
-    assert '"status": "error"' in result
+    assert result.status == "invalid" and result.error_code == "invalid_arguments"
     assert "ISOLATED_INPUT_SECRET" not in result and "synthetic-host" not in result
     assert (tmp_path / "public.txt").read_text(encoding="utf-8") == "PUBLIC"
 

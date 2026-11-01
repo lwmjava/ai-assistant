@@ -92,7 +92,9 @@ def test_empty_output_after_tool_preserves_completed_result(stream):
         publish_code_result({"status": "ok", "stdout": "1", "reason": ""})
         return "1"
 
-    registry = ToolRegistry([Tool("code_sandbox", "recording", {}, recording)])
+    registry = ToolRegistry([Tool(
+        "code_sandbox", "recording",
+        {"properties": {"code": {"type": "string"}}}, recording)])
     llm = Replies([CALL, ""])
     pipeline = AgentPipeline(llm, tools=registry)
     current = state()

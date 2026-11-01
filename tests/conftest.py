@@ -108,9 +108,15 @@ def _offline_network(monkeypatch: pytest.MonkeyPatch):
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
     """Use a process-unique base directory unless the caller selected one."""
-    if getattr(config.option, "basetemp", None):
-        return
-    config.option.basetemp = _PYTEST_RUN / "tmp"
+    if not getattr(config.option, "basetemp", None):
+        config.option.basetemp = _PYTEST_RUN / "tmp"
+    temporary_root = Path(config.option.basetemp).resolve().parent
+    temporary_root.mkdir(parents=True, exist_ok=True)
+    for key in ("TMP", "TEMP", "TMPDIR"):
+        os.environ[key] = str(temporary_root)
+    import tempfile
+
+    tempfile.tempdir = None
 
 
 @pytest.fixture(autouse=True)

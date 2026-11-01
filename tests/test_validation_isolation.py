@@ -211,7 +211,7 @@ def test_preflight_records_checker_versions_and_revision(tmp_path):
     assert all(observed["packages"][name] for name in ("pytest", "ruff", "mypy", "sqlmodel"))
     assert observed["declared_extras"] == []
     revision = runner.source_revision(runner.ROOT)
-    assert observed["revision"]["head"] == revision["head"]
+    assert observed["revision"] == runner.source_revision(tmp_path)
     assert isinstance(revision["head"], str) and len(revision["head"]) == 40
     assert "dev" in runner.declared_extras(runner.ROOT)
 
@@ -221,3 +221,21 @@ def test_default_pytest_basetemp_is_not_the_shared_run_folder():
 
     assert conftest._PYTEST_RUN.name != "run"
     assert conftest._PYTEST_RUN.is_relative_to(Path(conftest._PYTEST_TMP))
+
+
+def test_explicit_basetemp_keeps_child_temp_paths_in_the_same_run(tmp_path, monkeypatch):
+    import os
+    import tempfile
+    from types import SimpleNamespace
+
+    from tests import conftest
+
+    for key in ("TMP", "TEMP", "TMPDIR"):
+        monkeypatch.setenv(key, os.environ.get(key, ""))
+    monkeypatch.setattr(tempfile, "tempdir", tempfile.tempdir)
+    selected = tmp_path / "isolated" / "tmp"
+    config = SimpleNamespace(option=SimpleNamespace(basetemp=selected))
+    conftest.pytest_configure(config)
+    assert config.option.basetemp == selected
+    assert {os.environ[key] for key in ("TMP", "TEMP", "TMPDIR")} == {str(selected.parent)}
+    assert Path(tempfile.gettempdir()).resolve() == selected.parent.resolve()

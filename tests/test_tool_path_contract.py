@@ -62,7 +62,7 @@ def _contract(**overrides) -> ToolContract:
 
 
 def _registry(func, **contract_overrides) -> ToolRegistry:
-    parameters = contract_overrides.pop("parameters", {"type": "object", "properties": {}})
+    parameters = contract_overrides.pop("parameters", {"type": "object", "properties": {"n": {"type": "integer"}}})
     tool = Tool(
         name="path_probe",
         description="路径契约探测",

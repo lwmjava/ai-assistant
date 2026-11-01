@@ -236,7 +236,7 @@ def test_code_sandbox_observation_strips_argument_path():
             Tool(
                 name="echo_path",
                 description="原样返回",
-                parameters={},
+                parameters={"properties": {"path": {"type": "string"}}},
                 func=lambda arguments: str(arguments.get("path", "")),
             )
         ]

@@ -92,11 +92,13 @@ def run_script(
     env: dict[str, str],
     timeout: float,
     config: SandboxConfig,
+    cancel_event: threading.Event | None = None,
 ) -> ProcessOutcome:
     """运行用户脚本。超时或失败时结束这次启动的进程树。"""
     if os.name == "nt":
-        return _run_windows(script_path, cwd=cwd, env=env, timeout=timeout)
-    return _run_unix(script_path, cwd=cwd, env=env, timeout=timeout, config=config)
+        return _run_windows(script_path, cwd=cwd, env=env, timeout=timeout, cancel_event=cancel_event)
+    return _run_unix(script_path, cwd=cwd, env=env, timeout=timeout, config=config,
+                     cancel_event=cancel_event)
 
 
 def terminate_contained_tree(parent_command: list[str], *, cwd: str) -> tuple[int, int]:
@@ -122,12 +124,13 @@ def _run_unix(
     env: dict[str, str],
     timeout: float,
     config: SandboxConfig,
+    cancel_event: threading.Event | None = None,
 ) -> ProcessOutcome:
     wrapper_path = os.path.join(cwd, "_sandbox_limit.py")
     with open(wrapper_path, "w", encoding="utf-8") as handle:
         handle.write(unix_wrapper_source(script_path, config))
     proc = subprocess.Popen(
-        [sys.executable, wrapper_path],
+        [sys.executable, "-I", "-S", wrapper_path],
         cwd=cwd,
         env=env,
         stdin=subprocess.DEVNULL,
@@ -136,18 +139,27 @@ def _run_unix(
         start_new_session=True,
     )
     timed_out = False
-    try:
-        stdout, stderr = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        _kill_process_group(proc.pid)
-        stdout, stderr = proc.communicate()
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or (cancel_event is not None and cancel_event.is_set()):
+            timed_out = remaining <= 0
+            _kill_process_group(proc.pid)
+            stdout, stderr = proc.communicate()
+            break
+        try:
+            stdout, stderr = proc.communicate(timeout=min(remaining, 0.1))
+            break
+        except subprocess.TimeoutExpired:
+            continue
     return ProcessOutcome(
         stdout=_decode(stdout or b""),
         stderr=_decode(stderr or b""),
         exit_code=proc.returncode if proc.returncode is not None else -1,
         timed_out=timed_out,
         pid=proc.pid,
+        isolation_error=(ISOLATION_FAILURE if proc.returncode != 0
+                         and b"sandbox_isolation_setup_failed" in (stderr or b"") else ""),
     )
 
 
@@ -205,7 +217,8 @@ def _windows_kernel32():
     return ctypes.WinDLL("kernel32", use_last_error=True)
 
 
-def _run_windows(script_path: str, *, cwd: str, env: dict[str, str], timeout: float) -> ProcessOutcome:
+def _run_windows(script_path: str, *, cwd: str, env: dict[str, str], timeout: float,
+                 cancel_event: threading.Event | None = None) -> ProcessOutcome:
     import ctypes
     from ctypes import wintypes
 
@@ -255,9 +268,18 @@ def _run_windows(script_path: str, *, cwd: str, env: dict[str, str], timeout: fl
         ]
         for reader in readers:
             reader.start()
-        waited = kernel32.WaitForSingleObject(process, int(timeout * 1000))
-        timed_out = waited == _WAIT_TIMEOUT
-        if timed_out:
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            cancelled = cancel_event is not None and cancel_event.is_set()
+            if remaining <= 0 or cancelled:
+                timed_out = remaining <= 0
+                break
+            waited = kernel32.WaitForSingleObject(process, max(1, int(min(remaining, 0.1) * 1000)))
+            if waited != _WAIT_TIMEOUT:
+                timed_out = False
+                break
+        if timed_out or cancelled:
             kernel32.TerminateJobObject(job, 1)
             kernel32.WaitForSingleObject(process, 5000)
         for reader in readers:

@@ -27,8 +27,20 @@ def _pdf(objects: list[bytes]) -> bytes:
 
 
 def _exercise(case: str) -> None:
+    # The parent pytest dotenv isolation does not propagate to this child.
+    from pydantic_settings.sources import DotEnvSettingsSource
     from pypdf import PdfReader, PdfWriter, overwrite_configuration
     from pypdf.errors import LimitReachedError, PdfReadError
+
+    read_env_file = DotEnvSettingsSource._read_env_file
+    workspace_env = Path(__file__).resolve().parents[1] / ".env"
+
+    def read_isolated_env(source, file_path):
+        if Path(file_path).resolve() == workspace_env:
+            return {}
+        return read_env_file(source, file_path)
+
+    DotEnvSettingsSource._read_env_file = read_isolated_env
 
     from app.rag.document_parsers.base import DocumentParseError
     from app.rag.document_parsers.pdf import PdfDocumentParser

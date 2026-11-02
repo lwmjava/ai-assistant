@@ -6350,11 +6350,11 @@ tasks:
           evidence: "docs/plans/plan_v1_task_split_20261002.md C11"
     scope:
       allowed_paths:
-      - "pyproject.toml"
-      - "requirements.txt"
-      - "scripts/migrate_api_secrets.py"
-      - "docs/plans/plan_nfr007_delivery_20261031.md"
-      - "docs/reviews/review_nfr007_20261031.md"
+        - "pyproject.toml"
+        - "requirements.txt"
+        - "scripts/migrate_api_secrets.py"
+        - "docs/plans/plan_nfr007_delivery_20261031.md"
+        - "docs/reviews/review_nfr007_20261031.md"
         - "app/core/config.py"
         - "app/security/"
         - "app/models/"
@@ -6384,9 +6384,9 @@ tasks:
       commands:
         - "pytest -k 'secret'"
     execution:
-      acceptance_state: "本地专项171通过，ruff/mypy通过，独立审查P2已闭合；Linux、最终SHA CI与业务接受待完成，禁止关闭。未提交推送，未读取真实.env或迁移真实密钥。"
-    delivery_record: "docs/plans/plan_nfr007_delivery_20261031.md"
-    release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
+      acceptance_state: "2026-11-02：原分支已合入develop（cec8563）；修复原分支既有allowed_paths及execution缩进，224张任务卡可解析且除本卡外与合并前记录一致。逐文件核对旧三分支72个交付文件：合并时70个字节级一致，仅pyproject新增cryptography50.0.2、tasks叠加本卡；没有覆盖ACL、回归或依赖修复。合并专项初次247通过/4个PDF子进程因未继承dotenv隔离失败，已只修复测试隔离，保留生产明文密钥拒绝；复验251通过、ruff退出0、mypy261文件退出0。首次mypy因E盘满中断不算通过，清理本轮缓存后改C盘重跑。原实现独立审查P2闭合记录保留；最终SHA完整CI/Linux及业务接受仍待，不关闭。证据data/validation/20261102-nfr007-merge；本轮未提交推送，未修改或迁移真实.env。"
+      delivery_record: "docs/plans/plan_nfr007_delivery_20261031.md"
+      release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
       delivery_order: 2
       delivery_stage: "V1-1"
       owner: "个人开发者"
@@ -9501,7 +9501,7 @@ tasks:
 
   - id: "SAND-004"
     title: "沙箱隔离深度：非特权用户与网络隔离"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "代码沙箱"
     target_version: "1.0"
@@ -9551,6 +9551,16 @@ tasks:
       delivery_order: 3
       delivery_stage: "V1-1"
       owner: "个人开发者"
+      plan: "docs/plans/plan_security_batch_20261030.md"
+      implementation_20261102:
+        authorization: "用户批准 Linux 非root/无能力+seccomp、失败拒绝；Windows/macOS保留原能力。范围不含容器/chroot/新增依赖或真实模型费用。"
+        baseline: "develop/cec856309b47e68407ede42f35f2c5d908f77c1f与远程核对一致；工作分支codex/sandbox-isolation-depth；保留前轮tasks.yaml/PDF测试修改。Windows基线31passed/11Linux skipped，执行器退出0，证据data/validation/20261102T013653-a6c31dfa4eba。"
+        behavior: "Linux子进程拒绝真实/有效/保存UID为root及非空capabilities，设置no_new_privs并安装ABI校验seccomp网络过滤；socket/io_uring/兼容ABI与相关旁路拒绝。Windows/macOS保留原平台边界。固定模块facade、反射与继承链拒绝，修复正常导入；取消等待受控进程终止后再清理目录。"
+        verification: "指定conda Python3.12执行validate_delivery targeted，12个测试模块184passed/12Linux skipped/1既有warning，退出0；data/validation/20261102T021531-ddc8d1de382c。ruff check . --no-cache退出0；mypy app/（C盘cache）262文件退出0；git diff --check退出0。输入/命令/版本/指纹见data/validation/20261102-sandbox-isolation/summary.json。"
+        review: "独立审查sandbox_security_review发现完整stdlib模块经公开属性泄漏P1；已改固定导出facade，移除update_wrapper/wraps并补哨兵反例。受影响范围复核未发现剩余P1/P2；审查未代替Linux实测。"
+        evaluation: "docs/ai-prompts/evals/sandbox-isolation-v1.yaml，合成确定性Smoke/Adversarial/Observed Regression，不标Gold。"
+        pending: "本机WSL仅docker-desktop且无Python，Docker引擎不可用；真实Linux seccomp/跨exec证据、最终SHA完整Ubuntu CI及业务接受未完成，保持in_review，不声明安全闭环。未提交推送，未触发费用。"
+        rollback: "仅回退本卡沙箱源码及测试/评测改动，不覆盖前轮修改；会恢复旧隔离局限，不能把回退称安全验收通过。"
       nightly:
         eligible: false
         production_access: false

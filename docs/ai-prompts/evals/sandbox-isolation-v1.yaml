@@ -1,0 +1,24 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial/Observed Regression"
+provenance: "AI-authored deterministic synthetic cases; not Gold, no real model calls"
+execution: "pytest tests/test_sandbox_isolation.py tests/test_sandbox.py tests/test_sandbox_linux_limits.py tests/test_sandbox_limit_setup.py tests/test_sandbox_process_status.py tests/test_tools.py tests/test_pagt001_tools.py"
+policy:
+  linux: "Non-root real/effective/saved UID, empty effective/permitted/inheritable capabilities, no_new_privs, ABI-checked seccomp network denial inherited across exec. Setup failure prevents user execution."
+  other_platforms: "Existing Windows Job Object and macOS resource limits remain; no Linux kernel isolation claim."
+  language: "Fixed trusted module facades, no dynamic reflection, private attributes, format-field traversal or transitive module exports."
+  limits: "No chroot or claim of complete filesystem containment; existing resource limits and public Tool identity/audit contracts remain."
+cases:
+  - id: trusted_calculation
+    expected: "Arithmetic, math, JSON, statistics and datetime execute through the real sandbox entry."
+  - id: reflection
+    expected: "Inheritance chains, dynamic getter aliases, frames, reserved names and string-format traversal reject before spawning."
+  - id: transitive_modules
+    expected: "json.codecs, statistics.sys/random and functools.update_wrapper cannot expose host file or interpreter capabilities; a synthetic sentinel file remains unread."
+  - id: configured_import_expansion
+    expected: "Caller-supplied allowed_imports cannot enable socket, os, sqlite3 or other modules outside the fixed trusted set."
+  - id: kernel_network
+    expected: "A real Linux probe bypassing AST cannot open IPv4, IPv6 or Unix sockets or use io_uring; UID, capabilities and no_new_privs are verified after exec."
+  - id: abi_and_setup
+    expected: "Unknown architectures, compatibility ABIs, x32 syscall numbers and filter-install errors fail closed."
+  - id: lifecycle
+    expected: "Cancellation reaps the real child before returning; resource limits, timeout, Job Object cleanup and sanitized public results remain effective."

@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install -e ".[dev,langgraph,langchain,llamaindex]"
+          pip install -e ".[dev,langgraph,langchain,llamaindex]" "Deprecated<3"
           pip install psycopg2-binary==2.9.13
       - name: Ruff lint
         run: ruff check .

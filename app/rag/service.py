@@ -892,6 +892,12 @@ class RAGService:
                     tuple_(col(DocumentChunk.id), col(DocumentChunk.document_id)).in_(parent_links)
                 )
             pairs = self.session.exec(stmt.execution_options(populate_existing=True)).all()
+            from app.rag.resource_acl import scoped_resource_allowed
+
+            pairs = [
+                (row, doc) for row, doc in pairs
+                if scoped_resource_allowed(self.session, doc.id, self._read_scope)
+            ]
             rows, statuses = visible_chunks_with_status(
                 self.session, [row for row, doc in pairs], as_of, schedule_at,
                 documents={doc.id: doc for row, doc in pairs},

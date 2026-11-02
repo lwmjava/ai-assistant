@@ -25,6 +25,7 @@ from app.rag.access import ReadScope
 from app.rag.effective_date import document_version_status, ensure_utc
 from app.rag.index_identity import EmbeddingIndexIdentity, IndexIdentityError
 from app.rag.index_registry import legacy_chunk_count, resolve_read_index_for
+from app.rag.resource_acl import scoped_resource_allowed
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 
 logger = logging.getLogger(__name__)
@@ -223,6 +224,7 @@ class LocalVectorStore(VectorStore):
                     tenant_id, read_index.name, quarantined,
                 )
             return []
+        rows = [row for row in rows if scoped_resource_allowed(self.session, row.document_id, read_scope)]
         rows, version_by_chunk = visible_chunks_with_status(
             self.session, rows, as_of, schedule_at
         )

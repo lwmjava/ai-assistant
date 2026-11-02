@@ -35,6 +35,7 @@ from app.rag.resilience import (
     current_or_new_deadline,
     run_blocking_with_deadline,
 )
+from app.rag.resource_acl import scoped_resource_allowed
 from app.rag.vectorstore.base import ChunkResult, VectorStore
 from app.rag.vectorstore.local import _bm25_scores, _rrf, visible_chunks_with_status
 
@@ -418,6 +419,7 @@ class MilvusVectorStore(VectorStore):
         if not settings.RAG_EFFECTIVE_DATE_FILTER:
             stmt = stmt.where(col(Document.is_current).is_(True))
         rows = self.session.exec(stmt).all()
+        rows = [row for row in rows if scoped_resource_allowed(self.session, row.document_id, read_scope)]
         rows, version_by_chunk = visible_chunks_with_status(
             self.session, rows, as_of, schedule_at
         )

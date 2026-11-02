@@ -488,6 +488,7 @@ docker compose up -d --build
 | `RAG_DROP_INJECTED_CHUNKS` | 检索后剔除高置信度注入分块 | `true` |
 | `RAG_RETRIEVAL_CANDIDATE_MULTIPLIER` | 检索过取倍数，供剔除后补位 | `3` |
 | `RAG_KB_SCOPE` | 知识库读范围：`tenant` / `uploader` | `tenant` |
+| `RAG_RESOURCE_ACL_ENABLED` | 显式资源 ACL；启用前须完成资料分类与授权，历史资料不自动授权/回填；无主体或 ACL 拒绝读取。ACL 模式下无持久主体绑定的后台章节摘要生成暂不可用 | `false` |
 | `RAG_MEMORY_CONTEXT_CHARS` | 注入管线的记忆字符预算 | `2000` |
 | `RAG_CONTEXT_CHARS` | 注入管线的 RAG 字符预算 | `6000` |
 | `RAG_EFFECTIVE_DATE_FILTER` | ADR-0003 生效日期/预告检索 | `false` |

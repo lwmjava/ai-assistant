@@ -3,7 +3,7 @@
 检索面（``can_read_document``）由 ``RAG_KB_SCOPE`` 控制，默认只放行同租户当前版。
 控制面（列表 / 详情 / 删除 / 重解析）走 ``can_control_document``：
 成员仅自己的当前版；租户管理员看本租户全部版本；系统管理员可跨租户。
-对话检索不使用控制面判定。资源级 ACL 仍为 Planned。
+对话检索不使用控制面判定。资源级 ACL 显式启用后由权威服务复核。
 """
 
 from __future__ import annotations
@@ -34,6 +34,8 @@ class ReadScope:
 
     tenant_id: str
     uploader_id: str | None = None
+    subject_id: str | None = None
+    subject_version: int | None = None
 
     def assert_subject_tenant(self, tenant_id: str) -> None:
         """校验使用该范围的主体属于同一租户。
@@ -56,6 +58,8 @@ def read_scope_for(user: User | None) -> ReadScope | None:
     uploader_id: str | None = None
     if kb_scope() == "uploader" and user.role_enum != Role.SYSTEM_ADMIN:
         uploader_id = user.id
+    if settings.RAG_RESOURCE_ACL_ENABLED:
+        return ReadScope(user.tenant_id, uploader_id, user.id, user.token_version)
     return ReadScope(tenant_id=user.tenant_id, uploader_id=uploader_id)
 
 

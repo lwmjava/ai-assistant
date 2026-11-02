@@ -179,6 +179,8 @@ class ChapterSummarizer:
 
 def create_summary_job(session: Session, user: User, document_id: str) -> SectionSummaryJob:
     """为某文档当前版本创建章节摘要任务（pending）。"""
+    if settings.RAG_RESOURCE_ACL_ENABLED:
+        raise PermissionError("ACL模式下摘要生成需要持久化主体绑定，当前入口不可用")
     doc = session.get(Document, document_id)
     if doc is None or not can_write_document(doc, user):
         raise PermissionError("文档不存在或无权操作")
@@ -224,6 +226,8 @@ async def run_summary_job(
     capability: GenerationCapability | None = None,
 ) -> SectionSummaryJob:
     """执行摘要任务：逐父块生成；任何失败都不触碰原文块与检索路径。"""
+    if settings.RAG_RESOURCE_ACL_ENABLED:
+        raise PermissionError("ACL模式下摘要生成需要持久化主体绑定，当前入口不可用")
     job.status = SectionSummaryJobStatus.RUNNING.value
     job.attempt_count += 1
     job.model = getattr(provider, "model", "")
@@ -342,7 +346,12 @@ def get_readable_summary(session: Session, summary_id: str, user: User) -> Secti
     if summary is None:
         raise PermissionError("摘要不存在")
     doc = session.get(Document, summary.document_id)
-    if doc is None or not can_read_document(doc, user):
+    from app.rag.access import read_scope_for
+    from app.rag.resource_acl import scoped_resource_allowed
+
+    allowed = (scoped_resource_allowed(session, summary.document_id, read_scope_for(user))
+               if settings.RAG_RESOURCE_ACL_ENABLED else doc is not None and can_read_document(doc, user))
+    if doc is None or summary.tenant_id != doc.tenant_id or not allowed:
         raise PermissionError("摘要不存在或无权访问")
     if summary.source_version_hash != (doc.content_hash or ""):
         raise PermissionError("摘要绑定的源版本已变更，不可读")

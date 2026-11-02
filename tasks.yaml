@@ -9518,6 +9518,8 @@ tasks:
     scope:
       allowed_paths:
         - "app/agents/tools/sandbox/"
+        - ".github/workflows/ci.yml"
+        - "scripts/run_official_eval.py"
         - "tests/"
         - "docs/"
         - "tasks.yaml"
@@ -9552,6 +9554,13 @@ tasks:
       delivery_stage: "V1-1"
       owner: "个人开发者"
       plan: "docs/plans/plan_security_batch_20261030.md"
+      ci_followup_20261102:
+        authorization: "用户明确授权修复run41383732685，并批准本轮真实模型/Embedding合计上限人民币5元；新增CI预算包装器及配置属本轮修复范围。"
+        baseline: "提交6d197e5；GitHub Ubuntu Backend 3970passed/1failed/4skipped；唯一失败为fork现被seccomp以EPERM更早拒绝而旧测试预期EAGAIN。前端四项通过；RAG/Agent在授权门禁停止，无真实调用。"
+        fix: "fork断言精确更新为EPERM，独立RLIMIT_NPROC数值断言保留。CI固定分配BackendRAG1元/独立RAG1元/Agent3元，每次HTTP尝试前持久保守预占且失败不退；绑定SHA/run_id/attempt，拒绝未定价模型和输出无界请求。"
+        prices: "2026-11-02核对官方DeepSeek Flash峰值输入2/输出8元每百万token、阿里text-embedding-v3每千token0.0005元；保守UTF8估算，不冒充账单实付。"
+        review: "sandbox_security_review静态独立审查当前固定CI调用链无明确P1/P2；单job单包装器账本不是跨进程共享总账；已拒绝多候选/自动重定向，新增同步/异步HTTP拦截反例并复核闭合。"
+        verification_pending: "本机真实.env使部分旧CLI子进程测试触发明文持久密钥拒绝，已停止受干扰全量，不修改生产校验；指定conda解释器在不含.env的临时Git工作树运行全量。Ruff及mypy262文件退出0。完整本地首轮3962passed/9failed/32skipped，其中旧产物契约1项已修复；8项Windows文件锁因执行沙箱权限失败，同源码解除沙箱后专项125passed/13skipped。费用/验证器最终专项退出0，最终无.env隔离全量C:/Users/123/AppData/Local/Temp/ci-eval-final-full-wnpu61z5仍在运行，不标通过。浏览器变量配置受阻后已用现有Git认证只读核对官方API，不输出或保存凭据。当前用户要求的Git保存/推送作为待验收WIP，计划绑定最终SHA/run/attempt后重跑CI；真实费用尚为0元。"
       implementation_20261102:
         authorization: "用户批准 Linux 非root/无能力+seccomp、失败拒绝；Windows/macOS保留原能力。范围不含容器/chroot/新增依赖或真实模型费用。"
         baseline: "develop/cec856309b47e68407ede42f35f2c5d908f77c1f与远程核对一致；工作分支codex/sandbox-isolation-depth；保留前轮tasks.yaml/PDF测试修改。Windows基线31passed/11Linux skipped，执行器退出0，证据data/validation/20261102T013653-a6c31dfa4eba。"

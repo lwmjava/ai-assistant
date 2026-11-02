@@ -104,7 +104,7 @@ def test_exact_run_commit_attempt_required(monkeypatch):
         monkeypatch.setenv(key, env[key])
 
 
-def test_workflow_allocations_total_five_yuan():
+def test_workflow_allocations_stay_below_five_yuan():
     from pathlib import Path
 
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -114,5 +114,5 @@ def test_workflow_allocations_total_five_yuan():
             for command in step.get("run", "").splitlines():
                 if "python scripts/run_official_eval.py " in command:
                     allocations.append(Decimal(command.split("--budget-yuan ")[1].split()[0]))
-    assert sorted(allocations) == [1, 1, 3]
-    assert sum(allocations) == 5
+    assert sorted(allocations) == [1, 1, 2]
+    assert sum(allocations) == 4

@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install -e ".[dev,langgraph]"
+          pip install -e ".[dev,langgraph,langchain,llamaindex]"
           pip install psycopg2-binary==2.9.13
       - name: Ruff lint
         run: ruff check .
@@ -232,7 +232,7 @@ jobs:
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: |
-          python scripts/run_official_eval.py --budget-yuan 3 --ledger evals/reports/agent-ci/budget.json scripts/run_agent_chain_eval.py --mode official --out evals/reports/agent-ci/official.json
+          python scripts/run_official_eval.py --budget-yuan 2 --ledger evals/reports/agent-ci/budget.json scripts/run_agent_chain_eval.py --mode official --out evals/reports/agent-ci/official.json
       - name: Agent report gate and regression probes
         run: |
           endpoint_hash=$(python - <<'PY'

@@ -14,8 +14,10 @@ from app.rag.access import read_scope_for
 from app.rag.evidence import EvidenceDeniedError, load_chunk_evidence
 from app.rag.resource_acl import scoped_resource_allowed
 from app.rag.vectorstore.local import LocalVectorStore
+from tests.test_rag_019_acceptance import cache_env as _cache_env
 from tests.test_rag_019_acceptance import local_llm as _local_llm
 
+cache_env = _cache_env
 local_llm = _local_llm
 
 
@@ -237,3 +239,72 @@ async def test_llm_response_cache_does_not_replay_after_acl_revocation(db, local
     with bind_cache_scope(scope.snapshot):
         await provider.chat(messages, LLMOptions(temperature=0))
     assert len(requests) == 2
+
+
+@pytest.mark.usefixtures("legacy_plan_mode")
+async def test_rag_036_observed_regression(cache_env, local_llm, monkeypatch):
+    from pathlib import Path
+
+    from app.llm.openai_compatible import OpenAICompatibleProvider
+    from app.models.rag import SectionSummary
+    from app.rag.embeddings.factory import set_embedding_override
+    from app.rag.section_summaries import _chunk_plan_version, get_readable_summary
+    from app.services.chat_service import ChatService
+    from tests.test_rag_019_acceptance import SyntheticEmbedding, rag_for
+
+    path = Path(__file__).resolve().parents[1] / "evals/datasets/rag-v0.1/cases.json"
+    case = next(case for case in json.loads(path.read_text(encoding="utf-8")) if case["case_id"] == "rag-036")
+    query = case["query"]
+    marker, = case["forbidden_answer_points"]
+    monkeypatch.setattr(settings, "RAG_RESOURCE_ACL_ENABLED", True)
+    url, requests, _ = local_llm
+    set_embedding_override(SyntheticEmbedding())
+    try:
+        with Session(cache_env) as session:
+            rag, _, owner = rag_for(session)
+            reader_rag, _, reader = rag_for(session, "bob")
+            doc = await rag.ingest_text(
+                f"{query} {marker}", title="Employee handbook", source="synthetic", user_id=owner.id,
+            )
+            session.add(DocumentACL(
+                document_id=doc.id, tenant_id=owner.tenant_id, visibility="restricted", updated_by=owner.id,
+            ))
+            session.commit()
+            chunk, = await rag.search(query)
+            summary = SectionSummary(
+                tenant_id=owner.tenant_id, document_id=doc.id, chunk_id=chunk.id,
+                source_version_hash=doc.content_hash or "", chunk_plan_version=_chunk_plan_version(doc.chunk_plan),
+                model="synthetic", prompt_version="test", protocol_version="test", summary_text=marker,
+            )
+            session.add(summary)
+            permission = DocumentACLGrant(document_id=doc.id, tenant_id=reader.tenant_id, user_id=reader.id)
+            session.commit()
+            provider = OpenAICompatibleProvider(url, "synthetic-local-test", "acceptance-model")
+            for stage in ("ungranted", "granted", "revoked"):
+                allowed = stage == "granted"
+                if allowed:
+                    session.add(permission)
+                    session.commit()
+                elif stage == "revoked":
+                    session.delete(permission)
+                    session.commit()
+
+                requests.clear()
+                hits = await reader_rag.search(query)
+                assert [hit.id for hit in hits] == ([chunk.id] if allowed else [])
+                events = [event async for event in ChatService(provider).chat_stream(session, reader, query)]
+                assert not [event.data for event in events if event.type == "error"]
+                assert (marker in json.dumps(requests)) is allowed
+                cited_chunks = {
+                    source["chunk_id"]
+                    for event in events if event.type == "citations"
+                    for source in json.loads(event.data)["sources"]
+                }
+                assert cited_chunks == ({chunk.id} if allowed else set())
+                if allowed:
+                    assert get_readable_summary(session, summary.id, reader).summary_text == marker
+                else:
+                    with pytest.raises(PermissionError):
+                        get_readable_summary(session, summary.id, reader)
+    finally:
+        set_embedding_override(None)

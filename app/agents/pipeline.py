@@ -827,6 +827,8 @@ class AgentPipeline:
             if data is None:
                 data = self.state_store.load_active(conv_id, self.state_binding.get("message_id"))
             if data:
+                if data.get("managed_agent") != self.state_binding.get("managed_agent"):
+                    raise SkillBindingRejected()
                 if (not valid_skill_binding(data.get("skill_binding"))
                         or data["skill_binding"] != binding):
                     raise SkillBindingRejected()
@@ -862,6 +864,11 @@ class AgentPipeline:
             return
         manager = StateManager(state)
         try:
+            state_json = manager.to_json()
+            if managed_agent := self.state_binding.get("managed_agent"):
+                payload = json.loads(state_json)
+                payload["managed_agent"] = managed_agent
+                state_json = json.dumps(payload, ensure_ascii=False)
             self.state_store.save_checkpoint(
                 conversation_id=conv_id,
                 message_id=self.state_binding.get("message_id"),
@@ -870,7 +877,7 @@ class AgentPipeline:
                 stage=stage,
                 round_no=state.tool_rounds_used,
                 tool_budget_exhausted=state.tool_budget_exhausted,
-                state_json=manager.to_json(),
+                state_json=state_json,
                 status=status,
                 error=error,
             )

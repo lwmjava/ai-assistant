@@ -12552,7 +12552,7 @@ tasks:
 
   - id: "AGT-004"
     title: "受控 Agent 定义、版本与可见性管理"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "Agent管理"
     target_version: "1.0"
@@ -12581,6 +12581,7 @@ tasks:
       delivery_stage: "V1-1"
       estimate_person_days: [6, 10]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、创建生产Agent或扩大权限。", implementation_plan: "开工前先采用必要ADR并锁定定义Schema、作用域、版本、审批和回滚。"}
+      validation_notes: "Windows project conda interpreter: python -m pytest tests/test_agent_definition_scope.py tests/test_agent_state_resume.py tests/test_chat_resume.py -q --tb=short, exit 0, 31 passed including managed resume under self and langgraph orchestration settings. Frontend npm run typecheck exit 0 before final runtime edits. Final SHA CI, independent review, browser acceptance and business acceptance pending."
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PWFL-005"

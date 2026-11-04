@@ -23,6 +23,7 @@ const KnowledgePage = lazy(() => import('@/pages/Knowledge'))
 const ToolsPage = lazy(() => import('@/pages/Tools'))
 const WorkflowsPage = lazy(() => import('@/pages/Workflows'))
 const SkillsPage = lazy(() => import('@/pages/Skills'))
+const AgentDefinitionsPage = lazy(() => import('@/pages/AgentDefinitions'))
 const AuditPage = lazy(() => import('@/pages/Audit'))
 const TenantsPage = lazy(() => import('@/pages/Tenants'))
 const TenantCreatePage = lazy(() => import('@/pages/TenantCreate'))
@@ -190,6 +191,9 @@ export default function App() {
         }
       >
         <Route path="/" element={<HomeRedirect />} />
+        <Route path="/agent-definitions" element={
+          <Suspense fallback={<p>正在加载</p>}><AgentDefinitionsPage /></Suspense>
+        } />
         <Route path="/evaluations" element={
           <RequireAdmin>
             <Lazy><EvaluationsPage /></Lazy>

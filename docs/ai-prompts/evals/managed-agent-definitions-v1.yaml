@@ -1,0 +1,13 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored deterministic scenarios"
+execution: "pytest tests/test_agent_definition_scope.py tests/test_chat_resume.py"
+cases:
+  - id: scoped_definition_visibility
+    expected: "Private definitions require ownership. Tenant definitions reject foreign tenants. System management requires system administrator."
+  - id: publish_and_enable
+    expected: "Publishing rejects unknown tools. An outdated revision cannot enable a definition."
+  - id: tool_allowlist_intersection
+    expected: "Tools outside either the definition allowlist or current authorization are excluded."
+  - id: pinned_version_recovery
+    expected: "A checkpoint resumes with its recorded version. A disabled definition cannot resume."

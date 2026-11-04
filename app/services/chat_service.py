@@ -461,6 +461,7 @@ class ChatService:
     def _build_pipeline(
         self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None,
         skill_runtime: SkillRuntime | None = None,
+        managed_instructions: str | None = None,
     ):
         """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
 
@@ -473,7 +474,7 @@ class ChatService:
             skill_ctx: 技能激活上下文（可选），用于提示词注入。
             trace: 调试追踪对象（可选）。
         """
-        if settings.AGENT_ORCHESTRATION != "langgraph":
+        if managed_instructions is not None or settings.AGENT_ORCHESTRATION != "langgraph":
             pipeline = AgentPipeline(
                 self.llm,
                 options=self._options,
@@ -484,6 +485,8 @@ class ChatService:
             )
             if skill_ctx and skill_ctx.prompt_injection:
                 pipeline.skill_prompt_injection = skill_ctx.prompt_injection
+            if managed_instructions is not None:
+                pipeline.skill_prompt_injection = managed_instructions
             pipeline.skill_runtime = skill_runtime
             return pipeline
         try:
@@ -600,7 +603,7 @@ class ChatService:
         else:
             if not conversation_id:
                 raise ResumeRejectedError("续跑需要 conversation_id", 400)
-            if not settings.AGENT_STATE_PERSIST_ENABLED or settings.AGENT_ORCHESTRATION != "self":
+            if not settings.AGENT_STATE_PERSIST_ENABLED:
                 raise ResumeRejectedError("当前编排不支持续跑")
             conv = session.get(Conversation, conversation_id)
             original = session.get(Message, resume_message_id)
@@ -620,6 +623,8 @@ class ChatService:
                 conv.id, original.id)
             if snapshot is None:
                 raise ResumeRejectedError("没有可恢复的活动执行")
+            if settings.AGENT_ORCHESTRATION != "self" and snapshot.get("managed_agent") is None:
+                raise ResumeRejectedError("当前编排不支持续跑")
             try:
                 validate_resume_skill_binding(session, user, snapshot)
             except SkillBindingRejected as exc:
@@ -677,17 +682,46 @@ class ChatService:
             raise AttachmentValidationError("附件超出模型输入预算，请减少内容后重试") from None
         return prepared
 
+    @staticmethod
+    def _managed_version(session, user, agent_definition_id, resume_message_id):
+        from app.services.agent_definitions import resolve_agent_version, restore_agent_version
+
+        if resume_message_id is None:
+            if agent_definition_id is None:
+                return None
+            version = resolve_agent_version(session, agent_definition_id, user)
+        else:
+            binding = session.info["agent_resume_snapshot"].get("managed_agent")
+            if binding is None and agent_definition_id is None:
+                return None
+            if (
+                not isinstance(binding, dict)
+                or not isinstance(binding.get("definition_id"), str)
+                or type(binding.get("version")) is not int
+                or (agent_definition_id is not None and agent_definition_id != binding["definition_id"])
+            ):
+                raise ResumeRejectedError("续跑 Agent 版本不匹配", 409)
+            version = restore_agent_version(session, user, binding["definition_id"], binding["version"])
+        if version is None:
+            raise ResumeRejectedError("Agent 不可用", 404)
+        return version
+
     @cached_chat_scope
     @guarded_chat
     async def chat(
         self, session: Session, user: User, message: str, conversation_id: str | None = None,
         *, resume_message_id: str | None = None,
+        agent_definition_id: str | None = None,
         attachments: list[AttachmentInput] | None = None,
         attachments_prepared: list[PreparedAttachment] | None = None,
         _fresh_response: bool = False,
         _execution_claims: list[tuple[int, str, str, str]] | None = None,
     ) -> tuple[Conversation, str]:
         """执行一次对话（非流式），返回会话与最终回复。"""
+        managed_version = (
+            self._managed_version(session, user, agent_definition_id, None)
+            if resume_message_id is None else None
+        )
         prepared = (attachments_prepared if attachments_prepared is not None and resume_message_id is None
                     else self.prepare_chat_attachments(session, user, message, conversation_id,
                                                        resume_message_id, attachments))
@@ -699,6 +733,9 @@ class ChatService:
         conv, user_message_id = self._prepare_user_message(
             session, user, conversation_id, message, resume_message_id,
             _execution_claims if _execution_claims is not None else [], attachments=attachment_payload)
+        if resume_message_id is not None:
+            managed_version = self._managed_version(session, user, agent_definition_id, resume_message_id)
+        managed_instructions = managed_version.instructions if managed_version is not None else None
         # 1. 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_authorized_memory(session, user, conv)
         state = AgentState(user_input=model_user_text(safe_message, prepared), user_images=image_urls(prepared),
@@ -708,6 +745,11 @@ class ChatService:
             state.context = memory.memory_context
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
+        if managed_version is not None:
+            from app.services.agent_definitions import authorized_agent_tools
+
+            allowed = authorized_agent_tools(managed_version, {tool.name for tool in tools.all()})
+            tools = ToolRegistry([tool for tool in tools.all() if tool.name in allowed])
         # 4. 技能匹配与激活
         if resume_message_id is not None:
             try:
@@ -724,10 +766,11 @@ class ChatService:
         trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
         combination = route_message(safe_message)
-        combined = resume_message_id is None and combination.kind is RouteKind.COMBINED
-        fast = None if combined or resume_message_id or prepared else self._fast_route(safe_message)
+        combined = managed_version is None and resume_message_id is None and combination.kind is RouteKind.COMBINED
+        fast = (None if managed_version is not None or combined or resume_message_id or prepared
+                else self._fast_route(safe_message))
         try:
-            if resume_message_id is None:
+            if resume_message_id is None and managed_version is None:
                 def prepare_selected(pipeline):
                     if isinstance(pipeline, AgentPipeline):
                         self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
@@ -756,12 +799,17 @@ class ChatService:
                         state.error_code = str(safe_error_metadata(_event.metadata)["code"])
                 result = state
             else:
-                pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace, skill_runtime=skill_runtime)
+                pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace, skill_runtime=skill_runtime,
+                                                managed_instructions=managed_instructions)
                 if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
                     raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
                 if isinstance(pipeline, AgentPipeline):
                     pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
                     self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
+                    if managed_version is not None:
+                        pipeline.state_binding["managed_agent"] = {
+                            "definition_id": managed_version.definition_id, "version": managed_version.version,
+                        }
                 else:
                     self._wire_supervisor_tools(session, user, pipeline)
                 # 7. 执行
@@ -813,12 +861,17 @@ class ChatService:
     async def chat_stream(
         self, session: Session, user: User, message: str, conversation_id: str | None = None,
         *, resume_message_id: str | None = None,
+        agent_definition_id: str | None = None,
         attachments: list[AttachmentInput] | None = None,
         attachments_prepared: list[PreparedAttachment] | None = None,
         _execution_claims: list[tuple[int, str, str, str]] | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         """流式执行对话，逐个产出管线事件（阶段 / token / 结束）。"""
         execution_bind = session.get_bind()
+        managed_version = (
+            self._managed_version(session, user, agent_definition_id, None)
+            if resume_message_id is None else None
+        )
         prepared = (attachments_prepared if attachments_prepared is not None and resume_message_id is None
                     else self.prepare_chat_attachments(session, user, message, conversation_id,
                                                        resume_message_id, attachments))
@@ -843,6 +896,9 @@ class ChatService:
         conv, user_message_id = self._prepare_user_message(
             session, user, conversation_id, message, resume_message_id,
             _execution_claims if _execution_claims is not None else [], attachments=attachment_payload)
+        if resume_message_id is not None:
+            managed_version = self._managed_version(session, user, agent_definition_id, resume_message_id)
+        managed_instructions = managed_version.instructions if managed_version is not None else None
         # 构建对话记忆（窗口裁剪 + 必要时压缩）
         memory = await self._build_authorized_memory(session, user, conv)
         state = AgentState(user_input=model_user_text(safe_message, prepared), user_images=image_urls(prepared),
@@ -862,23 +918,34 @@ class ChatService:
 
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
+        if managed_version is not None:
+            from app.services.agent_definitions import authorized_agent_tools
+
+            allowed = authorized_agent_tools(managed_version, {tool.name for tool in tools.all()})
+            tools = ToolRegistry([tool for tool in tools.all() if tool.name in allowed])
         try:
             skill_runtime = make_skill_runtime(session, user, skill_ctx, tools)
         except SkillBindingRejected as exc:
             raise ResumeRejectedError(str(exc)) from None
         combination = route_message(safe_message)
-        combined = resume_message_id is None and combination.kind is RouteKind.COMBINED
+        combined = managed_version is None and resume_message_id is None and combination.kind is RouteKind.COMBINED
         combined_trace = self._create_trace()
-        fast = None if combined or resume_message_id or prepared else self._fast_route(safe_message)
+        fast = (None if managed_version is not None or combined or resume_message_id or prepared
+                else self._fast_route(safe_message))
         pipeline = (None if fast is not None or combined else
                     self._build_pipeline(
-                        retriever, tools, skill_ctx, trace=combined_trace, skill_runtime=skill_runtime
+                        retriever, tools, skill_ctx, trace=combined_trace, skill_runtime=skill_runtime,
+                        managed_instructions=managed_instructions,
                     ))
         if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
             raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
         if isinstance(pipeline, AgentPipeline):
             pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
             self._wire_runtime(session, user, conv, tools, pipeline, user_message_id)
+            if managed_version is not None:
+                pipeline.state_binding["managed_agent"] = {
+                    "definition_id": managed_version.definition_id, "version": managed_version.version,
+                }
         elif pipeline is not None:
             self._wire_supervisor_tools(session, user, pipeline)
         # 编号单独留下：停止时请求会话可能已经结束，不能再靠 conv 对象。

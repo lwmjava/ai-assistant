@@ -44,6 +44,7 @@ const ITEMS: NavItem[] = [
   { to: '/tools', label: '工具与 MCP', icon: Wrench, resource: 'agents', action: 'read' },
   { to: '/workflows', label: '工作流', icon: CalendarClock, resource: 'workflows', action: 'read' },
   { to: '/skills', label: '技能', icon: Sparkles, resource: 'skills', action: 'read' },
+  { to: '/agent-definitions', label: 'Agent 定义', icon: Sparkles },
   { to: '/invitations', label: '邀请', icon: Ticket, visible: () => true },
   {
     to: '/settings/tenant',

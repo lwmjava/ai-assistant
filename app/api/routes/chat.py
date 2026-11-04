@@ -23,6 +23,7 @@ from app.agents.tools.builtin import default_tools
 from app.api.deps import audit_event, get_db, require_permission
 from app.api.errors import PublicHTTPError, error_responses, public_events, public_response
 from app.api.feedback_tracking import track_chat_response
+from app.api.routes.agent_definitions import router as agent_definitions_router
 from app.audit.models import AuditAction
 from app.core.config import settings
 from app.core.log_context import get_trace_id
@@ -58,6 +59,7 @@ async def run_lifespan(_app):
 
 router = APIRouter(prefix="/chat", tags=["chat"], lifespan=run_lifespan)
 runs_router = APIRouter(prefix="/runs", tags=["runs"])
+router.include_router(agent_definitions_router)
 
 _service = ChatService()
 
@@ -69,6 +71,7 @@ class ChatRequest(BaseModel):
     attachments: list[AttachmentInput] = Field(default_factory=list)
     run_id: UUID | None = Field(default=None, description="客户端预生成的唯一运行 ID；重复提交拒绝")
     conversation_id: str | None = None
+    agent_definition_id: str | None = Field(default=None, min_length=1, max_length=64)
     resume_message_id: str | None = Field(default=None, min_length=1, description="恢复同一次未完成执行的原用户消息 ID")
 
     @model_validator(mode="after")
@@ -313,6 +316,7 @@ async def chat(
     try:
         conv, reply = await _service.chat(
             session, current_user, req.message, req.conversation_id,
+            **({"agent_definition_id": req.agent_definition_id} if req.agent_definition_id is not None else {}),
             **({"resume_message_id": req.resume_message_id} if req.resume_message_id is not None else {}),
             **({"attachments": req.attachments} if req.attachments else {}),
         )
@@ -432,6 +436,7 @@ async def chat_stream(
     def produce(run_session, user):
         return _service.chat_stream(
             run_session, user, req.message, req.conversation_id,
+            **({"agent_definition_id": req.agent_definition_id} if req.agent_definition_id is not None else {}),
             **({"resume_message_id": req.resume_message_id} if req.resume_message_id is not None else {}),
             **({"attachments_prepared": prepared} if prepared else {}),
         )

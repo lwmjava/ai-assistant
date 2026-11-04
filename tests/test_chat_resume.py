@@ -13,6 +13,7 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import engine
 from app.main import app
+from app.models.agent_definition import AgentDefinition, AgentDefinitionVersion
 from app.models.agent_state import AgentRunState
 from app.models.conversation import Conversation, Message
 from app.models.user import Tenant, User
@@ -27,6 +28,66 @@ def _terminal_status(body):
             data = next(line[5:].strip() for line in frame.splitlines() if line.startswith("data:"))
             return json.loads(data)["status"]
     raise AssertionError("缺少运行终态")
+
+
+@pytest.mark.parametrize("orchestration", ["self", "langgraph"])
+def test_managed_agent_http_lifecycle(resume_client, monkeypatch, orchestration):
+    monkeypatch.setattr(settings, "AGENT_ORCHESTRATION", orchestration)
+    client, payload, user, calls = resume_client
+    path = "/api/v1/chat/agent-definitions"
+    result = client.post(path, json={"name": "Managed", "scope": "private"})
+    assert result.status_code == 201, result.text
+    agent_id = result.json()["id"]
+    target = f"{path}/{agent_id}"
+    try:
+        assert client.post(f"{target}/publish", json={
+            "expected_revision": 0, "instructions": "Managed instructions", "tool_names": ["unknown"],
+        }).status_code == 422
+        result = client.post(f"{target}/publish", json={
+            "expected_revision": 0, "instructions": "Managed instructions", "tool_names": [],
+        })
+        assert result.status_code == 200, result.text
+        assert result.json()["active_version"] == 1
+        assert client.put(f"{target}/enabled", json={"expected_revision": 0, "enabled": True}).status_code == 409
+        result = client.put(f"{target}/enabled", json={"expected_revision": 1, "enabled": True})
+        assert result.status_code == 200, result.text
+        assert result.json()["enabled"] is True
+        assert any(row["id"] == agent_id for row in client.get(path).json())
+        with Session(engine) as session:
+            checkpoint = session.exec(select(AgentRunState).where(
+                col(AgentRunState.message_id) == payload["resume_message_id"]
+            )).one()
+            snapshot = json.loads(checkpoint.state_json)
+            snapshot["managed_agent"] = {"definition_id": agent_id, "version": 1}
+            checkpoint.state_json = json.dumps(snapshot)
+            session.add(checkpoint)
+            session.commit()
+        assert client.post("/api/v1/chat", json={**payload, "agent_definition_id": "wrong"}).status_code == 409
+        result = client.put(f"{target}/enabled", json={"expected_revision": 2, "enabled": False})
+        assert result.status_code == 200, result.text
+        assert client.post("/api/v1/chat", json=payload).status_code == 404
+        assert calls == []
+        result = client.post(f"{target}/publish", json={
+            "expected_revision": 3, "instructions": "Replacement instructions", "tool_names": [],
+        })
+        assert result.status_code == 200, result.text
+        assert result.json()["active_version"] == 4
+        assert client.put(f"{target}/enabled", json={"expected_revision": 4, "enabled": True}).status_code == 200
+        result = client.post("/api/v1/chat", json=payload)
+        assert result.status_code == 200, result.text
+        assert calls == []
+    finally:
+        with Session(engine) as session:
+            for row in session.exec(select(AgentDefinitionVersion).where(
+                col(AgentDefinitionVersion.definition_id) == agent_id
+            )):
+                session.delete(row)
+            session.flush()
+            definition = session.get(AgentDefinition, agent_id)
+            if definition is not None:
+                assert definition.owner_id == user.id
+                session.delete(definition)
+            session.commit()
 
 
 @pytest.fixture

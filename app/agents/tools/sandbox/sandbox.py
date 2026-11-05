@@ -7,14 +7,14 @@
 4. **超时 Kill** — 超时硬杀进程树，确保不残留
 
 平台兼容：
-- Linux/macOS：setrlimit 后 execv 进入用户脚本，超时结束进程组
+- Linux：非 root/无特权检查、seccomp 网络拒绝与 setrlimit 后 execv
+- macOS：setrlimit 后 execv；超时结束进程组
 - Windows：Job Object 结束进程树。内存和 CPU 限额仍不在 Windows 上设置
 
 未实现的能力（可按需扩展）：
-- 沿类继承链拿到文件能力的绕过
 - Windows 内存与 CPU 限额
 - 子进程内流式截断输出
-- chroot、非特权用户、网络隔离
+- chroot、Windows/macOS 内核网络隔离
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ import logging
 import platform
 import shutil
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import ClassVar
@@ -113,19 +114,65 @@ _BLOCKED_IMPORTS: frozenset[str] = frozenset({
     "pickle", "marshal", "shelve",
     "asyncio",  # 禁止异步事件循环
     "traceback", "inspect", "ast", "compile",  # 反射/代码生成禁止
-    "atexit", "gc", "warnings",
-    # SKELETON：此列表尚未覆盖完整，可参考 Python 3.11 标准库全量审计后补充
+    "atexit", "gc", "warnings", "ssl", "posix", "nt", "_io",
+    "code", "runpy", "pdb", "sqlite3", "dbm", "tempfile", "pty", "fcntl",
+    # 纵深拒绝集合；实际准入必须同时属于固定可信集合。
+})
+
+_TRUSTED_IMPORTS = frozenset({
+    "math", "json", "datetime", "re", "itertools", "collections", "functools", "statistics",
+})
+# Expose calculation/data APIs, never a complete stdlib module namespace.
+_MODULE_EXPORTS = {
+    "math": (
+        'acos acosh asin asinh atan atan2 atanh ceil comb copysign cos cosh degrees dist e erf erfc exp '
+        'expm1 fabs factorial floor fmod frexp fsum gamma gcd hypot inf isclose isfinite isinf isnan '
+        'isqrt lcm ldexp lgamma log log10 log1p log2 modf nan nextafter perm pi pow prod radians '
+        'remainder sin sinh sqrt tan tanh tau trunc ulp'
+    ),
+    "json": "dumps loads JSONDecodeError",
+    "datetime": "date datetime time timedelta timezone tzinfo MINYEAR MAXYEAR UTC",
+    "re": (
+        'compile search match fullmatch findall finditer sub subn split escape error Pattern Match ASCII '
+        'IGNORECASE LOCALE MULTILINE DOTALL VERBOSE UNICODE A I L M S X U NOFLAG'
+    ),
+    "itertools": (
+        'accumulate chain combinations combinations_with_replacement compress count cycle dropwhile '
+        'filterfalse groupby islice pairwise permutations product repeat starmap takewhile tee '
+        'zip_longest'
+    ),
+    "collections": "ChainMap Counter OrderedDict UserDict UserList UserString defaultdict deque namedtuple",
+    "functools": (
+        'cache cmp_to_key lru_cache partial partialmethod reduce singledispatch singledispatchmethod '
+        'total_ordering'
+    ),
+    "statistics": (
+        'mean fmean geometric_mean harmonic_mean median median_low median_high median_grouped mode '
+        'multimode quantiles pstdev pvariance stdev variance covariance correlation linear_regression '
+        'NormalDist StatisticsError'
+    ),
+}
+_REFLECTION_NAMES = frozenset({
+    "getattr", "hasattr", "setattr", "delattr", "vars", "globals", "locals",
+    "type", "dir", "eval", "exec", "compile", "open", "input", "breakpoint",
+    "help", "super",
+})
+_REFLECTION_ATTRIBUTES = frozenset({
+    "format", "format_map", "mro", "gi_frame", "gi_code", "gi_yieldfrom",
+    "cr_frame", "cr_code", "cr_await", "ag_frame", "ag_code", "ag_await",
+    "f_back", "f_builtins", "f_code", "f_globals", "f_locals", "f_trace",
+    "tb_frame", "tb_next",
 })
 
 # 允许的内置函数
 _ALLOWED_BUILTINS: frozenset[str] = frozenset({
     "abs", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
     "chr", "complex", "dict", "divmod", "enumerate", "filter", "float",
-    "format", "frozenset", "getattr", "hasattr", "hash", "hex", "id",
+    "format", "frozenset", "hash", "hex", "id",
     "int", "isinstance", "issubclass", "iter", "len", "list", "map",
     "max", "min", "next", "object", "oct", "ord", "pow", "print",
     "range", "repr", "reversed", "round", "set", "slice", "sorted",
-    "str", "sum", "tuple", "type", "vars", "zip",
+    "str", "sum", "tuple", "zip",
     "True", "False", "None", "Exception", "StopIteration", "ValueError",
     "TypeError", "KeyError", "IndexError", "ZeroDivisionError",
     "RuntimeError", "NotImplementedError", "AttributeError",
@@ -144,46 +191,32 @@ class CodeSandbox:
 
     # 执行脚本的模板：将用户代码包裹在受限环境中
     _SCRIPT_TEMPLATE: ClassVar[str] = """\
-# ═══════════════════════════════════════════════════════════
-# 沙箱执行环境 — 由 CodeSandbox 自动生成，请勿手动修改
-# ═══════════════════════════════════════════════════════════
 import builtins as __sandbox_builtins__
+import importlib as __sandbox_importlib__
+import types as __sandbox_types__
 
-# 受限内置函数
-__safe_builtins__ = {allowed_builtins_repr}
+# Load trusted modules before restricting user imports; stdlib internals retain
+# their own normal builtins without exposing them to the user namespace.
+__sandbox_modules__ = {{}}
+for __sandbox_name__, __sandbox_exports__ in {module_exports_repr}.items():
+    __sandbox_module__ = __sandbox_importlib__.import_module(__sandbox_name__)
+    __sandbox_modules__[__sandbox_name__] = __sandbox_types__.SimpleNamespace(
+        **{{name: __sandbox_builtins__.getattr(__sandbox_module__, name)
+            for name in __sandbox_exports__.split()
+            if __sandbox_builtins__.hasattr(__sandbox_module__, name)}})
+def __sandbox_import__(name, globals=None, locals=None, fromlist=(), level=0):
+    if level or name not in __sandbox_modules__:
+        raise ImportError("沙箱禁止导入模块")
+    return __sandbox_modules__[name]
 
-# 白名单模块
-__allowed_modules__ = {allowed_modules_repr}
-
-class __SandboxImportWrapper__:
-    \"\"\"限制 import 仅允许白名单模块。\"\"\"
-    def __init__(self, allowed):
-        self._allowed = allowed
-    def __getattr__(self, name):
-        if name in self._allowed:
-            return __sandbox_builtins__.__import__(name)
-        raise ImportError(f"沙箱禁止导入模块: {{name}}")
-
-# 替换 __builtins__ 为受限版本
-__sandbox_builtins__.__dict__["__import__"] = __SandboxImportWrapper__(__allowed_modules__)
-
-# 清除危险内置函数
-for __name in dir(__sandbox_builtins__):
-    if __name.startswith("_") and __name != "__name__":
-        continue
-    if __name not in __safe_builtins__ and __name not in (
-        "__name__", "__doc__", "__package__", "__loader__", "__spec__",
-        "__build_class__", "__import__", "copyright", "credits", "license",
-    ):
-        try:
-            del __sandbox_builtins__.__dict__[__name]
-        except (KeyError, TypeError):
-            pass
-
-# ═══════════════════════════════════════════════════════════
-# 用户代码
-# ═══════════════════════════════════════════════════════════
-{user_code}
+__sandbox_safe__ = {{name: __sandbox_builtins__.__dict__[name]
+                    for name in {allowed_builtins_repr}}}
+__sandbox_safe__["__import__"] = __sandbox_import__
+__sandbox_safe__["__build_class__"] = __sandbox_builtins__.__build_class__
+__sandbox_globals__ = {{"__builtins__": __sandbox_safe__, "__name__": "sandbox"}}
+__sandbox_builtins__.exec(
+    __sandbox_builtins__.compile({user_code_repr}, "<sandbox>", "exec"),
+    __sandbox_globals__, __sandbox_globals__)
 """
 
     def __init__(self) -> None:
@@ -230,19 +263,39 @@ for __name in dir(__sandbox_builtins__):
             script_path.write_text(
                 self._SCRIPT_TEMPLATE.format(
                     allowed_builtins_repr=repr(sorted(_ALLOWED_BUILTINS)),
-                    allowed_modules_repr=repr(sorted(cfg.allowed_imports)),
-                    user_code=code,
+                    module_exports_repr=repr({name: _MODULE_EXPORTS[name]
+                                              for name in sorted(set(cfg.allowed_imports) & _TRUSTED_IMPORTS)}),
+                    user_code_repr=repr(code),
                 ),
                 encoding="utf-8",
             )
-            outcome = await asyncio.to_thread(
+            cancel_event = threading.Event()
+            worker = asyncio.create_task(asyncio.to_thread(
                 run_script,
                 str(script_path),
                 cwd=tmp_dir,
                 env=child_environment(cfg.env_vars, windows=self._platform == "Windows"),
                 timeout=timeout,
                 config=cfg,
-            )
+                cancel_event=cancel_event,
+            ))
+            try:
+                outcome = await asyncio.shield(worker)
+            except asyncio.CancelledError:
+                cancel_event.set()
+                # Keep the directory and containment handles alive until the
+                # worker has killed/reaped its process, including repeated cancel.
+                while not worker.done():
+                    try:
+                        await asyncio.shield(worker)
+                    except asyncio.CancelledError:
+                        continue
+                    except Exception:
+                        break
+                # Consume worker exceptions without replacing caller cancellation.
+                if not worker.cancelled():
+                    worker.exception()
+                raise
         finally:
             try:
                 shutil.rmtree(tmp_dir)
@@ -277,6 +330,22 @@ for __name in dir(__sandbox_builtins__):
                     f"不支持的语法：{type(node).__name__}（AST 白名单未包含）",
                 )
 
+            if isinstance(node, ast.Attribute) and (
+                node.attr.startswith("_") or node.attr in _REFLECTION_ATTRIBUTES
+            ):
+                raise SecurityError(KillReason.AST_REJECTED, "禁止访问反射或私有属性")
+            identifiers = []
+            if isinstance(node, ast.Name):
+                identifiers.append(node.id)
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                identifiers.append(node.name)
+            elif isinstance(node, ast.arg):
+                identifiers.append(node.arg)
+            elif isinstance(node, ast.alias):
+                identifiers.extend([node.name, node.asname or ""])
+            if any(name.startswith("__") or name in _REFLECTION_NAMES for name in identifiers):
+                raise SecurityError(KillReason.AST_REJECTED, "禁止使用反射或保留名字")
+
             # 检查 import 语句
             if isinstance(node, ast.Import | ast.ImportFrom):
                 self._check_import(node, config)
@@ -286,8 +355,8 @@ for __name in dir(__sandbox_builtins__):
     ) -> None:
         """检查 import 语句是否引用了禁止模块。"""
         if isinstance(node, ast.ImportFrom):
-            if node.module is None:
-                return  # from . import xxx 相对导入
+            if node.level or node.module is None or any(alias.name == "*" for alias in node.names):
+                raise SecurityError(KillReason.AST_REJECTED, "禁止相对导入或通配导入")
             root = node.module.split(".")[0]
         else:
             # ast.Import
@@ -298,7 +367,7 @@ for __name in dir(__sandbox_builtins__):
                         KillReason.AST_REJECTED,
                         f"禁止导入模块：{root}（安全策略拒绝）",
                     )
-                if root not in config.allowed_imports:
+                if root not in config.allowed_imports or root not in _TRUSTED_IMPORTS:
                     raise SecurityError(
                         KillReason.AST_REJECTED,
                         f"不在白名单中的模块：{root}（仅允许 {config.allowed_imports}）",
@@ -310,7 +379,7 @@ for __name in dir(__sandbox_builtins__):
                 KillReason.AST_REJECTED,
                 f"禁止导入模块：{root}（安全策略拒绝）",
             )
-        if root not in config.allowed_imports:
+        if root not in config.allowed_imports or root not in _TRUSTED_IMPORTS:
             raise SecurityError(
                 KillReason.AST_REJECTED,
                 f"不在白名单中的模块：{root}（仅允许 {config.allowed_imports}）",

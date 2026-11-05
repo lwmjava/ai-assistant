@@ -60,7 +60,7 @@ class SandboxConfig:
 
     # ── 通用 ──
     work_dir: str = "/tmp/sandbox"
-    """沙箱工作目录，进程无法访问此目录之外的文件。"""
+    """保留的兼容字段；实际执行使用独立临时目录，不提供 chroot 文件系统隔离。"""
     env_vars: dict[str, str] = field(default_factory=dict)
     """注入的环境变量（PATH 等由沙箱控制，此处仅允许追加安全变量）。"""
 

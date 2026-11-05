@@ -155,3 +155,11 @@ Linux探测：提升读取权限后wsl仅列出docker-desktop，Docker Linux引�
 直接对原工作区最终源码执行不筛选pytest，复用validate_delivery的check_environment、WorkspaceLock、run_command和input_snapshot，未修改验证器；将独立测试库、basetemp、缓存和日志放到C盘短临时目录，以避开E盘容量与长路径。完整命令与输入SHA256见data/validation/20261101-latest-source-full/result.json，pytest日志和XML已从临时目录复制保留。结果退出1：3851 passed、19 failed、31 skipped，1103.94秒；不是通过。全量已结束，没有留待运行的验证任务。19项失败尚未全部完成原HEAD对照，不得一概称为存量或环境问题；不修改无关安全批次，也不关闭RAG-046。
 
 本次扩大专项包含workflow_timeout迁移自身往返与quota探针补强，data/validation/20261031T180902-9889c9ca1d4e，74 passed、1 warning、退出0。quota探针已显式验证升级列及(9,2,2026-10)写入值，独立审查限定复核闭合。检索/父块/引用/缓存与摘要接线仍未实施；当前仅人工提案/确认API，不宣称资源ACL已在读链路生效。
+
+## 2026-11-02 后端读链路接线候选
+
+开关 `RAG_RESOURCE_ACL_ENABLED` 默认 false。仅在资料分类和授权已准备后显式启用；无 ACL 不自动授权，不回填历史资料，不执行生产迁移。旧共享模式不能声明已受 ACL 保护。ReadScope 捕获主体 ID/租户/撤销版本，local/Milvus 在候选正文返回三种后端前调用权威服务；父块和引用再次校验。缺主体、缺 ACL、主体撤销、租户停用或复核错误均不得退回旧共享读取。
+
+已有章节摘要读取继承源文档 ACL 和版本绑定。旧后台生成任务不含持久化主体，ACL 模式下创建和执行均明确拒绝，避免管理权限代替读取权限；恢复生成须另行批准持久化主体方案，不悄悄绕过。缓存指纹增加同租户 ACL/grants，命中复核与前后快照防止撤销后复用；不使用缓存内容作为授权证明。
+
+新增正式反例 tests/test_rag_resource_acl_read_chain.py 覆盖三种后端、无主体、撤销、父块、引用、摘要与真实本地检索缓存复用。合成 Embedding 只证明链路，不声明真实质量。当前为未提交候选，最终专项/独立复核/CI与业务接受以 tasks.yaml 后续记录为准。回滚仅回退本次接线，保持关闭开关；不得把回滚后的旧共享模式称为 ACL 保护。

@@ -150,8 +150,12 @@ def test_ci_python_jobs_use_pip_cache_and_upload_non_secret_evidence():
     rag_artifact = _named_step(workflow["jobs"]["rag-baseline"], "Upload RAG evidence")
     assert backend_artifact["if"] == "always()"
     assert rag_artifact["if"] == "always()"
-    assert backend_artifact["with"]["path"] == "data/validation/ci-backend/pytest.xml"
-    assert rag_artifact["with"]["path"] == "evals/reports/rag-v0.1-baseline-ci.json"
+    assert backend_artifact["with"]["path"].splitlines() == [
+        "data/validation/ci-backend/pytest.xml", "evals/reports/rag-budget.json",
+    ]
+    assert rag_artifact["with"]["path"].splitlines() == [
+        "evals/reports/rag-v0.1-baseline-ci.json", "evals/reports/rag-budget.json",
+    ]
     assert int(backend_artifact["with"]["retention-days"]) == 14
     assert int(rag_artifact["with"]["retention-days"]) == 14
     assert "EMBEDDING_API_KEY" not in str(backend_artifact)

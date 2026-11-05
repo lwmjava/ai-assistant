@@ -15,7 +15,7 @@ from sqlmodel import Session, col, select
 from app.core.config import settings
 from app.core.response_cache import bind_cache_scope, configuration_stamp, digest, object_namespace
 from app.core.security import Role
-from app.models.rag import Document, DocumentChunk, EmbeddingIndex
+from app.models.rag import Document, DocumentACL, DocumentACLGrant, DocumentChunk, EmbeddingIndex
 from app.models.user import Tenant, User
 from app.rag.access import ReadScope, read_scope_for
 from app.rag.effective_date import document_version_status, retrieval_window
@@ -92,12 +92,19 @@ class AuthorizedCacheScope:
             chunks = fresh.exec(select(DocumentChunk).where(
                 col(DocumentChunk.tenant_id) == self.tenant_id).order_by(col(DocumentChunk.id))).all()
             indexes = fresh.exec(select(EmbeddingIndex).order_by(col(EmbeddingIndex.id))).all()
+            acl_state = None
+            if settings.RAG_RESOURCE_ACL_ENABLED:
+                acls = fresh.exec(select(DocumentACL).where(col(DocumentACL.tenant_id) == self.tenant_id)
+                                  .order_by(col(DocumentACL.document_id))).all()
+                grants = fresh.exec(select(DocumentACLGrant).where(col(DocumentACLGrant.tenant_id) == self.tenant_id)
+                                    .order_by(col(DocumentACLGrant.document_id), col(DocumentACLGrant.user_id))).all()
+                acl_state = ([row.model_dump() for row in acls], [row.model_dump() for row in grants])
             temporal = [(d.id, document_version_status(
                 is_current=d.is_current, effective_at=d.effective_at, expires_at=d.expires_at,
                 as_of=now, schedule_at=schedule_at)) for d in documents]
             return digest((object_namespace(self.bind), user.id, self.expected, self.read_scope,
                            [d.model_dump() for d in documents], [c.model_dump() for c in chunks],
-                           [i.model_dump() for i in indexes], temporal, configuration_stamp()))
+                           [i.model_dump() for i in indexes], temporal, acl_state, configuration_stamp()))
 
     def validate_hits(self, hits: list[ChunkResult], query: str, index_id: str | None) -> bool:
         with Session(self.bind) as fresh:
@@ -105,6 +112,10 @@ class AuthorizedCacheScope:
             scope: ReadScope | None = read_scope_for(user)
             now, schedule_at = retrieval_window(query)
             for hit in hits:
+                from app.rag.resource_acl import scoped_resource_allowed
+
+                if not scoped_resource_allowed(fresh, hit.document_id, scope):
+                    return False
                 row = fresh.get(DocumentChunk, hit.id)
                 doc = fresh.get(Document, hit.document_id)
                 if (row is None or doc is None or row.document_id != doc.id

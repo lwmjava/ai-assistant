@@ -88,8 +88,8 @@ def test_child_env_drops_sentinel(monkeypatch: pytest.MonkeyPatch):
 def test_execute_uses_allowlisted_env(monkeypatch: pytest.MonkeyPatch):
     seen: dict[str, dict[str, str]] = {}
 
-    def fake_run(script, *, cwd, env, timeout, config):
-        del script, cwd, timeout, config
+    def fake_run(script, *, cwd, env, timeout, config, cancel_event=None):
+        del script, cwd, timeout, config, cancel_event
         seen["env"] = env
         from app.agents.tools.sandbox.proc import ProcessOutcome
 
@@ -176,7 +176,7 @@ def test_process_tree_terminate(tmp_path: Path):
 
 
 def test_rmtree_failure_still_returns_stdout(monkeypatch: pytest.MonkeyPatch):
-    def fake_run(script, *, cwd, env, timeout, config):
+    def fake_run(script, *, cwd, env, timeout, config, cancel_event=None):
         del script, cwd, env, timeout, config
         from app.agents.tools.sandbox.proc import ProcessOutcome
 

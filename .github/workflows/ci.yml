@@ -11,6 +11,13 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  OFFICIAL_EVALUATION_AUTHORIZED: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED }}
+  OFFICIAL_EVALUATION_BUDGET_REF: ${{ vars.OFFICIAL_EVALUATION_BUDGET_REF }}
+  OFFICIAL_EVALUATION_AUTHORIZED_SHA: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED_SHA }}
+  OFFICIAL_EVALUATION_AUTHORIZED_RUN_ID: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED_RUN_ID }}
+  OFFICIAL_EVALUATION_AUTHORIZED_RUN_ATTEMPT: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED_RUN_ATTEMPT }}
+
 jobs:
   backend:
     name: Backend (ruff / mypy / pytest)
@@ -27,8 +34,31 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install -e ".[dev,langgraph]"
+          pip install -e ".[dev,langgraph,langchain,llamaindex]" "Deprecated<3"
           pip install psycopg2-binary==2.9.13
+      - name: Protect bundled tokenizer data
+        run: |
+          python - <<'PY'
+          import os
+          import stat
+          from importlib.metadata import distribution
+          from pathlib import Path
+
+          installed = distribution("llama-index-core")
+          install_root = Path(installed.locate_file("")).resolve(strict=True)
+          package = Path(installed.locate_file("llama_index/core"))
+          cache = package / "_static" / "nltk_cache"
+          assert not cache.is_symlink(), "Tokenizer cache must not be a symlink"
+          cache = cache.resolve(strict=True)
+          assert cache.is_relative_to(install_root)
+          assert cache.is_relative_to(package.resolve(strict=True))
+          assert cache.is_dir()
+          for path in [cache, *cache.rglob("*")]:
+              assert not path.is_symlink(), "Tokenizer data must not contain symlinks"
+              info = path.stat()
+              assert info.st_uid == os.getuid(), "Tokenizer data must be owned by this runner"
+              path.chmod(stat.S_IMODE(info.st_mode) & ~0o022)
+          PY
       - name: Ruff lint
         run: ruff check .
       - name: Mypy typecheck
@@ -101,14 +131,16 @@ jobs:
           RAG_EFFECTIVE_DATE_FILTER: 'false'
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
         run: |
-          python scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
+          python scripts/run_official_eval.py --budget-yuan 1 --ledger evals/reports/rag-budget.json scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
           python scripts/rag_gate_check.py --report evals/reports/rag-v0.1-baseline-ci.json --baseline evals/reports/rag-v0.1-baseline-20260919.json
       - name: Upload Backend evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-${{ github.run_id }}-${{ github.run_attempt }}
-          path: data/validation/ci-backend/pytest.xml
+          path: |
+            data/validation/ci-backend/pytest.xml
+            evals/reports/rag-budget.json
           if-no-files-found: warn
           retention-days: 14
 
@@ -164,14 +196,16 @@ jobs:
           RAG_EFFECTIVE_DATE_FILTER: 'false'
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
         run: |
-          python scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
+          python scripts/run_official_eval.py --budget-yuan 1 --ledger evals/reports/rag-budget.json scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
           python scripts/rag_gate_check.py --report evals/reports/rag-v0.1-baseline-ci.json --baseline evals/reports/rag-v0.1-baseline-20260919.json
       - name: Upload RAG evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rag-baseline-${{ github.run_id }}-${{ github.run_attempt }}
-          path: evals/reports/rag-v0.1-baseline-ci.json
+          path: |
+            evals/reports/rag-v0.1-baseline-ci.json
+            evals/reports/rag-budget.json
           if-no-files-found: warn
           retention-days: 14
 
@@ -221,7 +255,7 @@ jobs:
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: |
-          python scripts/run_agent_chain_eval.py --mode official --out evals/reports/agent-ci/official.json
+          python scripts/run_official_eval.py --budget-yuan 1 --ledger evals/reports/agent-ci/budget.json scripts/run_agent_chain_eval.py --mode official --out evals/reports/agent-ci/official.json
       - name: Agent report gate and regression probes
         run: |
           endpoint_hash=$(python - <<'PY'

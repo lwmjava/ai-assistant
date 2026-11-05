@@ -106,13 +106,18 @@ def _locator(chunk: DocumentChunk) -> ChunkLocator:
     )
 
 
-def _document_is_verifiable(doc: Document, user: User, as_of: datetime) -> bool:
+def _document_is_verifiable(doc: Document, user: User, as_of: datetime, session: Session) -> bool:
     """检索面授权 + 时效语义（ADR-0007 §1 / §5）。
 
     ``can_read_document`` 承担同租户、未软删、当前版本与 uploader 归属；
     本函数只补上时效开关：开关打开时还要落在生效窗口内，未发布、已替换、
     已过期的版本不通过普通引用核验读取。
     """
+    from app.rag.access import read_scope_for
+    from app.rag.resource_acl import scoped_resource_allowed
+
+    if settings.RAG_RESOURCE_ACL_ENABLED:
+        return scoped_resource_allowed(session, doc.id, read_scope_for(user))
     if not can_read_document(doc, user):
         return False
     if not settings.RAG_EFFECTIVE_DATE_FILTER:
@@ -152,7 +157,7 @@ def _authorized_parent(
     parent_doc = doc if parent.document_id == doc.id else session.get(Document, parent.document_id)
     if parent_doc is None or parent.tenant_id != doc.tenant_id:
         return None
-    if not _document_is_verifiable(parent_doc, user, as_of):
+    if not _document_is_verifiable(parent_doc, user, as_of, session):
         return None
     locator = _locator(parent)
     if not include_content:
@@ -198,7 +203,7 @@ def load_chunk_evidence(
         raise EvidenceDeniedError("tenant mismatch between chunk and document")
     if document_id is not None and chunk.document_id != document_id:
         raise EvidenceDeniedError("claimed document does not own the chunk")
-    if not _document_is_verifiable(doc, user, moment):
+    if not _document_is_verifiable(doc, user, moment, session):
         raise EvidenceDeniedError("document not verifiable for subject")
     return ChunkEvidence(
         chunk=_locator(chunk),

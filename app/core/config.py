@@ -355,6 +355,7 @@ class Settings(BaseSettings):
     RAG_DROP_INJECTED_CHUNKS: bool = True
     # 知识库读范围：tenant=同租户当前版本（ADR-0001 To-Be）；uploader=回滚到上传者私有。
     RAG_KB_SCOPE: str = "tenant"
+    RAG_RESOURCE_ACL_ENABLED: bool = False
     # 注入管线时记忆 / RAG 各自的字符预算，防止一侧挤掉另一侧。
     RAG_MEMORY_CONTEXT_CHARS: int = 2000
     RAG_CONTEXT_CHARS: int = 6000

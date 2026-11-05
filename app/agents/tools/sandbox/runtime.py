@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+from pathlib import Path
 
 from app.agents.tools.sandbox.base import SandboxConfig
 
@@ -66,6 +67,15 @@ def unix_wrapper_source(script_path: str, config: SandboxConfig) -> str:
     memory = int(config.max_memory_mb) * 1024 * 1024
     disk = int(config.max_disk_mb) * 1024 * 1024
     cpu = int(config.max_cpu_seconds)
+    isolation = ""
+    if sys.platform == "linux":
+        isolation = Path(__file__).with_name("linux_isolation.py").read_text(encoding="utf-8")
+        isolation += (
+            "\ntry:\n"
+            "    install_linux_isolation()\n"
+            "except Exception:\n"
+            "    sys.exit('sandbox_isolation_setup_failed')\n"
+        )
     return (
         "import os\n"
         "import resource\n"
@@ -83,5 +93,6 @@ def unix_wrapper_source(script_path: str, config: SandboxConfig) -> str:
         f"_limit(resource.RLIMIT_AS, {memory})\n"
         f"_limit(resource.RLIMIT_FSIZE, {disk})\n"
         "_limit(resource.RLIMIT_NPROC, 0, allow_zero=True)\n"
-        f"os.execv({exe}, [{exe}, {script}])\n"
+        + isolation +
+        f"os.execv({exe}, [{exe}, '-I', '-S', {script}])\n"
     )

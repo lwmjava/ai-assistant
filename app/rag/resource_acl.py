@@ -15,7 +15,7 @@ from app.audit.models import AuditLog
 from app.core.security import Role, check_permission
 from app.models.rag import Document, DocumentACL, DocumentACLGrant, DocumentACLProposal
 from app.models.user import Tenant, User
-from app.rag.access import kb_scope
+from app.rag.access import ReadScope, kb_scope
 from app.rag.effective_date import document_is_live, ensure_utc
 
 
@@ -23,6 +23,21 @@ from app.rag.effective_date import document_is_live, ensure_utc
 class ResourceReadDecision:
     allowed: bool
     revision: int | None = None
+
+
+def scoped_resource_allowed(session: Session, document_id: str, scope: ReadScope | None) -> bool:
+    """Resolve an immutable request identity through the authoritative service."""
+    from app.core.config import settings
+
+    if not settings.RAG_RESOURCE_ACL_ENABLED:
+        return True
+    if scope is None or scope.subject_id is None or scope.subject_version is None:
+        return False
+    subject = User(
+        id=scope.subject_id, tenant_id=scope.tenant_id, token_version=scope.subject_version,
+        username="", hashed_password="",
+    )
+    return resource_read_decision(session, document_id, subject).allowed
 
 
 def resource_read_decision(

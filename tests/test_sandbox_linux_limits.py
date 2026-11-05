@@ -83,7 +83,9 @@ else:
     print('UNBOUNDED')
 """)
     assert result.exit_code == 0 and not result.timed_out
-    assert result.stdout.strip() == str(errno.EAGAIN)
+    # The syscall filter rejects fork before RLIMIT_NPROC can return EAGAIN.
+    # Effective resource limits remain independently verified above.
+    assert result.stdout.strip() == str(errno.EPERM)
 
 
 @pytest.mark.parametrize("setting", ["max_cpu_seconds", "max_memory_mb", "max_disk_mb"])

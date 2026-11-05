@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/Button'
 import { api } from '@/lib/http'
 
 type Scope = 'private' | 'tenant' | 'system'
@@ -38,7 +39,7 @@ export default function AgentDefinitions() {
       {definitions.isPending && <p role="status">正在加载</p>}
       {definitions.isError && <p role="alert">加载 Agent 定义失败</p>}
       {change.isError && <p role="alert">操作失败，请检查权限、工具名称或当前版本后重试。</p>}
-      <form className="flex flex-wrap gap-3" onSubmit={(event) => {
+      <form className="flex flex-wrap items-center gap-3" onSubmit={(event) => {
         event.preventDefault()
         change.mutate(() => api.post<Definition>(path, { name, scope }))
       }}>
@@ -48,7 +49,7 @@ export default function AgentDefinitions() {
           <option value="tenant">租户</option>
           <option value="system">系统</option>
         </select></label>
-        <button type="submit" disabled={change.isPending}>创建</button>
+        <Button type="submit" variant="primary" disabled={change.isPending}>创建</Button>
       </form>
       <label>选择定义 <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
         <option value="">请选择</option>
@@ -58,12 +59,13 @@ export default function AgentDefinitions() {
       </select></label>
       {selected && <div key={selected.id} className="space-y-3">
         <p>{selected.enabled ? '已启用' : '已停用'} · 生效版本 {selected.active_version ?? '无'}</p>
-        <button type="button" disabled={change.isPending || selected.active_version === null} onClick={() => {
+        <Button variant={selected.enabled ? 'danger' : 'secondary'}
+          disabled={change.isPending || selected.active_version === null} onClick={() => {
           change.mutate(() => api.put<Definition>(`${path}/${selected.id}/enabled`, {
             expected_revision: selected.revision,
             enabled: !selected.enabled,
           }))
-        }}>{selected.enabled ? '停用' : '启用'}</button>
+        }}>{selected.enabled ? '停用' : '启用'}</Button>
         <form className="space-y-2" onSubmit={(event) => {
           event.preventDefault()
           change.mutate(() => api.post<Definition>(`${path}/${selected.id}/publish`, {
@@ -75,7 +77,7 @@ export default function AgentDefinitions() {
           <label className="block">版本指令 <textarea required maxLength={16000} value={instructions}
             onChange={(event) => setInstructions(event.target.value)} /></label>
           <label>工具名称（逗号分隔） <input value={tools} onChange={(event) => setTools(event.target.value)} /></label>
-          <button type="submit" disabled={change.isPending}>发布版本</button>
+          <Button className="ml-3" type="submit" variant="primary" disabled={change.isPending}>发布版本</Button>
         </form>
         <form onSubmit={(event) => {
           event.preventDefault()
@@ -86,7 +88,7 @@ export default function AgentDefinitions() {
         }}>
           <label>历史版本 <input required type="number" min={1} value={version}
             onChange={(event) => setVersion(event.target.value)} /></label>
-          <button type="submit" disabled={change.isPending}>回滚</button>
+          <Button className="ml-3" type="submit" disabled={change.isPending}>回滚</Button>
         </form>
       </div>}
     </section>

@@ -1,7 +1,6 @@
 """Run the actual CI endpoint command with a noisy dependency import."""
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -33,8 +32,6 @@ def test_ci_endpoint_capture_is_only_digest_under_import_noise(tmp_path):
     environment.update(PYTHONPATH=os.pathsep.join([str(tmp_path), str(ROOT)]),
                        LLM_BASE_URL="https://api.deepseek.com/v1", LLM_API_KEY="",
                        LLM_INTENT_API_KEY="", LLM_FALLBACK_API_KEY="", RAG_BACKEND="native")
-    result = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=environment,
-                            capture_output=True, text=True, timeout=60, check=False)
     result = run_utf8([sys.executable, "-c", code], cwd=ROOT, env=environment, check=False)
     assert result.returncode == 0
     assert (result.stdout or "").strip() == "12b8deaccc34b32757dbb1497e029da0c2e7b26ffa86b9c926c08cb4692f4508"

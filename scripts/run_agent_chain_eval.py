@@ -15,7 +15,6 @@ import json
 import math
 import os
 import re
-import os
 import subprocess
 import sys
 import tempfile
@@ -34,15 +33,11 @@ from app.agents.pipeline import (  # noqa: E402
     preflight_needs_full_pipeline,
     selection_tool_registry,
 )
-from app.agents.tools.base import inspect_tool_call  # noqa: E402
-from app.core.config import settings  # noqa: E402
 from app.agents.tools.base import Tool, inspect_tool_call  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.llm.base import LLMOptions  # noqa: E402
 from app.llm.factory import get_llm_provider  # noqa: E402
 from app.llm.openai_compatible import LLMResponseError, OpenAICompatibleProvider  # noqa: E402
-from app.llm.factory import get_llm_provider  # noqa: E402
-from app.llm.openai_compatible import OpenAICompatibleProvider  # noqa: E402
 
 EVALUATOR_VERSION = "agent-chain-eval-0.5.0"
 # Compatibility declaration: no Tool/DB/RAG execution; these are NOT runtime counters.

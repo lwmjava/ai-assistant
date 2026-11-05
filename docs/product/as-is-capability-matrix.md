@@ -2,6 +2,7 @@
 
 > 对账日期：2026-10-02
 > 2026-10-06 RAG 决定补记：[推进清单与批准范围](../plans/plan_rag_remaining_order_20261006.md)。引用核验/索引身份/生成预算/摘要已批准设计，仍按实际实现标 Planned/Partial；本次不是全平台重新验收。
+> 2026-11-05 文档同步补记：只更正已失真事实（向量库默认值、CLI 的 Compose 命令），依据是代码与既有交付记录。本轮未重跑第 7 节任何验证命令，也不因此升降任何状态标签。
 > 代码基线：交付排期第 1–20 项对应任务卡均为 `done`。任务卡完成不等于该行标成 `Implemented`。发布门禁见 `docs/plans/implementation_rel_003.md`，结论是未达到发布合格。
 > 状态术语：`Implemented` / `Partial` / `Planned` / `Deferred` / `Deprecated`  
 > 当前事实入口：`AGENTS.md`  
@@ -20,7 +21,7 @@
 | 管理后台用户/租户/系统状态 | `Partial` | `app/api/routes/admin_users.py`；`app/api/routes/admin_tenants.py`；`app/api/routes/admin_system.py`；`frontend/src/pages/Users.tsx`；`frontend/src/pages/Tenants.tsx` | 系统管理员可筛选、分页列出用户和租户，从新增页创建，在行末查看详情、修改、停用或重新启用。可看数据库与向量库是否连通。无在线人数或调用量 |
 | Docker Compose 启动 | `Partial` | `docker-compose.yml` | 本轮未重跑容器 Healthy 验收 |
 | 默认数据库 SQLite | `Implemented` | `app/core/config.py` | PostgreSQL 为生产目标，`Partial`/`Planned` |
-| 命令行迁移与创建系统管理员 | `Implemented` | `app/cli.py`；`pyproject.toml` 的 `ai-assistant` 脚本；`tests/test_cli.py` | 空库可迁移到当前版本，并创建可登录的系统管理员。已有系统管理员、密码短于 8 位或两次重叠创建时拒绝，日志不含密码。没有 start、stop、logs。环境变量引导和 `/setup` 仍可用。管理接口仍可创建多名系统管理员。PostgreSQL 未在本能力中演练 |
+| 命令行迁移与创建系统管理员 | `Implemented` | `app/cli.py`；`pyproject.toml` 的 `ai-assistant` 脚本；`tests/test_cli.py` | 空库可迁移到当前版本，并创建可登录的系统管理员。已有系统管理员、密码短于 8 位或两次重叠创建时拒绝，日志不含密码。`start`、`status`、`logs`、`stop` 四条 Compose 命令已提供（`app/cli.py` 分派到 `app/cli_lifecycle.py`；`tests/test_cli_lifecycle.py`；验收见 `docs/plans/implementation_cli_003_20261017.md` 与 `docs/reviews/2026-10-18-cli-003-close.md`）。环境变量引导和 `/setup` 仍可用。管理接口仍可创建多名系统管理员。PostgreSQL 未在本能力中演练 |
 | 租户消息条数与源文件配额 | `Implemented` | `app/services/quota.py`；`app/api/routes/admin_tenants.py`；`tests/test_quota.py`；`frontend/src/pages/Tenants.tsx` | 系统管理员可在租户列表的配额弹窗设置可空上限。空值不限制，0 表示不能再新增。超限的对话和源文件写入返回 429，且不留下新的用户消息或新文件。软删除不恢复源文件额度。同一 SQLite 上的并发写入不超过上限。页面不展示已用量。不计费，不按月重置，纯文本摄取不设闸。多副本锁未做。 |
 | 对话限流倒计时 | `Partial` | `app/security/rate_limiter.py`；`app/api/routes/chat.py`；`frontend/src/pages/Chat.tsx`；`tests/test_rate_limit_retry.py` | 默认关闭。打开后，补充速率大于 0 且打满桶时，对话页显示倒计时并禁用发送，到 0 后恢复。速率小于或等于 0 时拒绝且不倒计时。计数只在本进程，重启清空。多实例未做。知识库页没有倒计时。 |
 | 导出租户对话 | `Implemented` | `app/services/export_service.py`；`app/api/routes/export.py`；`frontend/src/pages/Chat.tsx`；`tests/test_export_conversations.py` | 当前租户成员关系上的租户管理员可在对话页下载本租户对话原文 JSON。系统管理员能看到按钮，点击后页面说明无权导出。其他角色得到 403。审计 `export_requested` 写入成功后才开始返回文件。超过 5000 条或 32 MiB 返回 413，不返回半份文件。不做训练格式、筛选或脱敏。 |
@@ -46,8 +47,8 @@
 |---|---|---|---|
 | 对话默认注入本租户当前版 | `Partial` | `RAG_ENABLED` 代码默认 `true`；`ChatService._build_retriever`；`tests/test_rag.py`；`frontend/src/components/chat/MessageList.tsx` | 无真实 Embedding 时开发环境用 Mock，只能证明链路。回复可带来源文件名及已有页码或段落。对话页在助手正文下展示这些字段，来源为空时不显示来源区。本机 `.env` 仍可将检索关掉。真实 LLM / Citation 未测 |
 | 后端默认 `native` | `Implemented` | `RAG_BACKEND=native` | LangChain/LlamaIndex 为可选适配 |
-| 向量库默认 Local | `Implemented` | `RAG_VECTOR_STORE=local`；`app/rag/vectorstore/local.py`；ADR-0002 | 代码默认仍是 Local。Milvus 五条脚本已通过，产品默认未切换 |
-| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002；`docs/plans/implementation_evd_004_index_params.md` | 2026-09-29 五条脚本通过：`text-embedding-v3`，1024 维，`pymilvus==2.5.11` 对 `milvusdb/milvus:v2.5.11`。默认仍是 local。不标 `Implemented`。产品上传路径未改成自动写入 Milvus |
+| 向量库默认 Milvus | `Partial` | `app/core/config.py` 的 `RAG_VECTOR_STORE` 默认 `milvus`；`.env.example`；`app/rag/vectorstore/local.py`；ADR-0002 | 默认已于 2026-10-21 由 `c2fc1bf` 按 ADR-0002 门槛切到 `milvus`。显式 `local` 只用于离线评测与隔离测试，连接失败不自动退回。真实服务闭环与生产验收未完成，不标 `Implemented` |
+| Milvus 适配 | `Partial` | `app/rag/vectorstore/milvus.py`；ADR-0002；`docs/plans/implementation_evd_004_index_params.md` | 2026-09-29 五条脚本通过：`text-embedding-v3`，1024 维，`pymilvus==2.5.11` 对 `milvusdb/milvus:v2.5.11`。默认已是 `milvus`，但本轮未重跑容器验收，不标 `Implemented`。产品上传路径未改成自动写入 Milvus |
 | 多格式解析（文本/PDF/Office/OCR） | `Partial` | `app/rag/document_parsers/`；`app/rag/ocr/`；相关 tests | 支持级别以测试为准，禁止写成全格式生产完备 |
 | 多策略 Chunking | `Implemented` | `app/rag/chunking/`；`tests/test_chunking.py` | 基线已冻结；无指标不新增策略 |
 | Dense + BM25 + RRF | `Implemented` | `app/rag/vectorstore/`；`app/rag/retriever.py` | RRF 是融合，不是独立 Reranker |
@@ -75,7 +76,7 @@
 | ID | 决定 | 代码是否已对齐 | 实现任务 |
 |---|---|---|---|
 | ADR-0001 | 默认tenant共享当前版本；可选uploader检索隔离已批准；控制面按第4节 | `Partial`：检索与控制面分开，不能写列表/详情已与检索全对齐；uploader全链路由RAG-026实现；资源ACL仍Planned | RAG-026；引用核验RAG-027；资源ACL另按进入条件 |
-| ADR-0002 | 正式目标 Milvus（开发 Lite / 生产 2.4+）；Local 为评测与回退；五条通过后才改默认 | `Partial`：2026-09-29 五条脚本通过；默认仍是 local | 不标 `Implemented`。把默认改成 `milvus` 尚未做 |
+| ADR-0002 | 正式目标 Milvus（开发 Lite / 生产 2.4+）；Local 为评测与回退；五条通过后才改默认 | `Partial`：2026-09-29 五条脚本通过；2026-10-21 起默认已是 `milvus`（ADR 含同日修订） | 默认切换已做。真实服务闭环与生产验收仍未完成，不标 `Implemented` |
 | ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后 Local 按 as-of / 查询日期窗口过滤 | 默认现网仍只检索 `is_current`；未做真实嵌入复跑 |
 | ADR-0005 | 模型预算、完整块组装、实际selected来源、摘要生命周期 | `Partial`：已有结构与路由修复，生成预算/来源/摘要仍Planned；不能从Accepted推导完整实现 | RAG-028/029/030/031/040 |
 | ADR-0007 | 受控块级原文只读核验 | `Planned`：未用本次批准关闭业务卡 | RAG-027 |
@@ -89,7 +90,7 @@
 |---|---|---|
 | 竞品表写「LangGraph 五阶段」 | 默认 `AgentPipeline` | PRD 竞品表改为当前/目标分列 |
 | 竞品表写「混合检索 + 4 重排」 | 仅 RRF，无独立 Reranker | 标 `Planned` |
-| OS 矩阵写「RAG = Milvus 单机」 | 默认 Local；正式目标已改为 Milvus（ADR-0002） | As-Is 保持默认 Local；实现闭环前不得写生产已用 Milvus |
+| OS 矩阵写「RAG = Milvus 单机」 | 默认已于 2026-10-21 改为 `milvus`；正式目标为 Milvus（ADR-0002） | 本表第 3 节与 README 已同步为默认 Milvus；实现闭环前不得写生产已用 Milvus |
 | 设计方案写 `app/graphs/`、`reranker.py`、Chroma | 真实目录 `app/agents/`、`app/rag/vectorstore/` | 设计方案标为历史稿 |
 | 设计方案写 `src/ai_assistant/` | 真实目录 `app/` | 同上 |
 | 宣称 Recall/MRR/NDCG 已有 | 已有 v0.1 检索基线，语料很小 | 可引用分数但必须带有效性限制 |
@@ -105,6 +106,6 @@
 | `ruff check .` | 2026-10-02：退出码 1 | 同上 |
 | `python -m mypy app/` | 2026-10-02：退出码 1 | 同上 |
 | `npm run typecheck` / `npm run build` | 2026-10-02：退出码 0 | 工作目录 `frontend/` |
-| `scripts/milvus_five_gates.py` | 2026-09-29：退出码 0，`all_passed true` | 嵌入 `text-embedding-v3`，1024 维。默认向量库仍是 local |
+| `scripts/milvus_five_gates.py` | 2026-09-29：退出码 0，`all_passed true` | 嵌入 `text-embedding-v3`，1024 维。当时默认向量库仍是 local；默认于 2026-10-21 改为 `milvus`。本轮未重跑 |
 
 更早的全量 pytest（2026-09-13：240 passed，2 skipped，1 failed）失败项是当时环境缺少 `croniter`。此后 `requirements.txt` 已列入该依赖，启停用例在装有该包的环境通过。该历史时点到点触发没有执行记录。2026-10-20的修复已补真实定时入口、执行历史及边界测试，验证结果见 `docs/plans/implementation_flow_003_20261020.md`；重试、并发、告警和精确恢复仍未齐，工作流调度保持 `Partial`。

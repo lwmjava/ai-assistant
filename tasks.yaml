@@ -6384,6 +6384,18 @@ tasks:
       commands:
         - "pytest -k 'secret'"
     execution:
+      business_acceptance_ai_20261105: >-
+        受托业务验收 2026-11-05（授权：用户本会话明确指令，不等同人工业务接受；保持 in_review，禁止关闭）。acceptance1「配置与数据库
+        不含明文密钥」PASS：test_secret_storage 25/25；合成假密钥落盘为 enc: 密文，跨进程重启可解密回原值，缺主密钥时不泄露；DB
+         44 表零密钥列；工作副本 git grep 命中 24 行全为占位/脱敏。acceptance2「脚本可迁移」PASS 但带实质缺口：migrate_a
+        pi_secrets.py 只建加密副本、不改源、拒绝覆盖、失败原子回滚无半成品密文、读回一致、非密字段保留；dry-run 标志、显式批准标志、逐行幂等续
+        跑三项未实现（本轮以非破坏性副本绕过，不作通过依据）。运行树 5 个密钥相关文件 SHA256 全 MATCH HEAD 6bc97cad；全程未读真实 .
+        env、未迁移真实密钥，真实值一律脱敏。未闭合：Linux 证据 NOT_COVERED（Docker 引擎未运行、WSL 仅 docker-desktop
+         无 Python，未建镜像未装依赖，已给出复用 pagt008-linux 先例的确切命令）；HEAD 的 Backend CI step[8] Pyte
+        st 红；RAG/Agent baseline 败于官方评测授权门（用户定为硬门禁，不关卡）；人工业务接受缺。注意：本卡在文件内有两处缩进缺陷致整份 tas
+        ks.yaml 无法被严格 YAML 解析（第 6352-6357 行 allowed_paths 序列 6/8 空格混用；第 6389-6397 行标量 
+        release_plan 后误挂 delivery_order/delivery_stage/owner/nightly 子块），HEAD 上即存在，本条记
+        录未改动它们。证据 data/validation/20261104-acceptance/NFR-007/。
       acceptance_state: "本地专项171通过，ruff/mypy通过，独立审查P2已闭合；Linux、最终SHA CI与业务接受待完成，禁止关闭。未提交推送，未读取真实.env或迁移真实密钥。"
     delivery_record: "docs/plans/plan_nfr007_delivery_20261031.md"
     release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
@@ -11497,6 +11509,18 @@ tasks:
     - "当前主体/租户/撤销版本复核，scope 与 ACL 取交集；管理员不豁免。"
     - "审批与审计可核验后方可提供原子版本更新；无设施则阻断写入口。"
     execution:
+      business_acceptance_ai_20261105: >-
+        受托业务验收 2026-11-05（授权：用户本会话明确指令，不等同人工业务接受；保持 in_review）。三条 acceptance 全 PASS：真实
+        入口（8114、AUTH_ENABLED=true、双租户 Bearer、隔离库）40/40 通过——拒读缺失 ACL/public/revision=0/
+        外租户授权行/限时过期/非当前版；服务重读库不信任传入对象，提案人 token_version 变更后确认→403，管理员不豁免；两阶段复核、单次原子消费重
+        放→409、版本 CAS 1→2、超期、摘要再计算绑定、布尔与租户伪造→422、失败零残留，写入面无旁路端点。迁移 create_all→stamp→upg
+        rade head×2 幂等无 already-exists，downgrade 按声明 RuntimeError 拒删并保行；targeted 88 pa
+        ssed/exit 0。NOT_COVERED：resource_acl.py:276 IntegrityError post-write 分支；主检索/缓
+        存/摘要接线属 RAG-047。未闭合：候选未提交且 HEAD 的 Backend CI step[8] Pytest 红（本会话已在工作树修 ae41d8
+        362c90）；官方评测授权门未过；Linux 平台证据与最终 SHA CI 需重绑；人工业务接受缺。能力标签判定：本卡范围内 Implemented-in
+        -scope，对外的资源 ACL 整体保持 Partial，不得写生产闭环。附带风险：SQLite 未启用 FK pragma，孤儿 ACL 行不被库拒；c
+        onda editable 安装在工作目录非仓库根时会把 app 指向过期 nfr-007 worktree。证据 data/validation/2026
+        1104-acceptance/RAG-046/。
       plan: "docs/adr/0024-resource-knowledge-permission.md"
       blocked_by: "最终提交的完整后端/Ubuntu CI、Linux迁移证据和业务接受未完成；API/主链路接线属后续阶段。"
       progress: "2026-11-01最新结果：原工作区源码+C盘短临时目录完整pytest已结束，3851通过/19失败/31跳过，退出1；完整输入与日志保留data/validation/20261101-latest-source-full。失败归因未全部隔离，不能关闭；扩大专项74通过，workflow/quota迁移调用方修正保留升级与数据断言，独立复核通过。 2026-11-01继续收尾：本地full收集3895项，E盘空间耗尽中断，不能算通过；发现ACL迁移与create_all已有表不兼容已修复，校验关键PK/FK/非空/索引。独立审查P2已修复复核。旧反馈迁移补目标版本直接测试，分块计划迁移测试限定自身往返，保留全部数据断言。当前58项迁移/ACL/API专项通过、ruff与mypy app/退出0；C盘隔离副本全量仍在运行，尚非最终候选通过证据。 2026-10-31补充：用户批准同人确认，已实现限时提案、内容/文档/版本绑定、当前管理员复核、单次原子消费与ACL/grants/audit同事务、版本CAS及失败回滚。最终专项88 passed，全仓ruff与mypy（260文件）退出0；独立审查P2锁等待到期已修复并复核。完整记录与最终指纹见ADR-0024人工确认验证章节；仍in_review，未提交或启用。 2026-10-31 用户批准具体规格。基线 HEAD 3b0e322b0775bcc4e18f03eeb005570e251ebeef；分支 codex/rag-resource-acl 从 fetch 后相同 SHA 的 origin/develop 建立，保留其他任务未提交修改但不纳入本卡。preflight 与原权限专项基线通过；新增模型、仅建空表迁移、独立读取判定及确定性反例；不开放写接口、不宣称主链路 ACL 生效。最终专项29 passed（新增20/既有9）、范围ruff及服务mypy退出0、迁移单head、diff检查退出0；独立审查P2已修复并复核。完整证据/候选SHA256见ADR-0024第一阶段验证记录，最终targeted输入绑定data/validation/20261031T095641-0383ac814515。未关闭。"
@@ -11541,6 +11565,35 @@ tasks:
     - "31项跳过按Linux/PostgreSQL/Windows互斥条件在真实对应环境执行，未执行项明确阻断。"
     - "共享conftest变化须完成最新候选本地全量、静态检查和适用独立审查。"
     execution:
+      group_b_resolution_20261105: >-
+        补充 2026-11-05：上述 3 个 README/Swagger 契约锚定红已处置。定因核实 docs/swagger.json 与运行时一致（tes
+        t_workflow_alert_privacy 的路径存在、get 操作逐字段相等、WorkflowAlertOut schema 相等三条断言均通过），
+        红因是并行改写删除了 README 的端点表与运维限制句：readme_endpoint_rows 要求逐字标题 `## API 端点`（新稿为 `## A
+        PI 主链`，解析返回空表使 assert rows 失败），且 test_rate_limit_retry:163 要求句面含「完成 `OPS-001` 
+        之前不要水平扩展」。处置为按契约补内容而非放宽断言：标题改为 `## API 端点`、拆分 2 条非法方法/路径组合（POST /api/v1/runs/{
+        run_id}、POST /api/v1/admin/users 实际不存在，POST 在 /cancel 上、admin/users 只有 GET）、补 
+        /api/v1/workflows/alerts 行与目录锚点、补回水平扩展限制句。拟稿先用测试自身的 readme_endpoint_rows 对当前 a
+        pp.openapi()（129 个 /api/v1 操作）校验得 12 行且 absent=NONE，未凭印象填写。复跑 7 文件专项 47 passed
+        /exit 0（run data/validation/20261105T010259-ea7c3ee418dd，status=passed），全仓 ruf
+        f 退 0、mypy app/ 265 文件无问题；仓内已无对旧标题的残留引用。原 19 项与迁移守卫 8 项的结论不变。仍未闭合：候选未提交、最终 SHA
+         Ubuntu 全量 CI、Linux+PostgreSQL 平台验证（Docker 未运行）、官方评测授权门、人工业务接受。
+      business_acceptance_ai_20261105: >-
+        受托业务验收 2026-11-05（授权：用户本会话明确指令，不等同人工业务接受；保持 in_review）。原 19 项失败在当前候选（HEAD 6bc9
+        7cad + 工作树 ae41d8362c90 守卫修复）专项 Run A（run 644df04d90b3）19/19 通过、exit 0，「已清零」对当
+        前候选成立。现树另有 3 红（Run B 28 passed/3 failed，run 6f341bd31f8a）：test_openapi_coverag
+        e::test_openapi_readme_paths_are_subset、test_rate_limit_retry::test_readme_sta
+        tes_single_process_limit、test_workflow_alert_privacy::test_owner_alert_openapi
+        _export_and_readme_match_runtime，经 git show HEAD:README.md 命中 2、工作区命中 0 证实由并行会
+        话改写 README 与 docs/swagger.json 造成的契约锚定失败，不属原 19 项、不属本卡范围。31 项平台数据库验证：e590608 归
+        档 Ubuntu JUnit 重审计 PLATFORM_VALIDATION_PASS；当前候选因 Docker 未运行、WSL 无 Python 记 NO
+        T_COVERED，须在 Linux+Docker 跑 validate_postgresql.py --image postgres:16 并由最终 SH
+        A 的 Ubuntu CI 重绑，Windows 不可替代（§10.6）。交付物未被回退：本卡 16 个路径在 e590608..HEAD 零 diff。C
+        I 描述如实更正：GitHub API 复核 run 41310174217 的 workflow conclusion = failure；Backend
+         job step 级 [5]Ruff/[6]Mypy/[7]PostgreSQL/[8]Pytest/[9]Require real platform c
+        overage 均 success，仅 [10]Require official evaluation authorization failure，RAG/
+        Agent baseline 同败于该门，Frontend success。故原文「最终CI…均通过」在 step 级成立、在 workflow 级不成立，
+        不得再写「CI 通过」。风险提示：工作目录非仓库根时 import app 会解析到过期 worktree。证据 data/validation/20261
+        104-acceptance/QA-REG-001/。
       progress: "2026-11-01：基线3b0e322b0775bcc4e18f03eeb005570e251ebeef，原全量3851通过/19失败/31跳过。最终WIP提交e5906084e49550aa9f622259d5f365efdc8968b4，分支codex/qa-platform-regression；Windows指定conda隔离全量退出0：3894通过/31平台跳过/0失败；Ubuntu3.12.15+PostgreSQL16全量退出0：3902通过/4跳过/0失败。按原始JUnit逐条核实原19失败均已通过，原31项平台用例均在真实Ubuntu通过，PLATFORM_VALIDATION_PASS。最终CI https://github.com/lwmjava/ai-assistant/actions/runs/41310174217；Backend ruff/mypy/pytest/平台核验和前端四项均通过。证据data/validation/20261101-windows-e590608及20261101-ci-e590608/summary.json，含完整命令、退出码、依赖、SHA和54文件指纹。提交hook与远端新增密钥扫描通过，独立审查的TCP就绪问题修复复核。官方RAG/Agent job因用户无费用授权在调用前明确失败，未设置授权变量；Security依赖审计Python3项/npm12项失败，最终产物已保存；随后用户批准SEC-DEP-001，6da40b6已修复并在正式CI验证Python/npm均0漏洞；Ubuntu另有可选依赖缺失和Windows专属的4项跳过，未伪报覆盖。保持in_review，未合并、未发布。原工作区其他治理改动保留，隔离候选仅包含本批依赖变更。"
 
   - id: "RAG-043"
@@ -12573,6 +12626,17 @@ tasks:
       cases: ["私有、租户和系统作用域", "禁用与版本回滚", "越权工具与Prompt注入拒绝"]
       notes: "实现时增加Agent选择和权限版本化Evaluation。"
     execution:
+      business_acceptance_ai_20261105: >-
+        受托业务验收 2026-11-05（授权：用户本会话明确指令，AI 验收不等同人工业务接受；状态保持 in_review）。真实 HTTP 入口验收：AUT
+        H_ENABLED=true + 双租户真实 Bearer + 隔离库，端口 8111。acceptance1 PASS（无/伪造 Token→401，me
+        mber 建 tenant/system 域→403，跨租户改→404 且不泄露 id/name，主体与租户停用→403，可见性矩阵正确）；acceptan
+        ce2 PASS（publish 含未知工具→422，生效集=定义∩主体，无并集提权）；acceptance3 后端 PASS（v1↔v2 切换、陈旧 re
+        vision→409、非法目标→404，进程重启后 enabled/revision/版本历史{1,2}/审计均落库），UI 页面操作 NOT_COVERE
+        D（本机无浏览器自动化，用户已批准降级为 API+落库口径）。独立 targeted 82 passed/exit 0；被测 6 文件 SHA256 与 H
+        EAD 6bc97cad 一致。未闭合：候选未提交且 HEAD 的 Backend CI step[8] Pytest 红——本会话已在工作树定位并修复：a
+        e41d8362c90 缺 has_table 守卫导致 8 个迁移类失败（工作树指纹 2231487a...，修复后 28 passed、ruff 退 0
+        ，未提交）；官方评测授权门未过；Linux 与最终 SHA CI 待重绑；人工业务接受缺。证据 data/validation/20261104-accep
+        tance/AGT-004/。
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
       delivery_order: 5
       owner: "个人开发者"
@@ -12582,6 +12646,18 @@ tasks:
       estimate_person_days: [6, 10]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、创建生产Agent或扩大权限。", implementation_plan: "开工前先采用必要ADR并锁定定义Schema、作用域、版本、审批和回滚。"}
       validation_notes: "Windows project conda interpreter: python -m pytest tests/test_agent_definition_scope.py tests/test_agent_state_resume.py tests/test_chat_resume.py -q --tb=short, exit 0, 31 passed including managed resume under self and langgraph orchestration settings. Frontend npm run typecheck exit 0 before final runtime edits. Final SHA CI, independent review, browser acceptance and business acceptance pending."
+      closure_check_20261104: >-
+        保持 in_review。基线引用 origin/develop cec856309b47e68407ede42f35f2c5d908f77c1f（未重跑）；
+        候选 codex/agent-definition-management HEAD 6bc97cad001874483dbdc52c93d8f94a45304917
+        加开工时的 frontend/src/components/layout/Sidebar.tsx（SHA256 904e20511fb46785e8afd35173a436b7d3ed7db7e90c588891398556eac961e4）
+        和 frontend/src/pages/AgentDefinitions.tsx（SHA256 0527993f64536ff83e8df72d6c41898a8038ff3809f95029dfa44f1bf5fb9f56）。
+        Windows 项目 conda Python 3.12.0，隔离测试库：python -m pytest tests/test_agent_definition_scope.py tests/test_agent_state_resume.py tests/test_chat_resume.py -q --tb=short，31 passed/exit 0；
+        python -m pytest tests/test_supervisor.py tests/test_supervisor_tool_contract.py -q --tb=short，51 passed/exit 0。
+        python -m ruff check . 首次缓存权限失败 exit 2，追加 --no-cache 后 exit 0。
+        Node 22.20.0、npm 10.9.3、Vitest 5.0.5：npm run typecheck、npm run lint、npm run build 均 exit 0；
+        npm test 首次回环端口 EACCES exit 1，允许回环绑定后重跑 202 passed/exit 0。
+        上述覆盖作用域判定、工具交集、恢复与 Supervisor 回归。真实管理入口的跨租户拒绝、版本发布/回滚及刷新后持久化和页面操作尚待验收。
+        最终候选 CI（含完整后端回归）、独立审查和业务接受仍待完成。回退按 ADR-0025 停用动态入口并恢复内置定义，保留历史版本及审计。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PWFL-005"
@@ -12739,6 +12815,17 @@ tasks:
       cases: ["路径逃逸与符号链接", "URL重定向和内网解析", "超大与深层参数及合法调用回归"]
       notes: "实现时增加工具参数安全Evaluation和变异反例。"
     execution:
+      business_acceptance_ai_20261105: >-
+        受托业务验收 2026-11-05（授权：用户本会话明确指令，不等同人工业务接受；保持 in_review）。三条 acceptance 全 PASS：Wi
+        ndows Run1 208 passed+1 skip、Run2 391 passed 均 exit 0；真实 HTTP 入口（uvicorn@127.0
+        .0.1:8112 + ScriptedLLM + fetch_page 桩，零公网零真实模型）重放「读取百度首页/访问百度官网/打开某公司官方网站/抓取 
+        https://example.com」均触发 web_fetch，「不要访问/是什么网站/print(...)」均不启用；审计四键 risk,allowe
+        d,reason,latency_ms 落库且无绝对路径/密钥/内网 IP；私网→invalid_arguments；composed/anyOf/allO
+        f/$ref/自由对象 5 组兼容保留；timeout 与 CancelledError 有效。证据失效：route/pipeline/conftest/p
+        yproject/requirements/ci.yml 相对卡内 Windows 922/Linux 312 指纹已变（11 commits/97 fil
+        es），按 §10.7 旧证据过期，需在新候选重跑含 Linux；HEAD 6bc97cad 的 Backend CI step[8] Pytest 红（属
+         ae41d8362c90 迁移守卫，非本卡范围）；官方评测授权门未过。夹具 DNS 不代表真实名称解析质量；UI 走查未做（非本卡范围）。证据 data/
+        validation/20261104-acceptance/PAGT-008/。
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
       delivery_order: 1
       owner: "个人开发者"
@@ -13077,6 +13164,18 @@ tasks:
       cases: ["长头部与脚本后正文", "提取后截断与下载受限分别说明", "JSON/纯文本/中文与畸形HTML", "动态空正文、提示注入与资源上限", "真实聊天入口与公网守卫回归"]
       notes: "确定性提取优先用固定HTML/HTTP夹具；AI合成数据不标Gold。真实公网冒烟与隔离测试分开记录，真实模型调用及费用另行授权。"
     execution:
+      business_acceptance_ai_20261105: >-
+        受托业务验收 2026-11-05（授权：用户本会话明确指令，不等同人工业务接受；保持 in_review）。三条 acceptance 全 PASS：真实
+         ToolRegistry→ToolExecutor→web_fetch 入口下 8142 字符头/脚本/样式夹具仍提取 61 字符中文正文与标题，脚本/样
+        式/注释内伪密钥/hidden/display:none/noscript 均不进正文且无脚本执行；download_limit/text_limit/pa
+        rse_limit/title_limit 四类原因互不混淆并给出返回长度，中文多字节被下载上限切断时不误判编码，仅未触限且无错误才 complete=tr
+        ue；JSON/纯文本/GBK 兼容，空正文/JS 壳/畸形声明/非法编码/PDF 二进制/HTTP 503 全 exec_status=error 不包装
+        成成功全文。定向 3 文件 60 passed/exit 0（run 20261104T155159-bf80d8265aab）；web_content/b
+        uiltin/public_http/eval yaml SHA256 与 HEAD 一致，tests/test_public_tool_http.py 指
+        纹已变。非阻断发现 2 项 P3。未闭合：HEAD 6bc97cad Ubuntu CI Backend pytest 红（同属 ae41d8362c90 
+        迁移守卫）与官方评测授权门未过；卡内 Linux/35 模块证据对本 SHA 过期；依赖 PAGT-008 仍 in_review 故不可独立关闭；真实站点
+        正文质量需公网授权、真实模型质量需费用授权、UI 展示未覆盖。证据 data/validation/20261104-acceptance/PAGT-009
+        /。
       implementation_20261029:
         authorization: "用户明确要求使用task-card-delivery开始实现，并选择暂不提交PAGT-008、继续当前工作区本地实现；保留codex/pagt-008上的既有改动，不擅自提交/推送/合并或创建混合基线分支。"
         baseline: "HEAD3b0e322 + PAGT-008当前未提交源码；复用输入匹配的34模块862passed/1Linuxskip及Linux252passed、Ruff/mypy通过证据。将本卡接触的既有文件原样快照到data/validation/pagt009-baseline供差异审查与回滚，不覆盖前卡改动。"
@@ -13194,5 +13293,26 @@ tasks:
     - "pypdf、Vite和minimatch已知漏洞在实际解析/安装依赖中修复，Python与npm审计退出0。"
     - "PDF正常/畸形输入和lint匹配/既有拒绝规则保持有效；前端四项与最终SHA后端CI通过适用检查。"
     execution:
+      group_b_resolution_20261105: >-
+        补充 2026-11-05：此前记为「README 改写造成的 3 红属并行会话范围，不计本卡」的阻断已处置，README 按 tests/test_ope
+        napi_coverage.py:85-108 的解析契约补回 `## API 端点` 表与 `OPS-001` 水平扩展限制句，7 文件专项复跑 47 p
+        assed/exit 0（run data/validation/20261105T010259-ea7c3ee418dd，status=passed），全
+        仓 ruff 与 mypy app/ 均通过；docs/swagger.json 未重导出（其三条断言本就通过）。本卡自身的依赖与审计结论不变。仍未闭合：官
+        方评测授权硬门、新最终 SHA 的 CI 绑定、人工业务接受。
+      business_acceptance_ai_20261105: >-
+        受托业务验收 2026-11-05（授权：用户本会话明确指令，不等同人工业务接受；保持 in_review）。依赖与审计 PASS：实测版本 pypdf 6
+        .21.4、Vite 6.4.5、ESLint 10.14.0、@typescript-eslint 8.72.1、react-hooks 7.1.1、mi
+        nimatch 11.0.3(overridden)、engines ^22.13 对 Node 22.20.0 七项全一致无漂移；pip_audit 退 
+        0（0 漏洞；中文 Windows 下需 UTF-8 BOM 副本规避 GBK 解码栈报错，属工具编码问题非门禁放宽）、npm audit 退 0（0 漏洞
+        ）；PDF 专项在当前候选复跑 132/132（run 20261104T172143-2025fa861388，主仓 + conda 3.12.0，imp
+        ort app 解析到仓库根未串树）；前端四项全退 0（typecheck/vitest 202/eslint/build），lint 实算 90 条规则、
+        67 error 无降级。旧版 pypdf 对照需安装旧包，记 NOT_COVERED（未安装任何依赖）。「最终 SHA 后端 CI 通过」FAIL：同 S
+        HA 的 CI run 41314125047 与 PR run 41317338250 conclusion = failure，仅败在 step[10]
+         Require official evaluation authorization（[5]Ruff/[6]Mypy/[7]PostgreSQL/[8]Py
+        test/[9]平台覆盖均 success）；原文「Security CI 全绿」只覆盖 Security workflow 41314125032，描述不
+        完整已据此更正。6da40b6..HEAD 实测 6 commits/42 files（非 11/97），前端与 PDF 相关文件逐字节未变，唯 pypro
+        ject.toml/requirements.txt 新增 cryptography==50.0.2。README 改写造成的 3 红属并行会话范围，不计本
+        卡。未闭合：官方评测授权硬门未过；ruff/mypy/完整 CI 待新最终 SHA 绑定；人工业务接受缺。证据 data/validation/202611
+        04-acceptance/SEC-DEP-001/。
       plan: "用户2026-11-01批准依赖修复。基线e590608，origin/develop核对为3b0e322；从develop创建独立codex/dependency-security后快进复用上批验证前置（未合入develop）。现有Windows3894通过/31平台跳过、Ubuntu3902通过/4跳过作为输入匹配基线；审计Python3/npm12失败证据见data/validation/20261101-ci-e590608。修复pypdf6.21.4、Vite6.4.5；minimatch无旧分支补丁，升级ESLint10及兼容Hooks插件，限定minimatch11并保留既有lint规则，验证所有直接调用方。回滚仅本卡依赖/配置diff，锁文件同步。"
       progress: "2026-11-01最终候选6da40b633a650a2be6fe8d8c63a3ff021bd752c0已推送codex/dependency-security；原工作区依赖声明、锁文件和node_modules同步，保留其他用户改动。pypdf6.21.4、Vite6.4.5、ESLint10.14.0、Hooks7.1.1、typescript-eslint8.72.1，minimatch限定11.0.3；Node22最低22.13。Windows PDF/RAG专项132通过，前端四项通过/202测试，旧版对照复现两类PDF循环5秒超时；真实Vite查询绕过反例和lint拒绝规则有效。升级前后有效lint规则均90条，无严重级别下降。最终Ubuntu完整3906通过/4既有跳过/0失败，31平台用例核验通过；ruff/mypy260文件/前端四项通过。Security CI https://github.com/lwmjava/ai-assistant/actions/runs/41314125032 全绿，Python与npm正式审计均0漏洞，新增密钥扫描通过。Backend证据 https://github.com/lwmjava/ai-assistant/actions/runs/41314125047；整体CI仍因官方RAG/Agent无费用授权在调用前失败，未设置授权变量、未调用真实模型，保持in_review，不合并、不发布。最终本地/CI命令、版本、退出码、JUnit、审计原始JSON与9文件SHA256保留data/validation/20261101-dependency-security/summary.json及配套产物。回滚仅本卡依赖/锁文件/兼容配置与测试diff。"

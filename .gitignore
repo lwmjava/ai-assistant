@@ -64,6 +64,7 @@ docker-compose.gate.local.yml
 
 # Data / runtime artifacts
 data/
+evals/artifacts/
 *.db
 *.sqlite
 *.sqlite3

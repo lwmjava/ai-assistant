@@ -64,6 +64,7 @@ docker-compose.gate.local.yml
 
 # Data / runtime artifacts
 data/
+evals/artifacts/
 *.db
 *.sqlite
 *.sqlite3
@@ -92,3 +93,11 @@ Thumbs.db
 
 # 子 Agent 遗留的 git worktree 副本（孤儿目录，内含整份源码，勿入库）
 /.worktrees/
+/ai-assistant/
+/ai-assistant/.cursor/
+/ai-assistant/.github/
+/ai-assistant/.trae/
+
+# 评测一次性探针运行产物（非可复用报告）
+/evals/reports/*probes*/
+/evals/reports/agent-ci-*/

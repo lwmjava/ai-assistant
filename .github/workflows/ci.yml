@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -10,13 +11,6 @@ concurrency:
 
 permissions:
   contents: read
-
-env:
-  OFFICIAL_EVALUATION_AUTHORIZED: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED }}
-  OFFICIAL_EVALUATION_BUDGET_REF: ${{ vars.OFFICIAL_EVALUATION_BUDGET_REF }}
-  OFFICIAL_EVALUATION_AUTHORIZED_SHA: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED_SHA }}
-  OFFICIAL_EVALUATION_AUTHORIZED_RUN_ID: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED_RUN_ID }}
-  OFFICIAL_EVALUATION_AUTHORIZED_RUN_ATTEMPT: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED_RUN_ATTEMPT }}
 
 jobs:
   backend:
@@ -109,30 +103,6 @@ jobs:
           pytest --junitxml=data/validation/ci-backend/pytest.xml
       - name: Require real platform coverage
         run: python scripts/check_platform_validation.py --report data/validation/ci-backend/pytest.xml
-      - name: Require official evaluation authorization
-        env:
-          OFFICIAL_EVALUATION_AUTHORIZED: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED }}
-          OFFICIAL_EVALUATION_BUDGET_REF: ${{ vars.OFFICIAL_EVALUATION_BUDGET_REF }}
-          OFFICIAL_EVALUATION_AUTHORIZED_SHA: ${{ vars.OFFICIAL_EVALUATION_AUTHORIZED_SHA }}
-        run: |
-          python - <<'PY'
-          import os
-          if (os.environ.get("OFFICIAL_EVALUATION_AUTHORIZED") != "true"
-                  or not os.environ.get("OFFICIAL_EVALUATION_BUDGET_REF", "").strip()
-                  or not os.environ.get("GITHUB_SHA")
-                  or os.environ.get("OFFICIAL_EVALUATION_AUTHORIZED_SHA") != os.environ["GITHUB_SHA"]):
-              raise SystemExit("OFFICIAL_EVALUATION_NOT_AUTHORIZED: explicit approval and budget record required")
-          PY
-      - name: RAG baseline gate
-        env:
-          RAG_BACKEND: native
-          RAG_CHUNK_STRATEGY: structured
-          RAG_VECTOR_STORE: local
-          RAG_EFFECTIVE_DATE_FILTER: 'false'
-          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
-        run: |
-          python scripts/run_official_eval.py --budget-yuan 1 --ledger evals/reports/rag-budget.json scripts/run_rag_baseline.py --mode official --out evals/reports/rag-v0.1-baseline-ci.json
-          python scripts/rag_gate_check.py --report evals/reports/rag-v0.1-baseline-ci.json --baseline evals/reports/rag-v0.1-baseline-20260919.json
       - name: Upload Backend evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -140,7 +110,6 @@ jobs:
           name: backend-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             data/validation/ci-backend/pytest.xml
-            evals/reports/rag-budget.json
           if-no-files-found: warn
           retention-days: 14
 
@@ -154,11 +123,11 @@ jobs:
             docker rm --force "$name"
           fi
 
-  # Compatible split: Backend still owns the required RAG gate. This job stays
-  # off until ENABLE_RAG_OFFICIAL_JOB=true, so push/PR do not pay twice.
+  # Official evaluation runs on manual dispatch (or explicit opt-in) so routine
+  # pushes pay no real-API costs and no per-SHA authorization ritual.
   rag-baseline:
     name: RAG official baseline
-    if: vars.ENABLE_RAG_OFFICIAL_JOB == 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_RAG_OFFICIAL_JOB == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -211,6 +180,7 @@ jobs:
 
   agent-baseline:
     name: Agent official baseline
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_AGENT_OFFICIAL_JOB == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

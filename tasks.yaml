@@ -12687,7 +12687,7 @@ tasks:
 
   - id: "PWFL-006"
     title: "受控工作流步骤编辑与运行轨迹"
-    status: "in_progress"
+    status: "in_review"
     priority: "P0"
     module: "Workflow"
     target_version: "1.0"
@@ -12716,7 +12716,7 @@ tasks:
       delivery_stage: "V1-1"
       estimate_person_days: [5, 9]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或修改生产工作流。", implementation_plan: "开工前锁定现有Workflow模型、批准步骤白名单、版本冲突和回滚。"}
-      progress_20261107: "用户要求在 PWFL-005 可验收后继续。锁定现有单步模型：唯一已批准步骤是 prompt，节点 id 固定为 prompt；变量只校验声明，不替换不求值；修订用 updated_at，冲突不写模板；无新表。运行图节点状态等于执行记录。决定见 docs/adr/0026-workflow-step-definition.md。回滚移除定义与运行图入口，保留已保存模板和执行历史。Windows 项目 conda：pytest tests/test_workflow_definition.py -q 为 4 passed/exit 0；ruff 与 mypy 覆盖 definition.py 与 workflow 路由 exit 0。前端 tsc、ESLint 与变量解析测试 exit 0。编辑弹层未在浏览器提交。CI 与人工业务接受未完成，保持 in_progress。"
+      progress_20261107: "本地可验收，保持 in_review，不标 done。唯一已批准步骤是 prompt，节点 id 固定为 prompt；变量只校验声明，不替换不求值；修订用 updated_at，冲突不写模板；无新表。运行图节点状态等于执行记录。决定见 docs/adr/0026-workflow-step-definition.md。回滚移除定义与运行图入口，保留已保存模板和执行历史。Windows 项目 conda：pytest tests/test_workflow_definition.py tests/test_workflow_execution_logs_api.py -q 为 8 passed、1 warning、exit 0。前端 vitest src/pages/Workflows.execution-logs.test.ts 为 3 passed、exit 0。隔离库浏览器走查：非法占位符在创建前显示变量不合法且列表仍为空；合法模板创建后，编辑保存先后得到定义 PUT 200 与任务 PUT 200，卡片仍显示原文。执行历史展开显示运行节点 prompt、失败、失败位置执行超时，输入保持原文。该失败记录写在隔离库中，未调用真实模型。Ubuntu Backend CI 与人工业务接受未完成。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PROMPT-002"

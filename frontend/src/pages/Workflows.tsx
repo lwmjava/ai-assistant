@@ -152,6 +152,32 @@ export function FailureAlertsStrip({ alerts }: { alerts: ExecutionFailureAlertOu
   )
 }
 
+export function PromptStepNotice({ template }: { template: string }) {
+  const parsed = parsePromptVariables(template)
+  return (
+    <div className="rounded-lg border border-border bg-surface-2/50 px-3 py-2.5 text-sm">
+      <p className="font-medium text-text">已批准步骤：prompt</p>
+      <p className="mt-1 text-text-muted">
+        变量：{parsed.ok ? (parsed.variables.length ? parsed.variables.join('、') : '无') : '不合法'}
+      </p>
+      <p className="mt-1 text-xs text-text-faint">变量只作声明，执行时不会替换或求值。</p>
+    </div>
+  )
+}
+
+export function ExecutionNodeLine({
+  node,
+}: {
+  node: { id: string; type: string; status: string; failed: boolean; reason: string | null }
+}) {
+  return (
+    <p className="text-text">
+      运行节点：{node.type} · {STATUS_LABEL[node.status] ?? node.status}
+      {node.failed ? ` · 失败位置：${EXECUTION_FAILURE_LABEL[node.reason ?? ''] ?? node.reason ?? '未标明'}` : ''}
+    </p>
+  )
+}
+
 function WorkflowFormModal({
   open,
   onClose,
@@ -331,13 +357,7 @@ function WorkflowFormModal({
           error={errors.prompt_template?.message ?? (parsedPrompt.ok ? undefined : '变量不合法')}
           {...register('prompt_template')}
         />
-        <div className="rounded-lg border border-border bg-surface-2/50 px-3 py-2.5 text-sm">
-          <p className="font-medium text-text">已批准步骤：prompt</p>
-          <p className="mt-1 text-text-muted">
-            变量：{parsedPrompt.ok ? (parsedPrompt.variables.length ? parsedPrompt.variables.join('、') : '无') : '不合法'}
-          </p>
-          <p className="mt-1 text-xs text-text-faint">变量只作声明，执行时不会替换或求值。</p>
-        </div>
+        <PromptStepNotice template={promptTemplate ?? ''} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="时区" required placeholder="Asia/Shanghai" error={errors.timezone?.message} {...register('timezone')} />
@@ -397,10 +417,7 @@ function ExecutionRow({ workflowId, execution }: { workflowId: string; execution
             {payload.duration_ms != null ? ` · 耗时 ${formatDuration(payload.duration_ms)}` : ''}
           </p>
           {payload.nodes.map((node) => (
-            <p key={node.id} className="text-text">
-              运行节点：{node.type} · {STATUS_LABEL[node.status] ?? node.status}
-              {node.failed ? ` · 失败位置：${EXECUTION_FAILURE_LABEL[node.reason ?? ''] ?? node.reason ?? '未标明'}` : ''}
-            </p>
+            <ExecutionNodeLine key={node.id} node={node} />
           ))}
           {!payload.nodes.length && failureLabel && (
             <p className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-danger">

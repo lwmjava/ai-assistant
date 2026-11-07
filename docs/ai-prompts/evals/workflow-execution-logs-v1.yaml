@@ -1,0 +1,21 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored synthetic deterministic fixtures, not Gold or real-model quality evidence"
+execution: "pytest tests/test_workflow_execution_logs_api.py -q"
+contract:
+  read: "GET workflows logs and execution log detail; workflows:read; no audit write and no replay"
+  pagination: "Descending pages match the existing log query; detail pages are chronological"
+  isolation: "Missing and cross-tenant workflow reads return the same 404 body"
+  display: "Responses sanitize and truncate sensitive text to 500 characters"
+  page: "Execution failure alerts and owner-invalid alerts render as separate status regions"
+cases:
+  - id: page_matches_query
+    expected: "Limit and offset slices equal the existing descending log query, and detail order is chronological."
+  - id: hide_existence
+    expected: "Another tenant and an unknown workflow produce the same 404. A system admin can read the owned workflow."
+  - id: disabled_and_immutable
+    expected: "A disabled principal is rejected. Reading does not add logs or alerts and does not change the execution."
+  - id: separate_failure_alerts
+    expected: "Execution failure alerts are not mixed into owner-invalid alerts, and other tenants are omitted."
+  - id: sanitized_display
+    expected: "Secrets and phone numbers are masked. Long input is truncated. The page labels the prompt step, duration and failure reason separately from owner suspension."

@@ -74,3 +74,5 @@ ADR-0021：[运行历史存储与可见性](0021-run-history-storage-visibility.
 ADR-0022：[会话记忆快照治理](0022-memory-snapshot-governance.md)，Accepted，2026-10-23。快照仅限单会话，绑定主体/租户/消息前缀及策略版本；删除、撤权、停用、过期或版本漂移均失效，不自动物理删除。
 
 ADR-0023：[受预算评测任务生命周期](0023-evaluation-job-lifecycle.md)，Accepted，2026-10-23，2026-10-24补记。评测任务采用租户隔离的持久状态机、有限并发、合作取消与重启终态；内部 Smoke 保持零费用，真实 RAG 生成/Judge/Embedding 共享显式批准的请求及费用上限，未知价格拒绝。
+
+ADR-0026：[工作流只编辑已批准的 Prompt 步骤](0026-workflow-step-definition.md)，Accepted，2026-11-07。只校验并保存现有单步 Prompt，变量不求值；修订冲突不覆盖模板，运行图对应真实执行记录。不新增表，批准不代表验收完成。

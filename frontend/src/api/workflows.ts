@@ -3,7 +3,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/http'
-import type { ExecutionOut, WorkflowAlertOut, WorkflowCreate, WorkflowOut, WorkflowUpdate } from '@/types/api'
+import type {
+  ExecutionFailureAlertOut,
+  ExecutionLogDetail,
+  ExecutionOut,
+  WorkflowAlertOut,
+  WorkflowCreate,
+  WorkflowDefinition,
+  WorkflowOut,
+  WorkflowUpdate,
+} from '@/types/api'
 
 export interface WorkflowList {
   workflows: WorkflowOut[]
@@ -15,6 +24,10 @@ export const workflowKeys = {
   list: () => [...workflowKeys.all, 'list'] as const,
   executions: (id: string) => [...workflowKeys.all, 'executions', id] as const,
   alerts: () => [...workflowKeys.all, 'alerts'] as const,
+  executionAlerts: () => [...workflowKeys.all, 'execution-alerts'] as const,
+  executionLogs: (workflowId: string, executionId: string, offset: number) =>
+    [...workflowKeys.all, 'execution-logs', workflowId, executionId, offset] as const,
+  definition: (id: string) => [...workflowKeys.all, 'definition', id] as const,
 }
 
 export function useWorkflows(enabled = true) {
@@ -94,6 +107,54 @@ export function useWorkflowAlerts(enabled = true) {
     queryFn: () => api.get<WorkflowAlertOut[]>('/workflows/alerts'),
     enabled,
     // 引擎未启用或无权限时不重试，静默隐藏告警条
+    retry: false,
+  })
+}
+
+/** 执行失败告警。与创建者失效告警分开请求。 */
+export function useExecutionFailureAlerts(enabled = true) {
+  return useQuery({
+    queryKey: workflowKeys.executionAlerts(),
+    queryFn: () => api.get<ExecutionFailureAlertOut[]>('/workflows/execution-alerts'),
+    enabled,
+    retry: false,
+  })
+}
+
+export function useWorkflowDefinition(workflowId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: workflowKeys.definition(workflowId ?? ''),
+    queryFn: () => api.get<WorkflowDefinition>(`/workflows/${workflowId}/definition`),
+    enabled: Boolean(workflowId) && enabled,
+    retry: false,
+  })
+}
+
+export function useSaveWorkflowDefinition() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: WorkflowDefinition }) =>
+      api.put<WorkflowDefinition>(`/workflows/${id}/definition`, payload),
+    onSuccess: async (_data, { id }) => {
+      await qc.invalidateQueries({ queryKey: workflowKeys.definition(id) })
+    },
+  })
+}
+
+/** 单次执行的脱敏详情。只在展开时请求，避免把历史查看变成重放。 */
+export function useExecutionLogDetail(
+  workflowId: string,
+  executionId: string,
+  offset: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: workflowKeys.executionLogs(workflowId, executionId, offset),
+    queryFn: () =>
+      api.get<ExecutionLogDetail>(
+        `/workflows/${workflowId}/executions/${executionId}/logs?offset=${offset}&limit=50`,
+      ),
+    enabled,
     retry: false,
   })
 }

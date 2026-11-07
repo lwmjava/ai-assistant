@@ -1,11 +1,12 @@
-"""工作流执行日志与失败告警的数据层查询函数（PWFL-004）。
+"""工作流执行日志与失败告警的数据层查询。
 
-提供按租户、工作流、执行 ID、trace_id 的查询能力；
-不新增 API 路由——「可查询」由这些函数 + 测试证明。
+按租户、工作流、执行 ID 和 trace_id 读取已落库记录，支持偏移分页。
+这里只查询，不写日志，也不注册 HTTP 路由。
 """
 
 from collections.abc import Sequence
 
+from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.audit.models import WorkflowExecutionAlert, WorkflowExecutionLog
@@ -61,20 +62,75 @@ def get_logs_by_trace_id(
     return session.exec(stmt).all()
 
 
-def list_logs(
-    session: Session,
+def _filtered_logs(
+    stmt,
     *,
-    tenant_id: str | None = None,
-    workflow_id: str | None = None,
-    execution_id: str | None = None,
-    limit: int = 100,
-) -> Sequence[WorkflowExecutionLog]:
-    """查询执行日志，按创建时间倒序。"""
-    stmt = select(WorkflowExecutionLog).order_by(col(WorkflowExecutionLog.created_at).desc()).limit(limit)
+    tenant_id: str | None,
+    workflow_id: str | None,
+    execution_id: str | None,
+):
+    """按租户、工作流和执行 ID 收窄日志查询。None 表示该维不过滤。"""
     if tenant_id is not None:
         stmt = stmt.where(col(WorkflowExecutionLog.tenant_id) == tenant_id)
     if workflow_id is not None:
         stmt = stmt.where(col(WorkflowExecutionLog.workflow_id) == workflow_id)
     if execution_id is not None:
         stmt = stmt.where(col(WorkflowExecutionLog.execution_id) == execution_id)
+    return stmt
+
+
+def list_logs(
+    session: Session,
+    *,
+    tenant_id: str | None = None,
+    workflow_id: str | None = None,
+    execution_id: str | None = None,
+    offset: int = 0,
+    limit: int = 100,
+) -> Sequence[WorkflowExecutionLog]:
+    """查询执行日志，按创建时间倒序。"""
+    stmt = _filtered_logs(
+        select(WorkflowExecutionLog),
+        tenant_id=tenant_id,
+        workflow_id=workflow_id,
+        execution_id=execution_id,
+    )
+    stmt = stmt.order_by(col(WorkflowExecutionLog.created_at).desc()).offset(offset).limit(limit)
     return session.exec(stmt).all()
+
+
+def list_logs_chronological(
+    session: Session,
+    *,
+    tenant_id: str | None = None,
+    workflow_id: str | None = None,
+    execution_id: str | None = None,
+    offset: int = 0,
+    limit: int = 100,
+) -> Sequence[WorkflowExecutionLog]:
+    """按创建时间正序返回同一次执行的轨迹分页。"""
+    stmt = _filtered_logs(
+        select(WorkflowExecutionLog),
+        tenant_id=tenant_id,
+        workflow_id=workflow_id,
+        execution_id=execution_id,
+    )
+    stmt = stmt.order_by(col(WorkflowExecutionLog.created_at).asc()).offset(offset).limit(limit)
+    return session.exec(stmt).all()
+
+
+def count_logs(
+    session: Session,
+    *,
+    tenant_id: str | None = None,
+    workflow_id: str | None = None,
+    execution_id: str | None = None,
+) -> int:
+    """统计与列表相同过滤条件下的日志条数。"""
+    stmt = _filtered_logs(
+        select(func.count()).select_from(WorkflowExecutionLog),
+        tenant_id=tenant_id,
+        workflow_id=workflow_id,
+        execution_id=execution_id,
+    )
+    return int(session.exec(stmt).one())

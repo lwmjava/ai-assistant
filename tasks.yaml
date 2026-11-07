@@ -12653,7 +12653,7 @@ tasks:
 
   - id: "PWFL-005"
     title: "工作流执行日志受权 API 与详情页面"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "Workflow"
     target_version: "1.0"
@@ -12682,11 +12682,12 @@ tasks:
       delivery_stage: "V1-1"
       estimate_person_days: [3, 5]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或读取生产日志。", implementation_plan: "开工前核对现有日志模型、查询服务、权限矩阵和页面字段。"}
+      progress_20261107: "用户要求收到可验收。只读列表与详情和现有查询一致，跨租户与不存在工作流同为 404，敏感文本脱敏截断，读取不写审计、不重放。页面把执行失败与创建者失效分开。最终工作区上 Windows 项目 conda：pytest tests/test_workflow_definition.py tests/test_workflow_execution_logs_api.py tests/test_workflow.py tests/test_openapi_coverage.py -q 为 25 passed/exit 0。登录后的执行历史弹层未在浏览器点击。最终 CI 与人工业务接受未完成，保持 in_review，不标 done。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PWFL-006"
     title: "受控工作流步骤编辑与运行轨迹"
-    status: "backlog"
+    status: "in_progress"
     priority: "P0"
     module: "Workflow"
     target_version: "1.0"
@@ -12715,6 +12716,7 @@ tasks:
       delivery_stage: "V1-1"
       estimate_person_days: [5, 9]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或修改生产工作流。", implementation_plan: "开工前锁定现有Workflow模型、批准步骤白名单、版本冲突和回滚。"}
+      progress_20261107: "用户要求在 PWFL-005 可验收后继续。锁定现有单步模型：唯一已批准步骤是 prompt，节点 id 固定为 prompt；变量只校验声明，不替换不求值；修订用 updated_at，冲突不写模板；无新表。运行图节点状态等于执行记录。决定见 docs/adr/0026-workflow-step-definition.md。回滚移除定义与运行图入口，保留已保存模板和执行历史。Windows 项目 conda：pytest tests/test_workflow_definition.py -q 为 4 passed/exit 0；ruff 与 mypy 覆盖 definition.py 与 workflow 路由 exit 0。前端 tsc、ESLint 与变量解析测试 exit 0。编辑弹层未在浏览器提交。CI 与人工业务接受未完成，保持 in_progress。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PROMPT-002"

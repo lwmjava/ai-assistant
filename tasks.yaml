@@ -10247,7 +10247,7 @@ tasks:
 
   - id: "MEM-004"
     title: "跨会话记忆存储、检索与注入"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "长期记忆"
     target_version: "1.0"
@@ -10266,6 +10266,13 @@ tasks:
       allowed_paths:
         - "app/memory/"
         - "app/rag/"
+        - "app/services/chat_service.py"
+        - "app/services/memory_policy.py"
+        - "app/models/cross_session_memory.py"
+        - "app/models/__init__.py"
+        - "app/core/config.py"
+        - ".env.example"
+        - "alembic/versions/"
         - "evals/"
         - "tests/"
         - "docs/"
@@ -10301,6 +10308,13 @@ tasks:
       admission:
         authorization: "2026-10-27登记M03映射与依赖；2026-10-29批准纳入1.0核心阶段并撤销v1.5时间限制。逐卡实施、真实记忆写入和生产启用仍须明确授权。"
         condition: "已纳入1.0第一阶段；MEM-003/VDB-003前置和实施方案获准后逐卡开工，不自动保存全部对话。"
+      progress_20261108: >-
+        用户批准沿用当前向量库、另存可追溯元数据、在对话入口注入，关闭时只停读写并保留记录。
+        决定见 docs/adr/0027-cross-session-memory.md。默认关闭。只在显式保存一条已有消息时写入，
+        不保存全部对话。本地向量库用主库中的向量排名；Milvus 失败不改走本地排名。
+        Windows 项目 conda：pytest tests/test_cross_session_memory.py tests/test_memory_policy.py
+        为 9 passed、exit 0；ruff 覆盖改动文件通过；mypy 覆盖新增记忆模块通过。
+        未连接真实 Milvus，也未把 Mock 嵌入写成质量证据。本提交的 Ubuntu Backend CI 尚未绑定，保持 in_review。
       nightly:
         eligible: false
         production_access: false

@@ -12,6 +12,19 @@ class MemoryPolicyError(PermissionError):
     pass
 
 
+def assert_memory_subject(session: Session, user: User) -> None:
+    current = session.get(User, user.id)
+    tenant = session.get(Tenant, user.tenant_id)
+    same_identity = current is not None and (
+        current.tenant_id,
+        current.role,
+        current.token_version,
+        current.is_active,
+    ) == (user.tenant_id, user.role, user.token_version, True)
+    if not same_identity or tenant is None or not tenant.is_active:
+        raise MemoryPolicyError("conversation memory is unavailable")
+
+
 def assert_memory_access(
     session: Session, user: User, conversation: Conversation
 ) -> None:

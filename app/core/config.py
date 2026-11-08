@@ -406,6 +406,8 @@ class Settings(BaseSettings):
     MEMORY_STRATEGY: str = "summary"  # 压缩策略：summary | key_points | none
     MEMORY_MAX_SUMMARY_CHARS: int = 2000  # 压缩摘要最大字符数
     MEMORY_KEEP_RECENT: int = 5  # 压缩时保留最近 N 轮不压缩
+    MEMORY_CROSS_SESSION_ENABLED: bool = False  # 关闭时停止跨会话读写，已写入的记录保留
+    MEMORY_CROSS_SESSION_TOP_K: int = Field(default=3, ge=1, le=10)
     MEMORY_SNAPSHOT_RETENTION_DAYS: int = Field(default=30, ge=1, le=365)
 
     # ── 审计日志（Audit Log）──

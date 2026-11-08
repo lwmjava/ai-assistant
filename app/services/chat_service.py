@@ -309,6 +309,27 @@ class ChatService:
         recent = [m for m in conv.messages if m.content][-_HISTORY_LIMIT:]
         return [ChatMessage(role=ChatRole(m.role), content=sanitize_history_text(m.content)) for m in recent]
 
+    async def remember_message(
+        self, session: Session, user: User, conversation_id: str, message_id: str
+    ) -> str | None:
+        """显式保存一条已有消息。未开启时不写库。"""
+        from app.memory.cross_session import CrossSessionMemoryService
+
+        return await CrossSessionMemoryService(session).remember(user, conversation_id, message_id)
+
+    async def _inject_cross_session(self, session: Session, user: User, state, query: str) -> None:
+        """把检索到的跨会话记忆接到已有上下文后面。失败时本轮不注入。"""
+        from app.memory.cross_session import CrossSessionMemoryService
+
+        try:
+            text = await CrossSessionMemoryService(session).recall_text(user, query)
+        except Exception:  # noqa: BLE001 — 检索失败不能拖住对话，也不能改用别的库
+            logger.exception("跨会话记忆检索失败，本次不注入")
+            return
+        if not text:
+            return
+        state.context = f"{state.context}\n\n{text}".strip() if state.context else text
+
     async def _build_memory(
         self, conv: Conversation, *, existing_snapshot=None
     ) -> ConversationMemory:
@@ -743,6 +764,7 @@ class ChatService:
         # 2. 注入记忆上下文到管线
         if memory.memory_context:
             state.context = memory.memory_context
+        await self._inject_cross_session(session, user, state, safe_message)
         retriever = self._build_retriever(session, user)
         tools = await self._build_tools()
         if managed_version is not None:
@@ -906,6 +928,7 @@ class ChatService:
         # 注入记忆上下文
         if memory.memory_context:
             state.context = memory.memory_context
+        await self._inject_cross_session(session, user, state, safe_message)
 
         # 技能匹配与激活
         if resume_message_id is not None:

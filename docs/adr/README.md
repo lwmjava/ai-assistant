@@ -26,6 +26,8 @@ ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-c
 
 ADR-0012：[SSE ActiveRun 生命周期与断线回放](0012-sse-active-run-lifecycle.md)，Accepted，2026-10-15 用户批准单进程任务所有权、有界事件回放与鉴权查询/取消；实现与验收以 SSE-001 证据为准。
 
+ADR-0027：[跨会话记忆的存储、注入与关闭](0027-cross-session-memory.md)，Accepted，2026-11-08 用户批准沿用当前向量库、另存可追溯元数据、在对话入口注入，并在关闭时保留已写入记录。
+
 ## 分阶段实施中
 
 | 编号 | 文件 | 状态 | 范围 |

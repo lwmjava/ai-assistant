@@ -1,0 +1,14 @@
+id: cross-session-memory-v1
+family: memory
+kind: deterministic_contract
+cases:
+  - id: explicit-save-then-inject
+    classification: Observed Regression
+    expectation: an explicitly saved message can be recalled in a later conversation with its source ids
+    regression: tests/test_cross_session_memory.py::test_saved_memory_is_injected_into_a_later_conversation
+  - id: switch-off-retains-rows
+    expectation: disabling the feature stops read and write and leaves existing rows in place
+  - id: isolation-and-revocation
+    expectation: another user, another tenant, a revoked token, an expired row, and a deleted source conversation are not injected
+  - id: milvus-fail-closed
+    expectation: a Milvus search or write failure does not fall back to ranking the local vector copy

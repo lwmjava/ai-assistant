@@ -12597,7 +12597,7 @@ tasks:
 
   - id: "AGT-004"
     title: "受控 Agent 定义、版本与可见性管理"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "Agent管理"
     target_version: "1.0"
@@ -12655,11 +12655,15 @@ tasks:
         空工具发布后显示已停用/生效版本 1、启用后刷新仍为已启用/生效版本 1，再次发布后回滚显示生效版本 1。
         Windows 项目 conda：pytest tests/test_agent_definition_scope.py 含在 151 passed 的专项里，exit 0。
         当前 SHA 的 Ubuntu Backend CI run 42436125017 Pytest 失败，不能标 done。
+      closed_20261108: >-
+        用户确认关闭。候选 525de8fcc9b6ce5db66a41ec2afe485093aa3e1b。
+        CI run 42448913980：Backend success，Frontend success，Agent official skipped。
+        RAG official 停在授权步骤，不作为本卡阻断。页面走查见 closeout_20261108。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PWFL-005"
     title: "工作流执行日志受权 API 与详情页面"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "Workflow"
     target_version: "1.0"
@@ -12693,11 +12697,15 @@ tasks:
         用户要求在 develop 收口。隔离库登录后打开执行历史，看到手动触发成功记录，展开后显示执行步骤、运行节点 prompt、成功、输入与输出。
         读取没有重新执行。Windows 项目 conda 专项含 tests/test_workflow_execution_logs_api.py，与另外两卡专项合计 151 passed、exit 0。
         当前 SHA 的 Ubuntu Backend CI run 42436125017 Pytest 失败，保持 in_review。
+      closed_20261108: >-
+        用户确认关闭。候选 525de8fcc9b6ce5db66a41ec2afe485093aa3e1b。
+        CI run 42448913980：Backend success，Frontend success，Agent official skipped。
+        RAG official 停在授权步骤，不作为本卡阻断。页面走查见 closeout_20261108。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PWFL-006"
     title: "受控工作流步骤编辑与运行轨迹"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "Workflow"
     target_version: "1.0"
@@ -12732,6 +12740,10 @@ tasks:
         编辑保存后卡片变为新原文；执行历史展开显示运行节点 prompt、成功，输入与保存后的模板一致。
         Windows 项目 conda 专项含 tests/test_workflow_definition.py，与另外两卡专项合计 151 passed、exit 0。
         当前 SHA 的 Ubuntu Backend CI run 42436125017 Pytest 失败，保持 in_review。
+      closed_20261108: >-
+        用户确认关闭。候选 525de8fcc9b6ce5db66a41ec2afe485093aa3e1b。
+        CI run 42448913980：Backend success，Frontend success，Agent official skipped。
+        RAG official 停在授权步骤，不作为本卡阻断。页面走查见 closeout_20261108。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PROMPT-002"

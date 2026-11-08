@@ -5730,7 +5730,7 @@ tasks:
 
   - id: "PMCP-001"
     title: "MCP 连接超时、重连、心跳与优雅降级"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "MCP"
     target_version: "1.0"
@@ -5784,6 +5784,12 @@ tasks:
       estimate_person_days: [3, 5]
       admission:
         authorization: "2026-10-27仅授权登记C01映射，不授权连接真实外部MCP或实施。"
+      progress_20261108: >-
+        用户要求按 V1-1 顺序实施。调用和连接超时默认 30 秒，工具或单台服务器的声明只能缩短。
+        超时结束这一次调用并释放该连接，不把同一次调用再试一遍。断连按配置重连，默认 1 次。
+        心跳失败只重连这一台。一台连接超时后，另一台仍可连接。未连接真实外部服务器。
+        Windows 项目 conda：pytest tests/test_mcp.py 为 18 passed、exit 0；ruff 覆盖改动文件通过；
+        mypy app/mcp app/core/config.py 通过。本提交的 Ubuntu Backend CI 尚未绑定，保持 in_review。
       nightly:
         eligible: false
         production_access: false

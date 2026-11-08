@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from app.agents.tools.base import Tool
@@ -23,6 +24,7 @@ class MCPToolManager:
 
     def __init__(self) -> None:
         self._clients: dict[str, MCPClient] = {}
+        self._heartbeat: asyncio.Task[None] | None = None
 
     @property
     def connected_servers(self) -> list[str]:
@@ -34,14 +36,50 @@ class MCPToolManager:
         for cfg in configs:
             if not cfg.enabled:
                 continue
+            client = MCPClient(cfg)
+            self._clients[cfg.name] = client
             try:
-                client = MCPClient(cfg)
                 await client.connect()
-                self._clients[cfg.name] = client
             except Exception as exc:  # noqa: BLE001 — 单点故障不应阻断整体
-                logger.warning("MCP 服务器连接失败 %s：%s", cfg.name, exc)
+                logger.warning("MCP 服务器连接失败 %s：%s", cfg.name, type(exc).__name__)
+                await client.disconnect()
+
+    def start_heartbeat(self, interval: float | None = None) -> None:
+        """按间隔探测已登记的服务器。间隔为 0 时不启动。"""
+        if self._heartbeat is not None and not self._heartbeat.done():
+            return
+        every = float(settings.MCP_HEARTBEAT_SECONDS if interval is None else interval)
+        if every <= 0:
+            return
+        self._heartbeat = asyncio.create_task(self._run_heartbeat(every))
+
+    async def _run_heartbeat(self, interval: float) -> None:
+        try:
+            while True:
+                await asyncio.sleep(interval)
+                await self.heartbeat_all()
+        except asyncio.CancelledError:
+            raise
+
+    async def heartbeat_all(self) -> dict[str, bool]:
+        """逐台探测。一台失败只影响自己的结果。"""
+        results: dict[str, bool] = {}
+        for name, client in list(self._clients.items()):
+            try:
+                results[name] = bool(await client.heartbeat())
+            except Exception:  # noqa: BLE001 — 心跳隔离
+                logger.warning("MCP 服务器心跳异常 %s", name)
+                results[name] = False
+        return results
 
     async def disconnect_all(self) -> None:
+        if self._heartbeat is not None:
+            self._heartbeat.cancel()
+            try:
+                await self._heartbeat
+            except asyncio.CancelledError:
+                pass
+            self._heartbeat = None
         for name, client in list(self._clients.items()):
             try:
                 await client.disconnect()
@@ -83,8 +121,9 @@ async def get_mcp_manager() -> MCPToolManager | None:
         await mgr.connect_all(configs)
         if not mgr.connected_servers:
             logger.warning("MCP 已启用但所有服务器均连接失败，仅使用内置工具。")
-            _manager = None
+            await mgr.disconnect_all()
             return None
+        mgr.start_heartbeat()
         _manager = mgr
     return _manager
 
@@ -92,4 +131,6 @@ async def get_mcp_manager() -> MCPToolManager | None:
 def reset_mcp_manager() -> None:
     """重置单例（主要用于测试隔离）。"""
     global _manager
+    if _manager is not None and _manager._heartbeat is not None:
+        _manager._heartbeat.cancel()
     _manager = None

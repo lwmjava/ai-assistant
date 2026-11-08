@@ -27,7 +27,9 @@ class FakeMCPClient:
     def __init__(self, mapping: dict | None = None) -> None:
         self._mapping = mapping or {}
 
-    async def call_tool(self, name: str, arguments: dict) -> str:
+    async def call_tool(
+        self, name: str, arguments: dict, timeout_seconds: float | None = None,
+    ) -> str:
         if name in self._mapping:
             return self._mapping[name]
         return f"called {name} with {arguments}"
@@ -108,6 +110,212 @@ def test_config_parsing() -> None:
     assert "crm" in names and "hr" in names
     assert servers[1].enabled is False
     assert servers[0].command == "python"
+
+
+def test_mcp_timeout_defaults_match_builtin_tools() -> None:
+    assert settings.MCP_CALL_TIMEOUT_SECONDS == 30
+    assert settings.MCP_CONNECT_TIMEOUT_SECONDS == 30
+    assert settings.MCP_RECONNECT_ATTEMPTS == 1
+
+
+@pytest.mark.asyncio
+async def test_unresponsive_call_ends_at_its_timeout(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from app.mcp.client import MCPClient
+
+    class Session:
+        async def call_tool(self, name, arguments):
+            await asyncio.sleep(5)
+            return SimpleNamespace(isError=False, content=[])
+
+    client = MCPClient.from_session("slow", Session())
+    monkeypatch.setattr(settings, "MCP_CALL_TIMEOUT_SECONDS", 0.05)
+    started = asyncio.get_running_loop().time()
+    with pytest.raises(TimeoutError, match="调用超时"):
+        await client.call_tool("echo", {})
+    assert asyncio.get_running_loop().time() - started < 1
+    assert client.connected is False
+
+
+@pytest.mark.asyncio
+async def test_declared_shorter_timeout_bounds_the_call(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from app.mcp.client import MCPClient
+
+    class Session:
+        async def call_tool(self, name, arguments):
+            await asyncio.sleep(5)
+            return SimpleNamespace(isError=False, content=[])
+
+    client = MCPClient.from_session("slow", Session())
+    monkeypatch.setattr(settings, "MCP_CALL_TIMEOUT_SECONDS", 30)
+    started = asyncio.get_running_loop().time()
+    with pytest.raises(TimeoutError):
+        await client.call_tool("echo", {}, timeout_seconds=0.05)
+    assert asyncio.get_running_loop().time() - started < 1
+
+
+@pytest.mark.asyncio
+async def test_tool_error_is_not_retried() -> None:
+    from app.mcp.client import MCPClient
+
+    class Session:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def call_tool(self, name, arguments):
+            self.calls += 1
+            raise RuntimeError("bad arguments")
+
+    session = Session()
+    client = MCPClient.from_session("crm", session)
+    with pytest.raises(RuntimeError, match="bad arguments"):
+        await client.call_tool("echo", {})
+    assert session.calls == 1
+    assert client.connected is True
+
+
+@pytest.mark.asyncio
+async def test_disconnect_reconnects_once(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from app.mcp.client import MCPClient
+
+    state = {"calls": 0}
+
+    class Session:
+        async def call_tool(self, name, arguments):
+            state["calls"] += 1
+            if state["calls"] == 1:
+                raise ConnectionError("closed")
+            return SimpleNamespace(isError=False, content=[SimpleNamespace(type="text", text="restored")])
+
+    client = MCPClient.from_session("crm", Session())
+
+    async def reconnect(self):
+        self._session = Session()
+
+    monkeypatch.setattr(MCPClient, "connect", reconnect)
+    assert "restored" in await client.call_tool("echo", {})
+    assert state["calls"] == 2
+
+
+@pytest.mark.asyncio
+async def test_one_server_timeout_leaves_the_other_usable(monkeypatch) -> None:
+    from app.mcp.client import MCPClient
+    from app.mcp.config import MCPServerConfig
+
+    class Stack:
+        def __init__(self) -> None:
+            self.closed = False
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    stacks: dict[str, Stack] = {}
+
+    async def open_session(self):
+        if self.config.name == "slow":
+            stacks[self.config.name] = Stack()
+            self._stack = stacks[self.config.name]
+            await asyncio.sleep(5)
+        self._session = object()
+
+    monkeypatch.setattr(MCPClient, "_open_session", open_session)
+    monkeypatch.setattr(settings, "MCP_CONNECT_TIMEOUT_SECONDS", 0.05)
+    mgr = MCPToolManager()
+    started = asyncio.get_running_loop().time()
+    await mgr.connect_all([
+        MCPServerConfig(name="slow", transport="stdio", command="python"),
+        MCPServerConfig(name="fast", transport="stdio", command="python"),
+    ])
+    try:
+        assert asyncio.get_running_loop().time() - started < 1
+        assert mgr.connected_servers == ["fast"]
+        assert stacks["slow"].closed is True
+    finally:
+        await mgr.disconnect_all()
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_failure_does_not_drop_the_other_server() -> None:
+    class Dead:
+        def __init__(self) -> None:
+            self.connected = True
+
+        async def heartbeat(self) -> bool:
+            self.connected = False
+            return False
+
+        async def disconnect(self) -> None:
+            self.connected = False
+
+    class Live:
+        def __init__(self) -> None:
+            self.connected = True
+
+        async def heartbeat(self) -> bool:
+            return True
+
+        async def disconnect(self) -> None:
+            self.connected = False
+
+    mgr = MCPToolManager()
+    dead, live = Dead(), Live()
+    mgr._clients["dead"] = dead
+    mgr._clients["live"] = live
+    assert await mgr.heartbeat_all() == {"dead": False, "live": True}
+    assert mgr.connected_servers == ["live"]
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_loop_stops_when_disconnected() -> None:
+    class Probe:
+        def __init__(self) -> None:
+            self.beats = 0
+            self.connected = True
+
+        async def heartbeat(self) -> bool:
+            self.beats += 1
+            return True
+
+        async def disconnect(self) -> None:
+            self.connected = False
+
+    mgr = MCPToolManager()
+    probe = Probe()
+    mgr._clients["echo"] = probe
+    mgr.start_heartbeat(0.05)
+    await asyncio.sleep(0.16)
+    await mgr.disconnect_all()
+    stopped = probe.beats
+    await asyncio.sleep(0.12)
+    assert stopped >= 1
+    assert probe.beats == stopped
+
+
+@pytest.mark.asyncio
+async def test_list_tools_keeps_shorter_declared_timeout() -> None:
+    from types import SimpleNamespace
+
+    from app.mcp.client import MCPClient
+
+    remote = SimpleNamespace(
+        name="echo",
+        description="desc",
+        inputSchema={"type": "object"},
+        meta={"timeout_seconds": 5},
+    )
+
+    class Session:
+        async def list_tools(self):
+            return SimpleNamespace(tools=[remote])
+
+    client = MCPClient.from_session("crm", Session())
+    tools = await client.list_tools()
+    assert tools[0].timeout_seconds == 5
 
 
 # ── 2. 真实服务器集成（需要 mcp 包）────────────────────

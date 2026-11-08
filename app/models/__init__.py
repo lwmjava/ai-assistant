@@ -6,6 +6,7 @@
 from app.models.agent_definition import AgentDefinition, AgentDefinitionVersion  # noqa: F401
 from app.models.agent_state import AgentRunState  # noqa: F401
 from app.models.conversation import Conversation, Message  # noqa: F401
+from app.models.cross_session_memory import CrossSessionMemory  # noqa: F401
 from app.models.evaluation import (  # noqa: F401
     EvaluationCaseResult,
     EvaluationDataset,

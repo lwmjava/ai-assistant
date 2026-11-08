@@ -11,11 +11,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any
 
+from app.core.config import settings
 from app.mcp.config import MCPServerConfig
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,40 @@ logger = logging.getLogger(__name__)
 
 class MCPNotAvailableError(RuntimeError):
     """未安装 ``mcp`` 包时由 :func:`_require_mcp` 抛出。"""
+
+
+def _positive_timeout(value: Any) -> float | None:
+    """只接受正数超时；工具声明不能把等待时间拉过配置上限。"""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    number = float(value)
+    if number <= 0:
+        return None
+    return number
+
+
+def _declared_tool_timeout(tool: Any) -> float | None:
+    candidates: list[Any] = []
+    meta = getattr(tool, "meta", None)
+    if isinstance(meta, dict):
+        candidates.append(meta.get("timeout_seconds"))
+    annotations = getattr(tool, "annotations", None)
+    if isinstance(annotations, dict):
+        candidates.append(annotations.get("timeout_seconds"))
+    else:
+        candidates.append(getattr(annotations, "timeout_seconds", None))
+    for item in candidates:
+        parsed = _positive_timeout(item)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _is_disconnect(exc: BaseException) -> bool:
+    if isinstance(exc, ConnectionError | BrokenPipeError | EOFError):
+        return True
+    name = type(exc).__name__
+    return "Closed" in name or "Connection" in name or "Disconnect" in name
 
 
 def _require_mcp():
@@ -59,6 +95,7 @@ class MCPServerTool:
     name: str
     description: str
     input_schema: dict
+    timeout_seconds: float | None = None
 
 
 class MCPClient:
@@ -80,7 +117,32 @@ class MCPClient:
     def connected(self) -> bool:
         return self._session is not None
 
+    def _call_timeout(self, declared: float | None = None) -> float:
+        ceiling = float(settings.MCP_CALL_TIMEOUT_SECONDS)
+        chosen = ceiling
+        server_limit = _positive_timeout(self.config.timeout_seconds)
+        if server_limit is not None:
+            chosen = min(chosen, server_limit)
+        declared_limit = _positive_timeout(declared)
+        if declared_limit is not None:
+            chosen = min(chosen, declared_limit)
+        return chosen
+
+    def _connect_timeout(self) -> float:
+        return float(settings.MCP_CONNECT_TIMEOUT_SECONDS)
+
     async def connect(self) -> None:
+        """按配置建立传输连接并初始化会话。超时后释放已打开的传输。"""
+        if self._session is not None:
+            return
+        try:
+            async with asyncio.timeout(self._connect_timeout()):
+                await self._open_session()
+        except TimeoutError:
+            await self.disconnect()
+            raise TimeoutError(f"MCP 服务器 {self.config.name} 连接超时") from None
+
+    async def _open_session(self) -> None:
         """按配置建立传输连接并初始化会话。"""
         if self._session is not None:
             return
@@ -142,7 +204,12 @@ class MCPClient:
         """列举服务器暴露的工具。"""
         if self._session is None:
             raise RuntimeError("MCP 客户端尚未连接，请先调用 connect()。")
-        result = await self._session.list_tools()
+        try:
+            async with asyncio.timeout(self._call_timeout()):
+                result = await self._session.list_tools()
+        except TimeoutError:
+            await self.disconnect()
+            raise TimeoutError(f"MCP 服务器 {self.config.name} 列举工具超时") from None
         tools: list[MCPServerTool] = []
         for t in getattr(result, "tools", []) or []:
             tools.append(
@@ -151,11 +218,45 @@ class MCPClient:
                     name=getattr(t, "name", ""),
                     description=getattr(t, "description", "") or "",
                     input_schema=getattr(t, "inputSchema", None) or {},
+                    timeout_seconds=_declared_tool_timeout(t),
                 )
             )
         return tools
 
-    async def call_tool(self, name: str, arguments: dict | None = None) -> str:
+    async def heartbeat(self) -> bool:
+        """探测会话是否仍可用。失败时只重连这一台服务器。"""
+        try:
+            if self._session is None:
+                await self.connect()
+                return self.connected
+            async with asyncio.timeout(self._connect_timeout()):
+                await self._ping()
+            return True
+        except Exception:
+            logger.warning("MCP 服务器心跳失败 %s：%s", self.config.name, "unavailable")
+            await self.disconnect()
+            try:
+                await self.connect()
+                return self.connected
+            except Exception:
+                logger.warning("MCP 服务器心跳后重连失败 %s", self.config.name)
+                return False
+
+    async def _ping(self) -> None:
+        if self._session is None:
+            raise ConnectionError(f"MCP 服务器 {self.config.name} 未连接")
+        ping = getattr(self._session, "send_ping", None)
+        if ping is not None:
+            await ping()
+            return
+        await self._session.list_tools()
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict | None = None,
+        timeout_seconds: float | None = None,
+    ) -> str:
         """调用工具并返回可读结果文本。
 
         当服务器返回 ``isError`` 时，结果以 ``[MCP 工具错误]`` 前缀标记，
@@ -163,9 +264,25 @@ class MCPClient:
         """
         if self._session is None:
             raise RuntimeError("MCP 客户端尚未连接，请先调用 connect()。")
-        result = await self._session.call_tool(name, arguments or {})
-        is_error = getattr(result, "isError", False)
-        text = _render_content(getattr(result, "content", []))
-        if is_error:
-            return f"[MCP 工具错误] {name}：{text}"
-        return text
+        timeout = self._call_timeout(timeout_seconds)
+        attempts = 0
+        while True:
+            attempts += 1
+            if self._session is None:
+                await self.connect()
+            try:
+                async with asyncio.timeout(timeout):
+                    result = await self._session.call_tool(name, arguments or {})
+            except TimeoutError:
+                await self.disconnect()
+                raise TimeoutError(f"MCP 工具 {name} 调用超时") from None
+            except Exception as exc:
+                if attempts > int(settings.MCP_RECONNECT_ATTEMPTS) or not _is_disconnect(exc):
+                    raise
+                await self.disconnect()
+                continue
+            is_error = getattr(result, "isError", False)
+            text = _render_content(getattr(result, "content", []))
+            if is_error:
+                return f"[MCP 工具错误] {name}：{text}"
+            return text

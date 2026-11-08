@@ -18,7 +18,9 @@ def mcp_tool_to_tool(client: MCPClient, spec: MCPServerTool) -> Tool:
     server = spec.server
 
     async def _invoke(arguments: dict) -> str:
-        return await client.call_tool(spec.name, arguments)
+        return await client.call_tool(
+            spec.name, arguments, timeout_seconds=spec.timeout_seconds,
+        )
 
     return Tool(
         name=f"mcp__{server}__{spec.name}",

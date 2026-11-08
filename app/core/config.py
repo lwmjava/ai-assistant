@@ -406,6 +406,8 @@ class Settings(BaseSettings):
     MEMORY_STRATEGY: str = "summary"  # 压缩策略：summary | key_points | none
     MEMORY_MAX_SUMMARY_CHARS: int = 2000  # 压缩摘要最大字符数
     MEMORY_KEEP_RECENT: int = 5  # 压缩时保留最近 N 轮不压缩
+    MEMORY_CROSS_SESSION_ENABLED: bool = False  # 关闭时停止跨会话读写，已写入的记录保留
+    MEMORY_CROSS_SESSION_TOP_K: int = Field(default=3, ge=1, le=10)
     MEMORY_SNAPSHOT_RETENTION_DAYS: int = Field(default=30, ge=1, le=365)
 
     # ── 审计日志（Audit Log）──
@@ -482,6 +484,10 @@ class Settings(BaseSettings):
     # 将企业系统的 MCP 服务器工具注入 Agent 工具箱，打通「AI ↔ 企业系统」。
     MCP_ENABLED: bool = False  # 是否启用 MCP 客户端（默认关闭，避免无配置时尝试连接）
     MCP_SERVERS: str = ""  # JSON 数组：MCP 服务器清单，见 app/mcp/config.py 的格式说明
+    MCP_CALL_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0, le=120)
+    MCP_CONNECT_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0, le=120)
+    MCP_HEARTBEAT_SECONDS: float = Field(default=30.0, ge=0, le=300)
+    MCP_RECONNECT_ATTEMPTS: int = Field(default=1, ge=0, le=3)
 
     # ── Workflow 工作流引擎 ──
     # 定时任务（cron）触发 Agent 执行，打通「自动化」场景。

@@ -42,6 +42,7 @@ class MCPServerConfig(BaseModel):
     # http / sse 传输
     url: str | None = None
     headers: dict[str, str] = Field(default_factory=dict)
+    timeout_seconds: float | None = None
 
     def model_summary(self) -> dict:
         """供管理接口使用的精简摘要（不含密钥类字段）。"""

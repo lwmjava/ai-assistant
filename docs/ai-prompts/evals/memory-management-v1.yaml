@@ -1,0 +1,28 @@
+name: memory-management-v1
+classification: Observed Regression
+notes: >
+  确定性管理链路。删除只失效，导出脱敏，个人开关不打开部署总闸。
+  Mock 嵌入只证明写入和检索停止，不作为质量证据。
+cases:
+  - id: owner-only
+    expect:
+      other_user: absent
+      same_tenant_admin: absent
+  - id: correction-version
+    expect:
+      old_kept: true
+      same_text_idempotent: true
+  - id: invalidate
+    expect:
+      recall: false
+      row_kept: true
+      second_delete_same_result: true
+  - id: export-redaction
+    expect:
+      phone_absent: true
+      embedding_absent: true
+  - id: user-switch
+    expect:
+      write: false
+      recall: false
+      list_kept: true

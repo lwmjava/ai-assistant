@@ -22,4 +22,5 @@ from app.models.rag import Document, DocumentChunk  # noqa: F401
 from app.models.run_history import RunHistory  # noqa: F401
 from app.models.skill import Skill  # noqa: F401
 from app.models.user import Tenant, User  # noqa: F401
+from app.models.user_memory_preference import UserMemoryPreference  # noqa: F401
 from app.models.workflow import Workflow, WorkflowExecution  # noqa: F401

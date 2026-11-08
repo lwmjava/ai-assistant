@@ -57,7 +57,7 @@ def test_migration_repairs_existing_table_without_guessing_target(tmp_path):
 
 @pytest.mark.parametrize("journal_mode", ["delete", "wal"])
 def test_explicit_repair_backs_up_and_is_idempotent(tmp_path, journal_mode):
-    repair = load_module("repair", ROOT / "docs/plans/repair_rag014_schema.py")
+    repair = load_module("repair", ROOT / "scripts/repair_rag014_schema.py")
     path = tmp_path / "legacy.db"
     legacy_database(path)
     with sqlite3.connect(path) as connection:
@@ -78,7 +78,7 @@ def test_explicit_repair_backs_up_and_is_idempotent(tmp_path, journal_mode):
 
 
 def test_repair_refuses_unknown_revision_and_missing_file(tmp_path):
-    repair = load_module("repair_guard", ROOT / "docs/plans/repair_rag014_schema.py")
+    repair = load_module("repair_guard", ROOT / "scripts/repair_rag014_schema.py")
     missing = tmp_path / "missing.db"
     with pytest.raises(FileNotFoundError):
         repair.repair_database(missing, tmp_path / "backups")
@@ -93,7 +93,7 @@ def test_repair_refuses_unknown_revision_and_missing_file(tmp_path):
 
 
 def test_repair_rolls_back_failed_validation_and_keeps_backup(tmp_path, monkeypatch):
-    repair = load_module("repair_rollback", ROOT / "docs/plans/repair_rag014_schema.py")
+    repair = load_module("repair_rollback", ROOT / "scripts/repair_rag014_schema.py")
     path = tmp_path / "legacy.db"
     legacy_database(path)
     original_counts = repair._row_counts

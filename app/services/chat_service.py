@@ -317,6 +317,16 @@ class ChatService:
 
         return await CrossSessionMemoryService(session).remember(user, conversation_id, message_id)
 
+    async def correct_memory(
+        self, session: Session, user: User, memory_id: str, conversation_id: str, message_id: str
+    ) -> str | None:
+        """用一条已有消息纠正记忆。旧版本保留，当前检索只使用新版本。"""
+        from app.memory.cross_session import CrossSessionMemoryService
+
+        return await CrossSessionMemoryService(session).correct(
+            user, memory_id, conversation_id, message_id
+        )
+
     async def _inject_cross_session(self, session: Session, user: User, state, query: str) -> None:
         """把检索到的跨会话记忆接到已有上下文后面。失败时本轮不注入。"""
         from app.memory.cross_session import CrossSessionMemoryService

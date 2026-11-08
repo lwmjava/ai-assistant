@@ -193,3 +193,99 @@ async def test_milvus_write_failure_does_not_keep_a_searchable_row(
             memory_db, memory_db.get(User, "owner"), "saved", "fact"
         )
     assert memory_db.exec(select(CrossSessionMemory)).all() == []
+
+
+def _add_message(session: Session, message_id: str, role: str, content: str) -> None:
+    session.add(Message(id=message_id, conversation_id="saved", role=role, content=content))
+    session.commit()
+
+
+@pytest.mark.asyncio
+async def test_user_statement_and_model_inference_stay_separate(memory_db, cross_session):
+    _add_message(memory_db, "said", "user", "工号是A12")
+    _add_message(memory_db, "guessed", "assistant", "工号是A12")
+    owner = memory_db.get(User, "owner")
+    service = ChatService()
+    await service.remember_message(memory_db, owner, "saved", "said")
+    await service.remember_message(memory_db, owner, "saved", "guessed")
+    rows = list(memory_db.exec(select(CrossSessionMemory)).all())
+    assert {row.source_grade for row in rows} == {"user_statement", "model_inference"}
+    state = AgentState(user_input="工号")
+    await service._inject_cross_session(memory_db, owner, state, "工号")
+    assert state.context is not None
+    assert "用户陈述" in state.context
+    assert "模型推断" in state.context
+
+
+@pytest.mark.asyncio
+async def test_duplicate_write_returns_the_same_memory(memory_db, cross_session):
+    owner = memory_db.get(User, "owner")
+    service = ChatService()
+    first = await service.remember_message(memory_db, owner, "saved", "fact")
+    second = await service.remember_message(memory_db, owner, "saved", "fact")
+    assert second == first
+    assert len(memory_db.exec(select(CrossSessionMemory)).all()) == 1
+
+
+@pytest.mark.asyncio
+async def test_conflicting_user_statements_are_both_kept(memory_db, cross_session):
+    _add_message(memory_db, "left", "user", "工号是A12")
+    _add_message(memory_db, "right", "user", "工号是B34")
+    owner = memory_db.get(User, "owner")
+    service = ChatService()
+    await service.remember_message(memory_db, owner, "saved", "left")
+    await service.remember_message(memory_db, owner, "saved", "right")
+    rows = list(memory_db.exec(select(CrossSessionMemory)).all())
+    assert len(rows) == 2
+    assert rows[0].conflict_group_id
+    assert rows[0].conflict_group_id == rows[1].conflict_group_id
+    assert all(row.superseded_at is None for row in rows)
+    state = AgentState(user_input="工号")
+    await service._inject_cross_session(memory_db, owner, state, "工号")
+    assert state.context is not None
+    assert "A12" in state.context
+    assert "B34" in state.context
+    assert "冲突保留" in state.context
+
+
+@pytest.mark.asyncio
+async def test_correction_keeps_the_old_version_out_of_recall(memory_db, cross_session):
+    _add_message(memory_db, "old", "user", "工号是A12")
+    _add_message(memory_db, "new", "user", "工号是C56")
+    owner = memory_db.get(User, "owner")
+    service = ChatService()
+    memory_id = await service.remember_message(memory_db, owner, "saved", "old")
+    corrected = await service.correct_memory(memory_db, owner, memory_id, "saved", "new")
+    old = memory_db.get(CrossSessionMemory, memory_id)
+    current = memory_db.get(CrossSessionMemory, corrected)
+    assert old is not None and old.superseded_at is not None
+    assert current is not None and current.supersedes_id == memory_id
+    state = AgentState(user_input="工号")
+    await service._inject_cross_session(memory_db, owner, state, "工号")
+    assert state.context is not None
+    assert "C56" in state.context
+    assert "A12" not in state.context
+
+
+@pytest.mark.asyncio
+async def test_pii_and_system_text_are_not_stored(memory_db, cross_session):
+    _add_message(memory_db, "phone", "user", "联系电话是13800138000")
+    _add_message(memory_db, "system", "system", "工号是A12")
+    owner = memory_db.get(User, "owner")
+    service = ChatService()
+    with pytest.raises(MemoryPolicyError):
+        await service.remember_message(memory_db, owner, "saved", "phone")
+    with pytest.raises(MemoryPolicyError):
+        await service.remember_message(memory_db, owner, "saved", "system")
+    assert memory_db.exec(select(CrossSessionMemory)).all() == []
+
+
+@pytest.mark.asyncio
+async def test_other_user_cannot_correct_a_memory(memory_db, cross_session):
+    owner = memory_db.get(User, "owner")
+    memory_id = await ChatService().remember_message(memory_db, owner, "saved", "fact")
+    _add_message(memory_db, "other-note", "user", "工号是C56")
+    with pytest.raises(MemoryPolicyError):
+        await ChatService().correct_memory(
+            memory_db, memory_db.get(User, "other"), memory_id, "saved", "other-note"
+        )

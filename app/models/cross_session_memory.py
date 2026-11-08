@@ -28,5 +28,11 @@ class CrossSessionMemory(SQLModel, TimestampMixin, table=True):
     embedding_model: str = Field(max_length=128)
     embedding_dim: int
     policy_version: str = Field(max_length=64)
+    source_grade: str = Field(default="user_statement", max_length=32, index=True)
+    content_hash: str = Field(default="", max_length=64, index=True)
+    subject_key: str | None = Field(default=None, max_length=64, index=True)
+    conflict_group_id: str | None = Field(default=None, max_length=64, index=True)
+    supersedes_id: str | None = Field(default=None, max_length=64, index=True)
+    superseded_at: datetime | None = Field(default=None, index=True)
     expires_at: datetime = Field(index=True)
     invalidated_at: datetime | None = Field(default=None, index=True)

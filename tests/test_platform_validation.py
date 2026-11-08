@@ -89,7 +89,12 @@ def test_backend_requires_real_linux_and_postgresql_before_accepting_evidence():
     assert 'check_platform_validation.py' in gate["run"]
     assert 'if' not in gate and not gate.get("continue-on-error", False)
     assert steps.index(gate) > next(i for i, step in enumerate(steps) if step.get("name") == "Pytest")
-    assert steps.index(gate) < next(i for i, step in enumerate(steps) if step.get("name") == "RAG baseline gate")
+    upload = next(i for i, step in enumerate(steps) if step.get("name") == "Upload Backend evidence")
+    assert steps.index(gate) < upload
+    assert all(
+        step.get("name") not in {"RAG baseline gate", "Require official evaluation authorization"}
+        for step in steps
+    )
     cleanup = next(step for step in steps if step.get("name") == "Stop disposable PostgreSQL")
     assert cleanup["if"] == "always()"
     assert cleanup["run"].index('test "$owner" = "$GITHUB_RUN_ID"') < cleanup["run"].index('docker rm --force')
@@ -151,7 +156,7 @@ def test_postgresql_readiness_waits_for_tcp_not_initialization_socket():
     assert ready[ready.index("-p") + 1] == "5432"
 
 
-@pytest.mark.parametrize("job", ["backend", "rag-baseline", "agent-baseline"])
+@pytest.mark.parametrize("job", ["rag-baseline", "agent-baseline"])
 def test_every_billable_gate_has_a_failing_authorization_step(job):
     root = Path(__file__).resolve().parents[1]
     workflow = yaml.safe_load((root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -170,7 +175,7 @@ def test_every_billable_gate_has_a_failing_authorization_step(job):
 def test_official_guard_requires_explicit_budget_and_exact_commit(monkeypatch, fault):
     root = Path(__file__).resolve().parents[1]
     workflow = yaml.safe_load((root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    guard = next(step for step in workflow["jobs"]["backend"]["steps"]
+    guard = next(step for step in workflow["jobs"]["rag-baseline"]["steps"]
                  if step.get("name") == "Require official evaluation authorization")
     monkeypatch.setenv("GITHUB_SHA", "a" * 40)
     monkeypatch.setenv("OFFICIAL_EVALUATION_AUTHORIZED", "true")

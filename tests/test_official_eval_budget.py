@@ -114,5 +114,6 @@ def test_workflow_allocations_stay_below_five_yuan():
             for command in step.get("run", "").splitlines():
                 if "python scripts/run_official_eval.py " in command:
                     allocations.append(Decimal(command.split("--budget-yuan ")[1].split()[0]))
-    assert sorted(allocations) == [1, 1, 1]
-    assert sum(allocations) == 3
+    assert sorted(allocations) == [1, 1]
+    assert sum(allocations) == 2
+    assert sum(allocations) < 5

@@ -12650,6 +12650,11 @@ tasks:
         npm test 首次回环端口 EACCES exit 1，允许回环绑定后重跑 202 passed/exit 0。
         上述覆盖作用域判定、工具交集、恢复与 Supervisor 回归。真实管理入口的跨租户拒绝、版本发布/回滚及刷新后持久化和页面操作尚待验收。
         最终候选 CI（含完整后端回归）、独立审查和业务接受仍待完成。回退按 ADR-0025 停用动态入口并恢复内置定义，保留历史版本及审计。
+      closeout_20261108: >-
+        用户要求在 develop 收口。代码已在 8e174dd。隔离库页面走查：创建私有定义、未知工具发布被拒绝且生效版本仍为空、
+        空工具发布后显示已停用/生效版本 1、启用后刷新仍为已启用/生效版本 1，再次发布后回滚显示生效版本 1。
+        Windows 项目 conda：pytest tests/test_agent_definition_scope.py 含在 151 passed 的专项里，exit 0。
+        当前 SHA 的 Ubuntu Backend CI run 42436125017 Pytest 失败，不能标 done。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PWFL-005"
@@ -12684,6 +12689,10 @@ tasks:
       estimate_person_days: [3, 5]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或读取生产日志。", implementation_plan: "开工前核对现有日志模型、查询服务、权限矩阵和页面字段。"}
       progress_20261107: "用户要求收到可验收。只读列表与详情和现有查询一致，跨租户与不存在工作流同为 404，敏感文本脱敏截断，读取不写审计、不重放。页面把执行失败与创建者失效分开。最终工作区上 Windows 项目 conda：pytest tests/test_workflow_definition.py tests/test_workflow_execution_logs_api.py tests/test_workflow.py tests/test_openapi_coverage.py -q 为 25 passed/exit 0。登录后的执行历史弹层未在浏览器点击。最终 CI 与人工业务接受未完成，保持 in_review，不标 done。"
+      closeout_20261108: >-
+        用户要求在 develop 收口。隔离库登录后打开执行历史，看到手动触发成功记录，展开后显示执行步骤、运行节点 prompt、成功、输入与输出。
+        读取没有重新执行。Windows 项目 conda 专项含 tests/test_workflow_execution_logs_api.py，与另外两卡专项合计 151 passed、exit 0。
+        当前 SHA 的 Ubuntu Backend CI run 42436125017 Pytest 失败，保持 in_review。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PWFL-006"
@@ -12718,6 +12727,11 @@ tasks:
       estimate_person_days: [5, 9]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或修改生产工作流。", implementation_plan: "开工前锁定现有Workflow模型、批准步骤白名单、版本冲突和回滚。"}
       progress_20261107: "本地可验收，保持 in_review，不标 done。唯一已批准步骤是 prompt，节点 id 固定为 prompt；变量只校验声明，不替换不求值；修订用 updated_at，冲突不写模板；无新表。运行图节点状态等于执行记录。决定见 docs/adr/0026-workflow-step-definition.md。回滚移除定义与运行图入口，保留已保存模板和执行历史。Windows 项目 conda：pytest tests/test_workflow_definition.py tests/test_workflow_execution_logs_api.py -q 为 8 passed、1 warning、exit 0。前端 vitest src/pages/Workflows.execution-logs.test.ts 为 3 passed、exit 0。隔离库浏览器走查：非法占位符在创建前显示变量不合法且列表仍为空；合法模板创建后，编辑保存先后得到定义 PUT 200 与任务 PUT 200，卡片仍显示原文。执行历史展开显示运行节点 prompt、失败、失败位置执行超时，输入保持原文。该失败记录写在隔离库中，未调用真实模型。Ubuntu Backend CI 与人工业务接受未完成。"
+      closeout_20261108: >-
+        用户要求在 develop 收口。隔离库页面：非法占位符在创建前显示变量不合法，列表仍为空；合法模板创建后卡片显示原文；
+        编辑保存后卡片变为新原文；执行历史展开显示运行节点 prompt、成功，输入与保存后的模板一致。
+        Windows 项目 conda 专项含 tests/test_workflow_definition.py，与另外两卡专项合计 151 passed、exit 0。
+        当前 SHA 的 Ubuntu Backend CI run 42436125017 Pytest 失败，保持 in_review。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PROMPT-002"

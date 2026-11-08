@@ -44,7 +44,9 @@ def test_ci_workflow_has_unique_keys_and_one_agent_job():
     job = workflow["jobs"]["agent-baseline"]
     assert job["env"]["LLM_CAPABILITY_GUARD_ENABLED"] == "true"
     assert "needs" not in job
-    assert "if" not in job
+    assert job["if"] == (
+        "github.event_name == 'workflow_dispatch' || vars.ENABLE_AGENT_OFFICIAL_JOB == 'true'"
+    )
     assert workflow["permissions"] == {"contents": "read"}
 
 

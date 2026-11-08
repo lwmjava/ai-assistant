@@ -109,27 +109,27 @@ def _named_step(job, name):
     return next(step for step in job["steps"] if step.get("name") == name)
 
 
-def test_ci_keeps_backend_rag_and_does_not_enable_duplicate_job_by_default():
+def test_ci_runs_paid_rag_only_on_dispatch_or_explicit_opt_in():
     workflow = _ci_workflow()
-    assert set(workflow["on"]) == {"push", "pull_request"}
+    assert set(workflow["on"]) == {"push", "pull_request", "workflow_dispatch"}
     assert workflow["permissions"] == {"contents": "read"}
     backend = workflow["jobs"]["backend"]
     rag = workflow["jobs"]["rag-baseline"]
     assert backend["name"] == "Backend (ruff / mypy / pytest)"
     assert rag["name"] == "RAG official baseline"
     assert "needs" not in rag
-    assert rag["if"] == "vars.ENABLE_RAG_OFFICIAL_JOB == 'true'"
-    backend_rag = _named_step(backend, "RAG baseline gate")
-    independent_rag = _named_step(rag, "RAG baseline gate")
+    assert rag["if"] == (
+        "github.event_name == 'workflow_dispatch' || vars.ENABLE_RAG_OFFICIAL_JOB == 'true'"
+    )
     assert "if" not in backend
-    assert "if" not in backend_rag
-    assert "continue-on-error" not in backend_rag
+    assert all(step.get("name") != "RAG baseline gate" for step in backend["steps"])
+    independent_rag = _named_step(rag, "RAG baseline gate")
+    assert "if" not in independent_rag
     assert "continue-on-error" not in independent_rag
-    for step in (backend_rag, independent_rag):
-        assert "run_rag_baseline.py --mode official" in step["run"]
-        assert "rag_gate_check.py" in step["run"]
-        assert "rag-v0.1-baseline-20260919.json" in step["run"]
-        assert step["env"]["EMBEDDING_API_KEY"] == "${{ secrets.EMBEDDING_API_KEY }}"
+    assert "run_rag_baseline.py --mode official" in independent_rag["run"]
+    assert "rag_gate_check.py" in independent_rag["run"]
+    assert "rag-v0.1-baseline-20260919.json" in independent_rag["run"]
+    assert independent_rag["env"]["EMBEDDING_API_KEY"] == "${{ secrets.EMBEDDING_API_KEY }}"
     pytest_step = _named_step(backend, "Pytest")
     assert "EMBEDDING_API_KEY" not in str(pytest_step)
     assert "--junitxml=data/validation/ci-backend/pytest.xml" in pytest_step["run"]
@@ -151,7 +151,7 @@ def test_ci_python_jobs_use_pip_cache_and_upload_non_secret_evidence():
     assert backend_artifact["if"] == "always()"
     assert rag_artifact["if"] == "always()"
     assert backend_artifact["with"]["path"].splitlines() == [
-        "data/validation/ci-backend/pytest.xml", "evals/reports/rag-budget.json",
+        "data/validation/ci-backend/pytest.xml",
     ]
     assert rag_artifact["with"]["path"].splitlines() == [
         "evals/reports/rag-v0.1-baseline-ci.json", "evals/reports/rag-budget.json",

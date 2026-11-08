@@ -488,10 +488,13 @@ def test_report_out_of_scope_rejected_before_publication(monkeypatch):
 def test_ci_is_independent_fail_closed_and_secrets_scoped():
     ci = yaml.load((Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml").read_text(),
                    Loader=yaml.BaseLoader)
-    assert set(ci["on"]) == {"push", "pull_request"}
+    assert set(ci["on"]) == {"push", "pull_request", "workflow_dispatch"}
     assert ci["permissions"] == {"contents": "read"}
     job = ci["jobs"]["agent-baseline"]
-    assert "needs" not in job and "if" not in job
+    assert "needs" not in job
+    assert job["if"] == (
+        "github.event_name == 'workflow_dispatch' || vars.ENABLE_AGENT_OFFICIAL_JOB == 'true'"
+    )
     assert "LLM_API_KEY" not in job["env"]
     assert job["env"]["LLM_INTENT_FALLBACK_CHAIN"] == "chat"
     assert job["env"]["LLM_RESPONSE_CACHE_ENABLED"] == "false"

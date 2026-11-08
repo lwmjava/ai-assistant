@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, col, create_engine, select
 
+import app.models.user_memory_preference  # noqa: F401
 from app.agents.pipeline import AgentState
 from app.core.config import settings
 from app.models.conversation import Conversation, Message

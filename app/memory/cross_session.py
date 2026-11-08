@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
+from app.memory.preferences import memory_access_open, set_user_memory_enabled, user_memory_enabled
 from app.models.conversation import Conversation, Message
 from app.models.cross_session_memory import CrossSessionMemory
 from app.models.user import User
@@ -41,7 +42,7 @@ class CrossSessionMemoryService:
     async def correct(
         self, user: User, memory_id: str, conversation_id: str, message_id: str
     ) -> str | None:
-        if not settings.MEMORY_CROSS_SESSION_ENABLED:
+        if not memory_access_open(self.session, user):
             return None
         assert_memory_subject(self.session, user)
         previous = self.session.get(CrossSessionMemory, memory_id)
@@ -65,7 +66,7 @@ class CrossSessionMemoryService:
         *,
         supersedes_id: str | None = None,
     ) -> str | None:
-        if not settings.MEMORY_CROSS_SESSION_ENABLED:
+        if not memory_access_open(self.session, user):
             return None
         conversation = self.session.get(Conversation, conversation_id)
         message = self.session.get(Message, message_id)
@@ -159,7 +160,7 @@ class CrossSessionMemoryService:
         return "\n".join(lines)
 
     async def _recall(self, user: User, query: str) -> list[CrossSessionMemory]:
-        if not settings.MEMORY_CROSS_SESSION_ENABLED:
+        if not memory_access_open(self.session, user):
             return []
         assert_memory_subject(self.session, user)
         text = (query or "").strip()
@@ -212,6 +213,143 @@ class CrossSessionMemoryService:
                 continue
             visible.append(row)
         return visible
+
+    def describe_switch(self, user: User) -> dict[str, bool]:
+        assert_memory_subject(self.session, user)
+        personal = user_memory_enabled(self.session, user)
+        deployment = bool(settings.MEMORY_CROSS_SESSION_ENABLED)
+        return {
+            "deployment_enabled": deployment,
+            "user_enabled": personal,
+            "effective": deployment and personal,
+        }
+
+    def set_switch(self, user: User, enabled: bool) -> dict[str, bool]:
+        assert_memory_subject(self.session, user)
+        set_user_memory_enabled(self.session, user, enabled)
+        return self.describe_switch(user)
+
+    def list_visible(self, user: User) -> list[CrossSessionMemory]:
+        assert_memory_subject(self.session, user)
+        statement = (
+            select(CrossSessionMemory)
+            .where(
+                col(CrossSessionMemory.tenant_id) == user.tenant_id,
+                col(CrossSessionMemory.user_id) == user.id,
+                col(CrossSessionMemory.invalidated_at).is_(None),
+                col(CrossSessionMemory.superseded_at).is_(None),
+            )
+            .order_by(col(CrossSessionMemory.created_at).desc())
+        )
+        return list(self.session.exec(statement).all())
+
+    def get_visible(self, user: User, memory_id: str) -> CrossSessionMemory:
+        row = self._owned(user, memory_id)
+        if row.invalidated_at is not None or row.superseded_at is not None:
+            raise MemoryPolicyError("conversation memory is unavailable")
+        return row
+
+    def invalidate(self, user: User, memory_id: str) -> CrossSessionMemory:
+        row = self._owned(user, memory_id)
+        if row.invalidated_at is None:
+            row.invalidated_at = datetime.now(UTC)
+            self.session.add(row)
+            self.session.commit()
+            self.session.refresh(row)
+        return row
+
+    async def correct_text(self, user: User, memory_id: str, content: str) -> str:
+        if not memory_access_open(self.session, user):
+            raise MemoryPolicyError("memory writes are disabled")
+        previous = self.get_visible(user, memory_id)
+        if previous.superseded_at is not None:
+            raise MemoryPolicyError("conversation memory is unavailable")
+        raw = content or ""
+        if _contains_pii(raw):
+            raise MemoryPolicyError("memory contains personal data")
+        cleaned = sanitize_history_text(raw)[: settings.MEMORY_MAX_SUMMARY_CHARS]
+        if not cleaned.strip() or cleaned == HISTORY_REDACTED:
+            raise MemoryPolicyError("conversation memory is unavailable")
+        digest = _content_hash(USER_STATEMENT, cleaned)
+        if previous.content_hash == digest and previous.superseded_at is None:
+            return previous.id
+        key = _subject_key(cleaned)
+        conflict_group = self._assign_conflict_group(
+            user, key, digest, exclude_id=previous.id
+        )
+        provider = get_embedding_provider()
+        vectors = await provider.embed([cleaned])
+        vector = memory_index.normalize(list(vectors[0]))
+        if len(vector) != int(provider.dim):
+            raise RuntimeError("嵌入维度与提供商不一致")
+        current = self.session.get(User, user.id)
+        if current is None:
+            raise MemoryPolicyError("conversation memory is unavailable")
+        row = CrossSessionMemory(
+            id=uuid.uuid4().hex,
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            user_token_version=current.token_version,
+            source_conversation_id=previous.source_conversation_id,
+            source_message_id=previous.source_message_id,
+            content=cleaned,
+            embedding_json=json.dumps(vector),
+            embedding_provider=settings.EMBEDDING_PROVIDER.strip().lower() or "mock",
+            embedding_model=str(provider.model),
+            embedding_dim=len(vector),
+            policy_version=POLICY_VERSION,
+            source_grade=USER_STATEMENT,
+            content_hash=digest,
+            subject_key=key,
+            conflict_group_id=conflict_group,
+            supersedes_id=previous.id,
+            expires_at=datetime.now(UTC) + timedelta(days=settings.MEMORY_SNAPSHOT_RETENTION_DAYS),
+        )
+        previous.superseded_at = datetime.now(UTC)
+        self.session.add(previous)
+        self.session.add(row)
+        self.session.flush()
+        try:
+            await memory_index.upsert(row.id, row.tenant_id, row.user_id, vector)
+        except Exception:
+            self.session.rollback()
+            raise
+        self.session.commit()
+        return row.id
+
+    def export_visible(self, user: User) -> list[dict[str, str | bool | None]]:
+        assert_memory_subject(self.session, user)
+        statement = (
+            select(CrossSessionMemory)
+            .where(
+                col(CrossSessionMemory.tenant_id) == user.tenant_id,
+                col(CrossSessionMemory.user_id) == user.id,
+                col(CrossSessionMemory.invalidated_at).is_(None),
+            )
+            .order_by(col(CrossSessionMemory.created_at).desc())
+        )
+        exported: list[dict[str, str | bool | None]] = []
+        for row in self.session.exec(statement).all():
+            exported.append(
+                {
+                    "id": row.id,
+                    "source_grade": row.source_grade,
+                    "content": sanitize_history_text(row.content),
+                    "source_conversation_id": row.source_conversation_id,
+                    "source_message_id": row.source_message_id,
+                    "supersedes_id": row.supersedes_id,
+                    "superseded": row.superseded_at is not None,
+                    "conflict_group_id": row.conflict_group_id,
+                }
+            )
+        return exported
+
+    def _owned(self, user: User, memory_id: str) -> CrossSessionMemory:
+        assert_memory_subject(self.session, user)
+        row = self.session.get(CrossSessionMemory, memory_id)
+        if row is None or row.user_id != user.id or row.tenant_id != user.tenant_id:
+            raise MemoryPolicyError("conversation memory is unavailable")
+        return row
 
     def _active_duplicate(self, user: User, grade: str, digest: str) -> CrossSessionMemory | None:
         statement = select(CrossSessionMemory).where(

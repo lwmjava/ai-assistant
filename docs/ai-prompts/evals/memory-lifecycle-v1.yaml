@@ -1,0 +1,28 @@
+name: memory-lifecycle-v1
+classification: Observed Regression
+notes: >
+  隔离组合验收。真实客户对话和付费评测未执行，不把 Mock 嵌入写成质量证据。
+cases:
+  - id: remember-and-restart
+    expect:
+      recalled_after_new_session: true
+  - id: isolation-expiry-revocation-deletion
+    expect:
+      other_user: hidden
+      other_tenant: hidden
+      revoked_token: hidden
+      expired: hidden
+      deleted_source: hidden
+      row_kept: true
+  - id: correct-then-invalidate
+    expect:
+      new_version_visible: true
+      old_version_hidden: true
+      invalidated_hidden: true
+  - id: recall-failure
+    expect:
+      local_fallback: false
+  - id: real-dialogue
+    expect:
+      executed: false
+      reason: no-paid-evaluation-and-no-customer-data

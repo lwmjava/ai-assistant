@@ -9446,7 +9446,7 @@ tasks:
 
   - id: "MCP-REQ-001"
     title: "MCP 产品验收定义（补 PRD §5 章节）"
-    status: "backlog"
+    status: "done"
     priority: "P0"
     module: "MCP"
     target_version: "1.0"
@@ -9495,6 +9495,7 @@ tasks:
       delivery_order: 8
       delivery_stage: "V1-1"
       owner: "个人开发者"
+      progress_20261107: "PRD §5.13 写明启用条件和四条验收：默认超时 30 秒、L0–L3 与内置工具相同、审计含调用者租户工具名参数摘要结果和耗时、凭据不进仓库日志和审计。MCP_ENABLED 默认 false，未启用时工具列表返回 503。未改 MCP 实现，未选定传输、重试或加密方案。2026-11-07 用户确认这四条作为后续 MCP 实现的验收口径。"
       nightly:
         eligible: false
         production_access: false

@@ -1,0 +1,18 @@
+version: "1.0.0"
+classification: "Smoke/Adversarial"
+provenance: "AI-authored synthetic deterministic fixtures, not Gold or real-model quality evidence"
+execution: "pytest tests/test_workflow_definition.py -q"
+contract:
+  step: "Only one approved prompt step with id prompt can be saved"
+  variables: "Placeholder names are declared in appearance order and are not interpolated or evaluated"
+  revision: "A stale revision does not overwrite the template"
+  graph: "The single node status matches the execution record and the failure reason"
+cases:
+  - id: save_reload_literal
+    expected: "Saving hello {customer} reloads the same step and the execution input remains that literal template."
+  - id: reject_before_save
+    expected: "Unknown steps, invalid variables and cycles return 422 and leave the stored template unchanged."
+  - id: revision_and_tenant
+    expected: "A stale revision returns 409. Another tenant receives the same 404 as a missing workflow. A read-only role cannot save."
+  - id: graph_matches_execution
+    expected: "A failed execution exposes the prompt node as failed with the alert reason. Reading the graph does not change the execution."

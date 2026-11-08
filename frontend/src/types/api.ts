@@ -370,6 +370,66 @@ export interface WorkflowAlertOut {
   created_at: string
 }
 
+export interface ExecutionFailureAlertOut {
+  id: string
+  tenant_id: string
+  workflow_id: string
+  workflow_name: string
+  execution_id: string
+  trace_id: string
+  reason: string
+  error_message: string | null
+  detail: string | null
+  created_at: string
+}
+
+export interface ExecutionLogItem {
+  id: string
+  execution_id: string
+  trace_id: string
+  level: string
+  message: string
+  created_at: string
+}
+
+export interface ExecutionGraphNode {
+  id: string
+  type: string
+  status: string
+  failed: boolean
+  reason: string | null
+}
+
+export interface ExecutionLogDetail {
+  execution_id: string
+  workflow_id: string
+  status: string
+  duration_ms: number | null
+  step_name: string
+  failure_reason: string | null
+  input: string | null
+  output: string | null
+  error: string | null
+  nodes: ExecutionGraphNode[]
+  logs: ExecutionLogItem[]
+  total: number
+  offset: number
+  limit: number
+}
+
+export interface WorkflowStep {
+  id: string
+  type: string
+  template: string
+  variables: string[]
+}
+
+export interface WorkflowDefinition {
+  revision: string
+  steps: WorkflowStep[]
+  edges: { source: string; target: string }[]
+}
+
 export interface WorkflowCreate {
   name: string
   cron_expr: string

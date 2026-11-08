@@ -9,14 +9,14 @@
 
 import math
 from datetime import datetime
-from typing import cast
+from typing import NoReturn, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session, col, select
 
 from app.api.deps import audit_event, get_db, require_permission
-from app.audit.models import AuditAction, WorkflowOwnerAlert
+from app.audit.models import AuditAction, WorkflowExecutionAlert, WorkflowExecutionLog, WorkflowOwnerAlert
 from app.core.config import settings
 from app.core.security import Role
 from app.models.user import User
@@ -25,10 +25,25 @@ from app.models.workflow import (
     Workflow,
     WorkflowExecution,
 )
+from app.security.log_sanitizer import LogSanitizer
 from app.workflow.admission import WorkflowAdmissionError, forget_workflow, reserve_deletion
 from app.workflow.control import cancel_execution, database_key
+from app.workflow.definition import (
+    WorkflowDefinitionError,
+    prompt_node,
+    revision_token,
+    same_revision,
+    validate_definition,
+    validate_prompt_template,
+)
 from app.workflow.engine import WorkflowEngine
+from app.workflow.execution_log import count_logs, list_alerts, list_logs, list_logs_chronological
 from app.workflow.scheduler import schedule_mode
+
+_LOG_TEXT_LIMIT = 500
+_PROMPT_STEP = "Prompt 执行"
+_MISSING_WORKFLOW = "工作流不存在或无权访问"
+_MISSING_EXECUTION = "执行记录不存在或无权访问"
 
 router = APIRouter(
     prefix="/workflows",
@@ -138,6 +153,111 @@ class WorkflowAlertOut(BaseModel):
     created_at: datetime
 
 
+class ExecutionLogItem(BaseModel):
+    """一条已脱敏的执行日志。"""
+
+    id: str
+    execution_id: str
+    trace_id: str
+    level: str
+    message: str
+    created_at: datetime
+
+
+class ExecutionLogPage(BaseModel):
+    """执行日志倒序分页，条目与数据层列表一致。"""
+
+    items: list[ExecutionLogItem]
+    total: int
+    offset: int
+    limit: int
+
+
+class ExecutionFailureAlertOut(BaseModel):
+    """一次执行失败的告警。与创建者失效告警分开返回。"""
+
+    id: str
+    tenant_id: str
+    workflow_id: str
+    workflow_name: str
+    execution_id: str
+    trace_id: str
+    reason: str
+    error_message: str | None
+    detail: str | None
+    created_at: datetime
+
+
+class ExecutionGraphNode(BaseModel):
+    """运行图节点。当前只有实际执行的 Prompt 步骤。"""
+
+    id: str
+    type: str
+    status: str
+    failed: bool
+    reason: str | None
+
+
+class ExecutionLogDetail(BaseModel):
+    """单次执行的耗时、脱敏输入输出和正序日志。"""
+
+    execution_id: str
+    workflow_id: str
+    status: str
+    duration_ms: int | None
+    step_name: str
+    failure_reason: str | None
+    input: str | None
+    output: str | None
+    error: str | None
+    nodes: list[ExecutionGraphNode]
+    logs: list[ExecutionLogItem]
+    total: int
+    offset: int
+    limit: int
+
+
+class WorkflowStepIn(BaseModel):
+    id: str
+    type: str
+    template: str
+    variables: list[str]
+
+
+class WorkflowEdgeIn(BaseModel):
+    source: str
+    target: str
+
+
+class WorkflowDefinitionIn(BaseModel):
+    revision: str
+    steps: list[WorkflowStepIn]
+    edges: list[WorkflowEdgeIn] = []
+
+
+class WorkflowDefinitionOut(BaseModel):
+    revision: str
+    steps: list[WorkflowStepIn]
+    edges: list[WorkflowEdgeIn]
+
+
+class ExecutionTrajectoryItem(BaseModel):
+    id: str
+    node_id: str
+    level: str
+    message: str
+    created_at: datetime
+
+
+class ExecutionGraphOut(BaseModel):
+    """一次执行的节点状态和轨迹，读取不重放。"""
+
+    execution_id: str
+    status: str
+    nodes: list[ExecutionGraphNode]
+    trajectory: list[ExecutionTrajectoryItem]
+
+
 # ── 内部辅助 ──────────────────────────────────
 def _list_stmt(user: User):
     stmt = select(Workflow)
@@ -158,6 +278,79 @@ def _get_owned(session: Session, user: User, workflow_id: str) -> Workflow | Non
     return None
 
 
+def _display_text(value: str | None) -> str | None:
+    """读出时脱敏并截断，不回写存储。"""
+    if value is None:
+        return None
+    sanitized = LogSanitizer().sanitize(value)
+    if len(sanitized) <= _LOG_TEXT_LIMIT:
+        return sanitized
+    return sanitized[:_LOG_TEXT_LIMIT]
+
+
+def _log_item(row: WorkflowExecutionLog) -> ExecutionLogItem:
+    return ExecutionLogItem(
+        id=row.id,
+        execution_id=row.execution_id,
+        trace_id=row.trace_id,
+        level=row.level,
+        message=_display_text(row.message) or "",
+        created_at=row.created_at,
+    )
+
+
+def _owned_execution(
+    session: Session, workflow: Workflow, execution_id: str,
+) -> WorkflowExecution:
+    execution = session.get(WorkflowExecution, execution_id)
+    if (execution is None or execution.workflow_id != workflow.id
+            or execution.tenant_id != workflow.tenant_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_MISSING_EXECUTION)
+    return execution
+
+
+def _reject_definition(exc: WorkflowDefinitionError) -> NoReturn:
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.code) from None
+
+
+def _definition_out(workflow: Workflow) -> WorkflowDefinitionOut:
+    template = workflow.prompt_template
+    return WorkflowDefinitionOut(
+        revision=revision_token(workflow.updated_at),
+        steps=[
+            WorkflowStepIn(
+                id="prompt",
+                type="prompt",
+                template=template,
+                variables=declared_variables_safe(template),
+            )
+        ],
+        edges=[],
+    )
+
+
+def declared_variables_safe(template: str) -> list[str]:
+    try:
+        return validate_prompt_template(template)
+    except WorkflowDefinitionError:
+        return []
+
+
+def _graph_nodes(status: str, reason: str | None) -> list[ExecutionGraphNode]:
+    node = prompt_node(status, reason)
+    return [ExecutionGraphNode.model_validate(node)]
+
+
+def _failure_reason(session: Session, workflow: Workflow, execution_id: str) -> str | None:
+    alert = session.exec(
+        select(WorkflowExecutionAlert)
+        .where(col(WorkflowExecutionAlert.execution_id) == execution_id)
+        .where(col(WorkflowExecutionAlert.workflow_id) == workflow.id)
+        .where(col(WorkflowExecutionAlert.tenant_id) == workflow.tenant_id)
+    ).first()
+    return None if alert is None else alert.reason
+
+
 # ── 端点 ──────────────────────────────────
 @router.post("", response_model=WorkflowOut, status_code=status.HTTP_201_CREATED)
 async def create_workflow(
@@ -167,6 +360,10 @@ async def create_workflow(
     user: User = Depends(require_permission("workflows", "write")),
 ) -> Workflow:
     """创建定时任务（WFL-01）。以当前用户为 owner，归属其租户。"""
+    try:
+        validate_prompt_template(payload.prompt_template)
+    except WorkflowDefinitionError as exc:
+        _reject_definition(exc)
     wf = Workflow(
         tenant_id=user.tenant_id,
         owner_id=user.id,
@@ -218,6 +415,31 @@ async def list_workflow_alerts(
     return list(session.exec(stmt).all())
 
 
+@router.get("/execution-alerts", response_model=list[ExecutionFailureAlertOut])
+async def list_execution_failure_alerts(
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "read")),
+) -> list[ExecutionFailureAlertOut]:
+    """执行失败告警。本租户可见；系统管理员跨租户。不包含创建者失效告警。"""
+    tenant_id = None if user.role_enum.value == Role.SYSTEM_ADMIN.value else user.tenant_id
+    rows = list_alerts(session, tenant_id=tenant_id, limit=100)
+    return [
+        ExecutionFailureAlertOut(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            workflow_id=row.workflow_id,
+            workflow_name=row.workflow_name,
+            execution_id=row.execution_id,
+            trace_id=row.trace_id,
+            reason=row.reason,
+            error_message=_display_text(row.error_message),
+            detail=_display_text(row.detail),
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+
 @router.get("/{workflow_id}", response_model=WorkflowOut)
 async def get_workflow(
     workflow_id: str,
@@ -242,6 +464,12 @@ async def update_workflow(
     if wf is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工作流不存在或无权访问")
     data = payload.model_dump(exclude_unset=True)
+    template = data.get("prompt_template")
+    if isinstance(template, str):
+        try:
+            validate_prompt_template(template)
+        except WorkflowDefinitionError as exc:
+            _reject_definition(exc)
     for field, value in data.items():
         setattr(wf, field, value)
     session.add(wf)
@@ -305,6 +533,174 @@ async def list_executions(
         .order_by(col(WorkflowExecution.created_at).desc())
     )
     return list(session.exec(stmt).all())
+
+
+@router.get("/{workflow_id}/logs", response_model=ExecutionLogPage)
+async def list_workflow_execution_logs(
+    workflow_id: str,
+    execution_id: str | None = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "read")),
+) -> ExecutionLogPage:
+    """按创建时间倒序分页读取执行日志。只读，不写审计。"""
+    workflow = _get_owned(session, user, workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_MISSING_WORKFLOW)
+    if execution_id is not None:
+        _owned_execution(session, workflow, execution_id)
+    rows = list_logs(
+        session,
+        tenant_id=workflow.tenant_id,
+        workflow_id=workflow.id,
+        execution_id=execution_id,
+        offset=offset,
+        limit=limit,
+    )
+    return ExecutionLogPage(
+        items=[_log_item(row) for row in rows],
+        total=count_logs(
+            session,
+            tenant_id=workflow.tenant_id,
+            workflow_id=workflow.id,
+            execution_id=execution_id,
+        ),
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get("/{workflow_id}/executions/{execution_id}/logs", response_model=ExecutionLogDetail)
+async def get_workflow_execution_log_detail(
+    workflow_id: str,
+    execution_id: str,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "read")),
+) -> ExecutionLogDetail:
+    """单次执行的耗时、失败原因和脱敏输入输出。日志按发生顺序分页，读取不改变记录。"""
+    workflow = _get_owned(session, user, workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_MISSING_WORKFLOW)
+    execution = _owned_execution(session, workflow, execution_id)
+    reason = _failure_reason(session, workflow, execution.id)
+    rows = list_logs_chronological(
+        session,
+        tenant_id=workflow.tenant_id,
+        workflow_id=workflow.id,
+        execution_id=execution.id,
+        offset=offset,
+        limit=limit,
+    )
+    return ExecutionLogDetail(
+        execution_id=execution.id,
+        workflow_id=workflow.id,
+        status=execution.status,
+        duration_ms=execution.duration_ms,
+        step_name=_PROMPT_STEP,
+        failure_reason=reason,
+        input=_display_text(execution.input),
+        output=_display_text(execution.output),
+        error=_display_text(execution.error),
+        nodes=_graph_nodes(execution.status, reason),
+        logs=[_log_item(row) for row in rows],
+        total=count_logs(
+            session,
+            tenant_id=workflow.tenant_id,
+            workflow_id=workflow.id,
+            execution_id=execution.id,
+        ),
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get("/{workflow_id}/definition", response_model=WorkflowDefinitionOut)
+async def get_workflow_definition(
+    workflow_id: str,
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "read")),
+) -> WorkflowDefinitionOut:
+    """读取当前已保存的 Prompt 步骤。不创建草稿，也不改执行历史。"""
+    workflow = _get_owned(session, user, workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_MISSING_WORKFLOW)
+    return _definition_out(workflow)
+
+
+@router.put("/{workflow_id}/definition", response_model=WorkflowDefinitionOut)
+async def update_workflow_definition(
+    request: Request,
+    workflow_id: str,
+    payload: WorkflowDefinitionIn,
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "write")),
+) -> WorkflowDefinitionOut:
+    """保存已批准的 Prompt 步骤。修订不一致时不写入。"""
+    workflow = _get_owned(session, user, workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_MISSING_WORKFLOW)
+    try:
+        template = validate_definition(
+            [step.model_dump() for step in payload.steps],
+            [edge.model_dump() for edge in payload.edges],
+        )
+    except WorkflowDefinitionError as exc:
+        _reject_definition(exc)
+    if not same_revision(workflow.updated_at, payload.revision):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="revision_conflict")
+    workflow.prompt_template = template
+    session.add(workflow)
+    session.commit()
+    session.refresh(workflow)
+    await audit_event(
+        request,
+        AuditAction.WORKFLOW_UPDATE,
+        user=user,
+        resource_type="workflow",
+        resource_id=workflow.id,
+        details={"updated_fields": ["prompt_template"]},
+    )
+    return _definition_out(workflow)
+
+
+@router.get("/{workflow_id}/executions/{execution_id}/graph", response_model=ExecutionGraphOut)
+async def get_workflow_execution_graph(
+    workflow_id: str,
+    execution_id: str,
+    session: Session = Depends(get_db),
+    user: User = Depends(require_permission("workflows", "read")),
+) -> ExecutionGraphOut:
+    """返回与执行记录一致的单节点运行图和轨迹。只读。"""
+    workflow = _get_owned(session, user, workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_MISSING_WORKFLOW)
+    execution = _owned_execution(session, workflow, execution_id)
+    reason = _failure_reason(session, workflow, execution.id)
+    rows = list_logs_chronological(
+        session,
+        tenant_id=workflow.tenant_id,
+        workflow_id=workflow.id,
+        execution_id=execution.id,
+        limit=100,
+    )
+    return ExecutionGraphOut(
+        execution_id=execution.id,
+        status=execution.status,
+        nodes=_graph_nodes(execution.status, reason),
+        trajectory=[
+            ExecutionTrajectoryItem(
+                id=row.id,
+                node_id="prompt",
+                level=row.level,
+                message=_display_text(row.message) or "",
+                created_at=row.created_at,
+            )
+            for row in rows
+        ],
+    )
 
 
 @router.post(

@@ -26,19 +26,24 @@ import { useToast } from '@/components/ui/Toast'
 import {
   useCreateWorkflow,
   useDeleteWorkflow,
+  useExecutionFailureAlerts,
+  useExecutionLogDetail,
   useRunWorkflow,
+  useSaveWorkflowDefinition,
   useToggleWorkflow,
   useUpdateWorkflow,
   useWorkflowAlerts,
+  useWorkflowDefinition,
   useWorkflowExecutions,
   useWorkflows,
 } from '@/api/workflows'
+import { parsePromptVariables } from '@/api/workflow-definition'
 import { workflowScheduleNotice } from '@/lib/workflow-schedule'
 import { ApiError } from '@/lib/http'
 import { can } from '@/lib/permissions'
 import { cn, formatDateTime, formatDuration, truncate } from '@/lib/cn'
 import { useAuthStore } from '@/store/auth'
-import type { ExecutionOut, WorkflowAlertOut, WorkflowOut } from '@/types/api'
+import type { ExecutionFailureAlertOut, ExecutionOut, WorkflowAlertOut, WorkflowOut } from '@/types/api'
 
 const workflowSchema = z.object({
   name: z.string().min(1, '请输入任务名称').max(100, '名称过长'),
@@ -93,7 +98,17 @@ const ALERT_REASON_LABEL: Record<string, string> = {
   owner_invalid: '创建者身份失效',
 }
 
-function AlertsStrip({ alerts }: { alerts: WorkflowAlertOut[] }) {
+const EXECUTION_FAILURE_LABEL: Record<string, string> = {
+  retry_exhausted: '重试耗尽',
+  timeout: '执行超时',
+  owner_invalid: '执行时创建者已失效',
+  tenant_unavailable: '租户不可用',
+  bridge_error: '执行步骤失败',
+  cancelled: '已取消',
+  setup_error: '启动失败',
+}
+
+export function AlertsStrip({ alerts }: { alerts: WorkflowAlertOut[] }) {
   if (alerts.length === 0) return null
   return (
     <div className="panel space-y-2 border-warning/40 bg-warning/5 px-4 py-3" role="status">
@@ -116,6 +131,53 @@ function AlertsStrip({ alerts }: { alerts: WorkflowAlertOut[] }) {
   )
 }
 
+export function FailureAlertsStrip({ alerts }: { alerts: ExecutionFailureAlertOut[] }) {
+  if (alerts.length === 0) return null
+  return (
+    <div className="panel space-y-2 border-danger/40 bg-danger/5 px-4 py-3" role="status">
+      <p className="text-sm font-medium text-text">
+        {alerts.length} 次工作流执行失败
+      </p>
+      <ul className="space-y-1.5 text-sm text-text-muted">
+        {alerts.map((alert) => (
+          <li key={alert.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="font-medium text-text">《{alert.workflow_name}》</span>
+            <span>{EXECUTION_FAILURE_LABEL[alert.reason] ?? alert.reason}</span>
+            {alert.error_message && <span className="text-xs text-text-faint">{alert.error_message}</span>}
+            <span className="ml-auto text-xs text-text-faint">{formatDateTime(alert.created_at)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export function PromptStepNotice({ template }: { template: string }) {
+  const parsed = parsePromptVariables(template)
+  return (
+    <div className="rounded-lg border border-border bg-surface-2/50 px-3 py-2.5 text-sm">
+      <p className="font-medium text-text">已批准步骤：prompt</p>
+      <p className="mt-1 text-text-muted">
+        变量：{parsed.ok ? (parsed.variables.length ? parsed.variables.join('、') : '无') : '不合法'}
+      </p>
+      <p className="mt-1 text-xs text-text-faint">变量只作声明，执行时不会替换或求值。</p>
+    </div>
+  )
+}
+
+export function ExecutionNodeLine({
+  node,
+}: {
+  node: { id: string; type: string; status: string; failed: boolean; reason: string | null }
+}) {
+  return (
+    <p className="text-text">
+      运行节点：{node.type} · {STATUS_LABEL[node.status] ?? node.status}
+      {node.failed ? ` · 失败位置：${EXECUTION_FAILURE_LABEL[node.reason ?? ''] ?? node.reason ?? '未标明'}` : ''}
+    </p>
+  )
+}
+
 function WorkflowFormModal({
   open,
   onClose,
@@ -128,6 +190,8 @@ function WorkflowFormModal({
   const toast = useToast()
   const create = useCreateWorkflow()
   const update = useUpdateWorkflow()
+  const saveDefinition = useSaveWorkflowDefinition()
+  const definition = useWorkflowDefinition(editing?.id ?? null, open && Boolean(editing))
 
   const {
     register,
@@ -167,9 +231,16 @@ function WorkflowFormModal({
 
   const cron = watch('cron_expr')
   const enabled = watch('enabled')
-  const busy = create.isPending || update.isPending
+  const promptTemplate = watch('prompt_template')
+  const parsedPrompt = parsePromptVariables(promptTemplate ?? '')
+  const busy = create.isPending || update.isPending || saveDefinition.isPending
 
   async function onSubmit(values: WorkflowValues) {
+    const parsed = parsePromptVariables(values.prompt_template)
+    if (!parsed.ok) {
+      toast.error(editing ? '保存失败' : '创建失败', '变量不合法')
+      return
+    }
     const payload = {
       name: values.name,
       cron_expr: values.cron_expr.trim(),
@@ -181,7 +252,30 @@ function WorkflowFormModal({
     }
     try {
       if (editing) {
-        await update.mutateAsync({ id: editing.id, payload })
+        const revision = definition.data?.revision
+        if (!revision) {
+          toast.error('保存失败', '步骤修订尚未载入')
+          return
+        }
+        await saveDefinition.mutateAsync({
+          id: editing.id,
+          payload: {
+            revision,
+            steps: [{ id: 'prompt', type: 'prompt', template: values.prompt_template, variables: parsed.variables }],
+            edges: [],
+          },
+        })
+        await update.mutateAsync({
+          id: editing.id,
+          payload: {
+            name: payload.name,
+            cron_expr: payload.cron_expr,
+            description: payload.description,
+            timezone: payload.timezone,
+            webhook_url: payload.webhook_url,
+            enabled: payload.enabled,
+          },
+        })
         toast.success('已保存', `定时任务《${values.name}》已更新`)
       } else {
         await create.mutateAsync(payload)
@@ -189,7 +283,11 @@ function WorkflowFormModal({
       }
       onClose()
     } catch (err) {
-      toast.error(editing ? '保存失败' : '创建失败', err instanceof ApiError ? err.detail : undefined)
+      const detail = err instanceof ApiError ? err.detail : undefined
+      toast.error(
+        editing ? '保存失败' : '创建失败',
+        detail === 'revision_conflict' ? '步骤已在其他地方更新，请重新打开后再保存' : detail,
+      )
     }
   }
 
@@ -256,9 +354,10 @@ function WorkflowFormModal({
           required
           rows={6}
           placeholder="例如：请检索知识库中最近一天的更新，输出不超过 300 字的摘要。"
-          error={errors.prompt_template?.message}
+          error={errors.prompt_template?.message ?? (parsedPrompt.ok ? undefined : '变量不合法')}
           {...register('prompt_template')}
         />
+        <PromptStepNotice template={promptTemplate ?? ''} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="时区" required placeholder="Asia/Shanghai" error={errors.timezone?.message} {...register('timezone')} />
@@ -285,7 +384,15 @@ function WorkflowFormModal({
   )
 }
 
-function ExecutionRow({ execution }: { execution: ExecutionOut }) {
+function ExecutionRow({ workflowId, execution }: { workflowId: string; execution: ExecutionOut }) {
+  const [open, setOpen] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const detail = useExecutionLogDetail(workflowId, execution.id, offset, open)
+  const payload = detail.data
+  const failureLabel = payload?.failure_reason
+    ? EXECUTION_FAILURE_LABEL[payload.failure_reason] ?? payload.failure_reason
+    : null
+
   return (
     <li className="panel-inset space-y-2 p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -296,15 +403,62 @@ function ExecutionRow({ execution }: { execution: ExecutionOut }) {
         <span className="font-mono text-xs text-text-faint">{execution.duration_ms != null ? formatDuration(execution.duration_ms) : '—'}</span>
         <span className="ml-auto text-xs text-text-faint">{formatDateTime(execution.created_at)}</span>
       </div>
-      {(execution.status === 'failed' || execution.error) && (
-        <p className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-sm text-danger">
-          {execution.status === 'failed' ? execution.error || FAILED_WITHOUT_REASON : execution.error}
-        </p>
+      <Button variant="ghost" onClick={() => setOpen((current) => !current)}>
+        {open ? '收起日志' : '查看日志'}
+      </Button>
+      {open && detail.isLoading && <SkeletonRows rows={2} />}
+      {open && detail.error && (
+        <ErrorState error={detail.error} onRetry={() => void detail.refetch()} className="border-0 bg-transparent" />
       )}
-      {execution.output && (
-        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-muted">
-          {truncate(execution.output, 400)}
-        </p>
+      {open && payload && (
+        <div className="space-y-2 text-sm">
+          <p className="text-text">
+            执行步骤：{payload.step_name}
+            {payload.duration_ms != null ? ` · 耗时 ${formatDuration(payload.duration_ms)}` : ''}
+          </p>
+          {payload.nodes.map((node) => (
+            <ExecutionNodeLine key={node.id} node={node} />
+          ))}
+          {!payload.nodes.length && failureLabel && (
+            <p className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-danger">
+              失败位置：{failureLabel}
+            </p>
+          )}
+          {payload.input && (
+            <p className="whitespace-pre-wrap break-words text-text-muted">输入：{payload.input}</p>
+          )}
+          {payload.output && (
+            <p className="whitespace-pre-wrap break-words text-text-muted">输出：{payload.output}</p>
+          )}
+          {payload.error && (
+            <p className="whitespace-pre-wrap break-words text-danger">错误：{payload.error}</p>
+          )}
+          <ul className="space-y-1">
+            {payload.logs.map((entry) => (
+              <li key={entry.id} className="break-words text-text-muted">
+                <span className="mr-2 font-mono text-xs text-text-faint">{entry.level}</span>
+                {entry.message}
+              </li>
+            ))}
+          </ul>
+          {payload.total > payload.limit && (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" disabled={offset === 0} onClick={() => setOffset((current) => Math.max(0, current - payload.limit))}>
+                更早
+              </Button>
+              <span className="text-xs text-text-faint">
+                {offset + 1}–{Math.min(offset + payload.logs.length, payload.total)} / {payload.total}
+              </span>
+              <Button
+                variant="ghost"
+                disabled={offset + payload.logs.length >= payload.total}
+                onClick={() => setOffset((current) => current + payload.limit)}
+              >
+                更近
+              </Button>
+            </div>
+          )}
+        </div>
       )}
     </li>
   )
@@ -325,7 +479,7 @@ function ExecutionsModal({
       open={Boolean(workflowId)}
       onClose={onClose}
       title="执行历史"
-      description="按创建时间倒序，记录触发来源、状态、耗时与输出。"
+      description="按创建时间倒序。展开后查看执行步骤、耗时和已脱敏的输入输出，不会重新执行。"
       size="lg"
       footer={
         <Button variant="ghost" onClick={onClose}>
@@ -346,8 +500,8 @@ function ExecutionsModal({
         />
       ) : (
         <ul className="space-y-2">
-          {executions.map((e) => (
-            <ExecutionRow key={e.id} execution={e} />
+          {workflowId && executions.map((e) => (
+            <ExecutionRow key={e.id} workflowId={workflowId} execution={e} />
           ))}
         </ul>
       )}
@@ -474,6 +628,7 @@ export default function WorkflowsPage() {
 
   const workflows = useWorkflows()
   const alerts = useWorkflowAlerts()
+  const failureAlerts = useExecutionFailureAlerts()
   const remove = useDeleteWorkflow()
   const run = useRunWorkflow()
   const toggle = useToggleWorkflow()
@@ -544,6 +699,7 @@ export default function WorkflowsPage() {
       />
 
       <AlertsStrip alerts={alerts.data ?? []} />
+      <FailureAlertsStrip alerts={failureAlerts.data ?? []} />
 
       {workflows.isLoading ? (
         <div className="grid gap-4 lg:grid-cols-2">

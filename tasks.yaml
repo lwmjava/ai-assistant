@@ -5730,7 +5730,7 @@ tasks:
 
   - id: "PMCP-001"
     title: "MCP 连接超时、重连、心跳与优雅降级"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "MCP"
     target_version: "1.0"
@@ -5790,6 +5790,10 @@ tasks:
         心跳失败只重连这一台。一台连接超时后，另一台仍可连接。未连接真实外部服务器。
         Windows 项目 conda：pytest tests/test_mcp.py 为 18 passed、exit 0；ruff 覆盖改动文件通过；
         mypy app/mcp app/core/config.py 通过。本提交的 Ubuntu Backend CI 尚未绑定，保持 in_review。
+      closed_20261108: >-
+        用户确认关闭。候选 13421d68ebf16b18d169d26c4ec33d8a0546f424。
+        CI run 42457992424：Backend success，Frontend success，Agent official skipped。
+        RAG official 停在授权步骤，不作为本卡阻断。
       nightly:
         eligible: false
         production_access: false

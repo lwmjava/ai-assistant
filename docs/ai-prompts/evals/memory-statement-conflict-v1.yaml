@@ -1,0 +1,29 @@
+name: memory-statement-conflict-v1
+classification: Observed Regression
+notes: >
+  确定性链路检查。Mock 嵌入只证明写入、分级、去重、冲突保留和纠正版本，
+  不作为检索质量证据。
+cases:
+  - id: grade-user-and-model
+    expect:
+      user_role: user_statement
+      assistant_role: model_inference
+      system_role: rejected
+  - id: duplicate-write
+    expect:
+      second_id_equals_first: true
+      row_count: 1
+  - id: conflict-both-kept
+    expect:
+      both_active: true
+      same_conflict_group: true
+      recall_contains_both: true
+  - id: correction-trace
+    expect:
+      old_superseded: true
+      new_points_at_old: true
+      recall_hides_old: true
+  - id: pii-refused
+    expect:
+      write: false
+      row_count: 0

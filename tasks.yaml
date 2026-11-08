@@ -13132,7 +13132,7 @@ tasks:
 
   - id: "MEM-006"
     title: "用户记忆查看、纠正、删除与导出"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "长期记忆"
     target_version: "1.0"
@@ -13170,6 +13170,11 @@ tasks:
         tests/test_memory_policy.py 为 20 passed、exit 0。ruff 与 mypy 覆盖改动的记忆模块和路由通过。
         前端 tsc --noEmit 与改动文件 eslint 通过。未做浏览器点击走查，也未连接真实 Milvus。
         本提交的 Ubuntu Backend CI 尚未绑定，保持 in_review。
+      closed_20261108: >-
+        用户授权 Backend 通过后关闭并合并。候选 d9b3ceda7de5fe518f0389ea38ad193ffdf997d4，
+        已合并为 ee5d79e。CI run 42488626161：Backend success，Frontend success，Agent official skipped。
+        RAG official 停在授权步骤，不作为本卡阻断。首个提交 cef2939 的 ruff 导入顺序失败已由 d9b3ced 修复。
+        浏览器点击走查未做。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "MEM-007"

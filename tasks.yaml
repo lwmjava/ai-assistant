@@ -5866,7 +5866,7 @@ tasks:
 
   - id: "PMCP-003"
     title: "MCP 调用进入审计日志"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "MCP"
     target_version: "1.0"
@@ -5914,6 +5914,7 @@ tasks:
       admission:
         authorization: "2026-10-27仅授权登记C03映射，不授权实施或写入生产审计数据。"
       progress_20261109: "每次 MCP 调用写入一条 mcp_call 审计记录，含时间、用户、租户、工具名、脱敏参数摘要、结果（success/failure/denied/timeout）与耗时。本地 conda Python 3.12：pytest tests/test_mcp_audit.py tests/test_mcp_risk.py tests/test_mcp.py tests/test_mcp_credentials.py tests/test_tool_audit.py 通过；ruff check . 通过；mypy 涉及模块通过。未连接真实外部生产 MCP。Ubuntu Backend CI 尚未绑定，不关闭。"
+      closed_20261109: "用户确认关闭。候选 664fc9a94d43a11c40eabb127a68889cbe133efe，已合并为 9a77d55cc1e6bd6af450837c449c75e158d68d36。CI run 42574825694：Backend success，Frontend success，Agent official skipped。RAG official 停在授权步骤，不作为本卡阻断。"
       nightly:
         eligible: false
         production_access: false

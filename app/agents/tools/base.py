@@ -189,6 +189,8 @@ class ToolRegistry:
             return "forged_identity_argument"
         contract = tool.contract
         if contract is None:
+            if tool.name.startswith("mcp__"):
+                return "missing_risk_contract"
             return None
         permission = contract.permission
         if permission.authenticated and not user_id:

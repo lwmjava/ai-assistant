@@ -5993,7 +5993,7 @@ tasks:
 
   - id: "PMCP-005"
     title: "MCP 工具版本与兼容性声明"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     module: "MCP"
     target_version: "1.0"
@@ -6038,6 +6038,7 @@ tasks:
       estimate_person_days: [2, 4]
       admission:
         authorization: "2026-10-27仅授权登记C05映射，不授权连接或升级真实MCP服务。"
+      progress_20261109: "MCP 工具支持声明版本与调用方预期版本校验，版本不匹配或格式无效时直接返回明确错误且不做自动迁移。本地 conda Python 3.12：pytest -k mcp 通过；ruff check . 通过；mypy app/mcp/ 通过。未连接或升级真实外部 MCP 服务。Ubuntu Backend CI 尚未绑定，不关闭。"
       nightly:
         eligible: false
         production_access: false

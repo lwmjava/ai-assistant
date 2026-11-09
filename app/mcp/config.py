@@ -60,6 +60,8 @@ class MCPServerConfig(BaseModel):
     allowed_roles: list[str] | None = None
     authenticated: bool = False
     tenant_scoped: bool = False
+    expected_version: str | None = None
+    tool_versions: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("env")
     @classmethod

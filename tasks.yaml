@@ -13179,7 +13179,7 @@ tasks:
 
   - id: "MEM-007"
     title: "长期记忆生命周期与真实对话回归"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "长期记忆"
     target_version: "1.0"
@@ -13214,6 +13214,10 @@ tasks:
         覆盖保存后新会话仍可检索、跨用户跨租户隔离、撤权、过期、来源删除、纠正、失效和检索失败不回退本地。
         Windows 项目 conda：pytest tests/test_memory_lifecycle.py 为 4 passed、exit 0。ruff 通过。
         真实客户对话和付费评测记为未执行。本提交的 Ubuntu Backend CI 尚未绑定，保持 in_review。
+      closed_20261109: >-
+        用户确认关闭。候选 56e3a5c699b7516c95b607df305015179845765c，已合并为 3e44f40。
+        CI run 42534524374：Backend success，Frontend success，Agent official skipped。
+        RAG official 停在授权步骤，不作为本卡阻断。真实客户对话和付费评测仍未执行。
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PAGT-009"

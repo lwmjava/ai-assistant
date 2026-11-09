@@ -13,7 +13,7 @@
 - ``get_audit_logger`` / ``reset_audit_logger``：全局单例
 """
 
-from app.audit.logger import AuditLogger, get_audit_logger, reset_audit_logger
+from app.audit.logger import AuditLogger, get_audit_logger, reset_audit_logger, summarize_arguments
 from app.audit.models import AuditAction, AuditLog
 
 __all__ = [
@@ -22,4 +22,5 @@ __all__ = [
     "AuditLogger",
     "get_audit_logger",
     "reset_audit_logger",
+    "summarize_arguments",
 ]

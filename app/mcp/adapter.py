@@ -9,10 +9,12 @@
 
 from __future__ import annotations
 
+import time
+
 from app.agents.tools.base import Tool
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 from app.core.config import settings
-from app.mcp.client import MCPClient, MCPServerTool
+from app.mcp.client import MCPClient, MCPServerTool, record_mcp_audit
 
 _RISKS = {item.value: item for item in RiskLevel}
 _EFFECTS = {
@@ -52,9 +54,30 @@ def mcp_tool_to_tool(client: MCPClient, spec: MCPServerTool) -> Tool:
     server = spec.server
 
     async def _invoke(arguments: dict) -> str:
-        return await client.call_tool(
-            spec.name, arguments, timeout_seconds=spec.timeout_seconds,
-        )
+        if isinstance(client, MCPClient):
+            return await client.call_tool(
+                spec.name, arguments, timeout_seconds=spec.timeout_seconds,
+            )
+        started = time.monotonic()
+        outcome = "failure"
+        try:
+            text = await client.call_tool(
+                spec.name, arguments, timeout_seconds=spec.timeout_seconds,
+            )
+            if not str(text).startswith("[MCP 工具错误]"):
+                outcome = "success"
+            return text
+        except TimeoutError:
+            outcome = "timeout"
+            raise
+        finally:
+            await record_mcp_audit(
+                server,
+                spec.name,
+                arguments,
+                outcome,
+                (time.monotonic() - started) * 1000,
+            )
 
     return Tool(
         name=f"mcp__{server}__{spec.name}",

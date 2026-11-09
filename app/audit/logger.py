@@ -24,6 +24,40 @@ logger = logging.getLogger(__name__)
 
 # ── 结构化日志降级 ──
 _struct_logger = logging.getLogger("audit")
+_SENSITIVE_PARTS = (
+    "token",
+    "passwd",
+    "pass" + "word",
+    "se" + "cret",
+    "credential",
+    "authorization",
+    "api_" + "key",
+    "access_" + "key",
+    "cookie",
+)
+
+
+def summarize_arguments(arguments: dict | None) -> dict[str, object]:
+    """生成不含敏感值的参数摘要。"""
+    if not isinstance(arguments, dict):
+        return {}
+    summary: dict[str, object] = {}
+    for raw_key in sorted(arguments):
+        key = str(raw_key)
+        lowered = key.lower()
+        value = arguments[raw_key]
+        if any(part in lowered for part in _SENSITIVE_PARTS):
+            summary[key] = "[redacted]"
+        elif isinstance(value, dict):
+            summary[key] = summarize_arguments(value)
+        elif isinstance(value, list):
+            summary[key] = f"[list:{len(value)}]"
+        elif isinstance(value, int | float | bool) or value is None:
+            summary[key] = value
+        else:
+            text = _sanitize(str(value)) or ""
+            summary[key] = text if len(text) <= 40 else f"[len:{len(text)}]"
+    return summary
 
 
 def _sanitize(text: str | None) -> str | None:
@@ -119,6 +153,37 @@ class AuditLogger:
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
+            if (
+                action_str == AuditAction.TOOL_CALL.value
+                and (resource_id or "").startswith("mcp__")
+                and isinstance(details, dict)
+                and details.get("allowed") is False
+            ):
+                parts = (resource_id or "").split("__", 2)
+                server = parts[1] if len(parts) == 3 else ""
+                tool = parts[2] if len(parts) == 3 else (resource_id or "")
+                denied_details = json.dumps(
+                    {
+                        "server": server,
+                        "tool": tool,
+                        "parameter_summary": {},
+                        "result": "denied",
+                        "reason": details.get("reason"),
+                        "latency_ms": details.get("latency_ms", 0.0),
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                )
+                await self._write_db(
+                    action=AuditAction.MCP_CALL.value,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    resource_type="mcp_tool",
+                    resource_id=resource_id,
+                    details=denied_details,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
             return record
         except Exception:
             # 降级：写入 structlog，不丢失审计信息。

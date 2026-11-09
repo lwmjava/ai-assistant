@@ -56,6 +56,10 @@ class MCPServerConfig(BaseModel):
     url: str | None = None
     headers: dict[str, str] = Field(default_factory=dict)
     timeout_seconds: float | None = None
+    default_risk: str | None = "L0"
+    allowed_roles: list[str] | None = None
+    authenticated: bool = False
+    tenant_scoped: bool = False
 
     @field_validator("env")
     @classmethod

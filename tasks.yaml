@@ -5802,7 +5802,7 @@ tasks:
 
   - id: "PMCP-002"
     title: "MCP 工具权限与风险分级接入"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "MCP"
     target_version: "1.0"
@@ -5856,6 +5856,7 @@ tasks:
       admission:
         authorization: "2026-10-27仅授权登记C02映射与安全前置，不授权开放MCP高风险工具。"
         condition: "审批服务、审批交互和统一参数策略未完成时，高风险MCP工具保持拒绝。"
+      progress_20261109: "MCP 工具与内置工具共用 L0–L3。未声明风险不执行。L2 进入审批，L3 在注册阶段拒绝。本地 conda Python 3.12：pytest tests/test_mcp_risk.py tests/test_mcp.py tests/test_mcp_credentials.py tests/test_tool_contract.py 34 passed；ruff check . 通过；mypy 涉及模块通过。未连接真实外部 MCP。Ubuntu Backend CI 尚未绑定，不关闭。"
       nightly:
         eligible: false
         production_access: false

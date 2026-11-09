@@ -37,20 +37,33 @@ def _positive_timeout(value: Any) -> float | None:
     return number
 
 
-def _declared_tool_timeout(tool: Any) -> float | None:
-    candidates: list[Any] = []
+def _declared_field(tool: Any, key: str) -> Any:
     meta = getattr(tool, "meta", None)
-    if isinstance(meta, dict):
-        candidates.append(meta.get("timeout_seconds"))
+    if isinstance(meta, dict) and key in meta:
+        return meta.get(key)
     annotations = getattr(tool, "annotations", None)
-    if isinstance(annotations, dict):
-        candidates.append(annotations.get("timeout_seconds"))
-    else:
-        candidates.append(getattr(annotations, "timeout_seconds", None))
-    for item in candidates:
-        parsed = _positive_timeout(item)
-        if parsed is not None:
-            return parsed
+    if isinstance(annotations, dict) and key in annotations:
+        return annotations.get(key)
+    return getattr(annotations, key, None)
+
+
+def _declared_tool_timeout(tool: Any) -> float | None:
+    return _positive_timeout(_declared_field(tool, "timeout_seconds"))
+
+
+def _declared_tool_risk(tool: Any, fallback: str | None) -> str | None:
+    for item in (_declared_field(tool, "risk"), fallback):
+        if isinstance(item, str) and item.strip():
+            return item.strip().upper()
+    return None
+
+
+def _declared_tool_roles(tool: Any, fallback: list[str] | None) -> list[str] | None:
+    raw = _declared_field(tool, "allowed_roles")
+    if isinstance(raw, list) and all(isinstance(item, str) for item in raw):
+        return list(raw)
+    if fallback is not None:
+        return list(fallback)
     return None
 
 
@@ -96,6 +109,10 @@ class MCPServerTool:
     description: str
     input_schema: dict
     timeout_seconds: float | None = None
+    risk: str | None = "L0"
+    allowed_roles: list[str] | None = None
+    authenticated: bool = False
+    tenant_scoped: bool = False
 
 
 class MCPClient:
@@ -219,6 +236,10 @@ class MCPClient:
                     description=getattr(t, "description", "") or "",
                     input_schema=getattr(t, "inputSchema", None) or {},
                     timeout_seconds=_declared_tool_timeout(t),
+                    risk=_declared_tool_risk(t, self.config.default_risk),
+                    allowed_roles=_declared_tool_roles(t, self.config.allowed_roles),
+                    authenticated=bool(self.config.authenticated),
+                    tenant_scoped=bool(self.config.tenant_scoped),
                 )
             )
         return tools

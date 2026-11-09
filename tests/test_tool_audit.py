@@ -4,7 +4,7 @@ import asyncio
 import json
 
 import pytest
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, col, delete, select
 
 from app.agents.tools.base import ToolCall, ToolRegistry
 from app.agents.tools.builtin import default_tools
@@ -13,7 +13,9 @@ from app.core import log_context
 from app.core.config import get_settings
 from app.core.database import engine
 from app.core.security import Role
+from app.models.approval import ActionApproval
 from app.models.user import Tenant, User
+from app.services.approvals import approve_approval, execute_approval
 
 
 @pytest.fixture(autouse=True)
@@ -26,6 +28,11 @@ def created(monkeypatch):
     monkeypatch.delenv("FILE_OPS_WRITE_ENABLED", raising=False)
     # 主动清理上一轮次残留的 user/tenant/tool_call 审计，避免跨轮次污染
     with Session(engine) as session:
+        stale = list(session.exec(select(User).where(User.username.like("pagt002-%"))))
+        if stale:
+            session.exec(delete(ActionApproval).where(
+                col(ActionApproval.requester_id).in_([item.id for item in stale])
+            ))
         session.exec(delete(User).where(User.username.like("pagt002-%")))
         session.exec(delete(Tenant).where(Tenant.name.like("pagt002-%")))
         session.exec(delete(AuditLog).where(AuditLog.action == "tool_call"))
@@ -43,6 +50,22 @@ def created(monkeypatch):
             if tenant:
                 session.delete(tenant)
         session.commit()
+
+
+def _release_latest(user: User, registry: ToolRegistry) -> str:
+    with Session(engine) as session:
+        actor = session.get(User, user.id)
+        assert actor is not None
+        row = session.exec(
+            select(ActionApproval).where(
+                col(ActionApproval.requester_id) == user.id,
+                col(ActionApproval.status) == "pending",
+            )
+        ).first()
+        assert row is not None
+        approve_approval(session, actor, row.id)
+        view = asyncio.run(execute_approval(session, actor, row.id, registry))
+        return view.result_code
 
 
 def _audit_rows() -> list[AuditLog]:
@@ -158,12 +181,15 @@ def test_write_allowed_for_admin_and_create_only_no_overwrite(monkeypatch, tmp_p
     registry = ToolRegistry([tool])
     args1 = {"root": "public", "path": "note.txt", "content": "first\n"}
     out1 = asyncio.run(registry.run(ToolCall(name="file_ops_write", arguments=args1)))
-    assert '"status": "ok"' in out1, out1
+    assert "尚未执行" in out1
+    assert not (tmp_path / "note.txt").exists()
+    assert _release_latest(admin, registry) == "ok"
     assert (tmp_path / "note.txt").read_text(encoding="utf-8") == "first\n"
     # 第二次同路径写 → conflict，不覆盖
     args2 = {"root": "public", "path": "note.txt", "content": "second\n"}
     out2 = asyncio.run(registry.run(ToolCall(name="file_ops_write", arguments=args2)))
-    assert "conflict" in out2
+    assert "尚未执行" in out2
+    assert _release_latest(admin, registry) == "conflict"
     assert (tmp_path / "note.txt").read_text(encoding="utf-8") == "first\n"
     _cleanup(_audit_rows())
 
@@ -206,6 +232,8 @@ def test_write_oversize_leaves_no_empty_shell_and_later_legal_write_succeeds(mon
     # 同路径合法写仍应成功（空壳未占坑）
     ok = {"root": "public", "path": "big.txt", "content": "hello\n"}
     out_ok = asyncio.run(registry.run(ToolCall(name="file_ops_write", arguments=ok)))
-    assert '"status": "ok"' in out_ok, out_ok
+    assert "尚未执行" in out_ok
+    assert not (tmp_path / "big.txt").exists()
+    assert _release_latest(admin, registry) == "ok"
     assert (tmp_path / "big.txt").read_text(encoding="utf-8") == "hello\n"
     _cleanup(_audit_rows())

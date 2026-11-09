@@ -7,6 +7,7 @@ from app.api.routes import (
     admin_system,
     admin_tenants,
     admin_users,
+    approvals,
     audit,
     auth,
     chat,
@@ -36,6 +37,7 @@ api_router.include_router(run_history.router)
 api_router.include_router(mcp.router)
 api_router.include_router(skills.router)
 api_router.include_router(workflow.router)
+api_router.include_router(approvals.router)
 api_router.include_router(audit.router)
 api_router.include_router(admin_tenants.router)
 api_router.include_router(admin_users.router)

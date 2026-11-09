@@ -11,6 +11,19 @@ class ApprovalDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ApprovalEventOut(BaseModel):
+    """对话里重放的审批事件。刷新后仍是同一条记录，不含参数原文。"""
+
+    id: str
+    event: str
+    status: str
+    subject: str
+    parameter_summary: str
+    expires_at: datetime
+    execution_count: int
+    result_code: str = ""
+
+
 class ApprovalOut(BaseModel):
     id: str
     resource: str

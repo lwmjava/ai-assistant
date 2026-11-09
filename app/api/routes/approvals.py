@@ -7,7 +7,7 @@ from app.agents.tools.base import ToolRegistry
 from app.agents.tools.builtin import default_tools
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
-from app.schemas.approval import ApprovalDecision, ApprovalOut
+from app.schemas.approval import ApprovalDecision, ApprovalEventOut, ApprovalOut
 from app.services.approvals import (
     ApprovalError,
     ApprovalView,
@@ -42,6 +42,33 @@ def _out(view: ApprovalView) -> ApprovalOut:
 
 def _http(exc: ApprovalError) -> HTTPException:
     return HTTPException(status_code=exc.status_code, detail=exc.message)
+
+
+def _event_name(status: str) -> str:
+    if status in {"pending", "approved"}:
+        return "approval_required"
+    return "approval_decided"
+
+
+@router.get("/events", response_model=list[ApprovalEventOut])
+def read_approval_events(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+) -> list[ApprovalEventOut]:
+    """当前用户的审批事件。断线或刷新后重新读取，得到同一批记录。"""
+    return [
+        ApprovalEventOut(
+            id=item.id,
+            event=_event_name(item.status),
+            status=item.status,
+            subject=item.subject,
+            parameter_summary=item.parameter_summary,
+            expires_at=item.expires_at,
+            execution_count=item.execution_count,
+            result_code=item.result_code,
+        )
+        for item in list_approvals(session, current_user)
+    ]
 
 
 @router.get("", response_model=list[ApprovalOut])

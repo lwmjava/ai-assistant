@@ -42,6 +42,7 @@ const ITEMS: NavItem[] = [
   { to: '/run-history', label: '运行历史', icon: History, visible: (role) => canManageTenants(role) },
   { to: '/chat', label: '对话', icon: MessagesSquare, resource: 'conversations', action: 'read' },
   { to: '/memories', label: '我的记忆', icon: Brain, resource: 'conversations', action: 'read' },
+  { to: '/approvals', label: '待审批', icon: ShieldCheck, resource: 'conversations', action: 'read' },
   { to: '/knowledge', label: '知识库', icon: BookOpen, resource: 'knowledge_bases', action: 'read' },
   { to: '/tools', label: '工具与 MCP', icon: Wrench, resource: 'agents', action: 'read' },
   { to: '/workflows', label: '工作流', icon: CalendarClock, resource: 'workflows', action: 'read' },

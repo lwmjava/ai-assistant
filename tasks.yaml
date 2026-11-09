@@ -12606,7 +12606,7 @@ tasks:
 
   - id: "HITL-002"
     title: "对话审批待办与恢复交互"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "人工审批/对话"
     target_version: "1.0"
@@ -12635,6 +12635,7 @@ tasks:
       delivery_stage: "V1-2"
       estimate_person_days: [3, 5]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施或审批真实动作。", implementation_plan: "开工前锁定页面、事件协议、敏感字段、断线恢复和浏览器验收矩阵。"}
+      progress_20261109: "沿用已锁定的发起人审批和 30 分钟过期。对话页和待审批页读取同一组服务端事件，页面重新可见时重新读取。重复批准不增加执行次数，拒绝、过期和撤权不提供执行。事件只含参数摘要。本地 conda Python 3.12：pytest tests/test_approvals.py 8 passed。前端 vitest 2 passed，eslint 无错误，npm run build 通过。页面点击走查未做。Ubuntu Backend CI 尚未绑定，不关闭。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "AGT-004"

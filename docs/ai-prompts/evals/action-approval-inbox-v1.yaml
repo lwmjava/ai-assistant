@@ -1,0 +1,11 @@
+id: action-approval-inbox-v1
+title: 审批待办在刷新后仍是同一条记录
+cases:
+  - id: same-event-after-reload
+    expect: 重新读取事件得到同一个标识和状态
+  - id: repeat-decision
+    expect: 重复批准不增加执行次数，重复执行不再次调用工具
+  - id: hidden-from-others
+    expect: 其他用户看不到这条记录，读取返回不存在
+  - id: summary-only
+    expect: 事件只带参数摘要，不带参数原文

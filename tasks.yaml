@@ -12850,7 +12850,7 @@ tasks:
       delivery_stage: "V1-1"
       estimate_person_days: [3, 6]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、模型调用或发布Skill。", implementation_plan: "开工前锁定草稿Schema、模型预算、工具校验、人工确认和版本回滚。"}
-      progress_20261109: "用户已锁定方案并要求实现。每次草稿最多一次模型调用，温度 0、最多 1024 token、30 秒；未配置模型调用时不入库、不重试。草稿保持停用，不进入对话清单。私有草稿由创建者确认，全局草稿仅系统管理员可生成和确认。确认新版本后旧版本停用并保留。未知工具、高风险工具和脚本文本拒绝且不入库。本地 conda Python 3.12：pytest tests/test_skill_drafts.py 7 passed；相关技能测试 80 passed；ruff check . 通过；mypy 涉及模块通过；前端 typecheck 与变更文件 eslint 通过。页面点击走查未做。Ubuntu Backend CI 尚未绑定，不关闭。"
+      progress_20261109: "用户已锁定方案并要求实现。每次草稿最多一次模型调用，温度 0、最多 1024 token、30 秒；未配置模型调用时不入库、不重试。草稿保持停用，不进入对话清单。私有草稿由创建者确认，全局草稿仅系统管理员可生成和确认。确认新版本后旧版本停用并保留。未知工具、高风险工具和脚本文本拒绝且不入库。本地 conda Python 3.12：pytest tests/test_skill_drafts.py 7 passed；相关技能测试 80 passed；ruff check . 通过；mypy 涉及模块通过。首次推送 3ea1960 的前端构建失败：草稿接口把已解析的响应又读了 data。随后改为直接返回响应体。页面点击走查未做。Ubuntu Backend CI 尚未对修复提交绑定，不关闭。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "PAGT-008"

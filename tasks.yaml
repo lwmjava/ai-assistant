@@ -12571,7 +12571,7 @@ tasks:
 
   - id: "HITL-001"
     title: "持久审批、拒绝、超时与恢复闭环"
-    status: "in_review"
+    status: "done"
     priority: "P0"
     module: "人工审批"
     target_version: "1.0"
@@ -12601,6 +12601,7 @@ tasks:
       estimate_person_days: [6, 10]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、生产写入或审批真实动作。", implementation_plan: "开工前锁定状态机、表结构、审计字段、失败恢复、回滚及精确验证命令。"}
       progress_20261109: "用户已锁定并由本次实现。发起人本人批准或拒绝；30 分钟未处理过期。L2/L3 先落审批，批准本身不执行，同一次批准最多执行一次。令牌版本变化、停用、取消和参数变化都不执行。对话回复不能批准，其他用户返回 404。本地 conda Python 3.12：pytest tests/test_approvals.py tests/test_tool_audit.py tests/test_tool_executor.py tests/test_agent_state_resume.py 34 passed；ruff check . 通过；mypy 涉及模块通过。Ubuntu Backend CI 尚未绑定，不关闭。"
+      closed_20261109: "用户确认关闭。候选 c80a02551fe5d45dc807ff2696aff4b77876fe90，已合并为 8a33ba165275dedb9d63cd6b3c529eda6a421588。CI run 42557385839：Backend success，Frontend success，Agent official skipped。RAG official 停在授权步骤，不作为本卡阻断。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "HITL-002"

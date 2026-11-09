@@ -24,6 +24,7 @@ const ToolsPage = lazy(() => import('@/pages/Tools'))
 const WorkflowsPage = lazy(() => import('@/pages/Workflows'))
 const SkillsPage = lazy(() => import('@/pages/Skills'))
 const MemoriesPage = lazy(() => import('@/pages/Memories'))
+const ApprovalsPage = lazy(() => import('@/pages/Approvals'))
 const AgentDefinitionsPage = lazy(() => import('@/pages/AgentDefinitions'))
 const AuditPage = lazy(() => import('@/pages/Audit'))
 const TenantsPage = lazy(() => import('@/pages/Tenants'))
@@ -256,6 +257,16 @@ export default function App() {
             <RequirePermission resource="conversations" action="read">
               <Lazy>
                 <MemoriesPage />
+              </Lazy>
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/approvals"
+          element={
+            <RequirePermission resource="conversations" action="read">
+              <Lazy>
+                <ApprovalsPage />
               </Lazy>
             </RequirePermission>
           }

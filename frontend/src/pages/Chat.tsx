@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { MessagesSquare, PanelLeft, Sparkles } from 'lucide-react'
 
+import { ApprovalInbox } from '@/components/approvals/ApprovalInbox'
 import { Composer } from '@/components/chat/Composer'
 import { ConversationList } from '@/components/chat/ConversationList'
 import { MessageList } from '@/components/chat/MessageList'
@@ -790,6 +791,7 @@ export default function ChatPage() {
 
         <div className="shrink-0 border-t border-border/60 bg-bg/60 p-3 backdrop-blur sm:p-4">
           <div className="mx-auto max-w-4xl">
+            <ApprovalInbox openOnly />
             {sendLocked ? (
               <p role="status" className="mb-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
                 请求过于频繁，请稍后重试。{retryLeft} 秒后可重试。

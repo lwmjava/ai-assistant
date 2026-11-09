@@ -314,3 +314,41 @@ def test_reject_then_execute_is_refused(session: Session) -> None:
     )
     rejected = reject_approval(session, owner, row.id)
     assert rejected.status == "rejected"
+
+
+def test_events_stay_the_same_after_reload_and_hide_other_people(session: Session) -> None:
+    owner = _user(session, "owner")
+    row = open_pending(
+        session, owner, resource="tools", action="note", risk="L2",
+        arguments={"path": "a.txt", "token": "raw-value"},
+    )
+
+    def _db():
+        yield session
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_current_user] = lambda: owner
+    try:
+        client = TestClient(app)
+        first = client.get("/api/v1/approvals/events")
+        second = client.get("/api/v1/approvals/events")
+        assert first.status_code == 200
+        assert [item["id"] for item in first.json()] == [item["id"] for item in second.json()] == [row.id]
+        assert first.json()[0]["event"] == "approval_required"
+        assert first.json()[0]["status"] == "pending"
+        assert "raw-value" not in first.text
+        assert "arguments_json" not in first.text
+        assert "[redacted]" in first.json()[0]["parameter_summary"]
+        approved = client.post(f"/api/v1/approvals/{row.id}/approve", json={})
+        repeated = client.post(f"/api/v1/approvals/{row.id}/approve", json={})
+        assert approved.json()["status"] == repeated.json()["status"] == "approved"
+        assert repeated.json()["execution_count"] == 0
+        app.dependency_overrides[get_current_user] = lambda: _user(session, "other")
+        hidden = client.get("/api/v1/approvals/events")
+        assert hidden.status_code == 200
+        assert hidden.json() == []
+        missing = client.get(f"/api/v1/approvals/{row.id}")
+        assert missing.status_code == 404
+        assert row.id not in missing.text
+    finally:
+        app.dependency_overrides.clear()

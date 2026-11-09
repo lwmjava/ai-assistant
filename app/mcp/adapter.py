@@ -14,7 +14,13 @@ import time
 from app.agents.tools.base import Tool
 from app.agents.tools.contract import RiskLevel, ToolContract, ToolPermission
 from app.core.config import settings
-from app.mcp.client import MCPClient, MCPServerTool, record_mcp_audit
+from app.mcp.client import (
+    MCPClient,
+    MCPServerTool,
+    MCPVersionMismatchError,
+    check_version_compatibility,
+    record_mcp_audit,
+)
 
 _RISKS = {item.value: item for item in RiskLevel}
 _EFFECTS = {
@@ -34,8 +40,17 @@ def _contract(spec: MCPServerTool) -> ToolContract | None:
     roles = frozenset(spec.allowed_roles) if spec.allowed_roles is not None else None
     needs_identity = risk != RiskLevel.L0
     timeout = float(spec.timeout_seconds or settings.MCP_CALL_TIMEOUT_SECONDS)
+    try:
+        version = check_version_compatibility(
+            spec.version,
+            None,
+            server=spec.server,
+            tool=spec.name,
+        )
+    except MCPVersionMismatchError:
+        version = str(spec.version or "invalid")
     return ToolContract(
-        version="1.0.0",
+        version=version,
         permission=ToolPermission(
             authenticated=bool(spec.authenticated or needs_identity or roles is not None),
             allowed_roles=roles,
@@ -54,11 +69,27 @@ def mcp_tool_to_tool(client: MCPClient, spec: MCPServerTool) -> Tool:
     server = spec.server
 
     async def _invoke(arguments: dict) -> str:
+        started = time.monotonic()
+        try:
+            check_version_compatibility(
+                spec.version,
+                spec.expected_version,
+                server=server,
+                tool=spec.name,
+            )
+        except MCPVersionMismatchError:
+            await record_mcp_audit(
+                server,
+                spec.name,
+                arguments,
+                "failure",
+                (time.monotonic() - started) * 1000,
+            )
+            raise
         if isinstance(client, MCPClient):
             return await client.call_tool(
                 spec.name, arguments, timeout_seconds=spec.timeout_seconds,
             )
-        started = time.monotonic()
         outcome = "failure"
         try:
             text = await client.call_tool(

@@ -10,7 +10,13 @@
 """
 
 from app.mcp.adapter import mcp_tool_to_tool
-from app.mcp.client import MCPClient, MCPNotAvailableError, MCPServerTool
+from app.mcp.client import (
+    MCPClient,
+    MCPNotAvailableError,
+    MCPServerTool,
+    MCPVersionMismatchError,
+    check_version_compatibility,
+)
 from app.mcp.config import MCPServerConfig, list_configured_servers
 from app.mcp.manager import MCPToolManager, get_mcp_manager
 
@@ -20,6 +26,8 @@ __all__ = [
     "MCPClient",
     "MCPServerTool",
     "MCPNotAvailableError",
+    "MCPVersionMismatchError",
+    "check_version_compatibility",
     "mcp_tool_to_tool",
     "MCPToolManager",
     "get_mcp_manager",

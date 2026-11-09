@@ -13,7 +13,7 @@ import logging
 from app.agents.tools.base import Tool
 from app.core.config import settings
 from app.mcp.adapter import mcp_tool_to_tool
-from app.mcp.client import MCPClient
+from app.mcp.client import MCPClient, MCPVersionMismatchError
 from app.mcp.config import list_configured_servers
 
 logger = logging.getLogger(__name__)
@@ -93,6 +93,8 @@ class MCPToolManager:
         for name, client in self._clients.items():
             try:
                 specs = await client.list_tools()
+            except MCPVersionMismatchError:
+                raise
             except Exception as exc:  # noqa: BLE001
                 logger.warning("列举 MCP 工具失败 %s：%s", name, exc)
                 continue

@@ -30,6 +30,58 @@ class MCPNotAvailableError(RuntimeError):
     """未安装 ``mcp`` 包时由 :func:`_require_mcp` 抛出。"""
 
 
+class MCPVersionMismatchError(ValueError):
+    """MCP 工具声明版本与调用方预期版本不兼容（不做自动迁移）。"""
+
+
+def _parse_version_parts(raw: str, *, allow_wildcard: bool = False) -> tuple[int, ...] | None:
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    if not text:
+        return None
+    raw_parts = text.split(".")
+    if not (1 <= len(raw_parts) <= 3):
+        return None
+    nums: list[int] = []
+    for idx, piece in enumerate(raw_parts):
+        if allow_wildcard and idx > 0 and piece.lower() in {"x", "*"}:
+            break
+        if not piece.isdigit():
+            return None
+        nums.append(int(piece))
+    return tuple(nums) if nums else None
+
+
+def check_version_compatibility(
+    declared: str | None,
+    expected: str | None = None,
+    *,
+    server: str = "",
+    tool: str = "",
+) -> str:
+    """校验 MCP 工具版本格式与兼容性；不匹配时抛出明确错误，不做自动迁移。"""
+    label = f"{server}.{tool}" if server and tool else (tool or server or "mcp")
+    parsed_declared = _parse_version_parts(declared or "")
+    if parsed_declared is None:
+        raise MCPVersionMismatchError(
+            f"MCP 工具 {label} 版本格式无效：{declared!r}（不做版本自动迁移）"
+        )
+    padded = (*parsed_declared, 0, 0)[:3]
+    normalized = f"{padded[0]}.{padded[1]}.{padded[2]}"
+    if expected is not None and expected.strip():
+        parsed_expected = _parse_version_parts(expected, allow_wildcard=True)
+        if parsed_expected is None:
+            raise MCPVersionMismatchError(
+                f"MCP 工具 {label} 预期版本格式无效：{expected!r}（不做版本自动迁移）"
+            )
+        if padded[: len(parsed_expected)] != parsed_expected:
+            raise MCPVersionMismatchError(
+                f"MCP 工具 {label} 版本不兼容：声明版本 {declared}，预期版本 {expected}（不做版本自动迁移）"
+            )
+    return normalized
+
+
 def _positive_timeout(value: Any) -> float | None:
     """只接受正数超时；工具声明不能把等待时间拉过配置上限。"""
     if isinstance(value, bool) or not isinstance(value, int | float):
@@ -68,6 +120,13 @@ def _declared_tool_roles(tool: Any, fallback: list[str] | None) -> list[str] | N
     if fallback is not None:
         return list(fallback)
     return None
+
+
+def _declared_tool_version(tool: Any) -> str:
+    for item in (_declared_field(tool, "version"), getattr(tool, "version", None)):
+        if isinstance(item, str) and item.strip():
+            return item.strip()
+    return "1.0.0"
 
 
 def _is_disconnect(exc: BaseException) -> bool:
@@ -143,6 +202,8 @@ class MCPServerTool:
     allowed_roles: list[str] | None = None
     authenticated: bool = False
     tenant_scoped: bool = False
+    version: str = "1.0.0"
+    expected_version: str | None = None
 
 
 class MCPClient:
@@ -259,10 +320,19 @@ class MCPClient:
             raise TimeoutError(f"MCP 服务器 {self.config.name} 列举工具超时") from None
         tools: list[MCPServerTool] = []
         for t in getattr(result, "tools", []) or []:
+            tool_name = getattr(t, "name", "")
+            declared_version = _declared_tool_version(t)
+            expected_version = self.config.tool_versions.get(tool_name) or self.config.expected_version
+            normalized_version = check_version_compatibility(
+                declared_version,
+                expected_version,
+                server=self.config.name,
+                tool=tool_name,
+            )
             tools.append(
                 MCPServerTool(
                     server=self.config.name,
-                    name=getattr(t, "name", ""),
+                    name=tool_name,
                     description=getattr(t, "description", "") or "",
                     input_schema=getattr(t, "inputSchema", None) or {},
                     timeout_seconds=_declared_tool_timeout(t),
@@ -270,6 +340,8 @@ class MCPClient:
                     allowed_roles=_declared_tool_roles(t, self.config.allowed_roles),
                     authenticated=bool(self.config.authenticated),
                     tenant_scoped=bool(self.config.tenant_scoped),
+                    version=normalized_version,
+                    expected_version=expected_version,
                 )
             )
         return tools

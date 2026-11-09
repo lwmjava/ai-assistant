@@ -110,6 +110,43 @@ class ToolExecutor:
                 status="invalid", attempts=0, latency_ms=0.0,
                 audit_metadata=dict(validation), error_code="invalid_arguments")
 
+        if tool.contract is not None and tool.contract.risk.value in {"L2", "L3"}:
+            try:
+                await check_resource(tool, arguments)
+            except ParameterRejectedError:
+                await self._registry._record_audit(
+                    audit_call, user_id, tenant_id, risk, False, "invalid_arguments", 0.0)
+                return ExecutorResult(
+                    observation=f"[工具参数校验失败] {call.name}：参数不符合安全策略。",
+                    status="invalid", attempts=0, latency_ms=0.0,
+                    audit_metadata=dict(validation), error_code="invalid_arguments")
+            approval_id = None
+            if user_id and tenant_id:
+                from app.services.approvals import hold_tool_call
+
+                approval_id = hold_tool_call(
+                    user_id,
+                    tenant_id,
+                    resource=tool.contract.permission.resource,
+                    action=call.name,
+                    risk=risk,
+                    arguments=arguments,
+                )
+            latency_ms = (time.monotonic() - started) * 1000
+            await self._registry._record_audit(
+                audit_call, user_id, tenant_id, risk, False, "approval_required", latency_ms)
+            waiting = f"[工具等待审批] {call.name}：审批 {approval_id} 尚未执行。" if approval_id else (
+                f"[工具调用被拒绝] {call.name}：需要审批后才能执行。"
+            )
+            return ExecutorResult(
+                observation=waiting,
+                status="denied",
+                attempts=0,
+                latency_ms=latency_ms,
+                audit_metadata=dict(validation),
+                error_code="approval_required",
+            )
+
         timeout = tool.contract.timeout_seconds if tool.contract else 30.0
         max_retries = tool.contract.max_retries if tool.contract else 0
         idempotent = tool.contract.idempotent if tool.contract else True

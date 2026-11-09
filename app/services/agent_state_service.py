@@ -90,6 +90,18 @@ class AgentStateService:
         try:
             if tenant_id != self._tenant_id or user_id != self._user_id:
                 raise ValueError("checkpoint identity mismatch")
+            from app.services.approvals import current_held_approval
+
+            held = current_held_approval()
+            if held and status == "running":
+                try:
+                    payload = json.loads(state_json)
+                except json.JSONDecodeError:
+                    payload = None
+                if isinstance(payload, dict):
+                    payload["held_approval_id"] = held
+                    state_json = json.dumps(payload, ensure_ascii=False)
+                    status = "suspended"
             expires_at = _utcnow_naive() + timedelta(seconds=settings.AGENT_STATE_TTL_SECONDS)
             row = self._find_row(conversation_id, message_id)
             if row is None:
@@ -149,6 +161,16 @@ class AgentStateService:
         if not isinstance(data, dict):
             self.discard(conversation_id, message_id)
             return None
+        held_id = data.get("held_approval_id")
+        if isinstance(held_id, str) and held_id:
+            from app.services.approvals import held_approval_effect
+
+            effect = held_approval_effect(self._session, held_id, self._tenant_id, self._user_id)
+            if effect == "blocked":
+                self.discard(conversation_id, message_id)
+                return None
+            if effect in {"pending", "approved"}:
+                data["_approval_status"] = effect
         data["_status"] = row.status
         data["_round_no"] = row.round_no
         data["tool_budget_exhausted"] = row.tool_budget_exhausted or data.get("tool_budget_exhausted", False)

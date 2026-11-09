@@ -1,0 +1,13 @@
+id: action-approval-v1
+title: 中高风险动作在批准前不执行
+cases:
+  - id: hold-until-approved
+    expect: L2 和 L3 调用先进入待审批，批准本身不执行
+  - id: execute-once
+    expect: 同一次批准最多执行一次，重复调用返回原结果
+  - id: expiry-revocation-cancel-tamper
+    expect: 过期、撤权、取消和参数变化都不执行
+  - id: chat-phrase
+    expect: 对话回复不能代替批准
+  - id: other-person
+    expect: 其他用户和其他租户看不到这条审批

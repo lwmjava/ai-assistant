@@ -87,6 +87,7 @@ class AuditAction(str, Enum):
 
     # ── 工具调用（PAGT-002）──
     TOOL_CALL = "tool_call"
+    MCP_CALL = "mcp_call"
 
     # ── 其他 ──
     OTHER = "other"

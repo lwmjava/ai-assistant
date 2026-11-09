@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any
 
+from app.audit import AuditAction, get_audit_logger, summarize_arguments
+from app.core import log_context
 from app.core.config import settings
 from app.mcp.config import MCPServerConfig
 
@@ -98,6 +101,33 @@ def _render_content(content) -> str:
         else:
             parts.append(f"[{ctype or 'content'}]")
     return "\n".join(parts).strip()
+
+
+async def record_mcp_audit(
+    server: str,
+    tool: str,
+    arguments: dict | None,
+    result: str,
+    latency_ms: float,
+) -> None:
+    """记录一次 MCP 工具调用审计；审计异常不阻断调用结果。"""
+    try:
+        await get_audit_logger().log(
+            action=AuditAction.MCP_CALL,
+            user_id=log_context.get_user_id(),
+            tenant_id=log_context.get_tenant_id(),
+            resource_type="mcp_tool",
+            resource_id=f"mcp__{server}__{tool}",
+            details={
+                "server": server,
+                "tool": tool,
+                "parameter_summary": summarize_arguments(arguments),
+                "result": result,
+                "latency_ms": round(latency_ms, 2),
+            },
+        )
+    except Exception:  # noqa: BLE001 — 审计故障不中断工具调用
+        logger.exception("MCP 调用审计写入失败：server=%s tool=%s", server, tool)
 
 
 @dataclass
@@ -286,24 +316,37 @@ class MCPClient:
         if self._session is None:
             raise RuntimeError("MCP 客户端尚未连接，请先调用 connect()。")
         timeout = self._call_timeout(timeout_seconds)
+        started = time.monotonic()
         attempts = 0
-        while True:
-            attempts += 1
-            if self._session is None:
-                await self.connect()
-            try:
-                async with asyncio.timeout(timeout):
-                    result = await self._session.call_tool(name, arguments or {})
-            except TimeoutError:
-                await self.disconnect()
-                raise TimeoutError(f"MCP 工具 {name} 调用超时") from None
-            except Exception as exc:
-                if attempts > int(settings.MCP_RECONNECT_ATTEMPTS) or not _is_disconnect(exc):
-                    raise
-                await self.disconnect()
-                continue
-            is_error = getattr(result, "isError", False)
-            text = _render_content(getattr(result, "content", []))
-            if is_error:
-                return f"[MCP 工具错误] {name}：{text}"
-            return text
+        outcome = "failure"
+        try:
+            while True:
+                attempts += 1
+                if self._session is None:
+                    await self.connect()
+                try:
+                    async with asyncio.timeout(timeout):
+                        result = await self._session.call_tool(name, arguments or {})
+                except TimeoutError:
+                    outcome = "timeout"
+                    await self.disconnect()
+                    raise TimeoutError(f"MCP 工具 {name} 调用超时") from None
+                except Exception as exc:
+                    if attempts > int(settings.MCP_RECONNECT_ATTEMPTS) or not _is_disconnect(exc):
+                        raise
+                    await self.disconnect()
+                    continue
+                is_error = getattr(result, "isError", False)
+                text = _render_content(getattr(result, "content", []))
+                if is_error:
+                    return f"[MCP 工具错误] {name}：{text}"
+                outcome = "success"
+                return text
+        finally:
+            await record_mcp_audit(
+                self.config.name,
+                name,
+                arguments,
+                outcome,
+                (time.monotonic() - started) * 1000,
+            )

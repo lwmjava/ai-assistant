@@ -5919,7 +5919,7 @@ tasks:
 
   - id: "PMCP-004"
     title: "MCP 凭据管理：不落明文配置"
-    status: "backlog"
+    status: "in_review"
     priority: "P0"
     module: "MCP"
     target_version: "1.0"
@@ -5969,6 +5969,14 @@ tasks:
       estimate_person_days: [3, 5]
       admission:
         authorization: "2026-10-27仅授权登记C04映射，不授权处理真实凭据或变更生产密钥。"
+      progress_20261109: >-
+        用户确认凭据只放进程环境，MCP_SERVERS 的 env 和 headers 只写环境变量名。
+        不新做加密算法，不引入外部密钥托管，不改模型密钥的读取方式。
+        明文 env、带账号的 URL 和查询串里的凭据字段会被跳过，日志不记录这些值。
+        管理摘要仍不含 env 和 headers。Windows 项目 conda：
+        pytest tests/test_mcp_credentials.py tests/test_mcp.py tests/test_p0_regression.py
+        -k "mcp or credential or secret or config_parsing" 为 24 passed、exit 0。
+        ruff 通过。未连接真实 MCP，也未使用真实凭据。本提交的 Ubuntu Backend CI 尚未绑定，保持 in_review。
       nightly:
         eligible: false
         production_access: false

@@ -483,7 +483,7 @@ class Settings(BaseSettings):
     # ── MCP（Model Context Protocol）客户端 ──
     # 将企业系统的 MCP 服务器工具注入 Agent 工具箱，打通「AI ↔ 企业系统」。
     MCP_ENABLED: bool = False  # 是否启用 MCP 客户端（默认关闭，避免无配置时尝试连接）
-    MCP_SERVERS: str = ""  # JSON 数组：MCP 服务器清单，见 app/mcp/config.py 的格式说明
+    MCP_SERVERS: str = ""  # JSON 数组。env/headers 只写环境变量名，见 app/mcp/config.py
     MCP_CALL_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0, le=120)
     MCP_CONNECT_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0, le=120)
     MCP_HEARTBEAT_SECONDS: float = Field(default=30.0, ge=0, le=300)

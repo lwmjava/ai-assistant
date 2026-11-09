@@ -169,7 +169,7 @@ class MCPClient:
             params = StdioServerParameters(
                 command=self.config.command,
                 args=self.config.args or [],
-                env=self.config.env or None,
+                env=self.config.resolved_env(),
             )
             read, write = await self._stack.enter_async_context(stdio_client(params))
         elif transport in ("http", "streamable_http", "streamable-http"):
@@ -177,14 +177,14 @@ class MCPClient:
             if not url:
                 raise ValueError(f"MCP 服务器 {self.config.name} 使用 http 但未配置 url")
             read, write, _ = await self._stack.enter_async_context(
-                streamable_http_client(url, headers=self.config.headers or None)
+                streamable_http_client(url, headers=self.config.resolved_headers())
             )
         elif transport == "sse":
             url = self.config.url
             if not url:
                 raise ValueError(f"MCP 服务器 {self.config.name} 使用 sse 但未配置 url")
             read, write = await self._stack.enter_async_context(
-                sse_client(url, headers=self.config.headers or None)
+                sse_client(url, headers=self.config.resolved_headers())
             )
         else:
             raise ValueError(f"不支持的 MCP 传输类型：{transport}")

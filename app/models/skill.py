@@ -39,3 +39,12 @@ class Skill(SQLModel, TimestampMixin, table=True):
     keywords: str
     enabled: bool = Field(default=True)
     version: str = Field(default="1.0")
+    # draft | active | retired。草稿不参与对话，确认后才变为 active。
+    lifecycle: str = Field(default="active", index=True)
+    preconditions: str = Field(default="")
+    workflow: str = Field(default="")
+    tools_json: str = Field(default="[]")
+    escalation: str = Field(default="")
+    tests: str = Field(default="")
+    supersedes_id: str | None = Field(default=None, index=True)
+    source_text: str = Field(default="")

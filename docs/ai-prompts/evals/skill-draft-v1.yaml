@@ -1,0 +1,11 @@
+id: skill-draft-v1
+title: 技能草稿确认前不参与对话
+cases:
+  - id: hidden-until-confirmed
+    expect: 草稿不出现在对话技能清单
+  - id: one-call-budget
+    expect: 每次生成最多一次调用，温度 0，1024 token，30 秒
+  - id: reject-high-risk-tool
+    expect: 未知工具和高风险工具不入库
+  - id: retain-previous-version
+    expect: 确认新版本后旧版本停用并保留

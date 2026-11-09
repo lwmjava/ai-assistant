@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import {
+  useConfirmSkill,
   useCreateSkill,
   useDeleteSkill,
+  useGenerateSkillDraft,
   useSetSkillEnabled,
   useSkillDetail,
   useSkills,
@@ -113,6 +115,11 @@ export default function SkillsPage() {
   const updateSkill = useUpdateSkill()
   const setEnabled = useSetSkillEnabled()
   const removeSkill = useDeleteSkill()
+  const generateDraft = useGenerateSkillDraft()
+  const confirmSkill = useConfirmSkill()
+  const [instruction, setInstruction] = useState('')
+  const [draftScope, setDraftScope] = useState<'private' | 'global'>('private')
+  const [draftError, setDraftError] = useState<string | null>(null)
 
   function openCreate() {
     setFormError('')
@@ -165,6 +172,46 @@ export default function SkillsPage() {
         title="技能"
         description="按条件查看技能。新增在表格上方，每条记录的操作在最后一列。"
       />
+
+      {canWrite && (
+        <form
+          className="panel space-y-3 p-4"
+          onSubmit={async (event) => {
+            event.preventDefault()
+            setDraftError(null)
+            try {
+              await generateDraft.mutateAsync({ instruction, scope: draftScope })
+              setInstruction('')
+            } catch (err) {
+              setDraftError(errorText(err))
+            }
+          }}
+        >
+          <Textarea
+            label="用一句话生成草稿"
+            value={instruction}
+            onChange={(event) => setInstruction(event.target.value)}
+            placeholder="例如：说明退款时先核对订单，不承诺已经退款"
+          />
+          {role === 'system_admin' && (
+            <Select
+              label="草稿范围"
+              value={draftScope}
+              onChange={(event) =>
+                setDraftScope(event.target.value === 'global' ? 'global' : 'private')
+              }
+              wrapClassName="w-36"
+            >
+              <option value="private">仅自己</option>
+              <option value="global">系统全局</option>
+            </Select>
+          )}
+          {draftError && <p className="text-sm text-danger">{draftError}</p>}
+          <Button type="submit" loading={generateDraft.isPending} disabled={!instruction.trim()}>
+            生成草稿
+          </Button>
+        </form>
+      )}
 
       <form
         className="flex flex-wrap items-end justify-between gap-3"
@@ -281,10 +328,11 @@ export default function SkillsPage() {
                   isOwner={row.owner_id === userId}
                   isAdmin={role === 'system_admin'}
                   isTenantAdmin={role === 'tenant_admin'}
-                  busy={setEnabled.isPending || removeSkill.isPending}
+                  busy={setEnabled.isPending || removeSkill.isPending || confirmSkill.isPending}
                   onDetail={() => setDetailId(row.id)}
                   onEdit={() => openEdit(row)}
                   onToggle={() => setEnabled.mutate({ id: row.id, enabled: !row.enabled })}
+                  onConfirm={() => confirmSkill.mutate(row.id)}
                   onDelete={() => setDeleteTarget(row)}
                 />
               ))}
@@ -482,6 +530,7 @@ function SkillRow({
   onDetail,
   onEdit,
   onToggle,
+  onConfirm,
   onDelete,
 }: {
   row: SkillListOut
@@ -495,15 +544,20 @@ function SkillRow({
   onDetail: () => void
   onEdit: () => void
   onToggle: () => void
+  onConfirm: () => void
   onDelete: () => void
 }) {
   const builtin = row.source === 'builtin'
   const ownPrivate = isOwner && row.scope === 'private'
-  const showEdit = canWrite && !builtin && (isAdmin || ownPrivate)
+  const active = row.lifecycle === 'active' || row.lifecycle === undefined
+  const showEdit = canWrite && !builtin && active && (isAdmin || ownPrivate)
   const showToggle =
     canWrite &&
     !builtin &&
+    active &&
     (isAdmin || ownPrivate || (isTenantAdmin && row.scope === 'private'))
+  const showConfirm =
+    canWrite && row.lifecycle === 'draft' && (isAdmin || ownPrivate)
   const showDelete = canDelete && !builtin && (isAdmin || ownPrivate)
 
   return (
@@ -517,13 +571,20 @@ function SkillRow({
       {broad && <td className="px-4 py-3 text-text-muted">{row.owner_username || '—'}</td>}
       <td className="px-4 py-3 text-text-muted">{row.keywords.join('、')}</td>
       <td className="px-4 py-3">
-        <Badge tone={row.enabled ? 'success' : 'warning'}>{row.enabled ? '启用' : '停用'}</Badge>
+        <Badge tone={row.lifecycle === 'draft' ? 'warning' : row.enabled ? 'success' : 'neutral'}>
+          {row.lifecycle === 'draft' ? '草稿' : row.lifecycle === 'retired' ? '已替换' : row.enabled ? '启用' : '停用'}
+        </Badge>
       </td>
       <td className="px-4 py-3">
         <div className="flex justify-end gap-1 whitespace-nowrap">
           <Button size="sm" variant="ghost" onClick={onDetail}>
             详情
           </Button>
+          {showConfirm && (
+            <Button size="sm" variant="ghost" disabled={busy} onClick={onConfirm}>
+              确认
+            </Button>
+          )}
           {showEdit && (
             <Button size="sm" variant="ghost" onClick={onEdit}>
               修改

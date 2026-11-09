@@ -76,6 +76,24 @@ export function useUpdateSkill() {
   })
 }
 
+export function useGenerateSkillDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { instruction: string; scope: 'private' | 'global' }) =>
+      api.post<SkillDetailOut>('/skills/drafts', body).then((response) => response.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: skillKeys.all }),
+  })
+}
+
+export function useConfirmSkill() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<SkillListOut>(`/skills/${id}/confirm`).then((response) => response.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: skillKeys.all }),
+  })
+}
+
 export function useSetSkillEnabled() {
   const invalidate = useInvalidateSkills()
   return useMutation({

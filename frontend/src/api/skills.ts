@@ -76,6 +76,24 @@ export function useUpdateSkill() {
   })
 }
 
+export function useGenerateSkillDraft() {
+  const invalidate = useInvalidateSkills()
+  return useMutation({
+    mutationFn: (body: { instruction: string; scope: 'private' | 'global' }) =>
+      api.post<SkillDetailOut>('/skills/drafts', body),
+    onSuccess: invalidate,
+  })
+}
+
+export function useConfirmSkill() {
+  const invalidate = useInvalidateSkills()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<SkillListOut>(`/skills/${encodeURIComponent(id)}/confirm`),
+    onSuccess: invalidate,
+  })
+}
+
 export function useSetSkillEnabled() {
   const invalidate = useInvalidateSkills()
   return useMutation({

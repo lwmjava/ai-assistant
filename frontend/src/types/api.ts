@@ -475,6 +475,7 @@ export interface SkillListOut {
   source: 'builtin' | 'private' | 'global' | string
   scope: 'builtin' | 'private' | 'global' | string
   enabled: boolean
+  lifecycle: 'draft' | 'active' | 'retired' | string
 }
 
 export interface SkillDetailOut extends SkillListOut {
@@ -482,6 +483,11 @@ export interface SkillDetailOut extends SkillListOut {
   system_prompt: string
   example: string
   version: string
+  preconditions: string
+  workflow: string
+  tools: string[]
+  escalation: string
+  tests: string
 }
 
 export interface SkillWrite {

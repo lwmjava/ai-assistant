@@ -14,8 +14,10 @@ from app.services.skill_service import (
     SkillRowView,
     SkillText,
     audit_details,
+    confirm_skill_draft,
     create_skill,
     delete_skill,
+    generate_skill_draft,
     get_skill,
     list_skills,
     set_enabled,
@@ -46,6 +48,15 @@ class SkillWrite(BaseModel):
     example: str
 
 
+class SkillDraftIn(BaseModel):
+    """自然语言描述。确认前不会参与对话。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    instruction: str
+    scope: Literal["private", "global"] = "private"
+
+
 class SkillCreate(SkillWrite):
     """创建时可选范围。默认私有。"""
 
@@ -66,6 +77,7 @@ class SkillListOut(BaseModel):
     source: str
     scope: str
     enabled: bool
+    lifecycle: str = "active"
 
 
 class SkillDetailOut(SkillListOut):
@@ -75,6 +87,11 @@ class SkillDetailOut(SkillListOut):
     system_prompt: str = ""
     example: str = ""
     version: str = "1.0"
+    preconditions: str = ""
+    workflow: str = ""
+    tools: list[str] = Field(default_factory=list)
+    escalation: str = ""
+    tests: str = ""
 
 
 def _text(body: SkillWrite) -> SkillText:
@@ -101,6 +118,7 @@ def _list_out(view: SkillRowView) -> SkillListOut:
         source=view.source,
         scope=view.scope,
         enabled=view.enabled,
+        lifecycle=view.lifecycle,
     )
 
 
@@ -111,6 +129,11 @@ def _detail_out(view: SkillRowView) -> SkillDetailOut:
         system_prompt=view.system_prompt,
         example=view.example,
         version=view.version,
+        preconditions=view.preconditions,
+        workflow=view.workflow,
+        tools=list(view.tools or []),
+        escalation=view.escalation,
+        tests=view.tests,
     )
     return SkillDetailOut(**base)
 
@@ -155,6 +178,38 @@ async def add_skill(
     """创建私有技能，或由系统管理员创建系统全局技能。"""
     try:
         change = create_skill(session, current_user, _text(body), body.scope)
+    except SkillRequestError as exc:
+        raise _http(exc) from exc
+    await _audit(request, current_user, change.action, change.view)
+    return _list_out(change.view)
+
+
+@router.post("/drafts", response_model=SkillDetailOut, status_code=status.HTTP_201_CREATED)
+async def add_skill_draft(
+    body: SkillDraftIn,
+    request: Request,
+    current_user: User = Depends(require_permission("skills", "write")),
+    session: Session = Depends(get_db),
+) -> SkillDetailOut:
+    """根据自然语言生成草稿。未确认的草稿不参与对话。"""
+    try:
+        change = await generate_skill_draft(session, current_user, body.instruction, body.scope)
+    except SkillRequestError as exc:
+        raise _http(exc) from exc
+    await _audit(request, current_user, change.action, change.view)
+    return _detail_out(change.view)
+
+
+@router.post("/{skill_id}/confirm", response_model=SkillListOut)
+async def confirm_skill(
+    skill_id: str,
+    request: Request,
+    current_user: User = Depends(require_permission("skills", "write")),
+    session: Session = Depends(get_db),
+) -> SkillListOut:
+    """确认草稿。私有技能由创建者确认，系统全局技能由系统管理员确认。"""
+    try:
+        change = confirm_skill_draft(session, current_user, skill_id)
     except SkillRequestError as exc:
         raise _http(exc) from exc
     await _audit(request, current_user, change.action, change.view)

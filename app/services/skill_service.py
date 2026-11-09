@@ -7,20 +7,38 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, and_, col, or_, select
 
 from app.agents.skills.base import SkillManifest, SkillMode, SkillTrigger, TriggerType
 from app.agents.skills.loader import discover_skills
+from app.agents.tools import default_tools
+from app.agents.tools.base import ToolRegistry
+from app.agents.tools.contract import RiskLevel
 from app.core.security import Role
 from app.models.skill import Skill
 from app.models.user import Tenant, User
 from app.security.prompt_injection import PromptInjectionDetector
 
 _NAME_RE = re.compile(r"^[a-z0-9_-]{1,64}$")
+_SCRIPT_RE = re.compile(r"(?i)(```|subprocess|os\.system|powershell)")
+_DRAFT_FIELDS = (
+    "name",
+    "keywords",
+    "purpose",
+    "preconditions",
+    "workflow",
+    "tools",
+    "constraints",
+    "escalation",
+    "examples",
+    "tests",
+)
+_BLOCKED_TOOLS = {"code_sandbox"}
 _ESCALATION = "超出该技能范围时按普通对话回答，不声称已调用工具。"
 _DETECTOR = PromptInjectionDetector(threshold=0.5)
 _BUILTIN_PREFIX = "builtin:"
@@ -64,10 +82,17 @@ class SkillRowView:
     source: str
     scope: str
     enabled: bool
+    lifecycle: str = "active"
     constraints: str = ""
     system_prompt: str = ""
     example: str = ""
     version: str = "1.0"
+    preconditions: str = ""
+    workflow: str = ""
+    tools: list[str] | None = None
+    escalation: str = ""
+    tests: str = ""
+    supersedes_id: str | None = None
 
 
 @dataclass
@@ -145,7 +170,11 @@ def manifests_for_chat(session: Session, user: User) -> list[SkillManifest]:
     for item in discover_skills():
         item.origin = "builtin"
         manifests.append(item)
-    globals_stmt = select(Skill).where(col(Skill.scope) == "global", col(Skill.enabled).is_(True))
+    globals_stmt = select(Skill).where(
+        col(Skill.scope) == "global",
+        col(Skill.enabled).is_(True),
+        col(Skill.lifecycle) == "active",
+    )
     for row in session.exec(globals_stmt).all():
         manifests.append(_row_manifest(row))
     private_stmt = select(Skill).where(
@@ -153,6 +182,7 @@ def manifests_for_chat(session: Session, user: User) -> list[SkillManifest]:
         col(Skill.tenant_id) == user.tenant_id,
         col(Skill.owner_id) == user.id,
         col(Skill.enabled).is_(True),
+        col(Skill.lifecycle) == "active",
     )
     for row in session.exec(private_stmt).all():
         manifests.append(_row_manifest(row))
@@ -273,6 +303,8 @@ def set_enabled(session: Session, user: User, skill_id: str, enabled: bool) -> S
     if row.scope == "private":
         _reject_inactive_tenant(session, row.tenant_id)
     action = "skill_enable" if enabled else "skill_disable"
+    if row.lifecycle != "active":
+        raise SkillRequestError(409, "草稿需先确认，已替换的版本不能直接启用")
     if row.enabled == enabled:
         return SkillChange(
             view=_db_view(row, _labels(session, [row]), include_body=False),
@@ -293,6 +325,129 @@ def delete_skill(session: Session, user: User, skill_id: str) -> SkillChange:
     session.delete(row)
     session.commit()
     return SkillChange(view=view, audit=True, action="skill_delete")
+
+
+async def generate_skill_draft(
+    session: Session,
+    user: User,
+    instruction: str,
+    scope: ScopeName,
+    llm=None,
+) -> SkillChange:
+    """用一次模型调用生成草稿。确认前不启用，缺少密钥或校验失败时不入库。"""
+    if scope == "global" and user.role != Role.SYSTEM_ADMIN.value:
+        raise SkillRequestError(403, "只有系统管理员可以生成系统全局技能")
+    if scope == "private":
+        _reject_inactive_tenant(session, user.tenant_id)
+    text = (instruction or "").strip()
+    if not 1 <= len(text) <= 2000:
+        raise SkillRequestError(422, "描述需要 1–2000 字")
+    if llm is None:
+        from app.llm.task_profiles import get_task_profile
+
+        if not get_task_profile("chat").enabled:
+            raise SkillRequestError(422, "未配置模型调用，未生成草稿")
+        from app.llm.factory import get_llm_provider
+
+        llm = get_llm_provider()
+    from app.llm.base import ChatMessage, ChatRole, LLMOptions
+
+    try:
+        raw = await llm.chat(
+            [ChatMessage(role=ChatRole.USER, content=_draft_prompt(text))],
+            LLMOptions(temperature=0, max_tokens=1024, timeout=30),
+        )
+    except SkillRequestError:
+        raise
+    except Exception as exc:  # noqa: BLE001 — 失败不重试，也不落草稿
+        raise SkillRequestError(422, "草稿生成失败，未保存") from exc
+    parsed = _parse_draft(raw)
+    _reject_scripts(parsed)
+    _reject_tools(parsed["tools"], user)
+    skill_text = SkillText(
+        name=parsed["name"],
+        description=parsed["purpose"],
+        keywords=parsed["keywords"],
+        constraints=parsed["constraints"],
+        system_prompt=parsed["workflow"],
+        example=parsed["examples"],
+    )
+    validate_skill_text(skill_text)
+    _reject_builtin_name(skill_text.name)
+    tenant_id = "" if scope == "global" else user.tenant_id
+    row = Skill(
+        tenant_id=tenant_id,
+        owner_id=user.id,
+        name=skill_text.name,
+        scope=scope,
+        name_key=f"draft:{uuid.uuid4().hex}",
+        description=skill_text.description,
+        constraints=skill_text.constraints,
+        system_prompt=skill_text.system_prompt,
+        example=skill_text.example,
+        keywords=json.dumps(skill_text.keywords, ensure_ascii=False),
+        enabled=False,
+        lifecycle="draft",
+        version="draft",
+        preconditions=parsed["preconditions"],
+        workflow=parsed["workflow"],
+        tools_json=json.dumps(parsed["tools"], ensure_ascii=False),
+        escalation=parsed["escalation"],
+        tests=parsed["tests"],
+        source_text=text,
+    )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return SkillChange(
+        view=_db_view(row, _labels(session, [row]), include_body=True),
+        audit=True,
+        action="skill_create",
+    )
+
+
+def confirm_skill_draft(session: Session, user: User, skill_id: str) -> SkillChange:
+    """确认草稿。私有技能由创建者确认，系统全局技能由系统管理员确认。"""
+    row = session.get(Skill, skill_id)
+    if row is None or not _can_read(user, row):
+        raise SkillRequestError(404, "技能不存在")
+    if row.lifecycle != "draft":
+        raise SkillRequestError(409, "只有草稿可以确认")
+    if row.scope == "global" and user.role != Role.SYSTEM_ADMIN.value:
+        raise SkillRequestError(403, "只有系统管理员可以确认系统全局技能")
+    if row.scope == "private" and row.owner_id != user.id:
+        raise SkillRequestError(403, "只有创建者可以确认这条草稿")
+    if row.scope == "private":
+        _reject_inactive_tenant(session, row.tenant_id)
+    stable = name_key_for(row.scope, row.tenant_id, row.owner_id, row.name)
+    previous = session.exec(
+        select(Skill).where(col(Skill.name_key) == stable, col(Skill.lifecycle) == "active")
+    ).first()
+    if previous is not None:
+        previous.lifecycle = "retired"
+        previous.enabled = False
+        previous.name_key = f"retired:{previous.id}"
+        session.add(previous)
+        session.flush()
+        row.supersedes_id = previous.id
+        row.version = _next_version(previous.version)
+    else:
+        row.version = "1.0"
+    row.lifecycle = "active"
+    row.enabled = True
+    row.name_key = stable
+    session.add(row)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise SkillRequestError(409, "技能名称已存在") from None
+    session.refresh(row)
+    return SkillChange(
+        view=_db_view(row, _labels(session, [row]), include_body=False),
+        audit=True,
+        action="skill_enable",
+    )
 
 
 def audit_details(view: SkillRowView) -> dict[str, object]:
@@ -445,10 +600,17 @@ def _db_view(row: Skill, labels: dict[str, dict[str, str | None]], *, include_bo
         source=row.scope,
         scope=row.scope,
         enabled=row.enabled,
+        lifecycle=row.lifecycle,
         constraints=row.constraints if include_body else "",
         system_prompt=row.system_prompt if include_body else "",
         example=row.example if include_body else "",
         version=row.version,
+        preconditions=row.preconditions if include_body else "",
+        workflow=row.workflow if include_body else "",
+        tools=_keywords(row.tools_json) if include_body else [],
+        escalation=row.escalation if include_body else "",
+        tests=row.tests if include_body else "",
+        supersedes_id=row.supersedes_id,
     )
 
 
@@ -510,8 +672,89 @@ def _row_manifest(row: Skill) -> SkillManifest:
         description=row.description,
         mode=SkillMode.PROMPT_INJECTION,
         trigger=SkillTrigger(type=TriggerType.KEYWORD, keywords=text.keywords, min_confidence=0.5),
-        system_prompt=compose_skill_prompt(text),
+        system_prompt=_manifest_prompt(row, text),
         tools=[],
-        enabled=row.enabled,
+        enabled=row.enabled and row.lifecycle == "active",
         origin=row.scope,
     )
+
+
+def _manifest_prompt(row: Skill, text: SkillText) -> str:
+    parts = [compose_skill_prompt(text)]
+    if row.preconditions:
+        parts.append(f"前置：{row.preconditions}")
+    if row.workflow:
+        parts.append(f"流程：{row.workflow}")
+    if row.escalation:
+        parts.append(f"升级：{row.escalation}")
+    if row.tests:
+        parts.append(f"测试：{row.tests}")
+    return "\n".join(parts)
+
+
+def _draft_prompt(instruction: str) -> str:
+    return (
+        "把下面的描述写成一个声明式技能草稿，只返回 JSON 对象，不要代码块。"
+        "字段必须包含 name、keywords、purpose、preconditions、workflow、tools、"
+        "constraints、escalation、examples、tests。"
+        "name 只用小写字母、数字、下划线和连字符。tools 是工具名数组，可以是空数组。"
+        "不要编写或要求执行程序。\n"
+        f"{instruction}"
+    )
+
+
+def _parse_draft(raw: str) -> dict[str, Any]:
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]
+        fence = text.rfind("```")
+        if fence >= 0:
+            text = text[:fence]
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise SkillRequestError(422, "草稿格式无效，未保存") from exc
+    if not isinstance(data, dict) or any(field not in data for field in _DRAFT_FIELDS):
+        raise SkillRequestError(422, "草稿缺少必要字段，未保存")
+    tools = data["tools"]
+    keywords = data["keywords"]
+    if not isinstance(tools, list) or not all(isinstance(item, str) for item in tools):
+        raise SkillRequestError(422, "工具名单无效，未保存")
+    if not isinstance(keywords, list) or not all(isinstance(item, str) for item in keywords):
+        raise SkillRequestError(422, "关键词无效，未保存")
+    parsed: dict[str, Any] = {
+        field: str(data[field]) for field in _DRAFT_FIELDS if field not in {"tools", "keywords"}
+    }
+    parsed["tools"] = tools
+    parsed["keywords"] = keywords
+    return parsed
+
+
+def _reject_scripts(parsed: dict[str, Any]) -> None:
+    blob = "\n".join(str(parsed[field]) for field in _DRAFT_FIELDS if field != "tools")
+    if _SCRIPT_RE.search(blob):
+        raise SkillRequestError(422, "草稿包含可执行脚本，未保存")
+
+
+def _reject_tools(names: object, user: User) -> None:
+    if not isinstance(names, list):
+        raise SkillRequestError(422, "工具名单无效，未保存")
+    registry = ToolRegistry(default_tools())
+    for name in names:
+        if not isinstance(name, str) or name in _BLOCKED_TOOLS:
+            raise SkillRequestError(422, "草稿包含不允许的工具，未保存")
+        tool = registry.get(name)
+        if tool is None or tool.contract is None:
+            raise SkillRequestError(422, "草稿包含不允许的工具，未保存")
+        if tool.contract.risk in {RiskLevel.L2, RiskLevel.L3}:
+            raise SkillRequestError(422, "草稿包含不允许的工具，未保存")
+        allowed = tool.contract.permission.allowed_roles
+        if allowed is not None and user.role not in allowed:
+            raise SkillRequestError(422, "草稿包含不允许的工具，未保存")
+
+
+def _next_version(current: str) -> str:
+    major, dot, minor = current.partition(".")
+    if dot and major.isdigit() and minor.isdigit():
+        return f"{major}.{int(minor) + 1}"
+    return "1.1"

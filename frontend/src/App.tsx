@@ -35,6 +35,7 @@ const StatusPage = lazy(() => import('@/pages/Status'))
 const TenantSettingsPage = lazy(() => import('@/pages/TenantSettings'))
 const InvitationsPage = lazy(() => import('@/pages/Invitations'))
 const EvaluationsPage = lazy(() => import('@/pages/Evaluations'))
+const PromptVariantsPage = lazy(() => import('@/pages/PromptVariants'))
 const EvaluationReportsPage = lazy(() => import('@/pages/EvaluationReports'))
 const RunHistoryPage = lazy(() => import('@/pages/RunHistory'))
 
@@ -199,6 +200,11 @@ export default function App() {
         <Route path="/evaluations" element={
           <RequireAdmin>
             <Lazy><EvaluationsPage /></Lazy>
+          </RequireAdmin>
+        } />
+        <Route path="/prompt-variants" element={
+          <RequireAdmin>
+            <Lazy><PromptVariantsPage /></Lazy>
           </RequireAdmin>
         } />
         <Route path="/evaluation-reports" element={

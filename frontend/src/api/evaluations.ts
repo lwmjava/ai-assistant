@@ -232,3 +232,103 @@ export function useCancelEvaluationJob(enabled: boolean) {
     },
   })
 }
+
+export type DocQuestionVersion = {
+  version: EvaluationDatasetVersion
+  index: Record<string, unknown>
+  cases: Array<{
+    case_id: string
+    query: string
+    tier: string
+    split: string
+    candidate_status: string
+    unavailable_reason: string | null
+    expected_document_ids: string[]
+    expected_evidence?: string | null
+    expected_answer_points?: string[]
+    provenance: Record<string, unknown>
+    review_notes?: string | null
+    reviewed_by?: string | null
+  }>
+}
+
+export function useGenerateDocQuestions(enabled: boolean) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      datasetId: string
+      document_ids: string[]
+      idempotency_key: string
+      max_cases?: number
+      max_external_calls?: number
+      data_egress_confirmed?: boolean
+      provider?: 'fake' | 'live'
+    }) =>
+      api.post<DocQuestionVersion>(
+        `/evaluations/datasets/${encodeURIComponent(input.datasetId)}/doc-questions/generate`,
+        {
+          document_ids: input.document_ids,
+          idempotency_key: input.idempotency_key,
+          max_cases: input.max_cases ?? 20,
+          max_external_calls: input.max_external_calls ?? 0,
+          data_egress_confirmed: input.data_egress_confirmed ?? false,
+          provider: input.provider ?? 'fake',
+        },
+      ),
+    onSuccess: async () => {
+      if (enabled) {
+        await client.invalidateQueries({ queryKey: ['evaluation-versions'] })
+        await client.invalidateQueries({ queryKey: ['evaluation-doc-questions'] })
+      }
+    },
+  })
+}
+
+export function useDocQuestions(datasetId: string | null, versionId: string | null, enabled: boolean) {
+  const user = useAuthStore((s) => s.user)
+  return useQuery({
+    queryKey: ['evaluation-doc-questions', user?.id, user?.tenant_id, datasetId, versionId],
+    queryFn: () =>
+      api.get<DocQuestionVersion>(
+        `/evaluations/datasets/${encodeURIComponent(datasetId!)}/doc-questions/${encodeURIComponent(versionId!)}`,
+      ),
+    enabled: enabled && datasetId !== null && versionId !== null,
+  })
+}
+
+export function useReviewDocQuestion(enabled: boolean) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      datasetId: string
+      versionId: string
+      caseId: string
+      decision: 'accept' | 'reject' | 'reopen'
+      notes?: string
+    }) =>
+      api.post<DocQuestionVersion>(
+        `/evaluations/datasets/${encodeURIComponent(input.datasetId)}/doc-questions/${encodeURIComponent(input.versionId)}/cases/${encodeURIComponent(input.caseId)}/review`,
+        { decision: input.decision, notes: input.notes },
+      ),
+    onSuccess: async () => {
+      if (enabled) await client.invalidateQueries({ queryKey: ['evaluation-doc-questions'] })
+    },
+  })
+}
+
+export function usePromoteDocQuestions(enabled: boolean) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { datasetId: string; versionId: string; silver_version: string }) =>
+      api.post<EvaluationDatasetVersion>(
+        `/evaluations/datasets/${encodeURIComponent(input.datasetId)}/doc-questions/${encodeURIComponent(input.versionId)}/promote`,
+        { silver_version: input.silver_version },
+      ),
+    onSuccess: async () => {
+      if (enabled) {
+        await client.invalidateQueries({ queryKey: ['evaluation-versions'] })
+        await client.invalidateQueries({ queryKey: ['evaluation-doc-questions'] })
+      }
+    },
+  })
+}

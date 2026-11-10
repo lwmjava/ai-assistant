@@ -1,0 +1,16 @@
+name: doc-assisted-questions-v1
+purpose: Governance cases for authorized-document question candidates.
+cases:
+  - id: source-version-binding
+    expect: Candidates bind document id, version, chunk fragment, and generation config.
+  - id: revoke-or-invalid-source
+    expect: After revoke or source invalidation, candidates are unavailable and cannot promote.
+  - id: silver-default-no-auto-gold
+    expect: Generated tier is silver; promote requires human accept; gold auto-upgrade is forbidden.
+  - id: budget-egress-idempotency
+    expect: Fake provider uses zero external calls; live without egress/budget fails; duplicate idempotency key replays.
+  - id: reject-reopen-audit
+    expect: Rejected candidates can be reopened; generate/review/promote emit audit details without secrets.
+notes:
+  - Real paid egress and customer-document outbound remain separately authorized.
+  - Holdout answers must not be used to generate tuning questions.

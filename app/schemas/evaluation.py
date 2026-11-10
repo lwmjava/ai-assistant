@@ -325,3 +325,60 @@ class RetrievalStrategiesOut(BaseModel):
     backends: list[str]
     top_k_min: int = 1
     top_k_max: int = 50
+
+
+DocQuestionProvider = Literal["fake", "live"]
+DocQuestionDecision = Literal["accept", "reject", "reopen"]
+
+
+class DocQuestionGenerateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    document_ids: list[str] = Field(min_length=1, max_length=50)
+    idempotency_key: str = Field(min_length=1, max_length=128)
+    max_cases: int = Field(default=20, ge=1, le=100)
+    max_external_calls: int = Field(default=0, ge=0, le=1000)
+    data_egress_confirmed: bool = False
+    provider: DocQuestionProvider = "fake"
+
+
+class DocQuestionEditIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=4, max_length=2000)
+    expected_answer_points: list[str] | None = None
+
+
+class DocQuestionReviewIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: DocQuestionDecision
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class DocQuestionPromoteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    silver_version: str = Field(min_length=1, max_length=64)
+
+
+class DocQuestionCaseOut(BaseModel):
+    case_id: str
+    query: str
+    tier: str
+    split: str
+    candidate_status: str
+    unavailable_reason: str | None = None
+    expected_document_ids: list[str] = []
+    expected_evidence: str | None = None
+    expected_answer_points: list[str] = []
+    provenance: dict = {}
+    review_notes: str | None = None
+    reviewed_by: str | None = None
+
+
+class DocQuestionVersionOut(BaseModel):
+    version: DatasetVersionOut
+    index: dict
+    cases: list[DocQuestionCaseOut]
+

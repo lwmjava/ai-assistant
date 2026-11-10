@@ -5,6 +5,9 @@
 从而降低一次性生成长文本时的遗漏与跑题。
 """
 
+import hashlib
+from typing import TypedDict
+
 # 各环节通用的语言约束：最终面向用户的回答须与用户语言一致。
 _LANGUAGE_RULE = "请始终使用与用户消息相同的语言作答。"
 
@@ -88,4 +91,51 @@ SYSTEM_QUALITY_CRITIQUE = (
     "你是修正导师。基于「质量评分」与「当前草稿」，指出草稿最关键的 1~3 个未完成点，"
     "并给出可执行的补齐方向。只输出修正要点本身，不要重写整段草稿。"
 )
+
+
+# Prompt slot catalog for offline variant compare / publish.
+# Runtime pipeline still imports constants directly; published overrides are
+# resolved through the prompt variant service when callers opt in.
+
+
+class PromptSlotInfo(TypedDict):
+    key: str
+    title: str
+    source_body: str
+
+
+def _slot(key: str, title: str, body: str) -> PromptSlotInfo:
+    return {"key": key, "title": title, "source_body": body}
+
+
+PROMPT_SLOT_CATALOG: dict[str, PromptSlotInfo] = {
+    "SYSTEM_COMBINED_EXTRACT": _slot(
+        "SYSTEM_COMBINED_EXTRACT", "有界资料数值提取", SYSTEM_COMBINED_EXTRACT
+    ),
+    "SYSTEM_UNDERSTAND": _slot("SYSTEM_UNDERSTAND", "意图理解", SYSTEM_UNDERSTAND),
+    "SYSTEM_PLAN": _slot("SYSTEM_PLAN", "任务规划", SYSTEM_PLAN),
+    "SYSTEM_PLAN_LEGACY": _slot("SYSTEM_PLAN_LEGACY", "任务规划（旧）", SYSTEM_PLAN_LEGACY),
+    "SYSTEM_ACT": _slot("SYSTEM_ACT", "行动草稿", SYSTEM_ACT),
+    "SYSTEM_REFLECT": _slot("SYSTEM_REFLECT", "批判审查", SYSTEM_REFLECT),
+    "SYSTEM_RESPOND": _slot("SYSTEM_RESPOND", "最终应答", SYSTEM_RESPOND),
+    "SYSTEM_PREFLOW": _slot("SYSTEM_PREFLOW", "意图分流", SYSTEM_PREFLOW),
+    "SYSTEM_QUALITY_GATE": _slot("SYSTEM_QUALITY_GATE", "质量门", SYSTEM_QUALITY_GATE),
+    "SYSTEM_QUALITY_CRITIQUE": _slot(
+        "SYSTEM_QUALITY_CRITIQUE", "质量批评", SYSTEM_QUALITY_CRITIQUE
+    ),
+}
+
+
+def prompt_source_fingerprint(slot_key: str, body: str) -> str:
+    """Stable content identity for a slot body (no secrets)."""
+    payload = f"{slot_key}\n{body}".encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def list_prompt_slots() -> list[PromptSlotInfo]:
+    return [PROMPT_SLOT_CATALOG[key] for key in sorted(PROMPT_SLOT_CATALOG)]
+
+
+def get_prompt_slot(slot_key: str) -> PromptSlotInfo | None:
+    return PROMPT_SLOT_CATALOG.get(slot_key)
 

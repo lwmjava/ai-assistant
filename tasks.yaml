@@ -12801,7 +12801,7 @@ tasks:
 
   - id: "PROMPT-002"
     title: "Prompt 变体比较、人工发布与回滚"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     module: "Prompt"
     target_version: "1.0"
@@ -12830,6 +12830,7 @@ tasks:
       delivery_stage: "V1-3"
       estimate_person_days: [4, 7]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、付费比较或发布生产Prompt。", implementation_plan: "开工前锁定比较指标、样本独立性、发布角色、缓存失效和回滚。"}
+      progress: "2026-11-10验收第1轮通过（验收手）。候选SHA e5637a19ddc0b30c02fd938a58fb5b93ac5cd1b9，分支codex/prompt-variant-compare（含前置0a2be74）。命令：python -m pytest tests/test_prompt_variant_compare.py → 5 passed exit0；ruff check（prompt_variants/models/schemas/routes/prompts/agents/prompts/evaluation/test/alembic fe40bc23d5e6）→ exit0；npm --prefix frontend run typecheck → exit0。核对：仅provider=fake且max_external_calls=0；paid/live拒绝；auto_publish_blocked=true、比较不自动发布；发布/回滚需system_admin+expected_revision（403/409覆盖）；缺测进missing_metrics不记0；claims_real_model_quality=false、billing_mode=fake_unmetered；范围未越界；分支无上游跟踪/未push；未用mock冒充真实外发/付费。卡面无evaluation.commands，按docs/plans/implementation_prompt_variant_compare.md与eval YAML实跑。全量pytest/mypy及同SHA Linux CI未跑（未授权push）；不代表合并或生产发布。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "SKILL-005"
@@ -13015,7 +13016,7 @@ tasks:
 
   - id: "EVAL-006"
     title: "授权文档辅助生成评测题与人工入集"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     module: "Evaluation"
     target_version: "1.0"
@@ -13044,6 +13045,7 @@ tasks:
       delivery_stage: "V1-3"
       estimate_person_days: [3, 6]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实现、文档外发或付费模型调用。", implementation_plan: "开工前锁定授权数据、模型、调用上限、费用、脱敏和人工审核流程。"}
+      progress: "2026-11-10验收第1轮通过（验收手）。候选SHA 8f8c17fa831147398bbdf400991bded943456ead，分支codex/eval-doc-questions。命令：python -m pytest tests/test_evaluation_doc_questions.py tests/test_evaluation_datasets.py → 10 passed exit0；ruff check app/services/evaluation_datasets.py app/schemas/evaluation.py app/api/routes/evaluation.py tests/test_evaluation_doc_questions.py → exit0；npm --prefix frontend run typecheck → exit0。核对：默认provider=fake、max_external_calls=0、data_egress_confirmed=false；live无egress/预算或未授权拒绝；无自动Gold；范围未越界；分支无上游跟踪/未push；claims_real_*无声明且未用mock冒充真实外发/付费。卡面无evaluation.commands，按implementation_eval_006_doc_questions.md验证项实跑。全量pytest/mypy及同SHA Linux CI未跑（未授权push）；不代表合并或生产发布。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "RAG-045"

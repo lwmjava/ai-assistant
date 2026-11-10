@@ -1,0 +1,4720 @@
+{
+  "experiment": "effective-date-filter",
+  "variable": "effective_date_filter",
+  "run_at": "2026-11-10T15:15:36.959304+00:00",
+  "git_commit": "git ac6994f3309b0d04fe646759425cec5eee8c23a6",
+  "dataset_id": "rag-eval",
+  "dataset_version": "0.1.0",
+  "mode": "official",
+  "quality_evidence": true,
+  "holdout_used_for_decision": false,
+  "query_rewrite_enabled": false,
+  "production_enabled_default": false,
+  "effective_date_filter_production_default": false,
+  "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+  "embedding_model": "text-embedding-v3",
+  "embedding_dim": 1024,
+  "vector_store": "local",
+  "rag_backend": "native",
+  "chunk_strategy": "structured",
+  "chunk_size": 500,
+  "chunk_overlap": 64,
+  "rrf_k": 60,
+  "retrieval_depth_chunks": 10,
+  "indexed_documents": 13,
+  "indexed_chunks": 37,
+  "machine": {
+    "system": "Windows",
+    "release": "11",
+    "machine": "AMD64",
+    "python": "3.12.0",
+    "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "cpu_count": 12
+  },
+  "package_versions": {
+    "numpy": "2.1.3",
+    "sqlmodel": "0.0.22",
+    "pydantic": "2.10.4",
+    "httpx": "0.28.1",
+    "openai": "missing"
+  },
+  "command": "python evals/effective_date_filter/run.py --mode official",
+  "working_directory": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+  "decision": "improved",
+  "reason_code": "improved",
+  "reason": "打开生效日过滤后，按查询日召回了未来生效文档，触发切片 Recall@5 提升，且未破坏越权切片与 overall/调参集",
+  "failed_gates": [],
+  "slice_gains": [
+    "validation",
+    "effective_date"
+  ],
+  "slice_crossed_0_90": [
+    "validation",
+    "effective_date"
+  ],
+  "future_doc_recalled_by_query_date": true,
+  "rag031_expected_doc_hit": {
+    "control": false,
+    "treatment": true
+  },
+  "control_slices": {
+    "overall": 0.9714285714285714,
+    "tuning": 0.9642857142857143,
+    "validation": 0.8333333333333334,
+    "effective_date": 0.6666666666666666,
+    "holdout": 1.0,
+    "violations": 0
+  },
+  "treatment_slices": {
+    "overall": 1.0,
+    "tuning": 1.0,
+    "validation": 1.0,
+    "effective_date": 1.0,
+    "holdout": 1.0,
+    "violations": 0
+  },
+  "control": {
+    "run_config": {
+      "mode": "official",
+      "run_at": "2026-11-10T15:15:36.959304+00:00",
+      "git_commit": "git ac6994f3309b0d04fe646759425cec5eee8c23a6",
+      "dataset_id": "rag-eval",
+      "dataset_version": "0.1.0",
+      "corpus_version": "0.1.0",
+      "gold_status": "approved_v0.1",
+      "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+      "embedding_model": "text-embedding-v3",
+      "embedding_dim": 1024,
+      "vector_store": "local",
+      "rag_backend": "native",
+      "chunk_strategy": "structured",
+      "chunk_size": 500,
+      "chunk_overlap": 64,
+      "rrf_k": 60,
+      "retrieval_depth_chunks": 10,
+      "production_default_top_k": 5,
+      "indexed_documents": 13,
+      "indexed_chunks": 37,
+      "variable": "effective_date_filter",
+      "machine": {
+        "system": "Windows",
+        "release": "11",
+        "machine": "AMD64",
+        "python": "3.12.0",
+        "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+        "cpu_count": 12
+      },
+      "command": "python evals/effective_date_filter/run.py --mode official",
+      "working_directory": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant"
+    },
+    "overall": {
+      "cases": 44,
+      "scorable_cases": 35,
+      "not_scorable_cases": 9,
+      "recall": {
+        "@1": 0.7952380952380952,
+        "@5": 0.9714285714285714,
+        "@10": 0.9714285714285714
+      },
+      "mrr": 0.9285714285714286,
+      "ndcg@10": 0.9415795974502911,
+      "citation": {
+        "cases_with_evidence": 35,
+        "evidence_total": 49,
+        "evidence_hit": 45,
+        "quote_coverage": 0.9183673469387755
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 13,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 283.77889999865147,
+        "p95": 343.7949999988632,
+        "max": 415.44100000101025
+      }
+    },
+    "by_split": {
+      "development": {
+        "cases": 26,
+        "scorable_cases": 22,
+        "not_scorable_cases": 4,
+        "recall": {
+          "@1": 0.8106060606060606,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9545454545454546,
+        "ndcg@10": 0.9692889162358512,
+        "citation": {
+          "cases_with_evidence": 22,
+          "evidence_total": 33,
+          "evidence_hit": 32,
+          "quote_coverage": 0.9696969696969697
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 7,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 284.743599999274,
+          "p95": 343.7949999988632,
+          "max": 415.44100000101025
+        }
+      },
+      "holdout": {
+        "cases": 9,
+        "scorable_cases": 7,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.7857142857142857,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9472756790816368,
+        "citation": {
+          "cases_with_evidence": 7,
+          "evidence_total": 8,
+          "evidence_hit": 7,
+          "quote_coverage": 0.875
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 290.4204000005848,
+          "p95": 317.90000000000873,
+          "max": 317.90000000000873
+        }
+      },
+      "validation": {
+        "cases": 9,
+        "scorable_cases": 6,
+        "not_scorable_cases": 3,
+        "recall": {
+          "@1": 0.75,
+          "@5": 0.8333333333333334,
+          "@10": 0.8333333333333334
+        },
+        "mrr": 0.8333333333333334,
+        "ndcg@10": 0.8333333333333334,
+        "citation": {
+          "cases_with_evidence": 6,
+          "evidence_total": 8,
+          "evidence_hit": 6,
+          "quote_coverage": 0.75
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 277.70720000080473,
+          "p95": 385.2024000007077,
+          "max": 385.2024000007077
+        }
+      }
+    },
+    "by_category": {
+      "ambiguous": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 6,
+          "evidence_hit": 6,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 289.5581000011589,
+          "p95": 310.28970000079426,
+          "max": 310.28970000079426
+        }
+      },
+      "citation_mismatch": {
+        "cases": 2,
+        "scorable_cases": 2,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.25,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.75,
+        "ndcg@10": 0.8154648767857288,
+        "citation": {
+          "cases_with_evidence": 2,
+          "evidence_total": 4,
+          "evidence_hit": 4,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 266.2181999985478,
+          "p95": 301.4132000007521,
+          "max": 301.4132000007521
+        }
+      },
+      "conflict": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 6,
+          "evidence_hit": 6,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 306.0058000010031,
+          "p95": 343.36500000063097,
+          "max": 343.36500000063097
+        }
+      },
+      "cross_tenant": {
+        "cases": 3,
+        "scorable_cases": 0,
+        "not_scorable_cases": 3,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "mrr": null,
+        "ndcg@10": null,
+        "citation": {
+          "cases_with_evidence": 0,
+          "evidence_total": 0,
+          "evidence_hit": 0,
+          "quote_coverage": null
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 276.20090000164055,
+          "p95": 324.2752999994991,
+          "max": 324.2752999994991
+        }
+      },
+      "effective_date": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.6666666666666666,
+          "@5": 0.6666666666666666,
+          "@10": 0.6666666666666666
+        },
+        "mrr": 0.6666666666666666,
+        "ndcg@10": 0.6666666666666666,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 4,
+          "evidence_hit": 2,
+          "quote_coverage": 0.5
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 307.5296000006347,
+          "p95": 415.44100000101025,
+          "max": 415.44100000101025
+        }
+      },
+      "fact": {
+        "cases": 12,
+        "scorable_cases": 12,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 12,
+          "evidence_total": 12,
+          "evidence_hit": 12,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 284.743599999274,
+          "p95": 385.2024000007077,
+          "max": 385.2024000007077
+        }
+      },
+      "multi_hop": {
+        "cases": 4,
+        "scorable_cases": 4,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.75,
+        "ndcg@10": 0.8310890392971821,
+        "citation": {
+          "cases_with_evidence": 4,
+          "evidence_total": 7,
+          "evidence_hit": 7,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 262.071900000592,
+          "p95": 343.7949999988632,
+          "max": 343.7949999988632
+        }
+      },
+      "no_answer": {
+        "cases": 4,
+        "scorable_cases": 0,
+        "not_scorable_cases": 4,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "mrr": null,
+        "ndcg@10": null,
+        "citation": {
+          "cases_with_evidence": 0,
+          "evidence_total": 0,
+          "evidence_hit": 0,
+          "quote_coverage": null
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 1,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 281.7083999998431,
+          "p95": 297.3153999992064,
+          "max": 297.3153999992064
+        }
+      },
+      "private_resource": {
+        "cases": 3,
+        "scorable_cases": 1,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 1,
+          "evidence_total": 1,
+          "evidence_hit": 1,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 280.75539999917964,
+          "p95": 309.7168000003876,
+          "max": 309.7168000003876
+        }
+      },
+      "prompt_injection": {
+        "cases": 4,
+        "scorable_cases": 4,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.7083333333333334,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 4,
+          "evidence_total": 6,
+          "evidence_hit": 4,
+          "quote_coverage": 0.6666666666666666
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 268.98310000069614,
+          "p95": 317.90000000000873,
+          "max": 317.90000000000873
+        }
+      },
+      "stale_version": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 3,
+          "evidence_hit": 3,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 254.33460000022023,
+          "p95": 301.66190000090864,
+          "max": 301.66190000090864
+        }
+      }
+    },
+    "by_tier": {
+      "adversarial": {
+        "cases": 27,
+        "scorable_cases": 18,
+        "not_scorable_cases": 9,
+        "recall": {
+          "@1": 0.712962962962963,
+          "@5": 0.9444444444444444,
+          "@10": 0.9444444444444444
+        },
+        "mrr": 0.9166666666666666,
+        "ndcg@10": 0.923940541865081,
+        "citation": {
+          "cases_with_evidence": 18,
+          "evidence_total": 29,
+          "evidence_hit": 25,
+          "quote_coverage": 0.8620689655172413
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 10,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 289.5581000011589,
+          "p95": 343.36500000063097,
+          "max": 415.44100000101025
+        }
+      },
+      "silver": {
+        "cases": 17,
+        "scorable_cases": 17,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.8823529411764706,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9411764705882353,
+        "ndcg@10": 0.9602562445405134,
+        "citation": {
+          "cases_with_evidence": 17,
+          "evidence_total": 20,
+          "evidence_hit": 20,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 282.47900000133086,
+          "p95": 385.2024000007077,
+          "max": 385.2024000007077
+        }
+      }
+    },
+    "by_review_status": {
+      "gold": {
+        "cases": 21,
+        "scorable_cases": 16,
+        "not_scorable_cases": 5,
+        "recall": {
+          "@1": 0.7083333333333334,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.90625,
+        "ndcg@10": 0.9347053694225116,
+        "citation": {
+          "cases_with_evidence": 16,
+          "evidence_total": 24,
+          "evidence_hit": 23,
+          "quote_coverage": 0.9583333333333334
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 7,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 290.4204000005848,
+          "p95": 385.2024000007077,
+          "max": 415.44100000101025
+        }
+      },
+      "silver": {
+        "cases": 3,
+        "scorable_cases": 1,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 1,
+          "evidence_total": 1,
+          "evidence_hit": 0,
+          "quote_coverage": 0.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 297.3153999992064,
+          "p95": 317.90000000000873,
+          "max": 317.90000000000873
+        }
+      },
+      "unreviewed": {
+        "cases": 20,
+        "scorable_cases": 18,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.8888888888888888,
+          "@5": 0.9444444444444444,
+          "@10": 0.9444444444444444
+        },
+        "mrr": 0.9444444444444444,
+        "ndcg@10": 0.9444444444444444,
+        "citation": {
+          "cases_with_evidence": 18,
+          "evidence_total": 24,
+          "evidence_hit": 22,
+          "quote_coverage": 0.9166666666666666
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 6,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 277.70720000080473,
+          "p95": 310.28970000079426,
+          "max": 325.42389999980514
+        }
+      }
+    },
+    "decision_inputs": {
+      "splits": [
+        "development",
+        "validation"
+      ],
+      "summary": {
+        "cases": 35,
+        "scorable_cases": 28,
+        "not_scorable_cases": 7,
+        "recall": {
+          "@1": 0.7976190476190476,
+          "@5": 0.9642857142857143,
+          "@10": 0.9642857142857143
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9401555770424546,
+        "citation": {
+          "cases_with_evidence": 28,
+          "evidence_total": 41,
+          "evidence_hit": 38,
+          "quote_coverage": 0.926829268292683
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 10,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 283.77889999865147,
+          "p95": 385.2024000007077,
+          "max": 415.44100000101025
+        }
+      },
+      "holdout_summary": {
+        "cases": 9,
+        "scorable_cases": 7,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.7857142857142857,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9472756790816368,
+        "citation": {
+          "cases_with_evidence": 7,
+          "evidence_total": 8,
+          "evidence_hit": 7,
+          "quote_coverage": 0.875
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 290.4204000005848,
+          "p95": 317.90000000000873,
+          "max": 317.90000000000873
+        }
+      },
+      "holdout_used_for_decision": false
+    },
+    "failing_cases": [
+      {
+        "case_id": "rag-031",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "effective_date",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-future"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 0.0,
+          "@10": 0.0
+        },
+        "reciprocal_rank": 0.0,
+        "ndcg@10": 0.0,
+        "evidence_total": 2,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 300.58,
+        "failures": [
+          "EXPECTED_DOC_MISSED",
+          "EVIDENCE_QUOTE_MISSED:0/2"
+        ]
+      },
+      {
+        "case_id": "rag-040",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer",
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-hours-current",
+          "doc-warranty-current",
+          "doc-hr-handbook"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.3333333333333333,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 3,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 265.4,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:2/3"
+        ]
+      },
+      {
+        "case_id": "rag-041",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-faq-current",
+          "doc-hr-handbook",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 317.9,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:0/1"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "case_id": "rag-001",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-future",
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 336.5,
+        "failures": []
+      },
+      {
+        "case_id": "rag-002",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-refund-current",
+          "doc-warranty-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 325.42,
+        "failures": []
+      },
+      {
+        "case_id": "rag-003",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-warranty-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 259.48,
+        "failures": []
+      },
+      {
+        "case_id": "rag-004",
+        "split": "validation",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-faq-current",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 270.42,
+        "failures": []
+      },
+      {
+        "case_id": "rag-005",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 284.74,
+        "failures": []
+      },
+      {
+        "case_id": "rag-006",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-hours-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hours-current",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 270.18,
+        "failures": []
+      },
+      {
+        "case_id": "rag-007",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-faq-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-faq-current",
+          "doc-escalation-current",
+          "doc-injection-printer",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-warranty-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 303.66,
+        "failures": []
+      },
+      {
+        "case_id": "rag-008",
+        "split": "validation",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-warranty-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-warranty-current",
+          "doc-injection-printer",
+          "doc-sla-customer",
+          "doc-hours-current",
+          "doc-hr-handbook",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 385.2,
+        "failures": []
+      },
+      {
+        "case_id": "rag-009",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 263.22,
+        "failures": []
+      },
+      {
+        "case_id": "rag-010",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-sla-ops",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 268.37,
+        "failures": []
+      },
+      {
+        "case_id": "rag-011",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-faq-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 296.46,
+        "failures": []
+      },
+      {
+        "case_id": "rag-012",
+        "split": "holdout",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-hours-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hours-current",
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 290.42,
+        "failures": []
+      },
+      {
+        "case_id": "rag-013",
+        "split": "development",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 262.07,
+        "failures": []
+      },
+      {
+        "case_id": "rag-014",
+        "split": "development",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 282.48,
+        "failures": []
+      },
+      {
+        "case_id": "rag-015",
+        "split": "development",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-warranty-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 0.5,
+        "ndcg@10": 0.6934264036172708,
+        "evidence_total": 3,
+        "evidence_hit": 3,
+        "forbidden_hits": [],
+        "latency_ms": 343.79,
+        "failures": []
+      },
+      {
+        "case_id": "rag-016",
+        "split": "holdout",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-sla-customer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-warranty-current",
+          "doc-sla-customer",
+          "doc-injection-printer",
+          "doc-hr-handbook",
+          "doc-refund-current",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 0.5,
+        "ndcg@10": 0.6309297535714575,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 249.29,
+        "failures": []
+      },
+      {
+        "case_id": "rag-017",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-hours-current",
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 269.56,
+        "failures": []
+      },
+      {
+        "case_id": "rag-018",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-hours-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 281.71,
+        "failures": []
+      },
+      {
+        "case_id": "rag-019",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-ops",
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 283.78,
+        "failures": []
+      },
+      {
+        "case_id": "rag-020",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-sla-ops",
+          "doc-billing-current",
+          "doc-hr-handbook",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 297.32,
+        "failures": []
+      },
+      {
+        "case_id": "rag-021",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "conflict",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-escalation-current",
+          "doc-billing-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 343.37,
+        "failures": []
+      },
+      {
+        "case_id": "rag-022",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "conflict",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-escalation-current",
+          "doc-warranty-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 259.22,
+        "failures": []
+      },
+      {
+        "case_id": "rag-023",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "conflict",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-hours-current",
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-warranty-current",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 306.01,
+        "failures": []
+      },
+      {
+        "case_id": "rag-024",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "ambiguous",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 289.56,
+        "failures": []
+      },
+      {
+        "case_id": "rag-025",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "ambiguous",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 274.66,
+        "failures": []
+      },
+      {
+        "case_id": "rag-026",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "ambiguous",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 310.29,
+        "failures": []
+      },
+      {
+        "case_id": "rag-027",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "stale_version",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 254.33,
+        "failures": []
+      },
+      {
+        "case_id": "rag-028",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "stale_version",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-sla-customer",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 301.66,
+        "failures": []
+      },
+      {
+        "case_id": "rag-029",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "stale_version",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 250.32,
+        "failures": []
+      },
+      {
+        "case_id": "rag-030",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "effective_date",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-future"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 415.44,
+        "failures": []
+      },
+      {
+        "case_id": "rag-031",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "effective_date",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-future"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 0.0,
+          "@10": 0.0
+        },
+        "reciprocal_rank": 0.0,
+        "ndcg@10": 0.0,
+        "evidence_total": 2,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 300.58,
+        "failures": [
+          "EXPECTED_DOC_MISSED",
+          "EVIDENCE_QUOTE_MISSED:0/2"
+        ]
+      },
+      {
+        "case_id": "rag-032",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "effective_date",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-future",
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-warranty-current",
+          "doc-sla-customer",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 307.53,
+        "failures": []
+      },
+      {
+        "case_id": "rag-033",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "cross_tenant",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-faq-current",
+          "doc-warranty-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 324.28,
+        "failures": []
+      },
+      {
+        "case_id": "rag-034",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "cross_tenant",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 256.98,
+        "failures": []
+      },
+      {
+        "case_id": "rag-035",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "cross_tenant",
+        "review_status": "gold",
+        "tenant_id": "tenant-b",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-billing-current",
+          "doc-billing-future",
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_chunk_count": 2,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 276.2,
+        "failures": []
+      },
+      {
+        "case_id": "rag-036",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "private_resource",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hr-handbook",
+          "doc-injection-printer",
+          "doc-sla-ops",
+          "doc-warranty-current",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 309.72,
+        "failures": []
+      },
+      {
+        "case_id": "rag-037",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "private_resource",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hr-handbook",
+          "doc-sla-customer",
+          "doc-escalation-current",
+          "doc-sla-ops",
+          "doc-billing-current",
+          "doc-hours-current",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 277.71,
+        "failures": []
+      },
+      {
+        "case_id": "rag-038",
+        "split": "holdout",
+        "tier": "silver",
+        "category": "private_resource",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-hr-handbook"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hr-handbook",
+          "doc-injection-printer",
+          "doc-warranty-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 280.76,
+        "failures": []
+      },
+      {
+        "case_id": "rag-039",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-warranty-current",
+          "doc-billing-current",
+          "doc-hr-handbook",
+          "doc-hours-current",
+          "doc-sla-customer",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 290.48,
+        "failures": []
+      },
+      {
+        "case_id": "rag-040",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer",
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-hours-current",
+          "doc-warranty-current",
+          "doc-hr-handbook"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.3333333333333333,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 3,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 265.4,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:2/3"
+        ]
+      },
+      {
+        "case_id": "rag-041",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-faq-current",
+          "doc-hr-handbook",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 317.9,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:0/1"
+        ]
+      },
+      {
+        "case_id": "rag-042",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-warranty-current",
+          "doc-hr-handbook",
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 268.98,
+        "failures": []
+      },
+      {
+        "case_id": "rag-043",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "citation_mismatch",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 0.5,
+        "ndcg@10": 0.6309297535714575,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 301.41,
+        "failures": []
+      },
+      {
+        "case_id": "rag-044",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "citation_mismatch",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-warranty-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-warranty-current",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 266.22,
+        "failures": []
+      }
+    ]
+  },
+  "treatment": {
+    "run_config": {
+      "mode": "official",
+      "run_at": "2026-11-10T15:15:36.959304+00:00",
+      "git_commit": "git ac6994f3309b0d04fe646759425cec5eee8c23a6",
+      "dataset_id": "rag-eval",
+      "dataset_version": "0.1.0",
+      "corpus_version": "0.1.0",
+      "gold_status": "approved_v0.1",
+      "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+      "embedding_model": "text-embedding-v3",
+      "embedding_dim": 1024,
+      "vector_store": "local",
+      "rag_backend": "native",
+      "chunk_strategy": "structured",
+      "chunk_size": 500,
+      "chunk_overlap": 64,
+      "rrf_k": 60,
+      "retrieval_depth_chunks": 10,
+      "production_default_top_k": 5,
+      "indexed_documents": 13,
+      "indexed_chunks": 37,
+      "variable": "effective_date_filter",
+      "machine": {
+        "system": "Windows",
+        "release": "11",
+        "machine": "AMD64",
+        "python": "3.12.0",
+        "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+        "cpu_count": 12
+      },
+      "command": "python evals/effective_date_filter/run.py --mode official",
+      "working_directory": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant"
+    },
+    "overall": {
+      "cases": 44,
+      "scorable_cases": 35,
+      "not_scorable_cases": 9,
+      "recall": {
+        "@1": 0.8238095238095238,
+        "@5": 1.0,
+        "@10": 1.0
+      },
+      "mrr": 0.9571428571428572,
+      "ndcg@10": 0.9701510260217197,
+      "citation": {
+        "cases_with_evidence": 35,
+        "evidence_total": 49,
+        "evidence_hit": 47,
+        "quote_coverage": 0.9591836734693877
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 13,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": 0.0
+      },
+      "latency_ms": {
+        "p50": 21.757799999249983,
+        "p95": 24.808000000120956,
+        "max": 29.152799999792478
+      }
+    },
+    "by_split": {
+      "development": {
+        "cases": 26,
+        "scorable_cases": 22,
+        "not_scorable_cases": 4,
+        "recall": {
+          "@1": 0.8106060606060606,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9545454545454546,
+        "ndcg@10": 0.9692889162358512,
+        "citation": {
+          "cases_with_evidence": 22,
+          "evidence_total": 33,
+          "evidence_hit": 32,
+          "quote_coverage": 0.9696969696969697
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 7,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.950199999992037,
+          "p95": 24.808000000120956,
+          "max": 27.783900000940775
+        }
+      },
+      "holdout": {
+        "cases": 9,
+        "scorable_cases": 7,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.7857142857142857,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9472756790816368,
+        "citation": {
+          "cases_with_evidence": 7,
+          "evidence_total": 8,
+          "evidence_hit": 7,
+          "quote_coverage": 0.875
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.510099999431986,
+          "p95": 22.24500000011176,
+          "max": 22.24500000011176
+        }
+      },
+      "validation": {
+        "cases": 9,
+        "scorable_cases": 6,
+        "not_scorable_cases": 3,
+        "recall": {
+          "@1": 0.9166666666666666,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 6,
+          "evidence_total": 8,
+          "evidence_hit": 8,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.91570000104548,
+          "p95": 29.152799999792478,
+          "max": 29.152799999792478
+        }
+      }
+    },
+    "by_category": {
+      "ambiguous": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 6,
+          "evidence_hit": 6,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 21.663199999238714,
+          "p95": 22.35130000008212,
+          "max": 22.35130000008212
+        }
+      },
+      "citation_mismatch": {
+        "cases": 2,
+        "scorable_cases": 2,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.25,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.75,
+        "ndcg@10": 0.8154648767857288,
+        "citation": {
+          "cases_with_evidence": 2,
+          "evidence_total": 4,
+          "evidence_hit": 4,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 21.555600000283448,
+          "p95": 21.70710000063991,
+          "max": 21.70710000063991
+        }
+      },
+      "conflict": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 6,
+          "evidence_hit": 6,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 22.160799999255687,
+          "p95": 22.488399999929243,
+          "max": 22.488399999929243
+        }
+      },
+      "cross_tenant": {
+        "cases": 3,
+        "scorable_cases": 0,
+        "not_scorable_cases": 3,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "mrr": null,
+        "ndcg@10": null,
+        "citation": {
+          "cases_with_evidence": 0,
+          "evidence_total": 0,
+          "evidence_hit": 0,
+          "quote_coverage": null
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.301599999787868,
+          "p95": 22.26180000070599,
+          "max": 22.26180000070599
+        }
+      },
+      "effective_date": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 4,
+          "evidence_hit": 4,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.546399999351706,
+          "p95": 22.64139999897452,
+          "max": 22.64139999897452
+        }
+      },
+      "fact": {
+        "cases": 12,
+        "scorable_cases": 12,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 12,
+          "evidence_total": 12,
+          "evidence_hit": 12,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 22.297100000287173,
+          "p95": 29.152799999792478,
+          "max": 29.152799999792478
+        }
+      },
+      "multi_hop": {
+        "cases": 4,
+        "scorable_cases": 4,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.75,
+        "ndcg@10": 0.8310890392971821,
+        "citation": {
+          "cases_with_evidence": 4,
+          "evidence_total": 7,
+          "evidence_hit": 7,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 21.52609999939159,
+          "p95": 22.311799999442883,
+          "max": 22.311799999442883
+        }
+      },
+      "no_answer": {
+        "cases": 4,
+        "scorable_cases": 0,
+        "not_scorable_cases": 4,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "mrr": null,
+        "ndcg@10": null,
+        "citation": {
+          "cases_with_evidence": 0,
+          "evidence_total": 0,
+          "evidence_hit": 0,
+          "quote_coverage": null
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 1,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 22.096200000305544,
+          "p95": 22.95570000023872,
+          "max": 22.95570000023872
+        }
+      },
+      "private_resource": {
+        "cases": 3,
+        "scorable_cases": 1,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 1,
+          "evidence_total": 1,
+          "evidence_hit": 1,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 21.70010000008915,
+          "p95": 22.24500000011176,
+          "max": 22.24500000011176
+        }
+      },
+      "prompt_injection": {
+        "cases": 4,
+        "scorable_cases": 4,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.7083333333333334,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 4,
+          "evidence_total": 6,
+          "evidence_hit": 4,
+          "quote_coverage": 0.6666666666666666
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 21.19440000024042,
+          "p95": 22.22299999993993,
+          "max": 22.22299999993993
+        }
+      },
+      "stale_version": {
+        "cases": 3,
+        "scorable_cases": 3,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 3,
+          "evidence_total": 3,
+          "evidence_hit": 3,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.435000000565196,
+          "p95": 21.560999999564956,
+          "max": 21.560999999564956
+        }
+      }
+    },
+    "by_tier": {
+      "adversarial": {
+        "cases": 27,
+        "scorable_cases": 18,
+        "not_scorable_cases": 9,
+        "recall": {
+          "@1": 0.7685185185185186,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9722222222222222,
+        "ndcg@10": 0.9794960974206366,
+        "citation": {
+          "cases_with_evidence": 18,
+          "evidence_total": 29,
+          "evidence_hit": 27,
+          "quote_coverage": 0.9310344827586207
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 10,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.560999999564956,
+          "p95": 22.64139999897452,
+          "max": 22.95570000023872
+        }
+      },
+      "silver": {
+        "cases": 17,
+        "scorable_cases": 17,
+        "not_scorable_cases": 0,
+        "recall": {
+          "@1": 0.8823529411764706,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9411764705882353,
+        "ndcg@10": 0.9602562445405134,
+        "citation": {
+          "cases_with_evidence": 17,
+          "evidence_total": 20,
+          "evidence_hit": 20,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 22.267300000748946,
+          "p95": 29.152799999792478,
+          "max": 29.152799999792478
+        }
+      }
+    },
+    "by_review_status": {
+      "gold": {
+        "cases": 21,
+        "scorable_cases": 16,
+        "not_scorable_cases": 5,
+        "recall": {
+          "@1": 0.7083333333333334,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.90625,
+        "ndcg@10": 0.9347053694225116,
+        "citation": {
+          "cases_with_evidence": 16,
+          "evidence_total": 24,
+          "evidence_hit": 23,
+          "quote_coverage": 0.9583333333333334
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 7,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.555600000283448,
+          "p95": 27.783900000940775,
+          "max": 29.152799999792478
+        }
+      },
+      "silver": {
+        "cases": 3,
+        "scorable_cases": 1,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 1,
+          "evidence_total": 1,
+          "evidence_hit": 0,
+          "quote_coverage": 0.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 0,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": null
+        },
+        "latency_ms": {
+          "p50": 22.22299999993993,
+          "p95": 22.95570000023872,
+          "max": 22.95570000023872
+        }
+      },
+      "unreviewed": {
+        "cases": 20,
+        "scorable_cases": 18,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.9444444444444444,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 1.0,
+        "ndcg@10": 1.0,
+        "citation": {
+          "cases_with_evidence": 18,
+          "evidence_total": 24,
+          "evidence_hit": 24,
+          "quote_coverage": 1.0
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 6,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 22.10919999924954,
+          "p95": 22.875100001328974,
+          "max": 24.808000000120956
+        }
+      }
+    },
+    "decision_inputs": {
+      "splits": [
+        "development",
+        "validation"
+      ],
+      "summary": {
+        "cases": 35,
+        "scorable_cases": 28,
+        "not_scorable_cases": 7,
+        "recall": {
+          "@1": 0.8333333333333333,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9642857142857143,
+        "ndcg@10": 0.9758698627567403,
+        "citation": {
+          "cases_with_evidence": 28,
+          "evidence_total": 41,
+          "evidence_hit": 40,
+          "quote_coverage": 0.975609756097561
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 10,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.950199999992037,
+          "p95": 27.783900000940775,
+          "max": 29.152799999792478
+        }
+      },
+      "holdout_summary": {
+        "cases": 9,
+        "scorable_cases": 7,
+        "not_scorable_cases": 2,
+        "recall": {
+          "@1": 0.7857142857142857,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "mrr": 0.9285714285714286,
+        "ndcg@10": 0.9472756790816368,
+        "citation": {
+          "cases_with_evidence": 7,
+          "evidence_total": 8,
+          "evidence_hit": 7,
+          "quote_coverage": 0.875
+        },
+        "safety": {
+          "cases_with_forbidden_docs": 3,
+          "violation_cases": 0,
+          "violation_case_ids": [],
+          "violation_rate": 0.0
+        },
+        "latency_ms": {
+          "p50": 21.510099999431986,
+          "p95": 22.24500000011176,
+          "max": 22.24500000011176
+        }
+      },
+      "holdout_used_for_decision": false
+    },
+    "failing_cases": [
+      {
+        "case_id": "rag-040",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer",
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-hours-current",
+          "doc-warranty-current",
+          "doc-hr-handbook"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.3333333333333333,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 3,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 21.19,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:2/3"
+        ]
+      },
+      {
+        "case_id": "rag-041",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-faq-current",
+          "doc-hr-handbook",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 22.22,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:0/1"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "case_id": "rag-001",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-future",
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 27.78,
+        "failures": []
+      },
+      {
+        "case_id": "rag-002",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-refund-current",
+          "doc-warranty-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 22.3,
+        "failures": []
+      },
+      {
+        "case_id": "rag-003",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-warranty-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 22.88,
+        "failures": []
+      },
+      {
+        "case_id": "rag-004",
+        "split": "validation",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-faq-current",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 29.15,
+        "failures": []
+      },
+      {
+        "case_id": "rag-005",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 24.65,
+        "failures": []
+      },
+      {
+        "case_id": "rag-006",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-hours-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hours-current",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 22.34,
+        "failures": []
+      },
+      {
+        "case_id": "rag-007",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-faq-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-faq-current",
+          "doc-escalation-current",
+          "doc-injection-printer",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-warranty-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.95,
+        "failures": []
+      },
+      {
+        "case_id": "rag-008",
+        "split": "validation",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-warranty-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-warranty-current",
+          "doc-injection-printer",
+          "doc-sla-customer",
+          "doc-hours-current",
+          "doc-hr-handbook",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.92,
+        "failures": []
+      },
+      {
+        "case_id": "rag-009",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 22.11,
+        "failures": []
+      },
+      {
+        "case_id": "rag-010",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-sla-ops",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 24.81,
+        "failures": []
+      },
+      {
+        "case_id": "rag-011",
+        "split": "development",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-faq-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.72,
+        "failures": []
+      },
+      {
+        "case_id": "rag-012",
+        "split": "holdout",
+        "tier": "silver",
+        "category": "fact",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-hours-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hours-current",
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.5,
+        "failures": []
+      },
+      {
+        "case_id": "rag-013",
+        "split": "development",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 22.31,
+        "failures": []
+      },
+      {
+        "case_id": "rag-014",
+        "split": "development",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 22.27,
+        "failures": []
+      },
+      {
+        "case_id": "rag-015",
+        "split": "development",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-warranty-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 0.5,
+        "ndcg@10": 0.6934264036172708,
+        "evidence_total": 3,
+        "evidence_hit": 3,
+        "forbidden_hits": [],
+        "latency_ms": 21.53,
+        "failures": []
+      },
+      {
+        "case_id": "rag-016",
+        "split": "holdout",
+        "tier": "silver",
+        "category": "multi_hop",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-sla-customer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-warranty-current",
+          "doc-sla-customer",
+          "doc-injection-printer",
+          "doc-hr-handbook",
+          "doc-refund-current",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 0.5,
+        "ndcg@10": 0.6309297535714575,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.36,
+        "failures": []
+      },
+      {
+        "case_id": "rag-017",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-hours-current",
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 22.22,
+        "failures": []
+      },
+      {
+        "case_id": "rag-018",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-hours-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 21.39,
+        "failures": []
+      },
+      {
+        "case_id": "rag-019",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-ops",
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-refund-current",
+          "doc-escalation-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 22.96,
+        "failures": []
+      },
+      {
+        "case_id": "rag-020",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "no_answer",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-sla-ops",
+          "doc-billing-current",
+          "doc-hr-handbook",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 22.1,
+        "failures": []
+      },
+      {
+        "case_id": "rag-021",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "conflict",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-escalation-current",
+          "doc-billing-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 21.76,
+        "failures": []
+      },
+      {
+        "case_id": "rag-022",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "conflict",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-escalation-current",
+          "doc-warranty-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 22.16,
+        "failures": []
+      },
+      {
+        "case_id": "rag-023",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "conflict",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-hours-current",
+          "doc-refund-current",
+          "doc-billing-current",
+          "doc-warranty-current",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 22.49,
+        "failures": []
+      },
+      {
+        "case_id": "rag-024",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "ambiguous",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-customer",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 21.66,
+        "failures": []
+      },
+      {
+        "case_id": "rag-025",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "ambiguous",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-billing-current",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 22.35,
+        "failures": []
+      },
+      {
+        "case_id": "rag-026",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "ambiguous",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-injection-printer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 21.51,
+        "failures": []
+      },
+      {
+        "case_id": "rag-027",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "stale_version",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-escalation-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.44,
+        "failures": []
+      },
+      {
+        "case_id": "rag-028",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "stale_version",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-sla-customer",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.56,
+        "failures": []
+      },
+      {
+        "case_id": "rag-029",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "stale_version",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.35,
+        "failures": []
+      },
+      {
+        "case_id": "rag-030",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "effective_date",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-future"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.0,
+        "failures": []
+      },
+      {
+        "case_id": "rag-031",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "effective_date",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-future"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-future",
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-sla-ops",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 22.64,
+        "failures": []
+      },
+      {
+        "case_id": "rag-032",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "effective_date",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-billing-current"
+        ],
+        "forbidden_document_ids": [
+          "doc-billing-future",
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-warranty-current",
+          "doc-sla-customer",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.55,
+        "failures": []
+      },
+      {
+        "case_id": "rag-033",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "cross_tenant",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-customer",
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-faq-current",
+          "doc-warranty-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 22.26,
+        "failures": []
+      },
+      {
+        "case_id": "rag-034",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "cross_tenant",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-sla-customer"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 21.3,
+        "failures": []
+      },
+      {
+        "case_id": "rag-035",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "cross_tenant",
+        "review_status": "gold",
+        "tenant_id": "tenant-b",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [
+          "doc-billing-current",
+          "doc-billing-future",
+          "doc-billing-stale"
+        ],
+        "retrieved_document_ids": [
+          "doc-tenant-b-billing"
+        ],
+        "retrieved_chunk_count": 2,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 2.8,
+        "failures": []
+      },
+      {
+        "case_id": "rag-036",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "private_resource",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hr-handbook",
+          "doc-injection-printer",
+          "doc-sla-ops",
+          "doc-warranty-current",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 21.37,
+        "failures": []
+      },
+      {
+        "case_id": "rag-037",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "private_resource",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hr-handbook",
+          "doc-sla-customer",
+          "doc-escalation-current",
+          "doc-sla-ops",
+          "doc-billing-current",
+          "doc-hours-current",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": null,
+          "@5": null,
+          "@10": null
+        },
+        "reciprocal_rank": null,
+        "ndcg@10": null,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 21.7,
+        "failures": []
+      },
+      {
+        "case_id": "rag-038",
+        "split": "holdout",
+        "tier": "silver",
+        "category": "private_resource",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-hr-handbook"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-hr-handbook",
+          "doc-injection-printer",
+          "doc-warranty-current",
+          "doc-sla-ops",
+          "doc-escalation-current",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 22.25,
+        "failures": []
+      },
+      {
+        "case_id": "rag-039",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-warranty-current",
+          "doc-billing-current",
+          "doc-hr-handbook",
+          "doc-hours-current",
+          "doc-sla-customer",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.54,
+        "failures": []
+      },
+      {
+        "case_id": "rag-040",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer",
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-refund-current",
+          "doc-hours-current",
+          "doc-warranty-current",
+          "doc-hr-handbook"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.3333333333333333,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 3,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 21.19,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:2/3"
+        ]
+      },
+      {
+        "case_id": "rag-041",
+        "split": "holdout",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "silver",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-escalation-current",
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-faq-current",
+          "doc-hr-handbook",
+          "doc-sla-ops",
+          "doc-sla-customer",
+          "doc-hours-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 0,
+        "forbidden_hits": [],
+        "latency_ms": 22.22,
+        "failures": [
+          "EVIDENCE_QUOTE_MISSED:0/1"
+        ]
+      },
+      {
+        "case_id": "rag-042",
+        "split": "validation",
+        "tier": "adversarial",
+        "category": "prompt_injection",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": true,
+        "expected_document_ids": [
+          "doc-injection-printer"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-injection-printer",
+          "doc-warranty-current",
+          "doc-hr-handbook",
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-faq-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 1.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 1,
+        "evidence_hit": 1,
+        "forbidden_hits": [],
+        "latency_ms": 21.13,
+        "failures": []
+      },
+      {
+        "case_id": "rag-043",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "citation_mismatch",
+        "review_status": "gold",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-refund-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-billing-current",
+          "doc-refund-current",
+          "doc-injection-printer",
+          "doc-escalation-current",
+          "doc-sla-ops"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.0,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 0.5,
+        "ndcg@10": 0.6309297535714575,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 21.56,
+        "failures": []
+      },
+      {
+        "case_id": "rag-044",
+        "split": "development",
+        "tier": "adversarial",
+        "category": "citation_mismatch",
+        "review_status": "unreviewed",
+        "tenant_id": "tenant-a",
+        "should_answer": false,
+        "expected_document_ids": [
+          "doc-sla-customer",
+          "doc-warranty-current"
+        ],
+        "forbidden_document_ids": [],
+        "retrieved_document_ids": [
+          "doc-sla-customer",
+          "doc-warranty-current",
+          "doc-sla-ops",
+          "doc-hours-current",
+          "doc-refund-current"
+        ],
+        "retrieved_chunk_count": 10,
+        "recall": {
+          "@1": 0.5,
+          "@5": 1.0,
+          "@10": 1.0
+        },
+        "reciprocal_rank": 1.0,
+        "ndcg@10": 1.0,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "forbidden_hits": [],
+        "latency_ms": 21.71,
+        "failures": []
+      }
+    ]
+  },
+  "control_failures": {
+    "by_reason": {
+      "EVIDENCE_QUOTE_MISSED": {
+        "count": 3,
+        "case_ids": [
+          "rag-031",
+          "rag-040",
+          "rag-041"
+        ]
+      },
+      "EXPECTED_DOC_MISSED": {
+        "count": 1,
+        "case_ids": [
+          "rag-031"
+        ]
+      }
+    },
+    "by_category": {
+      "effective_date": {
+        "count": 1,
+        "case_ids": [
+          "rag-031"
+        ]
+      },
+      "prompt_injection": {
+        "count": 2,
+        "case_ids": [
+          "rag-040",
+          "rag-041"
+        ]
+      }
+    },
+    "timeout_or_model_or_resource": []
+  },
+  "treatment_failures": {
+    "by_reason": {
+      "EVIDENCE_QUOTE_MISSED": {
+        "count": 2,
+        "case_ids": [
+          "rag-040",
+          "rag-041"
+        ]
+      }
+    },
+    "by_category": {
+      "prompt_injection": {
+        "count": 2,
+        "case_ids": [
+          "rag-040",
+          "rag-041"
+        ]
+      }
+    },
+    "timeout_or_model_or_resource": []
+  },
+  "embedding_usage": {
+    "unit_price_yuan_per_mtok": null,
+    "price_model": null,
+    "price_reference": null,
+    "token_estimate_method": "utf8_bytes_divided_by_4",
+    "estimated_tokens": 1165,
+    "estimated_cost_yuan": null,
+    "cost_is_estimate": true,
+    "call_count": 57,
+    "text_count": 81,
+    "char_count": 4660
+  },
+  "memory": {
+    "rss_before_index_bytes": 135553024,
+    "rss_after_index_bytes": 156475392,
+    "rss_after_run_bytes": 160116736
+  },
+  "recommendation": "Keep RAG_EFFECTIVE_DATE_FILTER disabled in production by default. This report is an official single-variable evaluation only, not an adoption or a query-rewrite result."
+}

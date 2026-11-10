@@ -634,6 +634,7 @@ async def _run_experiment(args: argparse.Namespace) -> int:
             raise SystemExit(f"正式对照只使用本地向量库，当前为 {settings.RAG_VECTOR_STORE!r}")
 
     db_path = Path(args.db)
+    print(f"[2/4] 重建评测索引 -> {db_path}（documents={conversion.document_count}）")
     memory_before_index = helpers.process_memory_bytes()
     if args.reuse_index:
         print(
@@ -651,6 +652,8 @@ async def _run_experiment(args: argparse.Namespace) -> int:
         store = get_vector_store(index.session)
         if not isinstance(store, LocalVectorStore):
             raise SystemExit("MultiHop 对照只使用本地向量库")
+        print(f"[3/4] 检索 {len(cases)} 条问题（深度 {RETRIEVAL_DEPTH}，k={RETRIEVAL_RRF_K}）")
+        outcomes = await run_cases(cases, index, provider)
         print(
             f"[3/4] 检索 {len(cases)} 条问题（深度 {RETRIEVAL_DEPTH}，k={RETRIEVAL_RRF_K}，"
             f"deadline={deadline_seconds:g}s，index_reused={bool(args.reuse_index)}）"

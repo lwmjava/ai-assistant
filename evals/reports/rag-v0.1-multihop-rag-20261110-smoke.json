@@ -1,0 +1,320 @@
+{
+  "experiment": "multihop-rag-retrieval-comparison",
+  "variable": "none-supplementary-corpus",
+  "run_at": "2026-11-10T15:54:59.952693+00:00",
+  "git_commit": "git 59205a71682b5bfc024fe03fc445e2fafaa447fd",
+  "dataset_id": "multihop-rag",
+  "dataset_version": "1.0.0-external",
+  "corpus_version": "1.0.0-external",
+  "gold_status": "external-benchmark-not-project-gold",
+  "attribution": {
+    "dataset_name": "MultiHop-RAG",
+    "authors": "Yixuan Tang and Yi Yang",
+    "paper": "MultiHop-RAG: Benchmarking Retrieval-Augmented Generation for Multi-Hop Queries",
+    "paper_url": "https://arxiv.org/abs/2401.15391",
+    "github": "https://github.com/yixuantt/MultiHop-RAG",
+    "huggingface": "https://huggingface.co/datasets/yixuantt/MultiHopRAG",
+    "license": "ODC-BY",
+    "license_url": "https://opendatacommons.org/licenses/by/1-0/"
+  },
+  "mode": "smoke",
+  "quality_evidence": false,
+  "supplementary_comparison": true,
+  "official_35_case_thresholds_unchanged": true,
+  "holdout_used_for_decision": false,
+  "query_rewrite_enabled": false,
+  "effective_date_filter_enabled": false,
+  "production_query_rewrite_default": false,
+  "production_effective_date_filter_default": false,
+  "embedding_provider": "MockEmbeddingProvider",
+  "embedding_model": "mock-embedding",
+  "embedding_dim": 64,
+  "vector_store": "local",
+  "rag_backend": "native",
+  "chunk_strategy": "structured",
+  "chunk_size": 500,
+  "chunk_overlap": 64,
+  "rrf_k": 60,
+  "retrieval_depth_chunks": 10,
+  "document_count": 3,
+  "question_count": 3,
+  "scorable_question_count": 2,
+  "null_query_count": 1,
+  "question_types": {
+    "comparison_query": 1,
+    "inference_query": 1,
+    "null_query": 1
+  },
+  "indexed_documents": 3,
+  "indexed_chunks": 3,
+  "machine": {
+    "system": "Windows",
+    "release": "11",
+    "machine": "AMD64",
+    "python": "3.12.0",
+    "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "cpu_count": 12
+  },
+  "package_versions": {
+    "numpy": "2.1.3",
+    "sqlmodel": "0.0.22",
+    "pydantic": "2.10.4",
+    "httpx": "0.28.1",
+    "openai": "missing"
+  },
+  "command": "python evals/multihop_rag/run.py --mode smoke",
+  "working_directory": "E:\\culture\\SmartCustomerServiceSystem\\ai-assistant",
+  "pre_run_estimate": {
+    "unit_price_yuan_per_mtok": null,
+    "price_model": null,
+    "price_reference": null,
+    "token_estimate_method": "utf8_bytes_divided_by_4",
+    "estimated_tokens": 345,
+    "estimated_cost_yuan": null,
+    "cost_is_estimate": true,
+    "text_count": 6,
+    "char_count": 1382,
+    "budget_check_yuan_per_mtok": 0.5,
+    "budget_check_price_source": "public DashScope text-embedding-v3 Beijing list price 0.5 yuan/MTok (budget gate only, not a bill)",
+    "budget_check_cost_yuan": 0.0001725,
+    "budget_yuan": 1.0,
+    "stop_yuan": 2.0
+  },
+  "embedding_usage": {
+    "unit_price_yuan_per_mtok": null,
+    "price_model": null,
+    "price_reference": null,
+    "token_estimate_method": "utf8_bytes_divided_by_4",
+    "estimated_tokens": 345,
+    "estimated_cost_yuan": null,
+    "cost_is_estimate": true,
+    "call_count": 6,
+    "text_count": 6,
+    "char_count": 1382
+  },
+  "memory": {
+    "rss_before_index_bytes": 136474624,
+    "rss_after_index_bytes": 145092608,
+    "rss_after_run_bytes": 145752064
+  },
+  "overall": {
+    "cases": 3,
+    "scorable_cases": 2,
+    "not_scorable_cases": 1,
+    "recall": {
+      "@1": 0.5,
+      "@5": 1.0,
+      "@10": 1.0
+    },
+    "mrr": 1.0,
+    "ndcg@10": 0.9598603945740938,
+    "citation": {
+      "cases_with_evidence": 2,
+      "evidence_total": 4,
+      "evidence_hit": 4,
+      "quote_coverage": 1.0
+    },
+    "safety": {
+      "cases_with_forbidden_docs": 0,
+      "violation_cases": 0,
+      "violation_case_ids": [],
+      "violation_rate": null
+    },
+    "latency_ms": {
+      "p50": 4.371600000013132,
+      "p95": 8.93030000042927,
+      "max": 8.93030000042927
+    }
+  },
+  "by_question_type": {
+    "comparison_query": {
+      "cases": 1,
+      "scorable_cases": 1,
+      "not_scorable_cases": 0,
+      "recall": {
+        "@1": 0.5,
+        "@5": 1.0,
+        "@10": 1.0
+      },
+      "mrr": 1.0,
+      "ndcg@10": 0.9197207891481876,
+      "citation": {
+        "cases_with_evidence": 1,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "quote_coverage": 1.0
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 0,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": null
+      },
+      "latency_ms": {
+        "p50": 4.371600000013132,
+        "p95": 4.371600000013132,
+        "max": 4.371600000013132
+      }
+    },
+    "inference_query": {
+      "cases": 1,
+      "scorable_cases": 1,
+      "not_scorable_cases": 0,
+      "recall": {
+        "@1": 0.5,
+        "@5": 1.0,
+        "@10": 1.0
+      },
+      "mrr": 1.0,
+      "ndcg@10": 1.0,
+      "citation": {
+        "cases_with_evidence": 1,
+        "evidence_total": 2,
+        "evidence_hit": 2,
+        "quote_coverage": 1.0
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 0,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": null
+      },
+      "latency_ms": {
+        "p50": 8.93030000042927,
+        "p95": 8.93030000042927,
+        "max": 8.93030000042927
+      }
+    },
+    "null_query": {
+      "cases": 1,
+      "scorable_cases": 0,
+      "not_scorable_cases": 1,
+      "recall": {
+        "@1": null,
+        "@5": null,
+        "@10": null
+      },
+      "mrr": null,
+      "ndcg@10": null,
+      "citation": {
+        "cases_with_evidence": 0,
+        "evidence_total": 0,
+        "evidence_hit": 0,
+        "quote_coverage": null
+      },
+      "safety": {
+        "cases_with_forbidden_docs": 0,
+        "violation_cases": 0,
+        "violation_case_ids": [],
+        "violation_rate": null
+      },
+      "latency_ms": {
+        "p50": 3.828699998848606,
+        "p95": 3.828699998848606,
+        "max": 3.828699998848606
+      }
+    }
+  },
+  "failing_cases": [],
+  "failure_slices": {
+    "by_reason": {},
+    "by_category": {},
+    "timeout_or_model_or_resource": []
+  },
+  "cases": [
+    {
+      "case_id": "multihop-0001",
+      "split": "comparison",
+      "tier": "external",
+      "category": "inference_query",
+      "review_status": "external-benchmark",
+      "tenant_id": "tenant-multihop",
+      "should_answer": true,
+      "expected_document_ids": [
+        "mh-0001",
+        "mh-0002"
+      ],
+      "forbidden_document_ids": [],
+      "retrieved_document_ids": [
+        "mh-0002",
+        "mh-0001",
+        "mh-0003"
+      ],
+      "retrieved_chunk_count": 3,
+      "recall": {
+        "@1": 0.5,
+        "@5": 1.0,
+        "@10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "ndcg@10": 1.0,
+      "evidence_total": 2,
+      "evidence_hit": 2,
+      "forbidden_hits": [],
+      "latency_ms": 8.93,
+      "failures": []
+    },
+    {
+      "case_id": "multihop-0002",
+      "split": "comparison",
+      "tier": "external",
+      "category": "comparison_query",
+      "review_status": "external-benchmark",
+      "tenant_id": "tenant-multihop",
+      "should_answer": true,
+      "expected_document_ids": [
+        "mh-0002",
+        "mh-0003"
+      ],
+      "forbidden_document_ids": [],
+      "retrieved_document_ids": [
+        "mh-0002",
+        "mh-0001",
+        "mh-0003"
+      ],
+      "retrieved_chunk_count": 3,
+      "recall": {
+        "@1": 0.5,
+        "@5": 1.0,
+        "@10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "ndcg@10": 0.9197207891481876,
+      "evidence_total": 2,
+      "evidence_hit": 2,
+      "forbidden_hits": [],
+      "latency_ms": 4.37,
+      "failures": []
+    },
+    {
+      "case_id": "multihop-0003",
+      "split": "comparison",
+      "tier": "external",
+      "category": "null_query",
+      "review_status": "external-benchmark",
+      "tenant_id": "tenant-multihop",
+      "should_answer": false,
+      "expected_document_ids": [],
+      "forbidden_document_ids": [],
+      "retrieved_document_ids": [
+        "mh-0001",
+        "mh-0002",
+        "mh-0003"
+      ],
+      "retrieved_chunk_count": 3,
+      "recall": {
+        "@1": null,
+        "@5": null,
+        "@10": null
+      },
+      "reciprocal_rank": null,
+      "ndcg@10": null,
+      "evidence_total": 0,
+      "evidence_hit": 0,
+      "forbidden_hits": [],
+      "latency_ms": 3.83,
+      "failures": []
+    }
+  ],
+  "recommendation": "Treat this report as a supplementary retrieval comparison only. Do not change official 35-case thresholds or enable query rewrite / effective-date filter from this result."
+}

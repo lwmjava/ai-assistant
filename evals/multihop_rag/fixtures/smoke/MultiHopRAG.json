@@ -1,0 +1,58 @@
+[
+  {
+    "query": "Which laboratory both opened a riverside archive, according to River Daily, and later signed a river research pact reported by Harbor Times?",
+    "answer": "Alpha Lab",
+    "question_type": "inference_query",
+    "evidence_list": [
+      {
+        "title": "Alpha lab opens a riverside archive",
+        "author": "Ada West",
+        "url": "https://example.com/multihop-smoke/alpha-archive",
+        "source": "River Daily",
+        "category": "science",
+        "published_at": "2023-10-02T09:00:00+00:00",
+        "fact": "Alpha Lab announced that its riverside archive opened on Monday."
+      },
+      {
+        "title": "Beta institute signs a river research pact",
+        "author": "Ben Oak",
+        "url": "https://example.com/multihop-smoke/beta-pact",
+        "source": "Harbor Times",
+        "category": "science",
+        "published_at": "2023-10-05T11:30:00+00:00",
+        "fact": "The Beta Institute signed a river research pact with Alpha Lab."
+      }
+    ]
+  },
+  {
+    "query": "Which news outlet published both the Beta Institute river research pact and the announcement that Gamma festival dates remain unchanged?",
+    "answer": "Harbor Times",
+    "question_type": "comparison_query",
+    "evidence_list": [
+      {
+        "title": "Beta institute signs a river research pact",
+        "author": "Ben Oak",
+        "url": "https://example.com/multihop-smoke/beta-pact",
+        "source": "Harbor Times",
+        "category": "science",
+        "published_at": "2023-10-05T11:30:00+00:00",
+        "fact": "The pact funds a shared sensor network along the same river."
+      },
+      {
+        "title": "Gamma festival dates remain unchanged",
+        "author": "Cara Lin",
+        "url": "https://example.com/multihop-smoke/gamma-festival",
+        "source": "Harbor Times",
+        "category": "entertainment",
+        "published_at": "2023-09-28T08:00:00+00:00",
+        "fact": "The Gamma festival will still begin on October 12, according to city organizers."
+      }
+    ]
+  },
+  {
+    "query": "Which single performer was named by River Daily as the official curator of both the riverside archive opening and the Gamma festival on October 12?",
+    "answer": "Insufficient information.",
+    "question_type": "null_query",
+    "evidence_list": []
+  }
+]

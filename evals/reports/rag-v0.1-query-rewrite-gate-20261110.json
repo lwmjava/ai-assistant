@@ -1,0 +1,171 @@
+{
+  "experiment": "query-rewrite-gate-review",
+  "variable": "entry_condition_recall@5",
+  "run_at": "2026-11-10T03:40:00+00:00",
+  "git_commit": "git 7a12329329b20f020227b3e49baa8dfa40ef7f84",
+  "mode": "review",
+  "quality_evidence": true,
+  "used_mock_embedding": false,
+  "new_official_run": false,
+  "new_embedding_calls": 0,
+  "implementation_written": false,
+  "production_enabled": false,
+  "holdout_used_for_decision": false,
+  "gate": {
+    "metric": "recall@5",
+    "threshold": 0.9,
+    "trigger": "below",
+    "primary_scope": "overall",
+    "also_checked_scope": "tuning_or_decision_inputs_summary",
+    "source_of_scope": [
+      "AGENTS.md section 14: Query Rewrite进入条件为Recall@5跌破0.90",
+      "tasks.yaml RAG-018 facts point to evals/reports/rag-v0.1-baseline-20260919.json overall.recall"
+    ]
+  },
+  "decision": "not_triggered",
+  "recommendation": "do_not_implement",
+  "reason": "真实 official overall 与调参集 Recall@5 均高于 0.90；本次不实施查询改写，范围处置交由用户决定。",
+  "dataset_id": "rag-eval",
+  "dataset_version": "0.1.0",
+  "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+  "embedding_model": "text-embedding-v3",
+  "embedding_dim": 1024,
+  "vector_store": "local",
+  "rag_backend": "native",
+  "chunk_strategy": "structured",
+  "chunk_size": 500,
+  "chunk_overlap": 64,
+  "rrf_k": 60,
+  "latest_real_official": {
+    "report": "evals/reports/rag-v0.1-semantic-rerank-20261110.json",
+    "role": "control_and_treatment_same_recall@5",
+    "run_at": "2026-11-10T02:47:05.718333+00:00",
+    "git_commit": "git 507d21f6e57b083dc34316a33ff52b81f448a640",
+    "quality_evidence": true,
+    "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+    "embedding_model": "text-embedding-v3",
+    "embedding_dim": 1024,
+    "embedding_metric": "cosine",
+    "embedding_normalization": "l2",
+    "embedding_index_version": "1",
+    "vector_store": "local",
+    "rag_backend": "native",
+    "chunk_strategy": "structured",
+    "chunk_size": 500,
+    "chunk_overlap": 64,
+    "rrf_k": 60,
+    "retrieval_depth_chunks": 10,
+    "indexed_documents": 13,
+    "indexed_chunks": 37,
+    "machine": {
+      "system": "Windows",
+      "release": "11",
+      "machine": "AMD64",
+      "python": "3.12.0",
+      "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+      "cpu_count": 12
+    },
+    "control": {
+      "overall_recall@5": 0.9714285714285714,
+      "tuning_recall@5": 0.9642857142857143,
+      "holdout_recall@5": 1.0
+    },
+    "treatment": {
+      "overall_recall@5": 0.9714285714285714,
+      "tuning_recall@5": 0.9642857142857143,
+      "holdout_recall@5": 1.0
+    }
+  },
+  "supporting_official_baselines": [
+    {
+      "report": "evals/reports/rag-v0.1-baseline-20260919.json",
+      "note": "frozen baseline; do not overwrite",
+      "run_at": "2026-09-19T02:59:43.335143+00:00",
+      "git_commit": "git f52fa70cf5ab6e4b699560ac1f1b9c69df7230b8",
+      "mode": "official",
+      "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+      "embedding_model": "text-embedding-v3",
+      "embedding_dim": 1024,
+      "overall_recall@5": 0.9714285714285714,
+      "by_split": {
+        "development": 1.0,
+        "validation": 0.8333333333333334,
+        "holdout": 1.0
+      }
+    },
+    {
+      "report": "evals/reports/rag-v0.1-baseline-20261004.json",
+      "run_at": "2026-10-04T18:11:59.539182+00:00",
+      "git_commit": "git ab72748019548418687f8ada19ad51a962289632",
+      "mode": "official",
+      "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+      "embedding_model": "text-embedding-v3",
+      "embedding_dim": 1024,
+      "overall_recall@5": 0.9619047619047618,
+      "decision_inputs_summary_recall@5": 0.9523809523809524,
+      "by_split": {
+        "development": 0.9848484848484849,
+        "validation": 0.8333333333333334,
+        "holdout": 1.0
+      }
+    },
+    {
+      "report": "evals/reports/rag-v0.1-baseline-20261010.json",
+      "run_at": "2026-10-10T15:00:16.369170+00:00",
+      "git_commit": "git 1319c305065cc24bd3d7a9c199e99d4c5f83b459",
+      "mode": "official",
+      "embedding_provider": "OpenAICompatibleEmbeddingProvider",
+      "embedding_model": "text-embedding-v3",
+      "embedding_dim": 1024,
+      "overall_recall@5": 0.9619047619047618,
+      "decision_inputs_summary_recall@5": 0.9523809523809524,
+      "by_split": {
+        "development": 0.9848484848484849,
+        "validation": 0.8333333333333334,
+        "holdout": 1.0
+      }
+    }
+  ],
+  "non_gating_slices_below_threshold": [
+    {
+      "scope": "by_split.validation",
+      "recall@5": 0.8333333333333334,
+      "cases": 9,
+      "scorable_cases": 6,
+      "seen_in": [
+        "evals/reports/rag-v0.1-baseline-20260919.json",
+        "evals/reports/rag-v0.1-baseline-20261004.json",
+        "evals/reports/rag-v0.1-baseline-20261010.json"
+      ],
+      "triggers_card": false,
+      "reason": "小样本验证切片，不是本卡既有事实使用的 overall 指标，也不等于 development+validation 汇总。"
+    },
+    {
+      "scope": "by_category.effective_date",
+      "recall@5": 0.6666666666666666,
+      "seen_in": [
+        "evals/reports/rag-v0.1-baseline-20260919.json",
+        "evals/reports/rag-v0.1-baseline-20261004.json",
+        "evals/reports/rag-v0.1-baseline-20261010.json"
+      ],
+      "triggers_card": false,
+      "reason": "类别切片，不是已声明的进入条件。"
+    }
+  ],
+  "excluded": [
+    {
+      "report": "evals/reports/rag-v0.1-semantic-rerank-20261110-smoke.json",
+      "reason": "MockEmbeddingProvider / mock-embedding / 64 维，quality_evidence=false，不能作为质量或进入条件证据。"
+    }
+  ],
+  "code_search": {
+    "pattern": "rewrite / query_rewrite in app/**/*.py",
+    "hits": 0
+  },
+  "user_decision_needed": true,
+  "suggested_options": [
+    "retain_as_conditional_do_not_implement",
+    "remove_or_defer_from_v1",
+    "change_gate_and_authorize_implementation"
+  ]
+}

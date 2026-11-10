@@ -32,7 +32,7 @@ async def test_index_covers_every_manifest_document(mock_index):
 
 
 async def test_non_current_versions_are_not_retrievable(mock_index):
-    """Flag 默认关闭时，manifest 非当前版本不得出现在检索结果中。"""
+    """当前查询不得召回 manifest 中的非当前版本（旧版与未到查询日的预告）。"""
     non_current = {
         entry["document_id"] for entry in load_corpus_manifest() if not entry["is_current"]
     }

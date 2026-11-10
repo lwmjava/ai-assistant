@@ -99,3 +99,7 @@
 - 不删除 `is_current`，不用独立 Reranker 猜测是否返回预告。
 - 查询日期解析失败时不打开 scheduled。
 - 资源级 ACL 仍为 Planned，与本 ADR 无关。
+
+## 后续变更
+
+2026-11-10：官方生效日过滤评估通过后，生产默认改为开启（`app/core/config.py`、`.env.example`）。查询改写生产默认仍关闭。官方 35 条门槛评测继续冻结为 `RAG_EFFECTIVE_DATE_FILTER=false`，不改 2026-09-19 基线对照。将开关设为 `false` 即可回滚为仅检索 `is_current`。

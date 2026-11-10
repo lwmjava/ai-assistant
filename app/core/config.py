@@ -359,8 +359,8 @@ class Settings(BaseSettings):
     # 注入管线时记忆 / RAG 各自的字符预算，防止一侧挤掉另一侧。
     RAG_MEMORY_CONTEXT_CHARS: int = 2000
     RAG_CONTEXT_CHARS: int = 6000
-    # ADR-0003：按生效日期过滤。默认关闭，行为与批准前一致。
-    RAG_EFFECTIVE_DATE_FILTER: bool = False
+    # ADR-0003：按生效日期过滤。生产默认开启，按查询日检索已生效版本与到期预告；官方 35 条门槛评测仍冻结为关闭。
+    RAG_EFFECTIVE_DATE_FILTER: bool = True
     # RAG 切分/检索策略后端：native（自研，默认）| langchain | llamaindex
     RAG_BACKEND: str = "native"
     # LangChain TextSplitter 类型（当前仅 recursive）

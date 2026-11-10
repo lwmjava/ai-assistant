@@ -68,7 +68,7 @@
 
 ### 生效日期开关与全量载入（RAG-010，只记录，不改代码）
 
-`RAG_EFFECTIVE_DATE_FILTER` 默认 `false`。关闭时 Local 的 SQL 用 `is_current` 收窄候选。打开后不再加该条件，按租户全量载入分块，再在 Python 里用 `visible_chunks_with_status` 逐文档过滤。
+`RAG_EFFECTIVE_DATE_FILTER` 生产默认 `true`（2026-11-10 起；官方 35 条门槛评测仍冻结为 `false`）。关闭时 Local 的 SQL 用 `is_current` 收窄候选。打开后不再加该条件，按租户全量载入分块，再在 Python 里用 `visible_chunks_with_status` 逐文档过滤。
 
 检索面和控制面不能共用一个 `is_current`。对话检索只命中本租户已发布的当前版本。管理列表要能按状态看到历史版、预告版和已替换版。在控制面能按状态查询、检索面仍只查已发布当前版之前，不得为了生效日期把检索改成全量载入。生产打开该 Flag 前须另立性能项。本记录不改 `local.py`，不下推日期谓词，不改 Milvus 查询实现，也不实现版本状态机。
 

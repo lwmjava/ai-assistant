@@ -46,3 +46,16 @@ Mock 或 smoke 结果只证明链路，不作为质量或进入条件证据。
 4. 若验收需要复跑 `python scripts/run_rag_baseline.py --mode official`，会再次产生真实 Embedding 费用；本复核未执行该命令。
 
 结构化摘录见 `evals/reports/rag-v0.1-query-rewrite-gate-20261110.json`。
+
+## 补充（2026-11-10）：进入条件改为切片门槛并授权实施
+
+用户决定改门槛并授权实施。新进入条件为「任一切片 Recall@5 跌破 0.90 即实施」，不再只看 overall 或调参集。
+
+已触发切片（门禁复核已核，不另跑官方基线）：
+
+- validation Recall@5 = 0.8333（6 可评分）
+- effective_date Recall@5 = 0.6667
+
+该规则落盘位置：`tasks.yaml` 中 RAG-018 的 title / facts / acceptance；本评测文档本节。`AGENTS.md` 第 14 节仍写旧的 overall 口径，因其不在本卡 allowed_paths，未改该文件。
+
+随后在同一分支落地确定性查询改写，并用 `python evals/query_rewrite/run.py --mode official` 做非 holdout 单变量对照。官方冻结配置下生效日过滤保持关闭，与改写不混成两个变量。

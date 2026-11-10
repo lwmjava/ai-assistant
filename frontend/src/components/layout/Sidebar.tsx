@@ -1,7 +1,7 @@
 /** 侧边栏导航：按当前角色权限过滤入口，移动端以抽屉形式呈现。 */
 
 import { NavLink } from 'react-router-dom'
-import {
+import { FileText,
   Activity,
   FlaskConical,
   ChartNoAxesCombined,

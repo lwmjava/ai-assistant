@@ -10,6 +10,7 @@ from sqlalchemy.engine import Connection
 from sqlmodel import Session
 
 from app.api.deps import audit_event, get_db, require_system_admin
+from app.api.routes.prompts import router as prompt_variants_router
 from app.audit import AuditAction
 from app.models.user import User
 from app.rag.service import RAGService
@@ -81,6 +82,7 @@ from app.services.evaluation_targets import (
 )
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
+router.include_router(prompt_variants_router)
 reader = require_system_admin
 writer = require_system_admin
 deleter = require_system_admin

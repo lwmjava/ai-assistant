@@ -12798,7 +12798,7 @@ tasks:
 
   - id: "PROMPT-002"
     title: "Prompt 变体比较、人工发布与回滚"
-    status: "backlog"
+    status: "in_progress"
     priority: "P1"
     module: "Prompt"
     target_version: "1.0"
@@ -12827,6 +12827,7 @@ tasks:
       delivery_stage: "V1-3"
       estimate_person_days: [4, 7]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权实施、付费比较或发布生产Prompt。", implementation_plan: "开工前锁定比较指标、样本独立性、发布角色、缓存失效和回滚。"}
+      progress: "2026-11-10 用户授权改仓实施。离线 fake 比较/人工发布回滚已落地；pytest tests/test_prompt_variant_compare.py 绿；未自标 done，待验收。"
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
 
   - id: "SKILL-005"

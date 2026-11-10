@@ -1,0 +1,16 @@
+schema_version: 1
+name: prompt-variant-compare-v1
+tier: smoke
+claims_real_model_quality: false
+provider: fake
+cases:
+  - id: bind-versions
+    description: Offline compare binds dataset, source, model, prompt and evaluation versions; missing metrics stay absent.
+  - id: unauthorized-publish
+    description: Non system_admin publish is rejected.
+  - id: concurrent-publish
+    description: Stale expected_revision publish conflicts with 409.
+  - id: rollback-restores
+    description: Rollback restores the explicit previous published variant.
+  - id: no-auto-publish
+    description: Compare winner is never auto-published.

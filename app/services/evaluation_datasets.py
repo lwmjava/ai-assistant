@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlmodel import Session, col, select
@@ -16,6 +18,7 @@ from app.models.evaluation import (
     EvaluationFeedbackCandidate,
 )
 from app.models.feedback import ChatFeedback, MessageRating
+from app.models.rag import Document, DocumentChunk, DocumentVersionState
 from app.models.user import User
 
 _VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -91,6 +94,69 @@ def _redact_holdout(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
             item["holdout_redacted"] = True
         out.append(item)
     return out
+
+
+
+DOC_QUESTION_SCHEMA = "doc-assisted-question-candidate-v1"
+DOC_QUESTION_PROMPT_VERSION = "doc-questions-v1"
+DOC_QUESTION_GENERATOR = "fake-local-v1"
+_CANDIDATE_STATUSES = frozenset({"pending", "edited", "accepted", "rejected"})
+_REDACT_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "[REDACTED_EMAIL]"),
+    (re.compile(r"(?<!\d)(?:1\d{10}|\d{3}[-.\s]?\d{4}[-.\s]?\d{4})(?!\d)"), "[REDACTED_PHONE]"),
+    (re.compile(r"(?i)\b(?:sk|pk|api)[_-][A-Za-z0-9_]{16,}\b"), "[REDACTED_SECRET]"),
+)
+
+
+def redact_doc_fragment(text: str) -> str:
+    """Strip common secrets/PII markers from fragments before persistence or egress."""
+    out = text
+    for pattern, replacement in _REDACT_RULES:
+        out = pattern.sub(replacement, out)
+    return out
+
+
+def fake_doc_question_cases(
+    *,
+    fragments: list[dict[str, Any]],
+    max_cases: int,
+    generation_config: dict[str, Any],
+) -> tuple[list[dict[str, Any]], int]:
+    """Deterministic local generator: never performs paid/network model calls."""
+    cases: list[dict[str, Any]] = []
+    for fragment in fragments:
+        if len(cases) >= max_cases:
+            break
+        evidence = redact_doc_fragment(str(fragment["evidence"]))
+        compact = " ".join(evidence.split())
+        if len(compact) < 12:
+            continue
+        case_id = f"docq-{fragment['chunk_id']}"
+        cases.append(
+            {
+                "case_id": case_id,
+                "split": "development",
+                "tier": "silver",
+                "query": f"根据授权资料，说明以下内容的要点：{compact[:100]}",
+                "expected_document_ids": [fragment["document_id"]],
+                "expected_evidence": compact[:240],
+                "expected_answer_points": [compact[:120]],
+                "candidate_status": "pending",
+                "unavailable_reason": None,
+                "provenance": {
+                    "source_document_id": fragment["document_id"],
+                    "source_version_number": fragment["version_number"],
+                    "source_content_hash": fragment["content_hash"],
+                    "source_chunk_id": fragment["chunk_id"],
+                    "fragment": compact[:240],
+                    "generator": DOC_QUESTION_GENERATOR,
+                    "prompt_version": DOC_QUESTION_PROMPT_VERSION,
+                    "generation_config": generation_config,
+                    "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+                },
+            }
+        )
+    return cases, 0
 
 
 class EvaluationDatasetService:
@@ -441,3 +507,405 @@ class EvaluationDatasetService:
         self.session.commit()
         self.session.refresh(row)
         return row
+
+    def _load_index(self, version: EvaluationDatasetVersion) -> dict[str, Any]:
+        if not version.index_json:
+            return {}
+        raw = json.loads(version.index_json)
+        return raw if isinstance(raw, dict) else {}
+
+    def _authorized_doc_fragments(
+        self,
+        user: User,
+        *,
+        document_ids: list[str],
+        max_cases: int,
+    ) -> list[dict[str, Any]]:
+        if not document_ids:
+            raise DatasetValidationError("document_ids required")
+        if len(document_ids) > 50:
+            raise DatasetValidationError("too many documents")
+        scope = self._tenant_scope(user, None)
+        fragments: list[dict[str, Any]] = []
+        for document_id in document_ids:
+            document = self.session.get(Document, document_id)
+            if (
+                document is None
+                or document.tenant_id != scope
+                or document.deleted_at is not None
+                or not document.is_current
+                or document.version_state != DocumentVersionState.PUBLISHED.value
+            ):
+                raise DatasetAccessError
+            chunks = list(
+                self.session.exec(
+                    select(DocumentChunk)
+                    .where(
+                        col(DocumentChunk.tenant_id) == scope,
+                        col(DocumentChunk.document_id) == document.id,
+                        col(DocumentChunk.parent_id).is_(None),
+                    )
+                    .order_by(col(DocumentChunk.chunk_index))
+                    .limit(max(1, max_cases))
+                ).all()
+            )
+            if not chunks:
+                raise DatasetValidationError(f"no_chunks:{document.id}")
+            for chunk in chunks:
+                evidence = " ".join(chunk.content.split())
+                if len(evidence) < 12:
+                    continue
+                fragments.append(
+                    {
+                        "document_id": document.id,
+                        "version_number": document.version_number,
+                        "content_hash": document.content_hash,
+                        "chunk_id": chunk.id,
+                        "evidence": evidence,
+                    }
+                )
+                if len(fragments) >= max_cases * 3:
+                    break
+            if len(fragments) >= max_cases * 3:
+                break
+        if not fragments:
+            raise DatasetValidationError("no_grounded_fragments")
+        return fragments
+
+    def _refresh_case_availability(
+        self, user: User, cases: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        scope = self._tenant_scope(user, None)
+        refreshed: list[dict[str, Any]] = []
+        for row in cases:
+            item = dict(row)
+            provenance = item.get("provenance")
+            if not isinstance(provenance, dict):
+                item["unavailable_reason"] = "source_invalid"
+                refreshed.append(item)
+                continue
+            document_id = provenance.get("source_document_id")
+            document = self.session.get(Document, document_id) if isinstance(document_id, str) else None
+            reason = None
+            if (
+                document is None
+                or document.tenant_id != scope
+                or document.deleted_at is not None
+            ):
+                reason = "source_revoked"
+            elif (
+                not document.is_current
+                or document.version_state != DocumentVersionState.PUBLISHED.value
+                or document.version_number != provenance.get("source_version_number")
+                or document.content_hash != provenance.get("source_content_hash")
+            ):
+                reason = "source_invalid"
+            item["unavailable_reason"] = reason
+            if reason and item.get("candidate_status") == "accepted":
+                # Accepted but source lost: keep audit status, block promote via availability.
+                pass
+            refreshed.append(item)
+        return refreshed
+
+    def generate_doc_questions(
+        self,
+        user: User,
+        dataset_id: str,
+        *,
+        document_ids: list[str],
+        idempotency_key: str,
+        max_cases: int = 20,
+        max_external_calls: int = 0,
+        data_egress_confirmed: bool = False,
+        provider: str = "fake",
+        generator: Callable[..., tuple[list[dict[str, Any]], int]] | None = None,
+    ) -> EvaluationDatasetVersion:
+        """Create a draft AI-generated candidate version bound to authorized documents."""
+        if not self._can_write(user):
+            raise DatasetAccessError
+        if not isinstance(idempotency_key, str) or not idempotency_key.strip() or len(idempotency_key) > 128:
+            raise DatasetValidationError("invalid idempotency_key")
+        if max_cases < 1 or max_cases > 100:
+            raise DatasetValidationError("invalid max_cases")
+        if max_external_calls < 0 or max_external_calls > 1000:
+            raise DatasetValidationError("invalid max_external_calls")
+        if provider not in {"fake", "live"}:
+            raise DatasetValidationError("invalid provider")
+        dataset = self.get_dataset(user, dataset_id)
+
+        # Idempotent replay for the same dataset + key.
+        existing_rows = list(
+            self.session.exec(
+                select(EvaluationDatasetVersion).where(
+                    col(EvaluationDatasetVersion.dataset_id) == dataset.id,
+                    col(EvaluationDatasetVersion.source) == "ai_generated",
+                )
+            ).all()
+        )
+        for row in existing_rows:
+            index = self._load_index(row)
+            if index.get("idempotency_key") == idempotency_key and index.get("kind") == "doc_questions":
+                return row
+
+        if provider == "live" and (not data_egress_confirmed or max_external_calls < 1):
+            raise DatasetValidationError("live_provider_requires_egress_and_budget")
+        if provider == "live" and generator is None:
+            # Paid egress is out of scope for this delivery; refuse rather than silently charge.
+            raise DatasetValidationError("live_provider_not_authorized")
+
+        fragments = self._authorized_doc_fragments(
+            user, document_ids=document_ids, max_cases=max_cases
+        )
+        generation_config = {
+            "provider": provider,
+            "max_cases": max_cases,
+            "max_external_calls": max_external_calls,
+            "data_egress_confirmed": bool(data_egress_confirmed),
+            "prompt_version": DOC_QUESTION_PROMPT_VERSION,
+        }
+        active_generator = generator or fake_doc_question_cases
+        cases, calls_used = active_generator(
+            fragments=fragments,
+            max_cases=max_cases,
+            generation_config=generation_config,
+        )
+        if calls_used > max_external_calls:
+            raise DatasetValidationError("budget_exceeded")
+        if not cases:
+            raise DatasetValidationError("no_cases_generated")
+        for case in cases:
+            if case.get("tier") == "gold":
+                raise DatasetValidationError("ai_generated cannot be gold")
+            case["tier"] = "silver"
+            if case.get("split") == "holdout":
+                raise DatasetValidationError("holdout generation forbidden")
+            case["expected_evidence"] = redact_doc_fragment(str(case.get("expected_evidence") or ""))
+            if isinstance(case.get("provenance"), dict) and "fragment" in case["provenance"]:
+                case["provenance"]["fragment"] = redact_doc_fragment(str(case["provenance"]["fragment"]))
+
+        parsed = _parse_cases(cases)
+        digest = canonical_cases_hash(parsed)
+        version_name = f"docq-{idempotency_key[:24]}"
+        clash = self.session.exec(
+            select(EvaluationDatasetVersion).where(
+                col(EvaluationDatasetVersion.dataset_id) == dataset.id,
+                col(EvaluationDatasetVersion.version) == version_name,
+            )
+        ).first()
+        if clash:
+            raise DatasetConflictError("version exists")
+        index = {
+            "kind": "doc_questions",
+            "schema": DOC_QUESTION_SCHEMA,
+            "idempotency_key": idempotency_key,
+            "document_ids": list(document_ids),
+            "generation_config": generation_config,
+            "external_calls_used": int(calls_used),
+            "max_external_calls": int(max_external_calls),
+            "generator": DOC_QUESTION_GENERATOR if generator is None else "injected",
+        }
+        version_row = EvaluationDatasetVersion(
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            version=version_name,
+            status="draft",
+            source="ai_generated",
+            content_hash=digest,
+            schema_name=DOC_QUESTION_SCHEMA,
+            cases_json=json.dumps(parsed, ensure_ascii=False, sort_keys=True),
+            index_json=json.dumps(index, ensure_ascii=False, sort_keys=True),
+            case_count=len(parsed),
+            is_frozen=False,
+            created_by=user.id,
+        )
+        self.session.add(version_row)
+        self.session.commit()
+        self.session.refresh(version_row)
+        return version_row
+
+    def get_doc_questions(
+        self, user: User, dataset_id: str, version_id: str
+    ) -> tuple[EvaluationDataset, EvaluationDatasetVersion, list[dict[str, Any]], dict[str, Any]]:
+        dataset, version, cases = self.get_version(
+            user, dataset_id, version_id, redact_holdout=False
+        )
+        index = self._load_index(version)
+        if index.get("kind") != "doc_questions":
+            raise DatasetValidationError("not_doc_question_version")
+        refreshed = self._refresh_case_availability(user, cases)
+        return dataset, version, refreshed, index
+
+    def edit_doc_question(
+        self,
+        user: User,
+        dataset_id: str,
+        version_id: str,
+        *,
+        case_id: str,
+        query: str,
+        expected_answer_points: list[str] | None = None,
+    ) -> EvaluationDatasetVersion:
+        if not self._can_write(user):
+            raise DatasetAccessError
+        _, version, cases, _index = self.get_doc_questions(user, dataset_id, version_id)
+        if version.status != "draft":
+            raise DatasetValidationError("only draft candidates editable")
+        query = query.strip()
+        if len(query) < 4:
+            raise DatasetValidationError("query too short")
+        updated: list[dict[str, Any]] = []
+        found = False
+        for row in cases:
+            item = dict(row)
+            if item.get("case_id") != case_id:
+                updated.append(item)
+                continue
+            found = True
+            if item.get("unavailable_reason"):
+                raise DatasetValidationError("source_unavailable")
+            if item.get("candidate_status") == "rejected":
+                raise DatasetValidationError("rejected_case_not_editable")
+            item["query"] = query
+            if expected_answer_points is not None:
+                item["expected_answer_points"] = [
+                    redact_doc_fragment(str(point)) for point in expected_answer_points
+                ]
+            item["candidate_status"] = "edited"
+            updated.append(item)
+        if not found:
+            raise DatasetValidationError("case_not_found")
+        version.cases_json = json.dumps(updated, ensure_ascii=False, sort_keys=True)
+        version.content_hash = canonical_cases_hash(updated)
+        version.case_count = len(updated)
+        self.session.add(version)
+        self.session.commit()
+        self.session.refresh(version)
+        return version
+
+    def review_doc_question(
+        self,
+        user: User,
+        dataset_id: str,
+        version_id: str,
+        *,
+        case_id: str,
+        decision: str,
+        notes: str | None = None,
+    ) -> EvaluationDatasetVersion:
+        if not self._can_write(user):
+            raise DatasetAccessError
+        if decision not in {"accept", "reject", "reopen"}:
+            raise DatasetValidationError("invalid decision")
+        _, version, cases, _index = self.get_doc_questions(user, dataset_id, version_id)
+        if version.status != "draft":
+            raise DatasetValidationError("only draft candidates reviewable")
+        updated: list[dict[str, Any]] = []
+        found = False
+        for row in cases:
+            item = dict(row)
+            if item.get("case_id") != case_id:
+                updated.append(item)
+                continue
+            found = True
+            status_now = item.get("candidate_status") or "pending"
+            if decision == "accept":
+                if item.get("unavailable_reason"):
+                    raise DatasetValidationError("source_unavailable")
+                if status_now not in {"pending", "edited", "rejected"}:
+                    raise DatasetValidationError("invalid_status_transition")
+                item["candidate_status"] = "accepted"
+            elif decision == "reject":
+                if status_now not in {"pending", "edited", "accepted"}:
+                    raise DatasetValidationError("invalid_status_transition")
+                item["candidate_status"] = "rejected"
+            else:  # reopen = 拒绝可撤销
+                if status_now != "rejected":
+                    raise DatasetValidationError("only_rejected_can_reopen")
+                item["candidate_status"] = "pending"
+            if notes is not None:
+                item["review_notes"] = notes
+            item["reviewed_by"] = user.id
+            updated.append(item)
+        if not found:
+            raise DatasetValidationError("case_not_found")
+        version.cases_json = json.dumps(updated, ensure_ascii=False, sort_keys=True)
+        version.content_hash = canonical_cases_hash(updated)
+        self.session.add(version)
+        self.session.commit()
+        self.session.refresh(version)
+        return version
+
+    def promote_doc_questions_to_silver(
+        self,
+        user: User,
+        dataset_id: str,
+        version_id: str,
+        *,
+        silver_version: str,
+    ) -> EvaluationDatasetVersion:
+        """Materialize human-accepted, still-authorized candidates as Silver draft."""
+        if not self._can_write(user):
+            raise DatasetAccessError
+        if not _VERSION_RE.fullmatch(silver_version):
+            raise DatasetValidationError("invalid version")
+        dataset, _version, cases, index = self.get_doc_questions(user, dataset_id, version_id)
+        accepted: list[dict[str, Any]] = []
+        for row in cases:
+            if row.get("candidate_status") != "accepted":
+                continue
+            if row.get("unavailable_reason"):
+                raise DatasetValidationError("accepted_source_unavailable")
+            case = {
+                "case_id": row["case_id"],
+                "split": "validation",
+                "tier": "silver",
+                "query": row["query"],
+                "expected_document_ids": row.get("expected_document_ids") or [],
+                "expected_evidence": row.get("expected_evidence"),
+                "expected_answer_points": row.get("expected_answer_points") or [],
+                "provenance": row.get("provenance") or {},
+                "generator": "doc-assisted-human-accepted-v1",
+            }
+            if case.get("tier") == "gold":
+                raise DatasetValidationError("ai_generated cannot be gold")
+            accepted.append(case)
+        if not accepted:
+            raise DatasetValidationError("no_accepted_candidates")
+        parsed = _parse_cases(accepted)
+        digest = canonical_cases_hash(parsed)
+        clash = self.session.exec(
+            select(EvaluationDatasetVersion).where(
+                col(EvaluationDatasetVersion.dataset_id) == dataset.id,
+                col(EvaluationDatasetVersion.version) == silver_version,
+            )
+        ).first()
+        if clash:
+            raise DatasetConflictError("version exists")
+        silver_index = {
+            "kind": "doc_questions_silver",
+            "from_candidate_version_id": version_id,
+            "source_idempotency_key": index.get("idempotency_key"),
+            "generation_config": index.get("generation_config"),
+            "human_accepted": True,
+            "auto_gold": False,
+        }
+        silver = EvaluationDatasetVersion(
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            version=silver_version,
+            status="draft",
+            source="ai_generated",
+            content_hash=digest,
+            schema_name="managed-eval-case-v1",
+            cases_json=json.dumps(parsed, ensure_ascii=False, sort_keys=True),
+            index_json=json.dumps(silver_index, ensure_ascii=False, sort_keys=True),
+            case_count=len(parsed),
+            is_frozen=False,
+            created_by=user.id,
+            review_notes="Human-accepted doc-assisted Silver candidates; not Gold.",
+        )
+        self.session.add(silver)
+        self.session.commit()
+        self.session.refresh(silver)
+        return silver
+

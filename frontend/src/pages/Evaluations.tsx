@@ -13,6 +13,10 @@ import {
   useEvaluationVersions,
   useRetrievalStrategies,
   useSubmitDatasetVersion,
+  useGenerateDocQuestions,
+  useDocQuestions,
+  useReviewDocQuestion,
+  usePromoteDocQuestions,
 } from '@/api/evaluations'
 import { useTenants } from '@/api/tenants'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -44,6 +48,8 @@ export default function EvaluationsPage() {
   const qualityEnabled = targetType === 'rag' && enableGeneration
   const family: ReportFamily = targetType === 'rag' ? 'retrieval' : targetType
   const [datasetId, setDatasetId] = useState<string | null>(null)
+  const [docQuestionVersionId, setDocQuestionVersionId] = useState<string | null>(null)
+  const [silverVersionName, setSilverVersionName] = useState('silver-doc-1')
   const [newName, setNewName] = useState('')
   const [newSlug, setNewSlug] = useState('')
   const [jobVersionId, setJobVersionId] = useState<string | null>(null)
@@ -59,6 +65,10 @@ export default function EvaluationsPage() {
   const versions = useEvaluationVersions(datasetId, allowed)
   const createDataset = useCreateEvaluationDataset(canWrite)
   const submitVersion = useSubmitDatasetVersion(canWrite)
+  const generateDocQuestions = useGenerateDocQuestions(canWrite)
+  const docQuestions = useDocQuestions(datasetId, docQuestionVersionId, allowed && Boolean(docQuestionVersionId))
+  const reviewDocQuestion = useReviewDocQuestion(canWrite)
+  const promoteDocQuestions = usePromoteDocQuestions(canWrite)
   const jobs = useEvaluationJobs(allowed)
   const createJob = useCreateEvaluationJob(canWrite)
   const cancelJob = useCancelEvaluationJob(canWrite)
@@ -229,6 +239,68 @@ export default function EvaluationsPage() {
           {canWrite && version.status === 'approved' && <button type="button" className="text-primary" onClick={() => { setJobVersionId(version.id); setDataEgressConfirmed(false) }}>选择执行</button>}
         </li>)}</ul>)}
     </section>
+
+
+    {datasetId && targetType === 'rag' && <section className="panel p-4" aria-label="授权文档辅助出题">
+      <h2 className="mb-2 text-lg font-semibold text-text">授权文档辅助出题</h2>
+      <p className="mb-3 text-sm text-text-muted">默认本地 fake 生成 Silver 候选，不外发客户文档、不自动升 Gold。人工接受后才能入集。</p>
+      {canWrite && <div className="mb-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded bg-primary px-3 py-2 text-sm text-white disabled:opacity-50"
+          disabled={!targetId || generateDocQuestions.isPending}
+          onClick={() => {
+            if (!datasetId || !targetId) return
+            generateDocQuestions.mutate(
+              {
+                datasetId,
+                document_ids: [targetId],
+                idempotency_key: `ui-${datasetId}-${targetId}`,
+                provider: 'fake',
+                max_external_calls: 0,
+                data_egress_confirmed: false,
+              },
+              { onSuccess: (row) => setDocQuestionVersionId(row.version.id) },
+            )
+          }}
+        >生成候选（fake）</button>
+        <input
+          className="rounded border border-border bg-surface px-2 py-1 text-sm"
+          value={silverVersionName}
+          onChange={(event) => setSilverVersionName(event.target.value)}
+          aria-label="Silver 版本名"
+        />
+        <button
+          type="button"
+          className="rounded border border-border px-3 py-2 text-sm disabled:opacity-50"
+          disabled={!docQuestionVersionId || promoteDocQuestions.isPending}
+          onClick={() => {
+            if (!datasetId || !docQuestionVersionId) return
+            promoteDocQuestions.mutate({
+              datasetId,
+              versionId: docQuestionVersionId,
+              silver_version: silverVersionName.trim() || 'silver-doc-1',
+            })
+          }}
+        >入集为 Silver 草稿</button>
+      </div>}
+      {generateDocQuestions.isError && <ErrorState error={generateDocQuestions.error} onRetry={() => generateDocQuestions.reset()} />}
+      {docQuestions.isPending ? <SkeletonRows rows={2} /> : docQuestions.isError ? <ErrorState error={docQuestions.error} onRetry={() => void docQuestions.refetch()} /> :
+        !(docQuestions.data?.cases?.length) ? <EmptyState title="暂无文档辅助候选" /> :
+        <ul className="divide-y divide-border">{docQuestions.data.cases.map((item) => <li key={item.case_id} className="space-y-2 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium text-text">{item.query}</p>
+            <span className="text-xs text-text-muted">{item.candidate_status}{item.unavailable_reason ? ` / ${item.unavailable_reason}` : ''}</span>
+          </div>
+          <p className="text-xs text-text-muted">来源文档 {String(item.provenance.source_document_id || '')} / 片段已绑定</p>
+          {canWrite && <div className="flex flex-wrap gap-2">
+            <button type="button" className="text-sm text-primary" disabled={reviewDocQuestion.isPending} onClick={() => datasetId && docQuestionVersionId && reviewDocQuestion.mutate({ datasetId, versionId: docQuestionVersionId, caseId: item.case_id, decision: 'accept' })}>接受</button>
+            <button type="button" className="text-sm text-primary" disabled={reviewDocQuestion.isPending} onClick={() => datasetId && docQuestionVersionId && reviewDocQuestion.mutate({ datasetId, versionId: docQuestionVersionId, caseId: item.case_id, decision: 'reject' })}>拒绝</button>
+            <button type="button" className="text-sm text-primary" disabled={reviewDocQuestion.isPending} onClick={() => datasetId && docQuestionVersionId && reviewDocQuestion.mutate({ datasetId, versionId: docQuestionVersionId, caseId: item.case_id, decision: 'reopen' })}>撤销拒绝</button>
+          </div>}
+        </li>)}
+      </ul>}
+    </section>}
 
     <section className="panel p-4" aria-label="评测任务">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

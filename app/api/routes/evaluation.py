@@ -26,6 +26,12 @@ from app.schemas.evaluation import (
     DatasetVersionImport,
     DatasetVersionOut,
     DatasetVersionPage,
+    DocQuestionCaseOut,
+    DocQuestionEditIn,
+    DocQuestionGenerateIn,
+    DocQuestionPromoteIn,
+    DocQuestionReviewIn,
+    DocQuestionVersionOut,
     EvaluationCaseResultOut,
     EvaluationCaseResultPage,
     EvaluationCaseResultStatus,
@@ -169,6 +175,32 @@ def _job_http(exc: Exception) -> HTTPException:
         "judge_requires_generation": "启用 Judge 前须启用 RAG 生成质量评测。",
     }
     return HTTPException(422, messages.get(str(exc), "请求不符合评测任务策略"))
+
+
+
+def _doc_question_case_out(row: dict) -> DocQuestionCaseOut:
+    return DocQuestionCaseOut(
+        case_id=str(row.get("case_id") or ""),
+        query=str(row.get("query") or ""),
+        tier=str(row.get("tier") or "silver"),
+        split=str(row.get("split") or "development"),
+        candidate_status=str(row.get("candidate_status") or "pending"),
+        unavailable_reason=row.get("unavailable_reason"),
+        expected_document_ids=[str(x) for x in (row.get("expected_document_ids") or [])],
+        expected_evidence=row.get("expected_evidence"),
+        expected_answer_points=[str(x) for x in (row.get("expected_answer_points") or [])],
+        provenance=dict(row.get("provenance") or {}),
+        review_notes=row.get("review_notes"),
+        reviewed_by=row.get("reviewed_by"),
+    )
+
+
+def _doc_question_version_out(version, cases: list[dict], index: dict) -> DocQuestionVersionOut:
+    return DocQuestionVersionOut(
+        version=_version_out(version),
+        index=index,
+        cases=[_doc_question_case_out(row) for row in cases],
+    )
 
 
 def _version_out(row) -> DatasetVersionOut:
@@ -625,3 +657,171 @@ def review_candidate(
     except (DatasetAccessError, DatasetValidationError) as exc:
         raise _dataset_http(exc) from None
     return _candidate_out(row)
+
+@router.post(
+    "/datasets/{dataset_id}/doc-questions/generate",
+    response_model=DocQuestionVersionOut,
+)
+async def generate_doc_questions(
+    dataset_id: str,
+    payload: DocQuestionGenerateIn,
+    request: Request,
+    user: User = Depends(writer),
+    service: EvaluationDatasetService = Depends(dataset_service),
+) -> DocQuestionVersionOut:
+    try:
+        version = service.generate_doc_questions(
+            user,
+            dataset_id,
+            document_ids=payload.document_ids,
+            idempotency_key=payload.idempotency_key,
+            max_cases=payload.max_cases,
+            max_external_calls=payload.max_external_calls,
+            data_egress_confirmed=payload.data_egress_confirmed,
+            provider=payload.provider,
+        )
+        _dataset, _version, cases, index = service.get_doc_questions(user, dataset_id, version.id)
+    except (DatasetAccessError, DatasetValidationError, DatasetConflictError) as exc:
+        raise _dataset_http(exc) from exc
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=user,
+        resource_type="evaluation_doc_questions",
+        resource_id=version.id,
+        details={
+            "action": "generate",
+            "dataset_id": dataset_id,
+            "provider": payload.provider,
+            "max_external_calls": payload.max_external_calls,
+            "external_calls_used": index.get("external_calls_used", 0),
+            "case_count": len(cases),
+            "data_egress_confirmed": payload.data_egress_confirmed,
+        },
+    )
+    return _doc_question_version_out(version, cases, index)
+
+
+@router.get(
+    "/datasets/{dataset_id}/doc-questions/{version_id}",
+    response_model=DocQuestionVersionOut,
+)
+def get_doc_questions(
+    dataset_id: str,
+    version_id: str,
+    user: User = Depends(reader),
+    service: EvaluationDatasetService = Depends(dataset_service),
+) -> DocQuestionVersionOut:
+    try:
+        _dataset, version, cases, index = service.get_doc_questions(user, dataset_id, version_id)
+    except (DatasetAccessError, DatasetValidationError) as exc:
+        raise _dataset_http(exc) from exc
+    return _doc_question_version_out(version, cases, index)
+
+
+@router.patch(
+    "/datasets/{dataset_id}/doc-questions/{version_id}/cases/{case_id}",
+    response_model=DocQuestionVersionOut,
+)
+def edit_doc_question(
+    dataset_id: str,
+    version_id: str,
+    case_id: str,
+    payload: DocQuestionEditIn,
+    user: User = Depends(writer),
+    service: EvaluationDatasetService = Depends(dataset_service),
+) -> DocQuestionVersionOut:
+    try:
+        service.edit_doc_question(
+            user,
+            dataset_id,
+            version_id,
+            case_id=case_id,
+            query=payload.query,
+            expected_answer_points=payload.expected_answer_points,
+        )
+        _dataset, version, cases, index = service.get_doc_questions(user, dataset_id, version_id)
+    except (DatasetAccessError, DatasetValidationError) as exc:
+        raise _dataset_http(exc) from exc
+    return _doc_question_version_out(version, cases, index)
+
+
+@router.post(
+    "/datasets/{dataset_id}/doc-questions/{version_id}/cases/{case_id}/review",
+    response_model=DocQuestionVersionOut,
+)
+async def review_doc_question(
+    dataset_id: str,
+    version_id: str,
+    case_id: str,
+    payload: DocQuestionReviewIn,
+    request: Request,
+    user: User = Depends(writer),
+    service: EvaluationDatasetService = Depends(dataset_service),
+) -> DocQuestionVersionOut:
+    try:
+        service.review_doc_question(
+            user,
+            dataset_id,
+            version_id,
+            case_id=case_id,
+            decision=payload.decision,
+            notes=payload.notes,
+        )
+        _dataset, version, cases, index = service.get_doc_questions(user, dataset_id, version_id)
+    except (DatasetAccessError, DatasetValidationError) as exc:
+        raise _dataset_http(exc) from exc
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=user,
+        resource_type="evaluation_doc_questions",
+        resource_id=version_id,
+        details={
+            "action": "review_case",
+            "dataset_id": dataset_id,
+            "case_id": case_id,
+            "decision": payload.decision,
+        },
+    )
+    return _doc_question_version_out(version, cases, index)
+
+
+@router.post(
+    "/datasets/{dataset_id}/doc-questions/{version_id}/promote",
+    response_model=DatasetVersionOut,
+)
+async def promote_doc_questions(
+    dataset_id: str,
+    version_id: str,
+    payload: DocQuestionPromoteIn,
+    request: Request,
+    user: User = Depends(writer),
+    service: EvaluationDatasetService = Depends(dataset_service),
+) -> DatasetVersionOut:
+    try:
+        silver = service.promote_doc_questions_to_silver(
+            user,
+            dataset_id,
+            version_id,
+            silver_version=payload.silver_version,
+        )
+    except (DatasetAccessError, DatasetValidationError, DatasetConflictError) as exc:
+        raise _dataset_http(exc) from exc
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=user,
+        resource_type="evaluation_doc_questions",
+        resource_id=silver.id,
+        details={
+            "action": "promote_silver",
+            "dataset_id": dataset_id,
+            "from_version_id": version_id,
+            "silver_version": payload.silver_version,
+            "case_count": silver.case_count,
+            "auto_gold": False,
+        },
+    )
+    return _version_out(silver)
+

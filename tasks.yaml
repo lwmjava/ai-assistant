@@ -13012,7 +13012,7 @@ tasks:
 
   - id: "EVAL-006"
     title: "授权文档辅助生成评测题与人工入集"
-    status: "backlog"
+    status: "in_progress"
     priority: "P1"
     module: "Evaluation"
     target_version: "1.0"

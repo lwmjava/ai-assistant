@@ -10139,7 +10139,7 @@ tasks:
         auto_deploy: false
 
   - id: "RAG-018"
-    title: "Query Rewrite（1.0条件任务：Recall@5跌破0.90后实施）"
+    title: "Query Rewrite（任一切片 Recall@5 跌破 0.90 即实施）"
     status: "backlog"
     priority: "P1"
     module: "RAG"
@@ -10149,14 +10149,14 @@ tasks:
     context:
       problem: "查询无改写层：仅 HybridRetriever 运行时拼 query+plan 走混合检索，无查询扩展/纠错/澄清/同义词处理。动静态查询优化缺口（评审确认仅动态构造、无优化层）。"
       facts:
-      - claim: "AGENTS.md §14：Query Rewrite 暂缓，进入条件为 Recall@5 跌破 0.90。"
-        evidence: "AGENTS.md §14"
-      - claim: "代码无 query_rewrite / rewrite 实现。"
-        evidence: "app/rag/；grep -rn 'rewrite' app --include='*.py' 无输出"
-      - claim: "RAG 基线 Recall@5 当前约 0.971，未跌破进入条件。"
+      - claim: "进入条件已改为：任一切片 Recall@5 跌破 0.90 即实施，不再只看 overall 或调参集。该规则已写入本卡与评测文档；AGENTS.md 第14节仍写旧口径，本卡 allowed_paths 不含 AGENTS.md，未改该文件。"
+        evidence: "tasks.yaml RAG-018；docs/evaluations/rag-v0.1-query-rewrite-gate-20261110.md；AGENTS.md"
+      - claim: "门禁复核已核触发切片：validation Recall@5=0.8333（6 可评分）、effective_date=0.6667；主因 rag-031。"
+        evidence: "docs/evaluations/rag-v0.1-query-rewrite-gate-20261110.md；evals/reports/rag-v0.1-query-rewrite-gate-20261110.json"
+      - claim: "查询改写为确定性追加扩展，不调用聊天模型；官方对照命令为 python evals/query_rewrite/run.py --mode official。"
+        evidence: "app/rag/query_rewrite.py；evals/query_rewrite/run.py"
+      - claim: "冻结基线 overall Recall@5 约 0.971，不等于新门槛未触发。"
         evidence: "evals/reports/rag-v0.1-baseline-20260919.json overall.recall"
-      - claim: "本次仅调整任务契约，未实施新增范围；验收与拆分见正式映射。"
-        evidence: "docs/plans/plan_rag_remediation_cards_20261005.md"
     scope:
       allowed_paths:
       - "app/rag/"
@@ -10169,24 +10169,28 @@ tasks:
       - ".env"
       - "生产数据"
       deliverables:
-      - "1.0内复核真实Recall@5进入条件，未触发时提交证据和范围处置建议由用户决定"
-      - "进入条件满足时：查询改写（扩展/纠错/澄清）提升 Recall@5"
+      - "把门禁改为任一切片 Recall@5 跌破 0.90 即实施，并落地查询改写"
+      - "用非 holdout 固定数据评估改写效果，记录切片、overall/调参集、provider/模型与调用量"
       non_goals:
-      - "未触发真实Recall@5跌破0.90前不实施改写；1.0内先复核进入条件"
       - "不同时改切分/Embedding/Reranker"
-      - "不用 Mock Embedding 当证据"
+      - "不用 Mock Embedding 当质量证据"
+      - "不把 holdout 用于决策"
+      - "不修改 AGENTS.md、config.py、.env 或生产默认生效日过滤"
     acceptance:
-    - "进入条件满足后：改写前后 Recall@5 有提升且不破坏越权/安全切片"
-    - "未达条件时提交真实基线与不实施建议，由用户明确决定范围处置；不得自行以未触发记done"
+    - "触发切片（validation / effective_date）Recall@5 有提升且不破坏越权/安全切片"
+    - "overall 与调参集 Recall@5 下降不超过 0.01"
+    - "报告记录 provider/模型、完整版本、切片指标与调用量；holdout 只记录"
     risk:
       level: "L1"
-      side_effect: "query-rewrite-deferred"
-      rollback: "进入条件未满足前不落地。"
+      side_effect: "query-rewrite"
+      rollback: "关闭 RAG_QUERY_REWRITE_ENABLED，回退本卡提交。"
     evaluation:
       cases:
-      - "触发改写后 Recall@5 对比"
+      - "改写前后对比 validation、effective_date、overall 与调参集 Recall@5，并核对越权切片"
       commands:
-      - "python scripts/run_rag_baseline.py --mode official"
+      - "python -m pytest tests/eval/test_query_rewrite.py"
+      - "python evals/query_rewrite/run.py --mode smoke"
+      - "python evals/query_rewrite/run.py --mode official"
     execution:
       release_plan: "docs/plans/plan_v1_scope_priority_20261029.md"
       delivery_order: 26
@@ -10197,8 +10201,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      blocked_by: "已纳入1.0条件复核；查询改写实现仍以真实可复现Recall@5跌破0.90为前提。未触发时由用户明确决定范围处置，不能自行标done。"
-
+      blocked_by: "用户已授权改门槛并实施查询改写；本卡保持 backlog，待验收通过后再记 done，实现手不自标 done。"
   - id: "RAG-019"
     title: "LLM 响应与检索结果缓存（P2）"
     status: "done"

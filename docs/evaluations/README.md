@@ -22,7 +22,7 @@ Recall@5 与 @10 接近 1.0 主要来自候选池过小，**不代表生产检�
 详见报告第 6 节。
 
 2026-09-19 之后：A1 修订了越权口径（见 Gold 批次补记与 ADR-0001 §9）；
-B1 已落地检索注入块剔除与不可信围栏；C1 的生效日期语义见 **Accepted** `docs/adr/0003-effective-date-versioning.md`（`RAG_EFFECTIVE_DATE_FILTER` 默认关闭）。
+B1 已落地检索注入块剔除与不可信围栏；C1 的生效日期语义见 **Accepted** `docs/adr/0003-effective-date-versioning.md`（生产默认已开启；官方 35 条门槛评测仍冻结为关闭）。
 2026-09-19 JSON 基线分数不改写。
 
 本轮未测真实 LLM 生成层，因此答案级 Citation、拒答行为和 Gold `forbidden_answer_points` 仍未用真实模型验证。

@@ -21,6 +21,7 @@ from app.rag.context_builder import (
     render_block,
     structured_hits,
 )
+from app.rag.query_rewrite import query_rewrite_enabled, rewrite_query
 from app.rag.retrieval_status import RetrievalOutcome, RetrievalStatus, classify
 from app.rag.vectorstore.base import ChunkResult
 
@@ -161,6 +162,8 @@ class HybridRetriever:
         请求整体失败，用户得不到任何说明。改为收敛为 ``unavailable`` 状态并
         由入口强制披露，日志保留完整堆栈。
         """
+        if query_rewrite_enabled():
+            query = rewrite_query(query).text
         search_text = f"{query}\n{plan}".strip() if plan else (query or "").strip()
         if not search_text:
             self._settle(RetrievalOutcome(status=RetrievalStatus.NO_HIT, hits=[]))

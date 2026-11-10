@@ -56,7 +56,7 @@ RAG_CHUNK_STRATEGY=structured
 AGENT_ORCHESTRATION=self
 SECURITY_BLOCK_ON_INJECTION=false
 RAG_KB_SCOPE=tenant
-RAG_EFFECTIVE_DATE_FILTER=false
+RAG_EFFECTIVE_DATE_FILTER=true
 RAG_DROP_INJECTED_CHUNKS=true
 ```
 
@@ -108,7 +108,7 @@ RAG_DROP_INJECTED_CHUNKS=true
 - 读路径默认同租户当前版本（`RAG_KB_SCOPE=tenant`）；写路径成员仅自己的文档。
 - 检索上下文 `[UNTRUSTED_SOURCE]` 围栏；高置信度注入块剔除。拒工具不是通用白名单，也不是只在围栏内部查找：`[UNTRUSTED_SOURCE]` 只是开关，随后对整段 `context`（含记忆和之后追加的 critique）做子串匹配；整段里没有的工具名不会被拒绝。
 - Memory 与 RAG 按字符预算合并，检索不再覆盖记忆。`_trim` 只作用于这次合并。QualityGate 的 critique 在截断之后拼进 `state.context`，不再按 `RAG_CONTEXT_CHARS` 截断；长度随自纠错轮数增长，上限是 `AGENT_MAX_REVISIONS`。
-- 租户级过滤；`RAG_EFFECTIVE_DATE_FILTER` 默认关闭。
+- 租户级过滤；`RAG_EFFECTIVE_DATE_FILTER` 生产默认开启（官方 35 条门槛评测仍冻结为关闭）。
 - 知识库管理前端。
 
 ### 2.4 现有测试资产

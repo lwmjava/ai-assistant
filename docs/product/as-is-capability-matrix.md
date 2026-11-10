@@ -77,7 +77,7 @@
 |---|---|---|---|
 | ADR-0001 | 默认tenant共享当前版本；可选uploader检索隔离已批准；控制面按第4节 | `Partial`：检索与控制面分开，不能写列表/详情已与检索全对齐；uploader全链路由RAG-026实现；资源ACL仍Planned | RAG-026；引用核验RAG-027；资源ACL另按进入条件 |
 | ADR-0002 | 正式目标 Milvus（开发 Lite / 生产 2.4+）；Local 为评测与回退；五条通过后才改默认 | `Partial`：2026-09-29 五条脚本通过；2026-10-21 起默认已是 `milvus`（ADR 含同日修订） | 默认切换已做。真实服务闭环与生产验收仍未完成，不标 `Implemented` |
-| ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后 Local 按 as-of / 查询日期窗口过滤 | 默认现网仍只检索 `is_current`；未做真实嵌入复跑 |
+| ADR-0003 | 生效日期 / scheduled 预告检索 | `Partial`：`RAG_EFFECTIVE_DATE_FILTER` 生产默认开启；Local 按 as-of / 查询日期窗口过滤 | 2026-11-10 官方评估通过后打开生产默认；官方 35 条门槛评测仍冻结为关闭 |
 | ADR-0005 | 模型预算、完整块组装、实际selected来源、摘要生命周期 | `Partial`：已有结构与路由修复，生成预算/来源/摘要仍Planned；不能从Accepted推导完整实现 | RAG-028/029/030/031/040 |
 | ADR-0007 | 受控块级原文只读核验 | `Planned`：未用本次批准关闭业务卡 | RAG-027 |
 | ADR-0008 | 模型与索引身份绑定、新索引受控切换/回退 | `Partial`：已有维度检查，不等于完整索引治理 | RAG-032/015/036 |

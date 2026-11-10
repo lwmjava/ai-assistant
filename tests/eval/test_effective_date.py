@@ -9,6 +9,7 @@ import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models.rag import Document
+from app.core.config import Settings
 from app.rag.effective_date import (
     SCHEDULED_NOTICE,
     parse_query_schedule_at,
@@ -176,3 +177,8 @@ async def test_eval_index_writes_manifest_dates(tmp_path: Path):
         assert current.effective_at.year == 2026
     finally:
         index.close()
+
+
+def test_production_default_enables_effective_date_filter():
+    """生产默认开启；不受本机 .env 覆盖影响，只检查类字段默认值。"""
+    assert Settings.model_fields["RAG_EFFECTIVE_DATE_FILTER"].default is True

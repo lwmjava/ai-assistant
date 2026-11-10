@@ -44,7 +44,7 @@ pytest tests/eval/ -v                                # 数据集校验 + 指标 
   `docs/evaluations/rag-v0.1-baseline-report.md` 第 6、7 节，引用分数时必须一并说明。
 - 后续优化遵守单变量原则：一次只改 Chunking、Embedding 或 Rerank 中的一项，并与本基线对比。
 - 2026-09-19 A1：同租户当前文档被检索不记越权；资源 ACL（`acl_planned`）只约束生成层答案点。
-- ADR-0003 已 Accepted（选项 A）。`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后带未来日期的查询才检索 scheduled 预告。
+- ADR-0003 已 Accepted（选项 A）。`RAG_EFFECTIVE_DATE_FILTER` 生产默认开启；带未来日期的查询才检索 scheduled 预告。官方 35 条门槛评测仍冻结为关闭，不得改写 `evals/reports/rag-v0.1-baseline-20260919.json`。
 - 不得改写 `evals/reports/rag-v0.1-baseline-20260919.json`。
 - `RAG-006` 读路径默认 `RAG_KB_SCOPE=tenant`。脚本化 LLM 已覆盖注入文档拒工具；真实 LLM 拒答/Citation/`forbidden_answer_points` 未测。
 

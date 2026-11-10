@@ -22,7 +22,7 @@ ADR-0006：[保守清洗与到期删除补偿](0006-rag-cleaning-and-retention-c
 | ADR-0011 | [0011-structured-sequential-agent-plan.md](0011-structured-sequential-agent-plan.md) | Accepted | 固定顺序 Plan v1、显式前向执行依赖、逐步状态与恢复；旧文本显式回滚。自动证据不等于人工业务验收 | `PAGT-004` |
 
 权限过滤与生效日期过滤实现在 `RAG-006`。默认切换的最新批准与实际状态见ADR-0002第11节及VDB三卡验收；不以历史阶段表述覆盖当前源码。  
-`RAG_EFFECTIVE_DATE_FILTER` 默认关闭；打开后才改变检索候选集。
+`RAG_EFFECTIVE_DATE_FILTER` 生产默认开启（2026-11-10 起）；官方 35 条门槛评测仍冻结为关闭。关闭后检索仅 `is_current`。
 
 ADR-0012：[SSE ActiveRun 生命周期与断线回放](0012-sse-active-run-lifecycle.md)，Accepted，2026-10-15 用户批准单进程任务所有权、有界事件回放与鉴权查询/取消；实现与验收以 SSE-001 证据为准。
 

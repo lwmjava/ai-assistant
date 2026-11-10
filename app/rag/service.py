@@ -59,6 +59,7 @@ from app.rag.cleaning import CleaningResult, clean_document, text_hash
 from app.rag.document_parsers.base import ParsedDocument
 from app.rag.document_storage import delete_source_file, resolve_source_file_path
 from app.rag.effective_date import retrieval_window
+from app.rag.query_rewrite import query_rewrite_enabled, rewrite_query
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
@@ -821,12 +822,15 @@ class RAGService:
             type(rag_backend).__name__,
             str(requested_backend != rag_backend.name).lower(),
         )
+        search_query = rewrite_query(query).text if query_rewrite_enabled() else query
         hits = await rag_backend.retrieve(
-            query, tenant_id=self.tenant_id, top_k=top_k, read_scope=self._read_scope
+            search_query, tenant_id=self.tenant_id, top_k=top_k, read_scope=self._read_scope
         )
         # 读路径已经核对过身份；把生效索引带进父块复核，避免复核阶段再查一次库，
         # 也保证展开用的索引与召回用的索引是同一个。
-        return await self._expand_parent_chunks(hits, query=query, index_id=self._read_index_id())
+        return await self._expand_parent_chunks(
+            hits, query=search_query, index_id=self._read_index_id()
+        )
 
     def _read_index_id(self) -> str | None:
         """当前生效索引的 id；没有登记索引时返回 None（不按索引收窄）。

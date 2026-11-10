@@ -96,3 +96,16 @@ python scripts/run_agent_chain_eval.py --mode official
 确定性回归覆盖完整/短路共享提示、默认结构化完整run/stream实际记录工具实参、无sandbox/预算耗尽、历史未改与输出前缀拒绝。代码保持提示传播不等于模型质量通过，模型质量仅由新鲜official评测。原四阈值0.9/1.0/1.0/1.0不变，旧失败报告保留。修后第1轮报告agent-chain-v0.1-official-confirmed-code-r1-20261014.json四指标1.0，独立gate0；四类新鲜派生故障探针仅证明拦截机制，无额外模型请求。用户最多三轮授权，第1轮已通过，不执行第2/3轮。
 
 实际命令及红绿/Windows编码问题、输入/Prompt指纹、范围外生产限制见docs/plans/implementation_agt_003.md与docs/reviews/confirmed_code_rounds_20261014.json。模型登记prompt-model-v4仅登记源码/默认配置，非生产启用。
+
+## MultiHop-RAG 补充对照
+
+`evals/multihop_rag/` 把外部 MultiHop-RAG 数据集（ODC-BY；Tang & Yang, COLM 2024）转成现有评测格式，并用冻结的官方检索设置做补充检索对照。它**不替代**官方 35 条门槛，也不改 `evals/datasets/rag-v0.1/`、holdout 决策规则或生产默认开关。
+
+```powershell
+python evals/multihop_rag/convert.py --download
+python evals/multihop_rag/run.py --mode smoke
+python evals/multihop_rag/run.py --mode official --estimate-only
+python evals/multihop_rag/run.py --mode official
+```
+
+原始数据与转换结果缓存在已 gitignore 的 `data/multihop_rag/`。署名与许可证见 `evals/datasets/multihop-rag/README.md`。

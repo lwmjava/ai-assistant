@@ -13047,7 +13047,7 @@ tasks:
 
   - id: "RAG-045"
     title: "语义重排单变量实验与采纳决策"
-    status: "backlog"
+    status: "done"
     priority: "P1"
     module: "RAG"
     target_version: "1.0"

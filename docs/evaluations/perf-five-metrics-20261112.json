@@ -1,0 +1,277 @@
+{
+  "title": "五项性能指标隔离压测",
+  "started_at": "2026-11-12 01:54:24 (Asia/Shanghai)",
+  "finished_at": "2026-11-12 01:54:26 (Asia/Shanghai)",
+  "timezone": "Asia/Shanghai",
+  "machine": {
+    "hostname": "DESKTOP-NSMV8MF",
+    "os": "Windows 11",
+    "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "logical_processors": 12,
+    "physical_cores": 6,
+    "ram_bytes": 25619935232,
+    "ram_gib": 23.86,
+    "python": "3.12.0",
+    "app_process_count": 1,
+    "inventory_machine": {
+      "cpu_cores": 4,
+      "ram_gib": 8,
+      "app_process_count": 1
+    },
+    "matches_inventory": false
+  },
+  "health": {
+    "status": "ok",
+    "env": "development",
+    "embedding": {
+      "mode": "override",
+      "provider": "mock",
+      "model": "mock-embedding",
+      "dim": 64,
+      "is_mock": true,
+      "connectivity_verified": false,
+      "quality_evidence": false
+    },
+    "vector_store": {
+      "status": "ok",
+      "backend": "local",
+      "runtime": ""
+    },
+    "llm": {
+      "mode": "mock"
+    },
+    "http_status": 200
+  },
+  "corpus": {
+    "document_id": "ff00b01690aa44d4af8885be3ac7d872",
+    "vectorization_status": "vectorized"
+  },
+  "pdf": {
+    "file_bytes": 10485760,
+    "extractable_text_chars": 206,
+    "padding": "unreferenced_stream",
+    "note": "文件体积为 10MiB；填充位于未引用对象，不进入文本层，不能代表全文密排 PDF 的向量化耗时。"
+  },
+  "metrics": [
+    {
+      "key": "api_response_p95",
+      "title": "API 响应时间 (P95，不含 LLM)",
+      "value": 8.126270000138904,
+      "unit": "ms",
+      "target": 500.0,
+      "comparison": "<=",
+      "samples": 20,
+      "meets_target": true,
+      "official_evidence": false,
+      "official_reasons": [
+        "当前机器不是清单机 4C8G"
+      ],
+      "details": {
+        "paths": [
+          "/api/v1/health",
+          "/api/v1/chat/conversations"
+        ],
+        "status_codes": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "max_ms": 10.565299999143463,
+        "min_ms": 5.14159999875119
+      },
+      "error": null
+    },
+    {
+      "key": "first_token_p95",
+      "title": "首 Token 延迟 (P95)",
+      "value": 105.94747499890217,
+      "unit": "ms",
+      "target": 2000.0,
+      "comparison": "<=",
+      "samples": 8,
+      "meets_target": true,
+      "official_evidence": false,
+      "official_reasons": [
+        "当前机器不是清单机 4C8G",
+        "LLM 模式为 mock，不得写成上线对话性能数字"
+      ],
+      "details": {
+        "max_ms": 116.77349999808939,
+        "min_ms": 83.5771999991266
+      },
+      "error": null
+    },
+    {
+      "key": "retrieval_p95",
+      "title": "知识库检索延迟 (P95)",
+      "value": 12.529739997626168,
+      "unit": "ms",
+      "target": 300.0,
+      "comparison": "<=",
+      "samples": 20,
+      "meets_target": true,
+      "official_evidence": false,
+      "official_reasons": [
+        "当前机器不是清单机 4C8G",
+        "Embedding 为 Mock，不得写成上线性能数字",
+        "向量库为 local，检索指标要求 Milvus"
+      ],
+      "details": {
+        "query": "standard plan price",
+        "hit_counts": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "max_ms": 16.0531000001356,
+        "min_ms": 11.418600002798485
+      },
+      "error": null
+    },
+    {
+      "key": "concurrent_conversations",
+      "title": "并发对话数",
+      "value": 50.0,
+      "unit": "conversations",
+      "target": 50.0,
+      "comparison": ">=",
+      "samples": 50,
+      "meets_target": true,
+      "official_evidence": false,
+      "official_reasons": [
+        "当前机器不是清单机 4C8G",
+        "LLM 模式为 mock，不得写成上线对话性能数字"
+      ],
+      "details": {
+        "requested": 50,
+        "successes": 50,
+        "failures": 0,
+        "status_codes": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "max_s": 0.0016305999997712206,
+        "harness": "lightweight_sse_stub",
+        "note": "50 路并发在轻量流式夹具上测得；隔离 SQLite 上跑满完整对话管线会争用数据库，不能代表清单机上的真实对话容量。"
+      },
+      "error": null
+    },
+    {
+      "key": "document_upload",
+      "title": "文档上传处理（10MB PDF 到已向量化）",
+      "value": 0.053706700000475394,
+      "unit": "s",
+      "target": 30.0,
+      "comparison": "<=",
+      "samples": 1,
+      "meets_target": true,
+      "official_evidence": false,
+      "official_reasons": [
+        "当前机器不是清单机 4C8G",
+        "Embedding 为 Mock，不得写成上线性能数字"
+      ],
+      "details": {
+        "file_bytes": 10485760,
+        "vectorization_status": "vectorized",
+        "chunk_count": 1,
+        "vectorized_chunk_count": 1,
+        "document_id": "da42ee53d6d44f218dace24f46272787",
+        "storage_path": null,
+        "ready": true
+      },
+      "error": null
+    }
+  ],
+  "all_measured": true,
+  "release_evidence_valid": false,
+  "constraints": {
+    "isolated": true,
+    "single_app_process": true,
+    "paid_model_calls_mocked": true,
+    "mock_embedding_used": true,
+    "not_production_stack": true
+  },
+  "disposition": "五项指标均已测得数值。 本跑不能作为上线验收证据。 实际机器为 6 核 / 23.86 GiB，不是清单机 4C8G。 检索与文档处理使用了 Mock Embedding，不得写成达标。 首 Token 与并发对话使用了非真实 LLM，不得写成上线数字。 当前向量库为 local，不是 Milvus。 要形成可关卡的上线证据，需要在清单机 4C8G、单应用进程、真实 Embedding、Milvus 以及真实 LLM 上重跑同一脚本，并且五项都达到目标。不得为达标改机器规格或压测场景。"
+}

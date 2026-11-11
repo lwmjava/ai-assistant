@@ -36,7 +36,9 @@
 | CORS_ORIGINS | 逗号分隔的实际 HTTPS 前端来源，禁止 `*` |
 | INITIAL_ADMIN_USERNAME / INITIAL_ADMIN_PASSWORD | 可选环境引导；均为空时保留一次性 setup 路径 |
 | INITIAL_SYSTEM_PASSWORD / INITIAL_CULTURE_PASSWORD | 可选三账号引导；两项与管理员口令全部非空且管理员名为 admin；新建账号首次登录必须改密 |
-| APP_BIND_HOST / APP_PORT | 默认 127.0.0.1:8000；公开部署应经受控 HTTPS 反向代理，本卡不提供代理专项验收 |
+| APP_BIND_HOST / APP_PORT | 默认 127.0.0.1:8000；公开入口应经叠加的 HTTPS 反向代理，配置与验收步骤见 [反向代理与流式长连接](reverse-proxy-sse.md) |
+
+公开 HTTPS 入口需要叠加 `deploy/compose.proxy.yml`，由代理终止 TLS、关闭 SSE 缓冲，并把读超时与应用 15 秒心跳对齐。证书由部署方提供，不在本仓库签发。详细变量、验证步骤和回滚见 [反向代理与流式长连接](reverse-proxy-sse.md)。叠加代理不是默认生产编排的一部分，启动前仍须单独准备证书并获授权。
 
 使用独立 project 名隔离本次验证卷；不要复用真实部署的 project 名、卷或数据库。显式提供环境文件的命令如下：
 

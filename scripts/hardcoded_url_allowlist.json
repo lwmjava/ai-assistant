@@ -1,0 +1,22 @@
+{
+  "hosts": [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "milvus",
+    "etcd",
+    "example.com",
+    "example.invalid",
+    "www.w3.org",
+    "api.deepseek.com",
+    "dashscope.aliyuncs.com",
+    "platform.openai.com",
+    "developers.openai.com",
+    "api-docs.deepseek.com",
+    "open.bigmodel.cn",
+    "api.bochaai.com",
+    "qianfan.baidubce.com",
+    "www.alibabacloud.com"
+  ],
+  "url_prefixes": []
+}

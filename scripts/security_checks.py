@@ -1,4 +1,4 @@
-"""Shared staged-secret and public dependency audit entry points."""
+"""Shared staged-secret, public dependency audit, and hardcoded URL scan entry points."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import sys
 import tempfile
 import tomllib
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 
 class CheckError(RuntimeError):
@@ -173,18 +174,271 @@ def audit_npm(root: Path, output: Path) -> dict:
     return {"status": "failed" if count else "passed", "vulnerabilities": count, "report": str(output)}
 
 
+DEFAULT_URL_ALLOWLIST = Path("scripts/hardcoded_url_allowlist.json")
+URL_PATTERN = re.compile(r"(?i)\b(?:https?|wss?)://[^\s\"'`<>\\)]+")
+TRAILING_URL_CHARS = ".,;:)]}'\""
+SCAN_EXTENSIONS = {
+    ".py",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".vue",
+    ".css",
+    ".html",
+    ".yml",
+    ".yaml",
+    ".json",
+    ".toml",
+}
+SKIP_DIRECTORIES = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    "dist",
+    "build",
+    ".venv",
+    "venv",
+}
+MAX_SCAN_BYTES = 1_000_000
+BUILTIN_EXACT_HOSTS = {
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1",
+    "example.com",
+    "example.net",
+    "example.org",
+    "example.invalid",
+    "www.w3.org",
+    "schema.org",
+    "json-schema.org",
+}
+BUILTIN_HOST_SUFFIXES = (
+    ".localhost",
+    ".example.com",
+    ".example.net",
+    ".example.org",
+    ".example",
+    ".invalid",
+    ".test",
+)
+
+
+def is_environment_file(path: Path) -> bool:
+    name = path.name
+    return name == ".env" or name.startswith(".env.") and not name.endswith(".example")
+
+
+def normalize_url_token(token: str) -> str:
+    cleaned = token.strip()
+    while cleaned and cleaned[-1] in TRAILING_URL_CHARS:
+        cleaned = cleaned[:-1]
+    return cleaned
+
+
+def display_url(url: str) -> str:
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if host is None:
+        return urlunparse((parsed.scheme, parsed.netloc, parsed.path or "", "", "", ""))
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    netloc = f"{host}:{parsed.port}" if parsed.port else host
+    return urlunparse((parsed.scheme, netloc, parsed.path or "", "", "", ""))
+
+
+def is_placeholder_host(host: str) -> bool:
+    lowered = host.lower()
+    return lowered == "host" or any(char in host for char in "{}<>$")
+
+
+def host_allowed(host: str, allowed_hosts: set[str]) -> bool:
+    lowered = host.lower().rstrip(".")
+    if lowered in BUILTIN_EXACT_HOSTS or lowered in allowed_hosts:
+        return True
+    if any(lowered.endswith(suffix) for suffix in BUILTIN_HOST_SUFFIXES):
+        return True
+    for candidate in allowed_hosts:
+        if "." in candidate and (lowered == candidate or lowered.endswith("." + candidate)):
+            return True
+    return False
+
+
+def url_prefix_allowed(url: str, prefixes: tuple[str, ...]) -> bool:
+    displayed = display_url(url)
+    return any(displayed.startswith(prefix) or url.startswith(prefix) for prefix in prefixes)
+
+
+def load_url_allowlist(path: Path) -> tuple[set[str], tuple[str, ...]]:
+    if not path.is_file():
+        raise CheckError("url_allowlist_unavailable")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError) as exc:
+        raise CheckError("url_allowlist_unavailable") from exc
+    if not isinstance(raw, dict):
+        raise CheckError("url_allowlist_unavailable")
+    hosts = raw.get("hosts", [])
+    prefixes = raw.get("url_prefixes", [])
+    if not isinstance(hosts, list) or not isinstance(prefixes, list):
+        raise CheckError("url_allowlist_unavailable")
+    if any(not isinstance(item, str) or not item.strip() for item in [*hosts, *prefixes]):
+        raise CheckError("url_allowlist_unavailable")
+    return {item.strip().lower().rstrip(".") for item in hosts}, tuple(item.strip() for item in prefixes)
+
+
+def iter_scan_paths(root: Path) -> list[Path]:
+    discovered: set[Path] = set()
+    for relative in ("app", "frontend/src"):
+        base = root / relative
+        if not base.is_dir():
+            continue
+        for path in base.rglob("*"):
+            if (
+                path.is_file()
+                and path.suffix.lower() in SCAN_EXTENSIONS
+                and not any(part in SKIP_DIRECTORIES for part in path.parts)
+                and not is_environment_file(path)
+            ):
+                discovered.add(path)
+    for pattern in ("docker-compose*.yml", "docker-compose*.yaml", "compose*.yml", "compose*.yaml"):
+        discovered.update(path for path in root.glob(pattern) if path.is_file() and not is_environment_file(path))
+    deploy = root / "deploy"
+    if deploy.is_dir():
+        for path in deploy.rglob("*"):
+            if (
+                path.is_file()
+                and path.suffix.lower() in SCAN_EXTENSIONS
+                and not any(part in SKIP_DIRECTORIES for part in path.parts)
+                and not is_environment_file(path)
+            ):
+                discovered.add(path)
+    return sorted(discovered, key=lambda item: item.as_posix().lower())
+
+
+def extract_urls(text: str) -> list[tuple[int, str, str]]:
+    found: list[tuple[int, str, str]] = []
+    for line_number, line in enumerate(text.splitlines(), 1):
+        for match in URL_PATTERN.findall(line):
+            url = normalize_url_token(match)
+            parsed = urlparse(url)
+            host = parsed.hostname
+            if not host or is_placeholder_host(host):
+                continue
+            found.append((line_number, url, host.lower().rstrip(".")))
+    return found
+
+
+def scan_urls(root: Path, *, allowlist: Path | None = None, output: Path | None = None) -> dict:
+    allowlist_path = allowlist if allowlist is not None else root / DEFAULT_URL_ALLOWLIST
+    allowed_hosts, prefixes = load_url_allowlist(allowlist_path)
+    findings: list[dict[str, object]] = []
+    checked = 0
+    for path in iter_scan_paths(root):
+        if path.stat().st_size > MAX_SCAN_BYTES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeError:
+            continue
+        checked += 1
+        relative = path.relative_to(root).as_posix()
+        for line_number, url, host in extract_urls(text):
+            if host_allowed(host, allowed_hosts) or url_prefix_allowed(url, prefixes):
+                continue
+            findings.append({
+                "file": relative,
+                "line": line_number,
+                "host": host,
+                "url": display_url(url),
+            })
+    report = {
+        "status": "failed" if findings else "passed",
+        "files_checked": checked,
+        "findings": findings,
+        "allowlist": allowlist_path.as_posix(),
+    }
+    if output is not None:
+        output.write_text(json.dumps(report, ensure_ascii=True, indent=2), encoding="utf-8")
+        report["report"] = str(output)
+    return report
+
+
+def selftest_urls() -> dict:
+    with tempfile.TemporaryDirectory(prefix="url-scan-selftest-") as temporary:
+        root = Path(temporary)
+        (root / "app").mkdir()
+        (root / "frontend" / "src").mkdir(parents=True)
+        (root / "deploy").mkdir()
+        (root / "scripts").mkdir()
+        allowlist = root / DEFAULT_URL_ALLOWLIST
+        allowlist.write_text(
+            json.dumps({"hosts": ["example.com"], "url_prefixes": ["https://allowed.docs.example/"]}),
+            encoding="utf-8",
+        )
+        (root / "app" / "allowed.py").write_text(
+            'DOCS = "https://example.com/guide"\n'
+            'LOCAL = "http://localhost:8080/health"\n'
+            'PREFIX = "https://allowed.docs.example/reference"\n'
+            'TEMPLATE = "https://{raw}/path"\n',
+            encoding="utf-8",
+        )
+        (root / "app" / ".env").write_text("INTERNAL_URL=http://10.0.0.8/secret\n", encoding="utf-8")
+        (root / "app" / "blocked.py").write_text(
+            'INTRANET = "http://192.168.10.25/admin?token=should-redact"\n'
+            'PRODUCTION = "https://billing.corp.internal/v1"\n',
+            encoding="utf-8",
+        )
+        (root / "frontend" / "src" / "hook.ts").write_text(
+            'export const hook = "https://example.com/hook";\n',
+            encoding="utf-8",
+        )
+        result = scan_urls(root, allowlist=allowlist)
+        hosts = {item["host"] for item in result["findings"]}
+        files = {item["file"] for item in result["findings"]}
+        displayed = {item["url"] for item in result["findings"]}
+        if result["status"] != "failed":
+            raise CheckError("url_selftest_failed")
+        if hosts != {"192.168.10.25", "billing.corp.internal"}:
+            raise CheckError("url_selftest_failed")
+        if files != {"app/blocked.py"}:
+            raise CheckError("url_selftest_failed")
+        if any("token=" in value or "should-redact" in value for value in displayed):
+            raise CheckError("url_selftest_failed")
+        if "http://192.168.10.25/admin" not in displayed:
+            raise CheckError("url_selftest_failed")
+        (root / "app" / "blocked.py").write_text("print(0)\n", encoding="utf-8")
+        clean = scan_urls(root, allowlist=allowlist)
+        if clean["status"] != "passed" or clean["findings"]:
+            raise CheckError("url_selftest_failed")
+    return {"status": "passed", "check": "urls-selftest"}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("check", choices=("secrets", "python-audit", "npm-audit"))
+    parser.add_argument("check", choices=("secrets", "python-audit", "npm-audit", "urls"))
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--staged", action="store_true")
     parser.add_argument("--base-ref")
     parser.add_argument("--output")
+    parser.add_argument("--allowlist", type=Path)
+    parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
     root = args.root.resolve()
     try:
         if args.check == "secrets":
             result = scan_secrets(root, staged=args.staged, base_ref=args.base_ref)
+        elif args.check == "urls":
+            if args.selftest:
+                result = selftest_urls()
+            else:
+                output = audit_output(root, args.output, "hardcoded-url-scan") if args.output else None
+                result = scan_urls(root, allowlist=args.allowlist, output=output)
         else:
             output = audit_output(root, args.output, args.check)
             result = audit_python(root, output) if args.check == "python-audit" else audit_npm(root, output)

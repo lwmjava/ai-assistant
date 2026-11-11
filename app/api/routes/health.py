@@ -3,8 +3,8 @@
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from sqlalchemy import text
 from sqlmodel import Session, select
 
@@ -12,6 +12,7 @@ from app.agents.tools.file_ops import file_ops_availability
 from app.agents.tools.web_search import search_availability
 from app.core.config import settings
 from app.core.database import engine
+from app.core.runtime_metrics import render_prometheus, snapshot_metrics
 from app.llm.factory import llm_availability
 from app.models.rag import DocumentChunk
 from app.rag.embeddings.factory import embedding_availability
@@ -250,3 +251,18 @@ def health_check() -> JSONResponse:
         },
     }
     return JSONResponse(status_code=200 if overall == "ok" else 503, content=body)
+
+
+@router.get("/metrics")
+def runtime_metrics(request: Request) -> Response:
+    """返回本进程存活、错误率和延迟指标；不含请求路径或身份标签。"""
+    accept = request.headers.get("accept", "")
+    query_format = (request.query_params.get("format") or "").lower()
+    want_json = query_format == "json" or ("application/json" in accept and "text/plain" not in accept)
+    snapshot = snapshot_metrics()
+    if want_json:
+        return JSONResponse(snapshot)
+    return PlainTextResponse(
+        render_prometheus(snapshot),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )

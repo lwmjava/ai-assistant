@@ -251,6 +251,8 @@ mypy app/
 | [`docs/rag/`](docs/rag/) | 索引身份与切换、检索状态与拒答契约 |
 | [`docs/workflows/`](docs/workflows/) | 缺陷与夜间流程、生产编排 |
 | [`docs/evaluations/`](docs/evaluations/) | 评测方法与基线报告 |
+| [`CHANGELOG.md`](CHANGELOG.md) | 版本变更记录与 Breaking 区约定 |
+| [`docs/workflows/version-upgrade.md`](docs/workflows/version-upgrade.md) | 版本升级顺序，以及与 Breaking 区的交叉引用 |
 | [`tasks.yaml`](tasks.yaml) | 任务契约、状态与允许路径（状态只在此维护） |
 
 当 README、PRD 与代码不一致时，以代码和测试证据为当前事实，以 PRD §3.1 为目标边界，并记录漂移，不静默选一方。

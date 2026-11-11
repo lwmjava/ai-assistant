@@ -538,11 +538,15 @@ class AgentPipeline:
             return result
         finally:
             if self.trace is not None:
+                purpose = "intent" if llm is self.intent_llm and llm is not self.llm else "chat"
+                if stage in {"preflight", "skill_match"}:
+                    purpose = "intent"
                 self.trace.llm_call(
                     getattr(llm, "model", "unknown"),
                     prompt=content_text(messages[-1].content) if messages else "",
                     response=result if isinstance(result, str) else "",
                     latency_ms=(time.monotonic() - started) * 1000,
+                    purpose=purpose,
                     stage=stage,
                 )
 
@@ -685,12 +689,16 @@ class AgentPipeline:
                         self._messages(system, self._build_respond(state), state), self.options)
                     attempted = True
                     async for delta in response:
+                        if self.trace is not None and delta:
+                            self.trace.mark_first_token(model=True)
                         yield delta
             else:
                 response = self.llm.stream_chat(
                     self._messages(system, self._build_respond(state), state), self.options)
                 attempted = True
                 async for delta in response:
+                    if self.trace is not None and delta:
+                        self.trace.mark_first_token(model=True)
                     yield delta
         finally:
             try:
@@ -702,6 +710,7 @@ class AgentPipeline:
                     self.trace.llm_call(
                         getattr(self.llm, "model", "unknown"),
                         latency_ms=(time.monotonic() - started) * 1000,
+                        purpose="chat",
                         stage="respond",
                     )
 
@@ -1049,7 +1058,11 @@ class AgentPipeline:
                 self.trace.stage_end("理解")
             # 2. Preflight 意图短路
             if not resumed:
+                if self.trace:
+                    self.trace.stage_start("意图分流")
                 state.needs_full_pipeline = await self._needs_plan(state)
+                if self.trace:
+                    self.trace.stage_end("意图分流")
             if not state.needs_full_pipeline:
                 # 简单问题：跳过规划/检索/反思，直接行动 → 响应
                 if self.trace:
@@ -1381,7 +1394,11 @@ class AgentPipeline:
             # 2. Preflight 意图短路
             yield AgentEvent("stage", "意图分流")
             if not resumed:
+                if self.trace:
+                    self.trace.stage_start("意图分流")
                 state.needs_full_pipeline = await self._needs_plan(state)
+                if self.trace:
+                    self.trace.stage_end("意图分流")
             yield protocol_event("intent.classified", intent="full" if state.needs_full_pipeline else "direct",
                                  shortcut=not state.needs_full_pipeline)
             if not state.needs_full_pipeline:
@@ -1393,6 +1410,8 @@ class AgentPipeline:
                 chunks: list[str] = []
                 async with aclosing(self._stream_final(state)) as response_stream:
                     async for delta in response_stream:
+                        if self.trace is not None and delta:
+                            self.trace.mark_first_token()
                         chunks.append(delta)
                         yield AgentEvent("token", delta)
                 state.answer = "".join(chunks)

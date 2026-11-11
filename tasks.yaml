@@ -377,6 +377,22 @@ tasks:
     target_version: "1.0"
     depends_on: ["SKILL-003", "PAGT-007", "V1C-005", "EVAL-003", "TRACE-001"]
     scope:
+      allowed_paths:
+        - app/debug/trace.py
+        - app/llm/model_tier.py
+        - app/core/config.py
+        - .env.example
+        - app/services/chat_service.py
+        - app/agents/pipeline.py
+        - app/agents/fast_path.py
+        - evals/skill_intent_overhead/
+        - tests/test_skill_intent_overhead.py
+        - tests/test_trace_call_counts.py
+        - docs/evaluations/
+        - evals/reports/
+        - docs/plans/
+        - docs/reviews/
+        - tasks.yaml
       deliverables: ["分阶段延迟与模型调用次数基线", "单变量优化与质量回归结论"]
       non_goals: ["不为减少调用降低鉴权或安全检查", "不预先决定合并模型决策或开启缓存"]
     acceptance:
@@ -394,7 +410,7 @@ tasks:
       admission:
         authorization: "2026-10-27仅授权把A03映射及依赖补入现有任务；真实模型、费用、生产启用和业务实现仍须另行授权。"
         condition: "先形成真实基线，只选择一项模型档位路由策略做单变量实验；有效负结果允许关闭而不采纳。"
-      progress: "2026-10-29纳入1.0第三阶段、P1，测量与单变量优化仍须逐卡实施和费用授权。"
+      progress: "2026-10-29纳入1.0第三阶段、P1，测量与单变量优化仍须逐卡实施和费用授权。 2026-11-11已在独立分支实现阶段耗时/用途调用次数/测评版本记录，以及默认关闭的模型档位（按已决定路由，不用意图置信度）单变量实验接线；Mock 对照不能作为采纳依据。真实模型基线未授权，未改生产开关，卡片保持 backlog。"
 
   - id: "RAG-044"
     title: "修复索引不可用时对话初始化失败"

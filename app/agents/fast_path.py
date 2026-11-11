@@ -82,6 +82,8 @@ async def _stream_reply(
     # 用户看到的第一句话也是确定的。
     if state.retrieval_disclosure:
         for piece in _chunk_tokens(state.retrieval_disclosure + "\n\n"):
+            if trace is not None and piece:
+                trace.mark_first_token()
             yield AgentEvent("token", piece)
     response = llm.stream_chat(messages, options)
     started = time.monotonic()
@@ -90,6 +92,8 @@ async def _stream_reply(
             if not delta:
                 continue
             parts.append(delta)
+            if trace is not None:
+                trace.mark_first_token(model=True)
             yield AgentEvent("token", delta)
     finally:
         try:
@@ -101,6 +105,7 @@ async def _stream_reply(
                 trace.llm_call(
                     getattr(llm, "model", "unknown"),
                     latency_ms=(time.monotonic() - started) * 1000,
+                    purpose="chat",
                     stage="fast.respond",
                 )
     body = "".join(parts).strip()

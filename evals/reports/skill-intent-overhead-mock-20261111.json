@@ -1,0 +1,73 @@
+{
+  "title": "skill and intent overhead mock comparison",
+  "eval_version": "skill-intent-overhead-0.1.0",
+  "source": "mock",
+  "recorded_at": "2026-11-11T23:19:40+08:00",
+  "timezone": "Asia/Shanghai",
+  "production_default": {
+    "LLM_MODEL_TIER_ROUTING_ENABLED": false
+  },
+  "experiment": "Use the configured intent-tier model for simple-route generation only; other routes keep the chat-tier model. Selection uses the already decided route kind, not intent confidence.",
+  "baseline": {
+    "label": "baseline",
+    "source": "mock",
+    "eval_version": "skill-intent-overhead-0.1.0",
+    "n": 4,
+    "route_accuracy": 1.0,
+    "skill_accuracy": 1.0,
+    "tool_accuracy": 1.0,
+    "mean_duration_ms": 0.0,
+    "p95_first_token_ms": 0.0,
+    "mean_first_token_ms": 0.0,
+    "mean_llm_call_count": 1,
+    "mean_stage_durations_ms": {
+      "skill_match": 0.0,
+      "route": 0.0,
+      "preflight": 0.0,
+      "retrieval": 0.0,
+      "tools": 0.0,
+      "answer": 0.0
+    },
+    "mean_llm_calls_by_purpose": {
+      "chat": 1
+    }
+  },
+  "treatment": {
+    "label": "model_tier",
+    "source": "mock",
+    "eval_version": "skill-intent-overhead-0.1.0",
+    "n": 4,
+    "route_accuracy": 1.0,
+    "skill_accuracy": 1.0,
+    "tool_accuracy": 1.0,
+    "mean_duration_ms": 0.0,
+    "p95_first_token_ms": 0.0,
+    "mean_first_token_ms": 0.0,
+    "mean_llm_call_count": 1,
+    "mean_stage_durations_ms": {
+      "skill_match": 0.0,
+      "route": 0.0,
+      "preflight": 0.0,
+      "retrieval": 0.0,
+      "tools": 0.0,
+      "answer": 0.0
+    },
+    "mean_llm_calls_by_purpose": {
+      "chat": 1
+    }
+  },
+  "decision": {
+    "source": "mock",
+    "eval_version": "skill-intent-overhead-0.1.0",
+    "decision": "not_a_real_baseline",
+    "reason": "mock results cannot be used to adopt or reject the experiment",
+    "quality_held": true,
+    "p95_first_token_delta_ms": 0.0,
+    "route_accuracy_delta": 0.0,
+    "skill_accuracy_delta": 0.0,
+    "tool_accuracy_delta": 0.0,
+    "real_model_run": false
+  },
+  "real_model_baseline": "not_run",
+  "real_model_baseline_reason": "no authorized real-model budget; absence of a real baseline is not an adoption or rejection result"
+}

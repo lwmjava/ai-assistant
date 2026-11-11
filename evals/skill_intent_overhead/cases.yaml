@@ -1,0 +1,23 @@
+version: skill-intent-overhead-0.1.0
+source: mock
+cases:
+  - id: simple-greeting
+    query: 你好，今天过得怎么样？
+    expected_route: simple
+    expected_skill: null
+    expected_tools: []
+  - id: calculator-tool
+    query: 请帮我算一下 12 乘以 8 等于多少
+    expected_route: tools
+    expected_skill: null
+    expected_tools: [calculator]
+  - id: knowledge-lookup
+    query: 请根据知识库说明退货流程
+    expected_route: rag
+    expected_skill: null
+    expected_tools: []
+  - id: combined-policy
+    query: 请根据报销标准计算差旅金额
+    expected_route: combined
+    expected_skill: null
+    expected_tools: [calculator]

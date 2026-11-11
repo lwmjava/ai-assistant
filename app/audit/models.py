@@ -4,8 +4,7 @@
 - ``AuditAction``：审计事件类型枚举（登录/登出/CRUD/危险操作）
 - ``AuditLog``：SQLModel 持久化模型，每条记录对应一个可审计事件
 
-当前实现：DB 持久化。可按需扩展：
-- 数据保留策略（自动清理超过 N 天的日志）
+当前实现：DB 持久化，超期记录先归档再从在线表移除。可按需扩展：
 - 合规报表导出（CSV/JSON）
 """
 
@@ -88,6 +87,9 @@ class AuditAction(str, Enum):
     # ── 工具调用（PAGT-002）──
     TOOL_CALL = "tool_call"
     MCP_CALL = "mcp_call"
+
+    # ── 保留清理 ──
+    AUDIT_RETENTION_RUN = "audit_retention_run"
 
     # ── 其他 ──
     OTHER = "other"

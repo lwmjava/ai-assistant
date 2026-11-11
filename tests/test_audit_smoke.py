@@ -149,7 +149,7 @@ print("  OK")
 
 # ── Test 7: cleanup_old_logs ──
 print("Test 7: cleanup_old_logs")
-deleted = asyncio.run(audit.cleanup_old_logs())
+deleted = asyncio.run(audit.cleanup_old_logs(dry_run=True))
 print(f"  deleted={deleted} (expected 0 for fresh DB)")
 print("  OK")
 

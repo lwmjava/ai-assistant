@@ -296,6 +296,29 @@ export function useDocQuestions(datasetId: string | null, versionId: string | nu
   })
 }
 
+export function useEditDocQuestion(enabled: boolean) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      datasetId: string
+      versionId: string
+      caseId: string
+      query: string
+      expected_answer_points?: string[]
+    }) =>
+      api.patch<DocQuestionVersion>(
+        `/evaluations/datasets/${encodeURIComponent(input.datasetId)}/doc-questions/${encodeURIComponent(input.versionId)}/cases/${encodeURIComponent(input.caseId)}`,
+        {
+          query: input.query,
+          expected_answer_points: input.expected_answer_points,
+        },
+      ),
+    onSuccess: async () => {
+      if (enabled) await client.invalidateQueries({ queryKey: ['evaluation-doc-questions'] })
+    },
+  })
+}
+
 export function useReviewDocQuestion(enabled: boolean) {
   const client = useQueryClient()
   return useMutation({

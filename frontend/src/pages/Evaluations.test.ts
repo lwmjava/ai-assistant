@@ -37,6 +37,11 @@ vi.mock('@/api/evaluations', () => ({
   useCancelEvaluationJob: () => ({ mutate: vi.fn(), isPending: false }),
   useRetrievalStrategies: () => ({ isPending: false, isError: false, data: { backends: ['native'] } }),
   useCompareRetrieval: () => ({ mutate: vi.fn(), isPending: false }),
+  useGenerateDocQuestions: () => ({ mutate: vi.fn(), isPending: false, isError: false, reset: vi.fn() }),
+  useDocQuestions: () => ({ isPending: false, isError: false, data: { cases: [] }, refetch: vi.fn() }),
+  useEditDocQuestion: () => ({ mutate: vi.fn(), isPending: false, isError: false, reset: vi.fn() }),
+  useReviewDocQuestion: () => ({ mutate: vi.fn(), isPending: false }),
+  usePromoteDocQuestions: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 beforeEach(() => {

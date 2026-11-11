@@ -236,8 +236,23 @@ def test_cross_tenant_document_rejected(ctx):
     assert response.status_code == 404
 
 
-def test_edit_reject_reopen_promote_and_no_auto_gold(ctx):
+def test_edit_reject_reopen_promote_and_no_auto_gold(ctx, monkeypatch):
     client, engine, headers = ctx
+    audit_events: list[dict] = []
+
+    async def record_audit(request, action, user=None, resource_type=None, resource_id=None, details=None):
+        audit_events.append(
+            {
+                "action": getattr(action, "value", action),
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "details": details or {},
+            }
+        )
+
+    from app.api.routes import evaluation as evaluation_routes
+
+    monkeypatch.setattr(evaluation_routes, "audit_event", record_audit)
     dataset_id = _create_dataset(client, headers)
     generated = client.post(
         f"/api/v1/evaluations/datasets/{dataset_id}/doc-questions/generate",
@@ -255,6 +270,12 @@ def test_edit_reject_reopen_promote_and_no_auto_gold(ctx):
     assert edited.status_code == 200, edited.text
     assert edited.json()["cases"][0]["candidate_status"] == "edited"
     assert edited.json()["cases"][0]["query"].startswith("编辑后的")
+    edit_audits = [row for row in audit_events if row["details"].get("action") == "edit_case"]
+    assert len(edit_audits) == 1
+    assert edit_audits[0]["resource_type"] == "evaluation_doc_questions"
+    assert edit_audits[0]["resource_id"] == version_id
+    assert edit_audits[0]["details"]["case_id"] == case_id
+    assert edit_audits[0]["details"]["dataset_id"] == dataset_id
 
     rejected = client.post(
         f"/api/v1/evaluations/datasets/{dataset_id}/doc-questions/{version_id}/cases/{case_id}/review",

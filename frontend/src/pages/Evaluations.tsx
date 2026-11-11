@@ -15,6 +15,7 @@ import {
   useSubmitDatasetVersion,
   useGenerateDocQuestions,
   useDocQuestions,
+  useEditDocQuestion,
   useReviewDocQuestion,
   usePromoteDocQuestions,
 } from '@/api/evaluations'
@@ -50,6 +51,9 @@ export default function EvaluationsPage() {
   const [datasetId, setDatasetId] = useState<string | null>(null)
   const [docQuestionVersionId, setDocQuestionVersionId] = useState<string | null>(null)
   const [silverVersionName, setSilverVersionName] = useState('silver-doc-1')
+  const [editingCaseId, setEditingCaseId] = useState<string | null>(null)
+  const [editQuery, setEditQuery] = useState('')
+  const [editAnswerPoints, setEditAnswerPoints] = useState('')
   const [newName, setNewName] = useState('')
   const [newSlug, setNewSlug] = useState('')
   const [jobVersionId, setJobVersionId] = useState<string | null>(null)
@@ -67,6 +71,7 @@ export default function EvaluationsPage() {
   const submitVersion = useSubmitDatasetVersion(canWrite)
   const generateDocQuestions = useGenerateDocQuestions(canWrite)
   const docQuestions = useDocQuestions(datasetId, docQuestionVersionId, allowed && Boolean(docQuestionVersionId))
+  const editDocQuestion = useEditDocQuestion(canWrite)
   const reviewDocQuestion = useReviewDocQuestion(canWrite)
   const promoteDocQuestions = usePromoteDocQuestions(canWrite)
   const jobs = useEvaluationJobs(allowed)
@@ -294,9 +299,35 @@ export default function EvaluationsPage() {
           </div>
           <p className="text-xs text-text-muted">来源文档 {String(item.provenance.source_document_id || '')} / 片段已绑定</p>
           {canWrite && <div className="flex flex-wrap gap-2">
+            <button type="button" className="text-sm text-primary" disabled={Boolean(item.unavailable_reason) || item.candidate_status === 'rejected' || editDocQuestion.isPending} onClick={() => {
+              setEditingCaseId(item.case_id)
+              setEditQuery(item.query)
+              setEditAnswerPoints((item.expected_answer_points ?? []).join('\n'))
+            }}>编辑</button>
             <button type="button" className="text-sm text-primary" disabled={reviewDocQuestion.isPending} onClick={() => datasetId && docQuestionVersionId && reviewDocQuestion.mutate({ datasetId, versionId: docQuestionVersionId, caseId: item.case_id, decision: 'accept' })}>接受</button>
             <button type="button" className="text-sm text-primary" disabled={reviewDocQuestion.isPending} onClick={() => datasetId && docQuestionVersionId && reviewDocQuestion.mutate({ datasetId, versionId: docQuestionVersionId, caseId: item.case_id, decision: 'reject' })}>拒绝</button>
             <button type="button" className="text-sm text-primary" disabled={reviewDocQuestion.isPending} onClick={() => datasetId && docQuestionVersionId && reviewDocQuestion.mutate({ datasetId, versionId: docQuestionVersionId, caseId: item.case_id, decision: 'reopen' })}>撤销拒绝</button>
+          </div>}
+          {canWrite && editingCaseId === item.case_id && <div className="space-y-2">
+            <input className="w-full rounded border border-border bg-surface p-2 text-sm" aria-label="编辑问题" value={editQuery} onChange={(event) => setEditQuery(event.target.value)} />
+            <textarea className="w-full rounded border border-border bg-surface p-2 text-sm" aria-label="编辑预期要点" rows={3} placeholder="每行一个要点" value={editAnswerPoints} onChange={(event) => setEditAnswerPoints(event.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="rounded bg-primary px-3 py-1 text-sm text-white disabled:opacity-50" disabled={editDocQuestion.isPending || editQuery.trim().length < 4} onClick={() => {
+                if (!datasetId || !docQuestionVersionId) return
+                editDocQuestion.mutate(
+                  {
+                    datasetId,
+                    versionId: docQuestionVersionId,
+                    caseId: item.case_id,
+                    query: editQuery,
+                    expected_answer_points: editAnswerPoints.split('\n').map((line) => line.trim()).filter(Boolean),
+                  },
+                  { onSuccess: () => setEditingCaseId(null) },
+                )
+              }}>保存编辑</button>
+              <button type="button" className="text-sm text-primary" onClick={() => setEditingCaseId(null)}>取消</button>
+            </div>
+            {editDocQuestion.isError && <ErrorState error={editDocQuestion.error} onRetry={() => editDocQuestion.reset()} />}
           </div>}
         </li>)}
       </ul>}

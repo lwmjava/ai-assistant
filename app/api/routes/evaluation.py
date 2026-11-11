@@ -725,11 +725,12 @@ def get_doc_questions(
     "/datasets/{dataset_id}/doc-questions/{version_id}/cases/{case_id}",
     response_model=DocQuestionVersionOut,
 )
-def edit_doc_question(
+async def edit_doc_question(
     dataset_id: str,
     version_id: str,
     case_id: str,
     payload: DocQuestionEditIn,
+    request: Request,
     user: User = Depends(writer),
     service: EvaluationDatasetService = Depends(dataset_service),
 ) -> DocQuestionVersionOut:
@@ -745,6 +746,18 @@ def edit_doc_question(
         _dataset, version, cases, index = service.get_doc_questions(user, dataset_id, version_id)
     except (DatasetAccessError, DatasetValidationError) as exc:
         raise _dataset_http(exc) from exc
+    await audit_event(
+        request,
+        AuditAction.OTHER,
+        user=user,
+        resource_type="evaluation_doc_questions",
+        resource_id=version_id,
+        details={
+            "action": "edit_case",
+            "dataset_id": dataset_id,
+            "case_id": case_id,
+        },
+    )
     return _doc_question_version_out(version, cases, index)
 
 

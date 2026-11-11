@@ -96,3 +96,54 @@ def delete_source_file(relative_path: str) -> bool:
             break
         current = current.parent
     return True
+
+
+def tenant_source_directory(tenant_id: str, *, root: Path | None = None) -> Path:
+    """返回某租户的源文件目录，并确保它落在知识库根目录内。"""
+    if not re.fullmatch(r"[0-9A-Za-z_-]+", tenant_id or ""):
+        raise ValueError("非法租户标识")
+    base = (root or knowledge_storage_root()).resolve()
+    path = (base / tenant_id).resolve()
+    try:
+        path.relative_to(base)
+    except ValueError as exc:
+        raise ValueError("非法租户目录") from exc
+    return path
+
+
+def list_tenant_source_files(tenant_id: str, *, root: Path | None = None) -> list[Path]:
+    """列出某租户知识目录下的普通文件，忽略符号链接。"""
+    directory = tenant_source_directory(tenant_id, root=root)
+    if not directory.exists():
+        return []
+    files: list[Path] = []
+    for path in directory.rglob("*"):
+        if path.is_symlink() or not path.is_file():
+            continue
+        try:
+            path.resolve().relative_to(directory.resolve())
+        except ValueError:
+            continue
+        files.append(path)
+    return files
+
+
+def delete_tenant_source_files(tenant_id: str, *, root: Path | None = None) -> int:
+    """删除某租户知识目录下的全部源文件，返回删除的普通文件数。"""
+    directory = tenant_source_directory(tenant_id, root=root)
+    if not directory.exists():
+        return 0
+    files = list_tenant_source_files(tenant_id, root=root)
+    for path in files:
+        path.unlink(missing_ok=True)
+    directories = [item for item in directory.rglob("*") if item.is_dir()]
+    for path in sorted(directories, key=lambda item: len(item.parts), reverse=True):
+        try:
+            path.rmdir()
+        except OSError:
+            break
+    try:
+        directory.rmdir()
+    except OSError:
+        pass
+    return len(files)

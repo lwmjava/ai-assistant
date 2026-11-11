@@ -91,6 +91,10 @@ class AuditAction(str, Enum):
     # ── 保留清理 ──
     AUDIT_RETENTION_RUN = "audit_retention_run"
 
+    # ── 合规清除 ──
+    TENANT_PURGE_CONFIRMED = "tenant_purge_confirmed"
+    TENANT_PURGE = "tenant_purge"
+
     # ── 其他 ──
     OTHER = "other"
 

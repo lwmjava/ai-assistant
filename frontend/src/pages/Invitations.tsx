@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Field'
 import { ApiError } from '@/lib/http'
 import { useAuthStore } from '@/store/auth'
+import { ROLE_META, type Role } from '@/types/api'
 
 export default function InvitationsPage() {
   const user = useAuthStore((s) => s.user)
@@ -105,7 +106,7 @@ export default function InvitationsPage() {
                 <li key={row.id} className="py-3 text-sm">
                   <p className="font-mono text-text">{row.code}</p>
                   <p className="text-text-muted">
-                    已用 {row.use_count}/{row.max_uses} · 到期 {row.expires_at.replace('T', ' ').slice(0, 16)}
+                    {ROLE_META[row.role as Role]?.label ?? row.role} · 已用 {row.use_count}/{row.max_uses} · 到期 {row.expires_at.replace('T', ' ').slice(0, 16)}
                   </p>
                 </li>
               ))}

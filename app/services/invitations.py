@@ -5,14 +5,11 @@ from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, col, select
 
+from app.core.config import get_settings
 from app.core.security import Role
 from app.models.membership import Invitation, Membership
 from app.models.user import Tenant, User
 from app.services.membership import get_membership
-
-INVITE_DAYS = 7
-INVITE_MAX_USES = 1
-INVITE_ROLE = Role.MEMBER.value
 
 
 class InviteForbiddenError(Exception):
@@ -75,16 +72,17 @@ def resolve_invite_tenant(session: Session, user: User, tenant_id: str | None) -
 
 
 def create_invitation(session: Session, user: User, tenant_id: str | None) -> Invitation:
-    """生成 7 天、单次、角色为 member 的邀请码。"""
+    """按当前配置生成邀请码；未改配置时默认 7 天、单次、角色为 member。"""
     tenant = resolve_invite_tenant(session, user, tenant_id)
+    settings = get_settings()
     code = secrets.token_urlsafe(16)
     row = Invitation(
         code=code,
         tenant_id=tenant.id,
-        role=INVITE_ROLE,
+        role=settings.INVITE_DEFAULT_ROLE,
         created_by=user.id,
-        expires_at=datetime.now(UTC) + timedelta(days=INVITE_DAYS),
-        max_uses=INVITE_MAX_USES,
+        expires_at=datetime.now(UTC) + timedelta(days=settings.INVITE_EXPIRE_DAYS),
+        max_uses=settings.INVITE_MAX_USES,
         use_count=0,
     )
     session.add(row)
@@ -121,7 +119,7 @@ def accept_invitation(session: Session, user: User, code: str) -> tuple[Membersh
     membership = Membership(
         user_id=user.id,
         tenant_id=invitation.tenant_id,
-        role=INVITE_ROLE,
+        role=invitation.role,
     )
     session.add(invitation)
     session.add(membership)

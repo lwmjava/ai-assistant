@@ -1,0 +1,30 @@
+name: evidence-conflict-correction-v0.1
+classification: Smoke
+notes: >
+  确定性离线对照。Mock 只证明冲突分类、有限纠错、拒答、预算耗尽、
+  取消和误改控制组可复现，不作为真实模型质量或生产启用证据。
+  holdout 只记录，不参与采纳决策。
+cases:
+  - id: old-vs-new-memory
+    expect:
+      uses_superseded_memory: false
+      status: corrected
+  - id: memory-vs-retrieval
+    expect:
+      personal_prefers_memory: true
+      published_prefers_retrieval: true
+  - id: already-correct-control
+    expect:
+      status: unchanged
+      miscorrection: false
+  - id: refuse-irreconcilable
+    expect:
+      status: refused
+  - id: budget-exhausted
+    expect:
+      status: budget_exhausted
+      attempts: 0
+  - id: safety-and-cancel
+    expect:
+      no_cross_tenant_leak: true
+      cancelled_stops: true

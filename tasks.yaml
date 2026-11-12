@@ -9921,7 +9921,7 @@ tasks:
 
   - id: "SKILL-004"
     title: "技能效果评估与自动淘汰"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     module: "Skill"
     target_version: "1.0"
@@ -9931,8 +9931,8 @@ tasks:
     context:
       problem: "技能无效果评估与自动淘汰，Reflect 闭环未接通技能治理。"
       facts:
-        - claim: "Reflect 反思可跑（EVO-001），但结果未用于技能效果评估/淘汰。"
-          evidence: "tasks.yaml EVO-001；app/evolution/"
+        - claim: "成功蒸馏后按反思记录写入技能效果评估。进化总开关打开时，才把证据充足的低效私有技能标为停用，并可回滚；租户窗口不能下线系统全局技能，同名技能不唯一时不下线。默认关闭总开关时只记评估。"
+          evidence: "app/evolution/skill_eval.py；app/evolution/store.py；tests/test_evolution_skill_eval.py"
         - claim: "本卡来自 9 域评审 §2.6 企业缺口（效果评估/自动淘汰）。"
           evidence: "docs/reviews/2026-10-04-9域企业上线完整度评审.md；docs/plans/plan_v1_domain_matrix_20261004.md §2.8"
     scope:
@@ -9972,6 +9972,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+      progress: "2026-11-12 评估记录、低效私有技能下线与回滚接在蒸馏成功之后。总开关默认关闭时只记录不执行。租户窗口不修改系统全局技能。同一租户同一名称只要多于一条记录就一律不下线，不再按启用或生命周期挑一条。同日用户委托独立测试角色两轮验收（非人工亲自操作）：首轮指出停用同名记录仍会下线另一条，修复后 pytest tests/test_evolution_skill_eval.py 12 passed，复验通过。全量 CI 未核验，不标 done。"
 
   - id: "RAG-017"
     title: "召回率持续测评门禁：基线挂 CI 作 1.0 发布门禁"

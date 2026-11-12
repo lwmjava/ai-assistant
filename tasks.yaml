@@ -13104,7 +13104,7 @@ tasks:
 
   - id: "AGT-005"
     title: "证据冲突验证与有限纠错离线实验"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     module: "Agent/证据纠错"
     target_version: "1.0"
@@ -13140,7 +13140,9 @@ tasks:
         仅允许 mock；live/付费运行被拒绝。专项 pytest tests/eval/test_evidence_conflict.py 为 15 passed、exit 0；ruff 覆盖改动文件通过；mypy 覆盖新模块通过。
         决策集相对错误下降约 0.88，误改率 0，安全违规 0，夹具决策 fixtures_passed，生产决策 keep_production_off。
         报告见 evals/reports/evidence-conflict-correction-v0.1.json 与 docs/evaluations/evidence-conflict-correction-v0.1.md。
-        卡片保持 backlog，不自行标完成；真实模型对照和生产接线仍需另授权。
+        卡片保持不自行标完成；真实模型对照和生产接线仍需另授权。
+        2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/eval/test_evidence_conflict.py 15 passed。
+        结论为夹具通过、生产决策 keep_production_off，默认回答链未接入。全量 CI 未核验，不标 done。
 
 
   - id: "MEM-005"

@@ -8008,7 +8008,7 @@ tasks:
 
   - id: "EVO-001"
     title: "Reflect 与夜间蒸馏可锁定运行"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     module: "Reflect/自演进"
     target_version: "1.0"
@@ -8017,8 +8017,8 @@ tasks:
     context:
       problem: "开关打开时，对话结束后的反思和夜间蒸馏没有可锁定的运行记录。默认关闭被当成了完成。"
       facts:
-        - claim: "蒸馏调度默认关闭。"
-          evidence: "app/core/config.py；app/evolution/"
+        - claim: "总开关和夜间蒸馏默认关闭。开关打开时，对话结束后的反思会写入运行记录；事件循环里的异步反思任务会被保住，关闭进程前会等它写完。调度器在配置的时间窗口内跑完一次蒸馏也会留下记录。"
+          evidence: "app/core/config.py；app/services/chat_service.py；app/evolution/scheduler.py；app/evolution/store.py；tests/test_evolution_run_records.py"
         - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 4。"
           evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
     scope:
@@ -8059,6 +8059,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+      progress: "2026-11-12 打开总开关和反思开关后，一次对话会留下反思记录；异步模式下任务引用保留到写完，同步模式在已有事件循环时由对话入口等待。蒸馏开关打开且落在配置窗口内时，调度器 tick 会留下蒸馏记录。默认关闭不能当作完成。同日用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_evolution_run_records.py tests/test_evolution_candidates.py tests/test_evolution_distill_smoke.py 34 passed，ruff 三文件通过，结论可合并。全量 CI 尚未对最终 SHA 通过，状态保持 in_review，不标 done。"
 
   - id: "AUTH-005"
     title: "对话读取权限与矩阵一致"

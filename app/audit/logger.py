@@ -3,7 +3,7 @@
 提供：
 - ``AuditLogger``：审计日志写入器（单例模式）
 - ``log()``：异步写入一条审计记录
-- ``cleanup_old_logs()``：清理超过保留期的日志
+- ``cleanup_old_logs()``：归档并移除超过保留期的在线日志
 
 当前实现：逐条写入 DB 持久化。可按需扩展：
 - 批量写入缓冲（减少 DB 往返）
@@ -13,9 +13,8 @@
 
 import json
 import logging
-from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session, col, delete
+from sqlmodel import Session
 
 from app.audit.models import AuditAction, AuditLog
 from app.core.database import engine
@@ -95,12 +94,18 @@ class AuditLogger:
     - 单例模式：全局共享一个实例
     """
 
-    def __init__(self, *, retention_days: int = 90) -> None:
+    def __init__(self, *, retention_days: int | None = None) -> None:
         """初始化审计日志写入器。
 
         Args:
-            retention_days: 日志保留天数（默认 90 天，符合 PRD 要求）。
+            retention_days: 日志保留天数；缺省读取配置，且不能少于 90 天。
         """
+        if retention_days is None:
+            from app.core.config import get_settings
+
+            retention_days = get_settings().AUDIT_RETENTION_DAYS
+        if retention_days < 90:
+            raise ValueError("审计日志保留期不能少于 90 天")
         self._retention_days = retention_days
 
     # ── 公开 API ──
@@ -204,22 +209,23 @@ class AuditLogger:
             )
             return None
 
-    async def cleanup_old_logs(self) -> int:
-        """清理超过保留期的审计日志。
+    async def cleanup_old_logs(self, *, dry_run: bool = False) -> int:
+        """归档并移除超过保留期的在线审计日志。
+
+        超期记录会先写入归档目录，成功后再从在线表删除；清理本身会留下审计记录。
+        ``dry_run=True`` 时只统计，不写归档、不删除。
 
         Returns:
-            删除的记录数。
+            实际从在线表删除的记录数；演练模式返回 0。
         """
-        cutoff = datetime.now(UTC) - timedelta(days=self._retention_days)
+        from app.audit.retention import archive_and_cleanup_expired_logs
+
         try:
-            with Session(engine) as session:
-                stmt = delete(AuditLog).where(col(AuditLog.created_at) < cutoff)
-                result = session.execute(stmt)
-                session.commit()
-                deleted = getattr(result, "rowcount", 0) or 0
-                if deleted > 0:
-                    logger.info("已清理 %d 条过期审计日志（保留期 %d 天）", deleted, self._retention_days)
-                return deleted
+            result = archive_and_cleanup_expired_logs(
+                retention_days=self._retention_days,
+                dry_run=dry_run,
+            )
+            return result.deleted_count
         except Exception:
             logger.exception("清理过期审计日志失败")
             return 0

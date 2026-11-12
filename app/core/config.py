@@ -422,7 +422,8 @@ class Settings(BaseSettings):
     # ── 审计日志（Audit Log）──
     # 可审计事件记录：DB 持久化 + structlog 降级，Admin API 查询/过滤/分页
     AUDIT_ENABLED: bool = True  # 是否启用审计日志
-    AUDIT_RETENTION_DAYS: int = 90  # 日志保留天数（≥90 天，符合 PRD 要求）
+    AUDIT_RETENTION_DAYS: int = Field(default=90, ge=90)  # 在线保留天数，不能少于 90 天
+    AUDIT_ARCHIVE_DIR: str = "data/audit-archive"  # 超期记录归档目录，相对路径以项目根为准
 
     # ── 进化系统（Evolution）──
     # Reflect 异步反思 + 夜间蒸馏调度器，Agent 自我改进闭环

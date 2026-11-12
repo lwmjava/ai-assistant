@@ -406,6 +406,36 @@ def test_other_tenant_skill_is_not_retired() -> None:
     engine.dispose()
 
 
+def test_same_name_with_disabled_sibling_is_not_retired() -> None:
+    engine = _engine()
+    now = datetime(2026, 11, 11, 12, 0, tzinfo=UTC)
+    with Session(engine) as session:
+        _seed_user(session)
+        active = _add_skill(session, skill_id="skill-live", owner_id="user-1")
+        disabled = _add_skill(
+            session,
+            skill_id="skill-old",
+            owner_id="user-2",
+            enabled=False,
+            lifecycle="retired",
+        )
+        _seed_poor_window(session, now, active.name)
+        session.commit()
+        rows = evaluate_skills(session=session, now=now, apply_retirements=True)
+        session.commit()
+        assert rows[0].decision == "retire"
+        assert rows[0].applied is False
+        assert rows[0].skill_id is None
+        assert "同名技能不唯一" in rows[0].reason
+        session.refresh(active)
+        session.refresh(disabled)
+        assert active.enabled is True
+        assert active.lifecycle == "active"
+        assert disabled.lifecycle == "retired"
+        assert list_skill_retirements(session) == []
+    engine.dispose()
+
+
 def test_ambiguous_private_skills_are_not_retired() -> None:
     engine = _engine()
     now = datetime(2026, 11, 11, 12, 0, tzinfo=UTC)

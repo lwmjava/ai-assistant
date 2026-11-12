@@ -410,7 +410,7 @@ def _resolve_skill(session: Session, name: str, tenant_id: str | None) -> tuple[
     """只解析可以安全下线的唯一技能。
 
     租户窗口只匹配该租户的私有技能，不能改系统全局技能。
-    同名记录多于一条时不猜测目标。
+    同名记录多于一条时不按下线状态或启用状态挑出其中一条。
     """
     if tenant_id:
         private_rows = _skills_named(
@@ -444,13 +444,9 @@ def _skills_named(
 def _unique_skill(rows: list[Skill]) -> tuple[Skill | None, str | None]:
     if not rows:
         return None, None
-    active = [row for row in rows if row.lifecycle == "active"]
-    pool = active or rows
-    enabled = [row for row in pool if row.enabled]
-    candidates = enabled or pool
-    if len(candidates) == 1:
-        return candidates[0], None
-    return None, "同名技能不唯一，不能自动下线"
+    if len(rows) > 1:
+        return None, "同名技能不唯一，不能自动下线"
+    return rows[0], None
 
 
 def _apply_retirement(

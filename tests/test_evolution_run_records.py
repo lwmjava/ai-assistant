@@ -117,6 +117,7 @@ def test_production_defaults_keep_evolution_disabled() -> None:
     """生产默认仍关闭总开关和夜间蒸馏，不能把默认关闭当成已完成。"""
     assert Settings.model_fields["EVOLUTION_ENABLED"].default is False
     assert Settings.model_fields["EVOLUTION_DISTILL_ENABLED"].default is False
+    assert Settings.model_fields["EVOLUTION_REFLECT_ASYNC"].default is True
     assert Settings.model_fields["EVOLUTION_REFLECT_BUDGET_MAX_LLM_CALLS"].default == 1
     assert Settings.model_fields["EVOLUTION_DISTILL_BUDGET_MAX_LLM_CALLS"].default == 1
 
@@ -275,6 +276,126 @@ async def test_distill_budget_skips_model_but_writes_record(monkeypatch: pytest.
     assert row.llm_call_count == 0
     assert llm.calls == 0
     engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_async_reflect_on_running_loop_keeps_a_record(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = _engine()
+    llm = MockLLM(VALID_REFLECT_JSON)
+    monkeypatch.setattr(settings, "EVOLUTION_ENABLED", True)
+    monkeypatch.setattr(settings, "EVOLUTION_REFLECT_ENABLED", True)
+    monkeypatch.setattr(settings, "EVOLUTION_REFLECT_ASYNC", True)
+    monkeypatch.setattr("app.evolution.store.default_engine", engine)
+    service = ChatService(llm_provider=llm)
+    with Session(engine) as session:
+        conv = _seed_conversation(session)
+        service._maybe_reflect(
+            conv,
+            AgentState(user_input="标准套餐多少钱？", quality_score=0.8, revision=1),
+        )
+        from app.services.chat_service import await_reflect_tasks
+
+        await await_reflect_tasks()
+        rows = list_reflect_runs(session, "conv-1")
+        assert len(rows) == 1
+        assert rows[0].status == "succeeded"
+        assert rows[0].tenant_id == "tenant-1"
+    assert llm.calls == 1
+    engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_sync_reflect_on_running_loop_returns_awaitable(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = _engine()
+    llm = MockLLM(VALID_REFLECT_JSON)
+    monkeypatch.setattr(settings, "EVOLUTION_ENABLED", True)
+    monkeypatch.setattr(settings, "EVOLUTION_REFLECT_ENABLED", True)
+    monkeypatch.setattr(settings, "EVOLUTION_REFLECT_ASYNC", False)
+    monkeypatch.setattr("app.evolution.store.default_engine", engine)
+    service = ChatService(llm_provider=llm)
+    with Session(engine) as session:
+        conv = _seed_conversation(session)
+        pending = service._maybe_reflect(
+            conv,
+            AgentState(user_input="标准套餐多少钱？", quality_score=0.8, revision=1),
+        )
+        assert pending is not None
+        assert list_reflect_runs(session, "conv-1") == []
+        await pending
+        rows = list_reflect_runs(session, "conv-1")
+        assert len(rows) == 1
+        assert rows[0].status == "succeeded"
+    assert llm.calls == 1
+    engine.dispose()
+
+
+class _FrozenClock:
+    @staticmethod
+    def now(tz: object | None = None) -> datetime:
+        return datetime(2026, 1, 1, 3, 0, tzinfo=UTC)
+
+
+class _RecordingDistiller:
+    def __init__(self, llm: object | None = None) -> None:
+        self.llm = llm
+
+    async def distill_recent(self, **kwargs: object) -> DistillResult:
+        return DistillResult(
+            summary="夜间批次已分析",
+            analysis_period="最近 24 小时",
+            conversations_analyzed=1,
+            messages_analyzed=2,
+        )
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_persists_distill_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    import app.evolution.scheduler as evolution_scheduler
+
+    engine = _engine()
+    previous = evolution_scheduler._last_distill_time
+    evolution_scheduler._last_distill_time = None
+    monkeypatch.setattr(settings, "EVOLUTION_DISTILL_ENABLED", True)
+    monkeypatch.setattr("app.evolution.store.default_engine", engine)
+    monkeypatch.setattr("app.evolution.store.Distiller", _RecordingDistiller)
+    monkeypatch.setattr(evolution_scheduler, "datetime", _FrozenClock)
+    try:
+        await evolution_scheduler._tick()
+        with Session(engine) as session:
+            rows = list_distill_runs(session)
+            assert len(rows) == 1
+            assert rows[0].status == "succeeded"
+            assert rows[0].trigger == "scheduler"
+            assert rows[0].conversations_analyzed == 1
+    finally:
+        evolution_scheduler._last_distill_time = previous
+        engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_outside_window_writes_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    import app.evolution.scheduler as evolution_scheduler
+
+    engine = _engine()
+    previous = evolution_scheduler._last_distill_time
+    evolution_scheduler._last_distill_time = None
+    monkeypatch.setattr(settings, "EVOLUTION_DISTILL_ENABLED", True)
+    monkeypatch.setattr("app.evolution.store.default_engine", engine)
+    monkeypatch.setattr("app.evolution.store.Distiller", _RecordingDistiller)
+
+    class _Daytime:
+        @staticmethod
+        def now(tz: object | None = None) -> datetime:
+            return datetime(2026, 1, 1, 8, 0, tzinfo=UTC)
+
+    monkeypatch.setattr(evolution_scheduler, "datetime", _Daytime)
+    try:
+        await evolution_scheduler._tick()
+        with Session(engine) as session:
+            assert list_distill_runs(session) == []
+    finally:
+        evolution_scheduler._last_distill_time = previous
+        engine.dispose()
 
 
 def test_distill_result_to_dict_keeps_suggestions_as_data() -> None:

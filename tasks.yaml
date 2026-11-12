@@ -8008,7 +8008,7 @@ tasks:
 
   - id: "EVO-001"
     title: "Reflect 与夜间蒸馏可锁定运行"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     module: "Reflect/自演进"
     target_version: "1.0"
@@ -8017,8 +8017,8 @@ tasks:
     context:
       problem: "开关打开时，对话结束后的反思和夜间蒸馏没有可锁定的运行记录。默认关闭被当成了完成。"
       facts:
-        - claim: "蒸馏调度默认关闭。"
-          evidence: "app/core/config.py；app/evolution/"
+        - claim: "总开关和夜间蒸馏默认关闭。开关打开时，对话结束后的反思会写入运行记录；事件循环里的异步反思任务会被保住，关闭进程前会等它写完。调度器在配置的时间窗口内跑完一次蒸馏也会留下记录。"
+          evidence: "app/core/config.py；app/services/chat_service.py；app/evolution/scheduler.py；app/evolution/store.py；tests/test_evolution_run_records.py"
         - claim: "本卡来自 1.0 锁定拆分说明第 4 节，阶段 4。"
           evidence: "docs/plans/plan_v1_task_split_20261002.md §4；docs/plans/plan_v1_lock_20261002.md"
     scope:
@@ -8059,6 +8059,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
+      progress: "2026-11-12 打开总开关和反思开关后，一次对话会留下反思记录；异步模式下任务引用保留到写完，同步模式在已有事件循环时由对话入口等待。蒸馏开关打开且落在配置窗口内时，调度器 tick 会留下蒸馏记录。默认关闭不能当作完成。同日用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_evolution_run_records.py tests/test_evolution_candidates.py tests/test_evolution_distill_smoke.py 34 passed，ruff 三文件通过，结论可合并。全量 CI 尚未对最终 SHA 通过，状态保持 in_review，不标 done。"
 
   - id: "AUTH-005"
     title: "对话读取权限与矩阵一致"
@@ -8911,7 +8912,7 @@ tasks:
 
   - id: "EVO-002"
     title: "Reflect 改技能与待办提取"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     module: "Reflect/自演进"
     target_version: "1.0"
@@ -8923,8 +8924,8 @@ tasks:
     context:
       problem: "EVO-001 只锁反思与蒸馏记录，明确不把反思结果改成技能；差距表仍缺改技能与待办提取。"
       facts:
-        - claim: "差距表 v0.5/§2：Reflect 改技能、待办提取没有。"
-          evidence: "docs/product/企业级上线差距-2026-10-02.md"
+        - claim: "开关打开且反思成功时，技能建议和待办写成待审候选。待办接受只记审核，不改系统行为。技能候选先经 POST /evolution/candidates/{id}/promote 变成未启用草稿，再经 POST /skills/{skill_id}/confirm 才进入对话。拒绝不创建技能。默认关闭时不提取。"
+          evidence: "app/evolution/candidates.py；app/api/routes/evolution.py；app/api/routes/skills.py；tests/test_evolution_candidates.py"
         - claim: "EVO-001 非目标：不在本条把反思结果直接改成技能。"
           evidence: "tasks.yaml EVO-001"
         - claim: "本卡来自差距表第 2 表与需求正文核对，阶段 4。"
@@ -8968,6 +8969,7 @@ tasks:
       admission:
         authorization: "2026-10-27仅授权登记F02映射与前置，不授权自动修改或发布Skill。"
         condition: "候选只可查、可审；未经人工确认不得生效。"
+      progress: "2026-11-12 反思成功后写入待审技能候选和待办。接受待办不改技能；拒绝不建技能；提升只生成未启用草稿，确认接口 POST /skills/{id}/confirm 之后才进入对话。默认关闭不提取。同日用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_evolution_candidates.py 10 passed，结论行为通过。该角色指出全量 CI 与 required checks 未核验，因此不标 done，状态保持 in_review。"
       nightly:
         eligible: false
         production_access: false

@@ -129,6 +129,9 @@ async def stop_scheduler() -> None:
         except (asyncio.CancelledError, Exception):  # noqa: BLE001
             pass
         _scheduler_task = None
+    from app.services.chat_service import await_reflect_tasks
+
+    await await_reflect_tasks()
     logger.info("Evolution 蒸馏调度器已停止")
 
 

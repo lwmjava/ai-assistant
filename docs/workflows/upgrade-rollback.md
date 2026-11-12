@@ -17,7 +17,7 @@
    使用 `scripts/backup.sh` 生成完整备份，并核对 `manifest.json` 与校验和。没有这份备份，不得继续迁移，也无法按本文回滚。
 
 3. **迁移**  
-   在停写后执行数据库迁移。应用侧命令为 `python -m app.cli migrate --yes`（等价于将 schema 升到当前版本）。跨版本不兼容变更须写入 `CHANGELOG.md` 的 Breaking 区后再升级；本仓库若尚未建立该文件，先在升级记录中写明不兼容点，再按发布文档约定补记。
+   在停写后执行数据库迁移。应用侧命令为 `python -m app.cli migrate --yes`（等价于将 schema 升到当前版本）。跨版本不兼容变更须先写入 [CHANGELOG.md 的 Breaking 区](../../CHANGELOG.md#breaking) 后再升级。
 
 4. **启动**  
    启动应用及必要依赖。若镜像或应用版本有变化，启动的是目标版本，而不是升级前的版本。

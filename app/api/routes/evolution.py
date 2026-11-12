@@ -147,7 +147,7 @@ def promote(
     current_user: User = Depends(require_permission("skills", "write")),
     session: Session = Depends(get_db),
 ) -> CandidateOut:
-    """把技能候选转成未启用草稿；仍须调用技能确认接口才会生效。"""
+    """把技能候选转成未启用草稿。草稿不参与对话，须再调用 POST /skills/{skill_id}/confirm 才生效。"""
     payload = body or PromoteIn()
     text = None
     if any(

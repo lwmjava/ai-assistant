@@ -12,6 +12,7 @@ from app.api.routes import (
     auth,
     chat,
     evaluation,
+    evolution,
     export,
     feedback,
     health,
@@ -47,3 +48,4 @@ api_router.include_router(tenant_settings.router)
 api_router.include_router(invitations.router)
 api_router.include_router(evaluation.router)
 api_router.include_router(feedback.router)
+api_router.include_router(evolution.router)

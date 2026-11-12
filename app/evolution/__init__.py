@@ -8,11 +8,18 @@
 - ``EvolutionScheduler``：定时调度器，按配置触发蒸馏任务
 - ``DistillResult`` / ``DistillInsight`` / ``SkillSuggestion``：蒸馏结果数据类型
 
-当前实现：LLM 驱动的单轮反思与批量对话分析，结果以日志输出。可按需扩展：
-- Skill 自动更新（反思 / 蒸馏结果 → Skill manifest）
-- 知识库缺口自动发现与补充
-- 改进趋势追踪（时间序列分析）
+当前实现：LLM 驱动的单轮反思与批量对话分析；开关打开时写入可查询运行记录。
+开关打开时，成功的反思或蒸馏还会提取可查询的技能候选与待办；确认前不会写成生效技能。
 """
+from app.evolution.candidates import (
+    EvolutionCandidateError,
+    accept_todo_candidate,
+    get_candidate,
+    list_candidates,
+    missing_candidate_reason,
+    promote_skill_candidate,
+    reject_candidate,
+)
 from app.evolution.distiller import Distiller
 from app.evolution.models import (
     ActionItem,
@@ -24,8 +31,23 @@ from app.evolution.models import (
     Severity,
     SkillSuggestion,
 )
+from app.evolution.records import (
+    EvolutionCandidate,
+    EvolutionDistillRun,
+    EvolutionReflectRun,
+    EvolutionSkillEvaluation,
+    EvolutionSkillRetirement,
+)
 from app.evolution.reflector import Reflector
 from app.evolution.scheduler import EvolutionScheduler
+from app.evolution.skill_eval import (
+    SkillRetirementError,
+    evaluate_skills,
+    list_skill_evaluations,
+    list_skill_retirements,
+    rollback_skill_retirement,
+)
+from app.evolution.store import distill_and_record, list_distill_runs, list_reflect_runs, reflect_and_record
 
 __all__ = [
     # Reflect（单轮对话反思）
@@ -41,4 +63,25 @@ __all__ = [
     "DistillInsight",
     "SkillSuggestion",
     "EvolutionScheduler",
+    "EvolutionReflectRun",
+    "EvolutionDistillRun",
+    "EvolutionCandidate",
+    "EvolutionCandidateError",
+    "list_candidates",
+    "get_candidate",
+    "reject_candidate",
+    "accept_todo_candidate",
+    "promote_skill_candidate",
+    "missing_candidate_reason",
+    "reflect_and_record",
+    "distill_and_record",
+    "list_reflect_runs",
+    "list_distill_runs",
+    "EvolutionSkillEvaluation",
+    "EvolutionSkillRetirement",
+    "SkillRetirementError",
+    "evaluate_skills",
+    "list_skill_evaluations",
+    "list_skill_retirements",
+    "rollback_skill_retirement",
 ]

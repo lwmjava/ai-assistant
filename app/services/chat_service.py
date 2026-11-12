@@ -1280,13 +1280,11 @@ class ChatService:
         return session.get(Conversation, conversation_id)
 
     def _maybe_reflect(self, conv: Conversation, state: AgentState) -> None:
-        """对话结束后触发异步反思。
+        """对话结束后触发反思，并在开关打开时写入运行记录。
 
         仅在 EVOLUTION_ENABLED + EVOLUTION_REFLECT_ENABLED 时触发；
-        反思失败不影响对话响应，仅记录日志。
-
-        SKELETON：当前仅做 LLM 反思并记录日志；
-        可按需扩展：改进点持久化、Skill 自动更新、Action Item 调度。
+        反思失败不影响对话响应，仅记录日志和失败运行。
+        不把反思结果直接写成技能。
         """
         if not settings.EVOLUTION_ENABLED or not settings.EVOLUTION_REFLECT_ENABLED:
             return
@@ -1294,17 +1292,23 @@ class ChatService:
             conversation_text = self._build_reflect_conversation_text(conv)
             if not conversation_text.strip():
                 return
+            conversation_id = conv.id
+            tenant_id = conv.tenant_id
+            quality_score = state.quality_score
+            revision_count = state.revision
+            llm = self.llm
 
             async def _do_reflect():
                 try:
-                    from app.evolution.reflector import Reflector
+                    from app.evolution.store import reflect_and_record
 
-                    reflector = Reflector(self.llm)
-                    result = await reflector.reflect(
-                        conversation_text=conversation_text,
-                        conversation_id=conv.id,
-                        quality_score=state.quality_score,
-                        revision_count=state.revision,
+                    result = await reflect_and_record(
+                        conversation_text,
+                        llm=llm,
+                        conversation_id=conversation_id,
+                        tenant_id=tenant_id,
+                        quality_score=quality_score,
+                        revision_count=revision_count,
                     )
                     if result.error:
                         logger.warning("反思异常: %s", result.error)
@@ -1328,8 +1332,12 @@ class ChatService:
                 # 异步执行：fire-and-forget，不阻塞对话响应
                 asyncio.create_task(_do_reflect())
             else:
-                # 同步执行（调试用）
-                asyncio.get_event_loop().run_until_complete(_do_reflect())
+                try:
+                    asyncio.get_running_loop()
+                except RuntimeError:
+                    asyncio.run(_do_reflect())
+                else:
+                    asyncio.create_task(_do_reflect())
 
         except Exception:  # noqa: BLE001
             logger.exception("触发反思失败")

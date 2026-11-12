@@ -420,6 +420,7 @@ class Settings(BaseSettings):
     EVOLUTION_ENABLED: bool = False  # 是否启用进化系统（默认关闭，需显式开启）
     EVOLUTION_REFLECT_ENABLED: bool = True  # 对话结束后是否触发异步反思
     EVOLUTION_REFLECT_ASYNC: bool = True  # 反思是否异步执行（不阻塞对话响应）
+    EVOLUTION_REFLECT_BUDGET_MAX_LLM_CALLS: int = 1  # 单次反思最多调用模型的次数
 
     # ── 安全治理（Security）──
     # 6 层防护：输入过滤 / 输出过滤 / Prompt 注入检测 / 日志脱敏 / 速率限制
@@ -509,6 +510,7 @@ class Settings(BaseSettings):
     EVOLUTION_DISTILL_MIN_INTERVAL_HOURS: int = 6  # 两次蒸馏之间的最小间隔（小时）
     EVOLUTION_DISTILL_WINDOW_START_HOUR: int = 2  # 蒸馏时间窗口起始（UTC 小时）
     EVOLUTION_DISTILL_WINDOW_END_HOUR: int = 5  # 蒸馏时间窗口结束（UTC 小时）
+    EVOLUTION_DISTILL_BUDGET_MAX_LLM_CALLS: int = 1  # 单次蒸馏最多调用模型的次数
 
     # ── Milvus（可选，仅当 RAG_VECTOR_STORE=milvus 时使用）──
     MILVUS_URI: str = "http://localhost:19530"

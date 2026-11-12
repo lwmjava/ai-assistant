@@ -10,7 +10,7 @@
 import asyncio
 import json
 import logging
-from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Coroutine
 from contextlib import aclosing
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -84,6 +84,22 @@ def _skill_names_payload(names: list[str] | None) -> str | None:
 
 
 logger = logging.getLogger(__name__)
+
+# 后台反思任务必须被保住，否则事件循环只持有弱引用，任务可能在写记录前消失。
+_reflect_tasks: set[asyncio.Task[None]] = set()
+
+
+def _retain_reflect_task(task: asyncio.Task[None]) -> None:
+    """保留任务引用，结束后再放开。"""
+    _reflect_tasks.add(task)
+    task.add_done_callback(_reflect_tasks.discard)
+
+
+async def await_reflect_tasks() -> None:
+    """等待已经发出的反思任务写完运行记录。"""
+    pending = [task for task in _reflect_tasks if not task.done()]
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
 
 # 送入管线的历史轮次上限，避免上下文过长。
 _HISTORY_LIMIT = 20
@@ -903,7 +919,9 @@ class ChatService:
         if result.error_code == "model_unavailable":
             raise ModelUnavailableError()
         # 9. 异步反思（不阻塞对话响应）
-        self._maybe_reflect(conv, result)
+        pending_reflect = self._maybe_reflect(conv, result)
+        if pending_reflect is not None:
+            await pending_reflect
         return conv, result.answer
 
     @cached_stream_scope
@@ -1060,7 +1078,9 @@ class ChatService:
                         )
                     current = ChatService._conversation_after_reply(session, conv, conversation_id)
                     if current is not None and state.error_code != "model_unavailable":
-                        self._maybe_reflect(current, state)
+                        pending_reflect = self._maybe_reflect(current, state)
+                        if pending_reflect is not None:
+                            await pending_reflect
                     yield AgentEvent("sources", json.dumps(sources, ensure_ascii=False))
                     yield protocol_event("citations", sources=sources)
                     logger.info("rag_sources_returned source_count=%s", len(sources))
@@ -1314,26 +1334,27 @@ class ChatService:
             return conv
         return session.get(Conversation, conversation_id)
 
-    def _maybe_reflect(self, conv: Conversation, state: AgentState) -> None:
+    def _maybe_reflect(self, conv: Conversation, state: AgentState) -> Coroutine[object, object, None] | None:
         """对话结束后触发反思，并在开关打开时写入运行记录。
 
-        仅在 EVOLUTION_ENABLED + EVOLUTION_REFLECT_ENABLED 时触发；
-        反思失败不影响对话响应，仅记录日志和失败运行。
-        不把反思结果直接写成技能。
+        仅在 EVOLUTION_ENABLED + EVOLUTION_REFLECT_ENABLED 时触发。
+        异步开关打开时把任务留在事件循环里，不阻塞本次响应。
+        异步开关关闭且当前已有事件循环时，返回可等待对象，由调用方等待记录写完。
+        反思失败不影响对话响应，只记日志和失败运行。不把反思结果直接写成技能。
         """
         if not settings.EVOLUTION_ENABLED or not settings.EVOLUTION_REFLECT_ENABLED:
-            return
+            return None
         try:
             conversation_text = self._build_reflect_conversation_text(conv)
             if not conversation_text.strip():
-                return
+                return None
             conversation_id = conv.id
             tenant_id = conv.tenant_id
             quality_score = state.quality_score
             revision_count = state.revision
             llm = self.llm
 
-            async def _do_reflect():
+            async def _do_reflect() -> None:
                 try:
                     from app.evolution.store import reflect_and_record
 
@@ -1364,18 +1385,23 @@ class ChatService:
                     logger.exception("异步反思执行失败")
 
             if settings.EVOLUTION_REFLECT_ASYNC:
-                # 异步执行：fire-and-forget，不阻塞对话响应
-                asyncio.create_task(_do_reflect())
-            else:
                 try:
-                    asyncio.get_running_loop()
+                    task = asyncio.get_running_loop().create_task(_do_reflect())
                 except RuntimeError:
                     asyncio.run(_do_reflect())
-                else:
-                    asyncio.create_task(_do_reflect())
+                    return None
+                _retain_reflect_task(task)
+                return None
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                asyncio.run(_do_reflect())
+                return None
+            return _do_reflect()
 
         except Exception:  # noqa: BLE001
             logger.exception("触发反思失败")
+            return None
 
     @staticmethod
     def _build_reflect_conversation_text(conv: Conversation) -> str:

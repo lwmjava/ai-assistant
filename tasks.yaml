@@ -6898,6 +6898,7 @@ tasks:
       delivery_order: 43
       delivery_stage: "V1-5"
       owner: "个人开发者"
+      progress: "已写出停写、迁移、启动、验证的升级流程和按升级前备份回滚的步骤，并在隔离环境完成一次跨版本升级与回滚演练。生产开关未改，未对已有生产卷做破坏性操作，未宣称 RTO/RPO 已实测达标，未标完成。"
       nightly:
         eligible: false
         production_access: false

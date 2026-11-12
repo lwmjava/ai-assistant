@@ -85,3 +85,5 @@ python scripts/backup_restore.py self-check
 `self-check` 只在临时目录验证上传归档、恢复安全拒绝和 dry-run，不访问生产数据，也不替代下面的三份真实演练。
 
 隔离演练记录见 [隔离备份恢复演练记录](backup-restore-drill.md)。该记录证明脚本可以对 PostgreSQL、上传目录和 Milvus 相关卷完成一次可恢复备份；它不是生产项目演练，也不包含运行中 Milvus 集合的检索核验。
+
+停机升级与按升级前备份回滚的步骤见 [升级与回滚](upgrade-rollback.md)。那份流程依赖本文的完整备份，但不测量、也不证明 RTO 或 RPO 已经达标。

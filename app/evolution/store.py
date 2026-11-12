@@ -329,6 +329,18 @@ async def distill_and_record(
             except Exception:  # noqa: BLE001 — 候选提取失败不影响蒸馏记录
                 session.rollback()
                 logger.exception("蒸馏候选提取失败")
+            try:
+                from app.evolution.skill_eval import evaluate_skills
+
+                evaluate_skills(
+                    session=session,
+                    now=finished_at,
+                    source_distill_run_id=row.id,
+                )
+                session.commit()
+            except Exception:  # noqa: BLE001 -- skill evaluation must not fail distill
+                session.rollback()
+                logger.exception("技能效果评估失败")
         session.refresh(row)
         session.expunge(row)
         return row

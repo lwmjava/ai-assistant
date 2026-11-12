@@ -40,6 +40,13 @@ from app.evolution.records import (
 )
 from app.evolution.reflector import Reflector
 from app.evolution.scheduler import EvolutionScheduler
+from app.evolution.skill_eval import (
+    SkillRetirementError,
+    evaluate_skills,
+    list_skill_evaluations,
+    list_skill_retirements,
+    rollback_skill_retirement,
+)
 from app.evolution.store import distill_and_record, list_distill_runs, list_reflect_runs, reflect_and_record
 
 __all__ = [
@@ -72,4 +79,9 @@ __all__ = [
     "list_distill_runs",
     "EvolutionSkillEvaluation",
     "EvolutionSkillRetirement",
+    "SkillRetirementError",
+    "evaluate_skills",
+    "list_skill_evaluations",
+    "list_skill_retirements",
+    "rollback_skill_retirement",
 ]

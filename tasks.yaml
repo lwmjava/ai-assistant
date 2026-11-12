@@ -6444,7 +6444,7 @@ tasks:
 
   - id: "NFR-008"
     title: "审计日志保留不少于 90 天"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     module: "审计日志"
     target_version: "1.0"
@@ -6490,6 +6490,7 @@ tasks:
       delivery_order: 33
       delivery_stage: "V1-4"
       owner: "个人开发者"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_audit_retention.py 8 passed。默认不少于 90 天，超期先归档再移除，清理本身留审计。全量 CI 未核验，不标 done。"
       nightly:
         eligible: false
         production_access: false
@@ -6498,7 +6499,7 @@ tasks:
 
   - id: "OPS-005"
     title: "数据合规删除：个人信息与租户彻底清除"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     module: "数据合规"
     target_version: "1.0"
@@ -6553,6 +6554,7 @@ tasks:
       delivery_order: 38
       delivery_stage: "V1-4"
       owner: "个人开发者"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_tenant_purge.py 9 passed。只允许清除名称以 test- 开头且成员全是测试用户的租户。真实个人信息和任意租户彻底清除未覆盖，不能标 done。"
       nightly:
         eligible: false
         production_access: false
@@ -6561,7 +6563,7 @@ tasks:
 
   - id: "OPS-006"
     title: "依赖许可证与漏洞审计"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     module: "依赖合规"
     target_version: "1.0"
@@ -6606,6 +6608,7 @@ tasks:
       delivery_order: 37
       delivery_stage: "V1-4"
       owner: "个人开发者"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：scripts/license_audit.py check 退出码 0，72 个直接依赖，2 项例外已有处置。同一交付没有漏洞扫描和漏洞处置，不能标 done。"
       nightly:
         eligible: true
         production_access: false
@@ -6614,7 +6617,7 @@ tasks:
 
   - id: "NFR-009"
     title: "性能基准与压测：五项指标验证"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     module: "性能压测"
     target_version: "1.0"
@@ -6671,6 +6674,7 @@ tasks:
       delivery_order: 36
       delivery_stage: "V1-4"
       owner: "个人开发者"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_perf_benchmark.py 9 passed。隔离夹具能测出五项数字，并拒绝把 Mock 写成达标。没有清单机 4C8G 上的真实 Embedding 实测，不能标 done。"
       nightly:
         eligible: false
         production_access: false
@@ -6742,7 +6746,7 @@ tasks:
 
   - id: "NFR-004"
     title: "反向代理与 SSE 长连接配置"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     module: "部署/SSE"
     target_version: "1.0"
@@ -6790,6 +6794,7 @@ tasks:
       delivery_order: 34
       delivery_stage: "V1-4"
       owner: "个人开发者"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：scripts/check_reverse_proxy.py static 退出码 0。配置已关闭缓冲，超时与心跳对齐，并写明代理终止 TLS。未做真实代理流式钻取，不能标 done。"
       nightly:
         eligible: false
         production_access: false
@@ -6958,7 +6963,7 @@ tasks:
 
   - id: "OPS-007"
     title: "运行时指标与基础告警"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     module: "可观测性"
     target_version: "1.0"
@@ -7008,6 +7013,7 @@ tasks:
       estimate_person_days: [2, 4]
       admission:
         authorization: "2026-10-27仅授权登记O02映射，不授权接入外部监控、告警平台或生产环境。"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_runtime_metrics.py 8 passed。指标端点可返回基础指标。现有材料只有阈值建议，没有实际告警发送或告警记录，不能标 done。"
       nightly:
         eligible: true
         production_access: false
@@ -8210,7 +8216,7 @@ tasks:
 
   - id: "INV-004"
     title: "邀请码角色有效期次数可配置"
-    status: "backlog"
+    status: "in_review"
     priority: "P2"
     module: "用户/租户"
     target_version: "1.0"
@@ -8255,6 +8261,7 @@ tasks:
       delivery_order: 39
       delivery_stage: "V1-4"
       owner: "个人开发者"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_invitations.py 8 passed。默认 member、7 天、1 次；改配置后新邀请码使用新的角色、有效期和次数。全量 CI 未核验，不标 done。"
       nightly:
         eligible: false
         production_access: false
@@ -9138,7 +9145,7 @@ tasks:
 
   - id: "NFR-013"
     title: "硬编码 URL 扫描"
-    status: "backlog"
+    status: "in_review"
     priority: "P1"
     module: "安全检查"
     target_version: "1.0"
@@ -9189,6 +9196,7 @@ tasks:
       delivery_order: 32
       delivery_stage: "V1-4"
       owner: "个人开发者"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest scripts/test_hardcoded_url_scan.py 8 passed。故意放入的内网和生产 URL 被拦截，白名单外命中使门禁失败。全量 CI 未核验，不标 done。"
       nightly:
         eligible: false
         production_access: false

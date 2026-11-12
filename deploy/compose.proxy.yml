@@ -1,0 +1,26 @@
+# Overlay for docker-compose.prod.yml. Paths are resolved from the first -f file.
+# TLS certificate and key are provided by the operator; this file does not issue certificates.
+
+services:
+  proxy:
+    image: nginx:alpine
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${PROXY_BIND_HOST:-127.0.0.1}:${PROXY_HTTPS_PORT:-443}:443"
+      - "${PROXY_BIND_HOST:-127.0.0.1}:${PROXY_HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/sse_proxy.conf:/etc/nginx/sse_proxy.conf:ro
+      - "${TLS_CERT_FILE:?必须提供由部署方准备的TLS证书}:/etc/nginx/certs/tls.crt:ro"
+      - "${TLS_KEY_FILE:?必须提供由部署方准备的TLS私钥}:/etc/nginx/certs/tls.key:ro"
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    cpus: "0.5"
+    mem_limit: 256m

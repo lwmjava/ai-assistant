@@ -635,7 +635,7 @@ Answer Correctness、安全、延迟和成本。
 
 任务状态、依赖与未决缺口只维护在 `tasks.yaml`。当前有效决定与进入条件由 `AGENTS.md` 第14节索引；历史日期、比例和排期不复制为当前事实。开发治理减负的效果通过后续真实任务试运行验证，不把文档缩短视为已提升质量。
 
-## 14. 提交前密钥与依赖扫描
+## 14. 提交前密钥、依赖与硬编码 URL 扫描
 
 前端开发与测试使用 Node.js 22.12+（22 LTS，或 Vitest 支持的 24/26+）；`frontend/package.json` 的 engines 与修复后的 Vitest 版本一致。现有 CI 使用 Node 22，本机验证使用 22.20.0。依赖升级逐项指定修复版本并验证类型、测试、lint 与构建，不执行 `npm audit fix` 或增加漏洞忽略项。
 
@@ -656,6 +656,8 @@ python -m pre_commit validate-config
 python scripts/security_checks.py secrets --staged
 python scripts/security_checks.py python-audit
 python scripts/security_checks.py npm-audit
+python scripts/security_checks.py urls --selftest
+python scripts/security_checks.py urls
 python -m pre_commit run --all-files
 ```
 
@@ -665,6 +667,6 @@ CI 在 push 的 before SHA、PR 的 base SHA 与 HEAD 范围内逐提交检查�
 
 Python 审计合并 `requirements.txt`、`pyproject.toml` 的运行依赖及当前 CI 使用的 `dev`/`langgraph` extras，交由 [pip-audit](https://github.com/pypa/pip-audit) 解析和检查传递依赖；不扫描本机 conda 环境中的无关包。尚未启用的其他 extras 不在此清单，启用时应同步审计范围。Windows 子进程强制 UTF-8，避免中文清单被 GBK 误解码。前端使用 Node/npm 对 `frontend/package-lock.json` 全部依赖审计（含开发依赖），不安装依赖、不运行生命周期脚本。两者会向公开包元数据服务查询包名/版本；不上传源码、模型密钥或 `.env`。
 
-退出码 0 代表本次完整检查通过；1 代表有新密钥或已知漏洞；2 代表工具、解析、网络或输入不完整，不能记为通过。Python/前端结果分别写入 `data/validation/python-audit.json` 和 `npm-audit.json`，CI 即使一项失败仍执行另一项并上传依赖审计产物。密钥日志仅含路径、检测类型和位置，不上传正文。漏洞库会更新，过去的零发现不保证后续仍为零。
+退出码 0 代表本次完整检查通过；1 代表有新密钥、已知漏洞或白名单外的硬编码 URL；2 代表工具、解析、网络、白名单或输入不完整，不能记为通过。Python/前端结果分别写入 `data/validation/python-audit.json` 和 `npm-audit.json`，CI 即使一项失败仍执行另一项并上传依赖审计产物。密钥日志仅含路径、检测类型和位置，不上传正文。漏洞库会更新，过去的零发现不保证后续仍为零。
 
-默认每次提交检查新增密钥；Python/前端清单及扫描配置变更时运行对应依赖审计。命中存量漏洞仍返回失败，不使用自动修复、忽略列表或吞退出码来制造通过；先评估并明确授权升级范围。纯源代码提交不重复在线依赖审计，CI 则每次独立执行完整依赖审计。回滚需移除本克隆 hook 及对应配置/工作流，保留已有报告；关闭或回退工具不是漏洞已修复的证据。
+默认每次提交检查新增密钥；Python/前端清单及扫描配置变更时运行对应依赖审计。命中存量漏洞仍返回失败，不使用自动修复、忽略列表或吞退出码来制造通过；先评估并明确授权升级范围。纯源代码提交不重复在线依赖审计，CI 则每次独立执行完整依赖审计。硬编码 URL 扫描覆盖 `app/`、`frontend/src/` 以及根目录编排文件和 `deploy/`，与密钥扫描不同，它检查当前工作树而不是仅比较新增片段。白名单在 `scripts/hardcoded_url_allowlist.json`，可按主机或 URL 前缀配置；回环地址、文档保留域和常见 schema 命名空间有内置放行，避免误杀示例域名。白名单缺失或无法解析时按错误失败，不能记为通过。命中报告只保留方案、主机和路径，去掉用户信息和查询串；不读取 `.env`。应用或编排文件、白名单及扫描配置变更时运行该检查；CI 的 Security 工作流每次先跑内置反例自检再扫描当前仓库。回滚需移除本克隆 hook 及对应配置/工作流，保留已有报告；关闭或回退工具不是漏洞已修复的证据。

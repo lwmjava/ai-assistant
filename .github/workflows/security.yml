@@ -56,3 +56,28 @@ jobs:
             data/validation/npm-audit.json
           if-no-files-found: warn
           retention-days: 14
+
+  hardcoded-urls:
+    name: Hardcoded URL scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify planted URL fixtures
+        run: python scripts/security_checks.py urls --selftest
+      - name: Scan hardcoded URLs
+        if: ${{ !cancelled() }}
+        run: python scripts/security_checks.py urls --output data/validation/hardcoded-url-scan.json
+      - name: Upload URL scan evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardcoded-url-scan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: data/validation/hardcoded-url-scan.json
+          if-no-files-found: warn
+          retention-days: 14

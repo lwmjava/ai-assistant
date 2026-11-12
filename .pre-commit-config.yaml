@@ -23,3 +23,11 @@ repos:
         pass_filenames: false
         files: '^frontend/package(-lock)?\.json$|^scripts/security_checks\.py$|^\.pre-commit-config\.yaml$'
         stages: [pre-commit]
+
+      - id: hardcoded-urls
+        name: hardcoded URL scan
+        entry: python scripts/security_checks.py urls
+        language: system
+        pass_filenames: false
+        files: '^(app/|frontend/src/|deploy/|docker-compose|compose\.)|^scripts/(security_checks\.py|hardcoded_url_allowlist\.json)$|^\.pre-commit-config\.yaml$'
+        stages: [pre-commit]

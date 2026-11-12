@@ -6948,6 +6948,7 @@ tasks:
       delivery_order: 42
       delivery_stage: "V1-5"
       owner: "个人开发者"
+      progress: "已写出内部运营目标 RPO≤24小时、RTO≤4小时，并与现有备份频率和恢复流程对齐；明确当前隔离演练未计时、不能当作已经达标。未改生产开关，未标完成。"
       nightly:
         eligible: true
         production_access: false

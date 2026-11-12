@@ -212,7 +212,7 @@ TARGET 的依赖方向是 `Channel/API → Harness → Runtime → Skill → Too
 
 ## 运维要点
 
-**备份与恢复**。默认数据库是仓库内 SQLite 文件，备份前先停掉使用它的进程。不要只拷主文件：用标准库 `sqlite3.Connection.backup` 把已提交内容写入另一个文件，源文件旁的 `-wal` / `-shm` 由这次 `backup` 收进目标文件，不单独拷走未合并的日志。恢复时把目标文件设为 `DATABASE_URL` 再启动，确认 `GET /api/v1/health` 为 `ok` 且 `alembic_version` 与源文件一致。备份文件与数据库同样敏感，不进仓库、不进日志。三个必须记住的例外：知识源文件在 `data/knowledge` 不在这个 SQLite 里；`RAG_VECTOR_STORE=local` 时向量在同一个 SQLite 里，改用 Milvus 后向量不在这个文件里，只恢复 SQLite 不会带回 Milvus 数据；自动备份脚本、PostgreSQL 与上传目录的备份本页不提供。完整流程见 `docs/plans/implementation_rel_002.md`。
+**备份与恢复**。默认数据库是仓库内 SQLite 文件，备份前先停掉使用它的进程。不要只拷主文件：用标准库 `sqlite3.Connection.backup` 把已提交内容写入另一个文件，源文件旁的 `-wal` / `-shm` 由这次 `backup` 收进目标文件，不单独拷走未合并的日志。恢复时把目标文件设为 `DATABASE_URL` 再启动，确认 `GET /api/v1/health` 为 `ok` 且 `alembic_version` 与源文件一致。备份文件与数据库同样敏感，不进仓库、不进日志。三个必须记住的例外：知识源文件在 `data/knowledge` 不在这个 SQLite 里；`RAG_VECTOR_STORE=local` 时向量在同一个 SQLite 里，改用 Milvus 后向量不在这个文件里，只恢复 SQLite 不会带回 Milvus 数据；开发 SQLite 的完整流程见 `docs/plans/implementation_rel_002.md`。PostgreSQL、上传目录和 Milvus 的备份脚本与恢复步骤见 `docs/workflows/backup-restore.md`，不能用本页的 SQLite 步骤代替。
 
 **扫描版 PDF OCR**。`RAG_OCR_ENABLED=true` 且 PDF 无文本层时才走 OCR，provider 为 `tesseract`（需服务器装 tesseract 与 `chi_sim`/`eng` 语言包）或 `cloud`（OpenAI 兼容视觉接口，`RAG_OCR_*` 优先于 `LLM_*`）。带文本层的 PDF 不走 OCR，环境或配置缺失时导入任务失败并记录明确原因。配置样例见 `.env.example`，依赖现状见 `docs/plans/implementation_rag_033_parse_quality.md`。
 

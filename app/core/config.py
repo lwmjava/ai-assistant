@@ -158,6 +158,12 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     AUTH_ENABLED: bool = True
 
+    # ── 邀请码默认值 ──
+    # 新邀请码使用这些默认角色、有效期和次数；已发出的邀请码不受后续改动影响。
+    INVITE_DEFAULT_ROLE: str = "member"
+    INVITE_EXPIRE_DAYS: int = Field(default=7, ge=1, le=365)
+    INVITE_MAX_USES: int = Field(default=1, ge=1, le=10000)
+
     # ── 初始管理员（首次引导用，生产建议创建后移除）──
     INITIAL_ADMIN_USERNAME: str = ""
     INITIAL_ADMIN_PASSWORD: str = ""
@@ -525,6 +531,23 @@ class Settings(BaseSettings):
     MILVUS_COLLECTION: str = "ai_assistant_chunks"
     MILVUS_INDEX_TYPE: str = "AUTOINDEX"  # 向量索引类型，IVF_* 时检索参数带 nprobe
     MILVUS_NPROBE: int = 16  # IVF_* 索引的查询聚类数，仅对该类索引生效
+
+    @field_validator("INVITE_DEFAULT_ROLE", mode="before")
+    @classmethod
+    def _validate_invite_default_role(cls, value: object) -> object:
+        if not isinstance(value, str):
+            raise ValueError("邀请码默认角色必须是 member、tenant_admin 或 viewer")
+        normalized = value.strip().lower()
+        if normalized not in {"member", "tenant_admin", "viewer"}:
+            raise ValueError("邀请码默认角色必须是 member、tenant_admin 或 viewer")
+        return normalized
+
+    @field_validator("INVITE_EXPIRE_DAYS", "INVITE_MAX_USES", mode="before")
+    @classmethod
+    def _validate_invite_budget_type(cls, value: object) -> object:
+        if isinstance(value, bool) or not isinstance(value, int | str):
+            raise ValueError("邀请码有效期和次数必须是整数")
+        return value
 
     @property
     def is_production(self) -> bool:

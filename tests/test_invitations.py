@@ -3,10 +3,13 @@
 import json
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlmodel import Session, SQLModel, select
 
 from app.audit.models import AuditAction, AuditLog
+from app.core.config import Settings, get_settings
 from app.core.database import engine
 from app.core.security import Role, hash_password
 from app.main import app
@@ -158,3 +161,134 @@ def test_unknown_code_is_404() -> None:
     ada = _login(client, "ada")
     resp = client.post("/api/v1/invitations/accept", headers=ada, json={"code": "missing-code"})
     assert resp.status_code == 404
+
+
+def _expires_near(value: str, days: int, slack_seconds: float = 30) -> None:
+    expires = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    expected = datetime.now(UTC) + timedelta(days=days)
+    assert abs((expires - expected).total_seconds()) < slack_seconds
+
+
+def test_invite_setting_defaults_and_rejects_invalid_values() -> None:
+    assert Settings.model_fields["INVITE_DEFAULT_ROLE"].default == "member"
+    assert Settings.model_fields["INVITE_EXPIRE_DAYS"].default == 7
+    assert Settings.model_fields["INVITE_MAX_USES"].default == 1
+
+    configured = Settings(
+        _env_file=None,
+        INVITE_DEFAULT_ROLE=" TENANT_ADMIN ",
+        INVITE_EXPIRE_DAYS="3",
+        INVITE_MAX_USES="2",
+    )
+    assert configured.INVITE_DEFAULT_ROLE == "tenant_admin"
+    assert configured.INVITE_EXPIRE_DAYS == 3
+    assert configured.INVITE_MAX_USES == 2
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, INVITE_DEFAULT_ROLE="system_admin")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, INVITE_EXPIRE_DAYS=0)
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, INVITE_EXPIRE_DAYS=366)
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, INVITE_MAX_USES=0)
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, INVITE_MAX_USES=True)
+
+
+def test_invite_create_rejects_inline_role_and_limits() -> None:
+    client = _client()
+    _admin_id, home_id = _person("root", Role.SYSTEM_ADMIN, "default")
+    headers = _login(client, "root")
+    resp = client.post(
+        "/api/v1/invitations",
+        headers=headers,
+        json={"tenant_id": home_id, "role": "tenant_admin", "max_uses": 99, "expire_days": 30},
+    )
+    assert resp.status_code == 422
+
+
+def test_new_invite_codes_follow_updated_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "INVITE_DEFAULT_ROLE", "tenant_admin")
+    monkeypatch.setattr(settings, "INVITE_EXPIRE_DAYS", 3)
+    monkeypatch.setattr(settings, "INVITE_MAX_USES", 2)
+
+    client = _client()
+    _admin_id, home_id = _person("root", Role.SYSTEM_ADMIN, "default")
+    ada_id, _ada_home = _person("ada", Role.MEMBER, "ada-home")
+    bob_id, _bob_home = _person("bob", Role.MEMBER, "bob-home")
+    _person("cara", Role.MEMBER, "cara-home")
+    admin_headers = _login(client, "root")
+
+    created = client.post("/api/v1/invitations", headers=admin_headers, json={"tenant_id": home_id})
+    assert created.status_code == 201
+    body = created.json()
+    assert body["role"] == "tenant_admin"
+    assert body["max_uses"] == 2
+    _expires_near(body["expires_at"], 3)
+    code = body["code"]
+
+    ada = _login(client, "ada")
+    first = client.post("/api/v1/invitations/accept", headers=ada, json={"code": code})
+    assert first.status_code == 201
+    assert first.json()["role"] == "tenant_admin"
+
+    bob = _login(client, "bob")
+    second = client.post("/api/v1/invitations/accept", headers=bob, json={"code": code})
+    assert second.status_code == 201
+    assert second.json()["role"] == "tenant_admin"
+
+    cara = _login(client, "cara")
+    exhausted = client.post("/api/v1/invitations/accept", headers=cara, json={"code": code})
+    assert exhausted.status_code == 409
+    assert exhausted.json()["detail"] == "邀请码已用尽"
+
+    with Session(engine) as session:
+        for user_id in (ada_id, bob_id):
+            membership = session.exec(
+                select(Membership).where(
+                    Membership.user_id == user_id,
+                    Membership.tenant_id == home_id,
+                )
+            ).one()
+            assert membership.role == "tenant_admin"
+
+
+def test_existing_invite_keeps_values_after_config_change(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client()
+    _admin_id, home_id = _person("root", Role.SYSTEM_ADMIN, "default")
+    _person("ada", Role.MEMBER, "ada-home")
+    admin_headers = _login(client, "root")
+
+    first = client.post("/api/v1/invitations", headers=admin_headers, json={"tenant_id": home_id})
+    assert first.status_code == 201
+    assert first.json()["role"] == "member"
+    assert first.json()["max_uses"] == 1
+    _expires_near(first.json()["expires_at"], 7)
+    first_code = first.json()["code"]
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "INVITE_DEFAULT_ROLE", "viewer")
+    monkeypatch.setattr(settings, "INVITE_EXPIRE_DAYS", 10)
+    monkeypatch.setattr(settings, "INVITE_MAX_USES", 5)
+
+    second = client.post("/api/v1/invitations", headers=admin_headers, json={"tenant_id": home_id})
+    assert second.status_code == 201
+    assert second.json()["role"] == "viewer"
+    assert second.json()["max_uses"] == 5
+    _expires_near(second.json()["expires_at"], 10)
+
+    listed = client.get(f"/api/v1/invitations?tenant_id={home_id}", headers=admin_headers)
+    assert listed.status_code == 200
+    by_code = {row["code"]: row for row in listed.json()}
+    assert by_code[first_code]["role"] == "member"
+    assert by_code[first_code]["max_uses"] == 1
+
+    ada = _login(client, "ada")
+    joined = client.post("/api/v1/invitations/accept", headers=ada, json={"code": first_code})
+    assert joined.status_code == 201
+    assert joined.json()["role"] == "member"
+

@@ -27,7 +27,7 @@ class Membership(SQLModel, TimestampMixin, table=True):
 
 
 class Invitation(SQLModel, TimestampMixin, table=True):
-    """邀请码。角色固定为 member，管理员可以再次看到邀请码本身。"""
+    """邀请码。创建时写入角色、有效期和次数，管理员可以再次看到邀请码本身。"""
 
     __tablename__ = "invitations"
 

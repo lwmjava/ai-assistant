@@ -336,9 +336,11 @@ def _evaluate_one(
         critical_rate=critical_rate,
         skill_issue_count=stats.skill_issue_count,
     )
-    skill = _resolve_skill(session, stats.skill_name, stats.tenant_id)
+    skill, block_reason = _resolve_skill(session, stats.skill_name, stats.tenant_id)
     if decision == "retire" and not apply_retirements:
         reason = f"{reason}；进化总开关关闭，仅记录评估、不执行下线"
+    elif decision == "retire" and block_reason:
+        reason = f"{reason}；{block_reason}"
 
     metrics: dict[str, Any] = {
         "high_severity_rate": high_rate,
@@ -350,10 +352,11 @@ def _evaluate_one(
         "critical_rate_threshold": CRITICAL_RATE,
         "retirement_id": None,
         "apply_retirements": apply_retirements,
+        "retirement_block": block_reason,
         "conversation_ids": sorted(cid for cid in stats.conversation_ids if cid),
     }
     row = EvolutionSkillEvaluation(
-        skill_id=skill.id if skill is not None else None,
+        skill_id=skill.id if skill is not None and block_reason is None else None,
         skill_name=stats.skill_name,
         tenant_id=stats.tenant_id,
         window_hours=window_hours,
@@ -376,7 +379,7 @@ def _evaluate_one(
     )
     session.add(row)
     session.flush()
-    if decision == "retire" and apply_retirements:
+    if decision == "retire" and apply_retirements and block_reason is None:
         applied, reason, retirement_id = _apply_retirement(session, skill, stats, reason, row.id)
         row.applied = applied
         row.reason = reason
@@ -403,33 +406,51 @@ def _decide(
     return "keep", "效果指标未达到下线条件"
 
 
-def _resolve_skill(session: Session, name: str, tenant_id: str | None) -> Skill | None:
-    rows: list[Skill] = []
+def _resolve_skill(session: Session, name: str, tenant_id: str | None) -> tuple[Skill | None, str | None]:
+    """只解析可以安全下线的唯一技能。
+
+    租户窗口只匹配该租户的私有技能，不能改系统全局技能。
+    同名记录多于一条时不猜测目标。
+    """
     if tenant_id:
-        rows.extend(
-            session.exec(
-                select(Skill).where(
-                    Skill.name == name,
-                    Skill.tenant_id == tenant_id,
-                    Skill.scope == "private",
-                )
-            ).all()
+        private_rows = _skills_named(
+            session,
+            name,
+            scope="private",
+            tenant_id=tenant_id,
         )
+        if not private_rows:
+            if _skills_named(session, name, scope="global"):
+                return None, "租户评估不能下线系统全局技能"
+            return None, None
+        return _unique_skill(private_rows)
+
+    return _unique_skill(_skills_named(session, name, scope="global"))
+
+
+def _skills_named(
+    session: Session,
+    name: str,
+    *,
+    scope: str,
+    tenant_id: str | None = None,
+) -> list[Skill]:
+    stmt = select(Skill).where(col(Skill.name) == name, col(Skill.scope) == scope)
+    if tenant_id is not None:
+        stmt = stmt.where(col(Skill.tenant_id) == tenant_id)
+    return list(session.exec(stmt).all())
+
+
+def _unique_skill(rows: list[Skill]) -> tuple[Skill | None, str | None]:
     if not rows:
-        rows.extend(
-            session.exec(
-                select(Skill).where(
-                    Skill.name == name,
-                    Skill.scope == "global",
-                )
-            ).all()
-        )
-    if not rows:
-        return None
+        return None, None
     active = [row for row in rows if row.lifecycle == "active"]
     pool = active or rows
     enabled = [row for row in pool if row.enabled]
-    return (enabled or pool)[0]
+    candidates = enabled or pool
+    if len(candidates) == 1:
+        return candidates[0], None
+    return None, "同名技能不唯一，不能自动下线"
 
 
 def _apply_retirement(
@@ -441,12 +462,16 @@ def _apply_retirement(
 ) -> tuple[bool, str, str | None]:
     if skill is None:
         return False, f"{reason}；未找到可下线的持久化技能，不修改内置清单", None
+    if skill.scope == "global" and stats.tenant_id:
+        return False, f"{reason}；租户评估不能下线系统全局技能", None
+    if skill.scope == "private" and skill.tenant_id != (stats.tenant_id or ""):
+        return False, f"{reason}；技能不属于该评估租户，不下线", None
     if skill.lifecycle == "draft":
         return False, f"{reason}；草稿技能不自动下线", None
     existing = session.exec(
         select(EvolutionSkillRetirement).where(
-            EvolutionSkillRetirement.skill_id == skill.id,
-            EvolutionSkillRetirement.status == "retired",
+            col(EvolutionSkillRetirement.skill_id) == skill.id,
+            col(EvolutionSkillRetirement.status) == "retired",
         )
     ).first()
     if existing is not None and (not skill.enabled) and skill.lifecycle == "retired":

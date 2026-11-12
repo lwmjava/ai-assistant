@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+import time
 import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -16,6 +17,7 @@ from starlette.responses import Response
 
 from app.core import log_context
 from app.core.process_metrics import record_api_request
+from app.core.runtime_metrics import record_http_request
 
 _X_REQUEST_ID = "X-Request-ID"
 
@@ -29,9 +31,15 @@ class TraceIdMiddleware(BaseHTTPMiddleware):
         log_context.set_trace_id(trace_id)
         if request.url.path.startswith("/api/"):
             record_api_request()
+        started = time.perf_counter()
+        response: Response | None = None
+        status_code = 500
         try:
             response = await call_next(request)
+            status_code = response.status_code
+            return response
         finally:
+            record_http_request(request.url.path, status_code, time.perf_counter() - started)
             log_context.clear()
-        response.headers[_X_REQUEST_ID] = trace_id
-        return response
+            if response is not None:
+                response.headers[_X_REQUEST_ID] = trace_id

@@ -5,8 +5,8 @@
 2. 技能改善建议（新技能创建 / 现有技能修改）
 3. 知识库或能力缺口
 
-当前实现：LLM 驱动的批量分析，结果以日志输出。
-可按需扩展：自动 Skill 更新、DB 持久化、趋势分析。
+当前实现：LLM 驱动的批量分析。运行记录由上层在开关打开时写入。
+不在本模块把技能建议直接写进技能。
 """
 
 import json
@@ -14,6 +14,7 @@ import logging
 import re
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
 from app.core.database import engine
@@ -105,6 +106,7 @@ class Distiller:
         hours: int = 24,
         max_conversations: int = 50,
         options: LLMOptions | None = None,
+        bind: Engine | None = None,
     ) -> DistillResult:
         """对最近 N 小时的对话进行批量蒸馏分析。
 
@@ -112,6 +114,7 @@ class Distiller:
             hours: 分析最近多少小时的对话。
             max_conversations: 最多分析的会话数。
             options: LLM 调用选项。
+            bind: 可选数据库引擎；缺省使用应用默认引擎。
 
         Returns:
             DistillResult：包含洞察列表和技能建议。
@@ -120,7 +123,7 @@ class Distiller:
 
         # 1. 获取近期对话
         cutoff = datetime.now(UTC) - timedelta(hours=hours)
-        conversations = self._fetch_recent_conversations(cutoff, max_conversations)
+        conversations = self._fetch_recent_conversations(cutoff, max_conversations, bind=bind)
 
         if not conversations:
             result.summary = "没有足够的数据进行蒸馏分析。"
@@ -218,10 +221,12 @@ class Distiller:
     # ── 数据获取 ──
 
     @staticmethod
-    def _fetch_recent_conversations(cutoff: datetime, max_count: int) -> list[Conversation]:
+    def _fetch_recent_conversations(
+        cutoff: datetime, max_count: int, bind: Engine | None = None
+    ) -> list[Conversation]:
         """从数据库获取最近的、有实际对话内容的会话。"""
         try:
-            with Session(engine) as session:
+            with Session(bind or engine) as session:
                 # 获取最近更新的会话
                 stmt = (
                     select(Conversation)

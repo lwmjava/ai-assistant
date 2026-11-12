@@ -3,8 +3,7 @@
 在应用 lifespan 中启动/停止。循环周期性检查是否到蒸馏时间，
 到点则触发 Distiller 对近期对话进行批量分析。
 
-当前实现：简化的时间窗口检查（每 N 秒检查一次）。
-可按需扩展：cron 表达式解析、分布式锁、DB 持久化调度记录。
+当前实现：按时间窗口与最小间隔触发蒸馏，并把每次跑完的结果写入运行记录。
 """
 
 import asyncio
@@ -12,7 +11,6 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from app.core.config import settings
-from app.evolution.distiller import Distiller
 
 logger = logging.getLogger(__name__)
 
@@ -66,47 +64,27 @@ async def _tick() -> None:
         if now - _last_distill_time < min_interval:
             return
 
-    # 执行蒸馏
+    # 执行蒸馏并留下运行记录。最小间隔以库中记录为准，这里保留进程内时间以免重复触发。
     logger.info("触发夜间蒸馏（时间窗口内）...")
-    _last_distill_time = now
-
     try:
-        distiller = Distiller()
-        result = await distiller.distill_recent(
-            hours=settings.EVOLUTION_DISTILL_HOURS,
-            max_conversations=settings.EVOLUTION_DISTILL_MAX_CONVERSATIONS,
-        )
+        from app.evolution.store import distill_and_record
 
-        if result.error:
-            logger.warning("蒸馏执行异常: %s", result.error)
-        elif result.total_issues > 0:
-            logger.info(
-                "蒸馏完成：对话=%d, 消息=%d, 洞察=%d (critical=%d, high=%d, medium=%d, low=%d), 技能建议=%d",
-                result.conversations_analyzed,
-                result.messages_analyzed,
-                result.total_issues,
-                result.critical_count,
-                result.high_count,
-                result.medium_count,
-                result.low_count,
-                len(result.skill_suggestions),
-            )
-            # 记录每条洞察
-            for insight in result.insights:
-                logger.info(
-                    "  [%s][%s] %s (频次: %d)",
-                    insight.severity.value,
-                    insight.category.value,
-                    insight.summary,
-                    insight.frequency,
-                )
+        row = await distill_and_record(now=now, respect_schedule=True, trigger="scheduler")
+        if row is None:
+            return
+        _last_distill_time = now
+        if row.error:
+            logger.warning("蒸馏执行异常: %s", row.error)
         else:
             logger.info(
-                "蒸馏完成：对话=%d, 消息=%d, 未发现显著改进点",
-                result.conversations_analyzed,
-                result.messages_analyzed,
+                "蒸馏完成：run=%s, 对话=%d, 消息=%d, 洞察=%d, 技能建议=%d, 状态=%s",
+                row.id,
+                row.conversations_analyzed,
+                row.messages_analyzed,
+                row.insight_count,
+                row.skill_suggestion_count,
+                row.status,
             )
-
     except Exception:  # noqa: BLE001
         logger.exception("蒸馏执行失败")
 

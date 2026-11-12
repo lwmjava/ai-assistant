@@ -14,10 +14,8 @@ Distill（批量对话蒸馏）：
 - ``SkillSuggestion``：技能创建 / 修改建议
 - ``DistillResult``：一次蒸馏分析的完整结果（洞察 + 技能建议 + 统计）
 
-当前实现：以上均为内存级数据类型，随进程生命周期存在。可按需扩展：
-- 反思与蒸馏结果的数据库持久化模型（如 ReflectRecord SQLModel）
-- 改进点 / 技能建议 → Skill manifest 自动更新
-- 待办事项 → Workflow 调度器写入
+当前实现：分析结果的内存数据结构；运行记录由独立持久化模型保存。
+不在本模块把反思或蒸馏结果直接写成技能。
 """
 
 from dataclasses import dataclass, field
@@ -174,6 +172,17 @@ class DistillInsight:
     # 发生频次（同类问题出现的次数）
     frequency: int = 0
 
+    def to_dict(self) -> dict:
+        return {
+            "severity": self.severity.value,
+            "category": self.category.value,
+            "summary": self.summary,
+            "detail": self.detail,
+            "suggestion": self.suggestion,
+            "conversation_ids": list(self.conversation_ids),
+            "frequency": self.frequency,
+        }
+
 
 @dataclass
 class SkillSuggestion:
@@ -191,6 +200,16 @@ class SkillSuggestion:
     prompt_injection: str = ""
     # 关联的洞察 ID
     insight_index: int = 0
+
+    def to_dict(self) -> dict:
+        return {
+            "skill_name": self.skill_name,
+            "action": self.action,
+            "description": self.description,
+            "triggers": list(self.triggers),
+            "prompt_injection": self.prompt_injection,
+            "insight_index": self.insight_index,
+        }
 
 
 @dataclass
@@ -219,6 +238,22 @@ class DistillResult:
 
     # 错误信息
     error: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "conversations_analyzed": self.conversations_analyzed,
+            "messages_analyzed": self.messages_analyzed,
+            "analysis_period": self.analysis_period,
+            "summary": self.summary,
+            "insights": [insight.to_dict() for insight in self.insights],
+            "skill_suggestions": [item.to_dict() for item in self.skill_suggestions],
+            "total_issues": self.total_issues,
+            "critical_count": self.critical_count,
+            "high_count": self.high_count,
+            "medium_count": self.medium_count,
+            "low_count": self.low_count,
+            "error": self.error,
+        }
 
     def calculate_stats(self) -> None:
         """根据 insights 计算统计字段。"""

@@ -8,10 +8,7 @@
 - ``EvolutionScheduler``：定时调度器，按配置触发蒸馏任务
 - ``DistillResult`` / ``DistillInsight`` / ``SkillSuggestion``：蒸馏结果数据类型
 
-当前实现：LLM 驱动的单轮反思与批量对话分析，结果以日志输出。可按需扩展：
-- Skill 自动更新（反思 / 蒸馏结果 → Skill manifest）
-- 知识库缺口自动发现与补充
-- 改进趋势追踪（时间序列分析）
+当前实现：LLM 驱动的单轮反思与批量对话分析；开关打开时写入可查询运行记录。
 """
 from app.evolution.distiller import Distiller
 from app.evolution.models import (
@@ -24,8 +21,16 @@ from app.evolution.models import (
     Severity,
     SkillSuggestion,
 )
+from app.evolution.records import (
+    EvolutionCandidate,
+    EvolutionDistillRun,
+    EvolutionReflectRun,
+    EvolutionSkillEvaluation,
+    EvolutionSkillRetirement,
+)
 from app.evolution.reflector import Reflector
 from app.evolution.scheduler import EvolutionScheduler
+from app.evolution.store import distill_and_record, list_distill_runs, list_reflect_runs, reflect_and_record
 
 __all__ = [
     # Reflect（单轮对话反思）
@@ -41,4 +46,13 @@ __all__ = [
     "DistillInsight",
     "SkillSuggestion",
     "EvolutionScheduler",
+    "EvolutionReflectRun",
+    "EvolutionDistillRun",
+    "EvolutionCandidate",
+    "reflect_and_record",
+    "distill_and_record",
+    "list_reflect_runs",
+    "list_distill_runs",
+    "EvolutionSkillEvaluation",
+    "EvolutionSkillRetirement",
 ]

@@ -9,7 +9,17 @@
 - ``DistillResult`` / ``DistillInsight`` / ``SkillSuggestion``：蒸馏结果数据类型
 
 当前实现：LLM 驱动的单轮反思与批量对话分析；开关打开时写入可查询运行记录。
+开关打开时，成功的反思或蒸馏还会提取可查询的技能候选与待办；确认前不会写成生效技能。
 """
+from app.evolution.candidates import (
+    EvolutionCandidateError,
+    accept_todo_candidate,
+    get_candidate,
+    list_candidates,
+    missing_candidate_reason,
+    promote_skill_candidate,
+    reject_candidate,
+)
 from app.evolution.distiller import Distiller
 from app.evolution.models import (
     ActionItem,
@@ -49,6 +59,13 @@ __all__ = [
     "EvolutionReflectRun",
     "EvolutionDistillRun",
     "EvolutionCandidate",
+    "EvolutionCandidateError",
+    "list_candidates",
+    "get_candidate",
+    "reject_candidate",
+    "accept_todo_candidate",
+    "promote_skill_candidate",
+    "missing_candidate_reason",
     "reflect_and_record",
     "distill_and_record",
     "list_reflect_runs",

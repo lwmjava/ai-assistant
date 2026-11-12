@@ -164,6 +164,15 @@ async def reflect_and_record(
             finished_at=finished_at,
         )
         session.commit()
+        if status == "succeeded":
+            try:
+                from app.evolution.candidates import record_candidates_from_reflect
+
+                record_candidates_from_reflect(session, run, result)
+                session.commit()
+            except Exception:  # noqa: BLE001 — 候选提取失败不影响反思记录
+                session.rollback()
+                logger.exception("反思候选提取失败")
     return result
 
 
@@ -311,6 +320,15 @@ async def distill_and_record(
             finished_at=finished_at,
         )
         session.commit()
+        if status == "succeeded":
+            try:
+                from app.evolution.candidates import record_candidates_from_distill
+
+                record_candidates_from_distill(session, row, result)
+                session.commit()
+            except Exception:  # noqa: BLE001 — 候选提取失败不影响蒸馏记录
+                session.rollback()
+                logger.exception("蒸馏候选提取失败")
         session.refresh(row)
         session.expunge(row)
         return row

@@ -6,7 +6,7 @@
 3. 评估整体对话质量
 
 当前实现：LLM 驱动的反思。可按需扩展：
-- 改进点 → Skill manifest 自动更新
+- 改进点与待办 → 可查询候选，经人工确认后才可能生效
 - Action Item → Workflow 调度器写入
 - 改进趋势追踪（时间序列分析）
 - 跨会话模式识别（同类问题聚合）
@@ -42,7 +42,8 @@ _REFLECT_SYSTEM_PROMPT = """你是一个 Agent 对话质量审查员。你的任
       "category": "accuracy|completeness|clarity|structure|safety|efficiency|skill|other",
       "summary": "一句话摘要",
       "detail": "详细描述问题所在",
-      "suggestion": "具体改进建议"
+      "suggestion": "具体改进建议",
+      "affected_skill": "关联技能名称（若无可为 null）"
     }
   ],
   "action_items": [
@@ -66,6 +67,7 @@ _REFLECT_SYSTEM_PROMPT = """你是一个 Agent 对话质量审查员。你的任
 注意：
 - 如果对话质量良好，improvements 可以为空数组 []
 - 如果用户没有隐含待办事项，action_items 可以为空数组 []
+- 若建议创建或修改某项技能，category 使用 skill，并填写 affected_skill
 - 只提取真正有价值的改进点，不要为了填充而编造"""
 
 

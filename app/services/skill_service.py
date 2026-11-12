@@ -406,6 +406,80 @@ async def generate_skill_draft(
     )
 
 
+
+
+def create_skill_draft_from_text(
+    session: Session,
+    user: User,
+    text: SkillText,
+    scope: ScopeName,
+    *,
+    preconditions: str = "",
+    workflow: str = "",
+    tools: list[str] | None = None,
+    escalation: str = "",
+    tests: str = "",
+    source_text: str = "",
+    commit: bool = True,
+) -> SkillChange:
+    """用已校验的正文创建未启用草稿，不调用模型，确认前不参与对话。"""
+    if scope == "global" and user.role != Role.SYSTEM_ADMIN.value:
+        raise SkillRequestError(403, "只有系统管理员可以生成系统全局技能")
+    if scope == "private":
+        _reject_inactive_tenant(session, user.tenant_id)
+    tool_names = tools or []
+    parsed = {
+        "name": text.name,
+        "keywords": text.keywords,
+        "purpose": text.description,
+        "preconditions": preconditions,
+        "workflow": workflow or text.system_prompt,
+        "tools": tool_names,
+        "constraints": text.constraints,
+        "escalation": escalation,
+        "examples": text.example,
+        "tests": tests,
+    }
+    _reject_scripts(parsed)
+    _reject_tools(tool_names, user)
+    validate_skill_text(text)
+    _reject_builtin_name(text.name)
+    tenant_id = "" if scope == "global" else user.tenant_id
+    row = Skill(
+        tenant_id=tenant_id,
+        owner_id=user.id,
+        name=text.name,
+        scope=scope,
+        name_key=f"draft:{uuid.uuid4().hex}",
+        description=text.description,
+        constraints=text.constraints,
+        system_prompt=text.system_prompt,
+        example=text.example,
+        keywords=json.dumps(text.keywords, ensure_ascii=False),
+        enabled=False,
+        lifecycle="draft",
+        version="draft",
+        preconditions=preconditions,
+        workflow=workflow or text.system_prompt,
+        tools_json=json.dumps(tool_names, ensure_ascii=False),
+        escalation=escalation,
+        tests=tests,
+        source_text=source_text,
+    )
+    session.add(row)
+    if commit:
+        session.commit()
+        session.refresh(row)
+    else:
+        session.flush()
+        session.refresh(row)
+    return SkillChange(
+        view=_db_view(row, _labels(session, [row]), include_body=True),
+        audit=True,
+        action="skill_create",
+    )
+
+
 def confirm_skill_draft(session: Session, user: User, skill_id: str) -> SkillChange:
     """确认草稿。私有技能由创建者确认，系统全局技能由系统管理员确认。"""
     row = session.get(Skill, skill_id)

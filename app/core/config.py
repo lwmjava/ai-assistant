@@ -219,6 +219,9 @@ class Settings(BaseSettings):
     # 失败后的尝试顺序。只认 chat、intent、fallback。
     LLM_CHAT_FALLBACK_CHAIN: str = "chat,fallback"
     LLM_INTENT_FALLBACK_CHAIN: str = "intent,chat,fallback"
+    # Optional experiment only. Default remains off so simple routes keep
+    # the chat-tier generation model until a real-model comparison is authorized.
+    LLM_MODEL_TIER_ROUTING_ENABLED: bool = False
     # 重排仅登记独立配置，不自动启用检索路径或套用 chat 协议。
     LLM_RERANK_PROVIDER: str = ""
     LLM_RERANK_BASE_URL: str = ""

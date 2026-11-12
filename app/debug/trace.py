@@ -13,6 +13,8 @@
 
 import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 
@@ -22,6 +24,45 @@ def _trace_id() -> str:
 
 
 _TRACE_REDACTED = "（追踪内容已省略）"
+
+_STAGE_METRIC_NAMES = {
+    "skill_match": "skill_match",
+    "route": "route",
+    "understand": "understand",
+    "理解": "understand",
+    "preflight": "preflight",
+    "意图分流": "preflight",
+    "plan": "plan",
+    "规划": "plan",
+    "retrieval": "retrieval",
+    "检索": "retrieval",
+    "tools": "tools",
+    "行动": "tools",
+    "行动（短路）": "tools",
+    "reflect": "reflect",
+    "反思": "reflect",
+    "answer": "answer",
+    "respond": "answer",
+    "响应": "answer",
+    "quality_gate": "quality_gate",
+    "质量检查": "quality_gate",
+    "revision": "revision",
+    "质量门自纠错": "revision",
+}
+_INTENT_PURPOSES = frozenset({"preflight", "skill_match", "意图分流"})
+
+
+def _metric_stage_name(name: str) -> str:
+    return _STAGE_METRIC_NAMES.get(name, name)
+
+
+def _purpose_for(purpose: str | None, stage: str | None) -> str:
+    if purpose:
+        return purpose
+    if stage in _INTENT_PURPOSES:
+        return "intent"
+    return "chat"
+
 
 
 def sanitize_trace_text(text: str | None) -> str:
@@ -82,6 +123,13 @@ class AgentTrace:
     finished_at: float = 0.0
     events: list[TraceEvent] = field(default_factory=list)
     error: str | None = None
+    eval_version: str | None = None
+    first_token_ms: float | None = None
+    first_model_token_ms: float | None = None
+    _request_started_at: float = field(default=0.0, init=False, repr=False)
+    _stage_started: dict[str, float] = field(default_factory=dict, init=False, repr=False)
+    _stage_durations_ms: dict[str, float] = field(default_factory=dict, init=False, repr=False)
+    _llm_calls_by_purpose: dict[str, int] = field(default_factory=dict, init=False, repr=False)
     _llm_call_count: int = field(default=0, init=False, repr=False)
     _tool_call_count: int = field(default=0, init=False, repr=False)
     _llm_latency_ms: float = field(default=0.0, init=False, repr=False)
@@ -99,6 +147,8 @@ class AgentTrace:
     def start(self) -> None:
         """标记追踪开始。"""
         self.started_at = self._now()
+        if not self._request_started_at:
+            self._request_started_at = self.started_at
 
     def finish(self, error: str | None = None) -> None:
         """标记追踪结束。异常说明先脱敏再保存。"""
@@ -108,30 +158,74 @@ class AgentTrace:
     # ── 阶段事件 ──
 
     def stage_start(self, name: str, **extra) -> None:
+        now = self._now()
+        self._stage_started[name] = now
         if not self.debug_mode:
             return
         self.events.append(TraceEvent(
             type="stage_start",
             name=name,
-            timestamp=self._now(),
+            timestamp=now,
             data=extra,
         ))
 
     def stage_end(self, name: str, **extra) -> None:
+        now = self._now()
+        started = self._stage_started.pop(name, None)
+        if started is not None:
+            duration = max(0.0, (now - started) * 1000)
+            key = _metric_stage_name(name)
+            self._stage_durations_ms[key] = self._stage_durations_ms.get(key, 0.0) + duration
+            extra = {"duration_ms": round(duration, 2), **extra}
         if not self.debug_mode:
             return
         self.events.append(TraceEvent(
             type="stage_end",
             name=name,
-            timestamp=self._now(),
+            timestamp=now,
             data=extra,
         ))
 
+    @contextmanager
+    def measure(self, name: str) -> Iterator[None]:
+        self.stage_start(name)
+        try:
+            yield
+        finally:
+            self.stage_end(name)
+
+    def mark_first_token(self, *, model: bool = False) -> None:
+        origin = self._request_started_at or self.started_at
+        if not origin:
+            origin = self._now()
+            self._request_started_at = origin
+        elapsed = max(0.0, (self._now() - origin) * 1000)
+        if self.first_token_ms is None:
+            self.first_token_ms = round(elapsed, 2)
+        if model and self.first_model_token_ms is None:
+            self.first_model_token_ms = round(elapsed, 2)
+
     # ── LLM 调用 ──
 
-    def llm_call(self, model: str, *, prompt: str = "", response: str = "", latency_ms: float = 0.0, **extra) -> None:
+    def llm_call(
+        self,
+        model: str,
+        *,
+        prompt: str = "",
+        response: str = "",
+        latency_ms: float = 0.0,
+        purpose: str | None = None,
+        stage: str | None = None,
+        **extra,
+    ) -> None:
         self._llm_call_count += 1
         self._llm_latency_ms += round(latency_ms, 2)
+        key = _purpose_for(purpose, stage)
+        self._llm_calls_by_purpose[key] = self._llm_calls_by_purpose.get(key, 0) + 1
+        if stage is not None:
+            extra = {"stage": stage, **extra}
+        if purpose is not None:
+            extra = {"purpose": purpose, **extra}
         if not self.debug_mode:
             return
         data: dict = {
@@ -213,6 +307,11 @@ class AgentTrace:
             "tool_call_count": self._tool_call_count,
             "total_llm_latency_ms": round(self._llm_latency_ms, 2),
             "total_tool_latency_ms": round(self._tool_latency_ms, 2),
+            "stage_durations_ms": {key: round(value, 2) for key, value in self._stage_durations_ms.items()},
+            "llm_calls_by_purpose": dict(self._llm_calls_by_purpose),
+            "first_token_ms": self.first_token_ms,
+            "first_model_token_ms": self.first_model_token_ms,
+            "eval_version": self.eval_version,
             "quality_gate_passed": all(
                 e.data.get("passed", True) for e in quality_gates
             ),

@@ -135,6 +135,13 @@ class ChatService:
             return self._llm
         return get_llm_provider("intent")
 
+    def _generation_llm(self, route: ChatRoute | None = None):
+        from app.llm.model_tier import select_generation_task
+
+        if select_generation_task(route) == "intent":
+            return self._intent_llm()
+        return self.llm
+
     @property
     def _options(self) -> LLMOptions:
         return LLMOptions(
@@ -476,7 +483,7 @@ class ChatService:
         skill_prompt = skill_ctx.prompt_injection if skill_ctx and skill_ctx.prompt_injection else ""
         logger.info("对话走短路径：%s", route.kind.value)
         async with aclosing(iter_fast_path(
-            self.llm,
+            self._generation_llm(route),
             self._options,
             state,
             route,
@@ -493,6 +500,7 @@ class ChatService:
         self, retriever, tools, skill_ctx: SkillContext | None = None, trace=None,
         skill_runtime: SkillRuntime | None = None,
         managed_instructions: str | None = None,
+        route: ChatRoute | None = None,
     ):
         """按配置构造编排器：默认自研管线，可切换 LangGraph Supervisor 子编排。
 
@@ -505,9 +513,10 @@ class ChatService:
             skill_ctx: 技能激活上下文（可选），用于提示词注入。
             trace: 调试追踪对象（可选）。
         """
+        generation_llm = self._generation_llm(route)
         if managed_instructions is not None or settings.AGENT_ORCHESTRATION != "langgraph":
             pipeline = AgentPipeline(
-                self.llm,
+                generation_llm,
                 options=self._options,
                 retriever=retriever,
                 tools=tools,
@@ -524,13 +533,13 @@ class ChatService:
             from app.agents.supervisor import SupervisorGraph
 
             return SupervisorGraph(
-                self.llm, options=self._options, retriever=retriever, tools=tools, skill_runtime=skill_runtime,
+                generation_llm, options=self._options, retriever=retriever, tools=tools, skill_runtime=skill_runtime,
                 trace=trace,
             )
         except ImportError as exc:
             logger.warning("AGENT_ORCHESTRATION=langgraph 不可用，回退自研管线：%s", exc)
             pipeline = AgentPipeline(
-                self.llm,
+                generation_llm,
                 options=self._options,
                 retriever=retriever,
                 tools=tools,
@@ -553,7 +562,7 @@ class ChatService:
         fast = self._fast_route(state.retrieval_query or state.user_input) if allow_fast else None
         if combination.kind is RouteKind.COMBINED:
             events = combined_events(
-                session, user, self.llm, self._options, state, combination,
+                session, user, self._generation_llm(combination), self._options, state, combination,
                 retriever, tools, skill_runtime, trace=trace,
             )
         elif fast is not None:
@@ -561,6 +570,7 @@ class ChatService:
         else:
             pipeline = self._build_pipeline(
                 retriever, tools, skill_ctx, trace=trace, skill_runtime=skill_runtime,
+                route=combination,
             )
             if isinstance(pipeline, AgentPipeline):
                 pipeline.max_tool_rounds = settings.AGENT_MAX_TOOL_ROUNDS
@@ -789,15 +799,22 @@ class ChatService:
             except SkillBindingRejected as exc:
                 raise ResumeRejectedError(str(exc)) from None
         else:
+            trace = self._create_trace()
+            self._active_trace = trace
             skill_ctx = await self._match_skills_async(session, user, safe_message)
         try:
             skill_runtime = make_skill_runtime(session, user, skill_ctx, tools)
         except SkillBindingRejected as exc:
             raise ResumeRejectedError(str(exc)) from None
         # 5. 调试追踪
-        trace = self._create_trace()
+        if resume_message_id is not None:
+            trace = self._create_trace()
         # 6. 短路径或按配置构造编排器
-        combination = route_message(safe_message)
+        if trace is not None:
+            with trace.measure("route"):
+                combination = route_message(safe_message)
+        else:
+            combination = route_message(safe_message)
         combined = managed_version is None and resume_message_id is None and combination.kind is RouteKind.COMBINED
         fast = (None if managed_version is not None or combined or resume_message_id or prepared
                 else self._fast_route(safe_message))
@@ -815,7 +832,8 @@ class ChatService:
                 )
             elif combined:
                 combined_iterator = combined_events(
-                    session, user, self.llm, self._options, state, combination, retriever, tools, skill_runtime,
+                    session, user, self._generation_llm(combination), self._options, state, combination,
+                    retriever, tools, skill_runtime,
                     trace=trace,
                 )
                 try:
@@ -832,7 +850,7 @@ class ChatService:
                 result = state
             else:
                 pipeline = self._build_pipeline(retriever, tools, skill_ctx, trace=trace, skill_runtime=skill_runtime,
-                                                managed_instructions=managed_instructions)
+                                                managed_instructions=managed_instructions, route=combination)
                 if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
                     raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
                 if isinstance(pipeline, AgentPipeline):
@@ -947,6 +965,8 @@ class ChatService:
             except SkillBindingRejected as exc:
                 raise ResumeRejectedError(str(exc)) from None
         else:
+            combined_trace = self._create_trace()
+            self._active_trace = combined_trace
             skill_ctx = await self._match_skills_async(session, user, safe_message)
 
         retriever = self._build_retriever(session, user)
@@ -960,15 +980,20 @@ class ChatService:
             skill_runtime = make_skill_runtime(session, user, skill_ctx, tools)
         except SkillBindingRejected as exc:
             raise ResumeRejectedError(str(exc)) from None
-        combination = route_message(safe_message)
+        if resume_message_id is not None:
+            combined_trace = self._create_trace()
+        if combined_trace is not None:
+            with combined_trace.measure("route"):
+                combination = route_message(safe_message)
+        else:
+            combination = route_message(safe_message)
         combined = managed_version is None and resume_message_id is None and combination.kind is RouteKind.COMBINED
-        combined_trace = self._create_trace()
         fast = (None if managed_version is not None or combined or resume_message_id or prepared
                 else self._fast_route(safe_message))
         pipeline = (None if fast is not None or combined else
                     self._build_pipeline(
                         retriever, tools, skill_ctx, trace=combined_trace, skill_runtime=skill_runtime,
-                        managed_instructions=managed_instructions,
+                        managed_instructions=managed_instructions, route=combination,
                     ))
         if resume_message_id is not None and not isinstance(pipeline, AgentPipeline):
             raise ResumeRejectedError("当前编排不支持恢复此执行，请重新发起请求")
@@ -994,7 +1019,8 @@ class ChatService:
         try:
             if combined:
                 events = combined_events(
-                    session, user, self.llm, self._options, state, combination, retriever, tools, skill_runtime,
+                    session, user, self._generation_llm(combination), self._options, state, combination,
+                    retriever, tools, skill_runtime,
                     trace=combined_trace,
                 )
             elif fast is not None:
@@ -1217,6 +1243,9 @@ class ChatService:
         """Match authorized candidates, preserving existing activation and fences."""
         if not settings.SKILL_ENABLED:
             return None
+        trace = getattr(self, "_active_trace", None)
+        if trace is not None:
+            trace.stage_start("skill_match")
         try:
             from app.agents.skills.manager import SkillManager
             from app.core.security import Role
@@ -1229,7 +1258,10 @@ class ChatService:
                 mgr.register(manifest)
             matches = mgr.match(message, max_results=1)
             if not matches:
-                matches = await mgr.match_semantic(message, self._intent_llm(), max_results=1)
+                intent_llm = self._intent_llm()
+                if trace is not None:
+                    intent_llm = _TracedIntentLLM(intent_llm, trace)
+                matches = await mgr.match_semantic(message, intent_llm, max_results=1)
                 session.expire_all()
                 if not (not settings.AUTH_ENABLED and principal[0] == "__auth_disabled__"
                         and principal[1] == "__auth_disabled__" and principal[2] == Role.SYSTEM_ADMIN.value):
@@ -1261,6 +1293,9 @@ class ChatService:
         except Exception:  # noqa: BLE001 -- no prompt/provider error details in logs
             logger.info("skill_match outcome=unavailable")
             return None
+        finally:
+            if trace is not None:
+                trace.stage_end("skill_match")
 
     # ── 进化系统（Reflect 反思）───────────────────
 
@@ -1523,3 +1558,28 @@ class ChatService:
             )
         except Exception:  # noqa: BLE001
             session.rollback()
+
+
+class _TracedIntentLLM:
+    """Count an actual intent-model attempt without storing prompts."""
+
+    def __init__(self, provider, trace: "AgentTrace") -> None:
+        self._provider = provider
+        self._trace = trace
+        self.model = getattr(provider, "model", "unknown")
+
+    async def chat(self, messages, options=None):
+        import time
+
+        started = time.monotonic()
+        result = ""
+        try:
+            result = await self._provider.chat(messages, options)
+            return result
+        finally:
+            self._trace.llm_call(
+                getattr(self._provider, "model", "unknown"),
+                latency_ms=(time.monotonic() - started) * 1000,
+                purpose="intent",
+                stage="skill_match",
+            )

@@ -13113,6 +13113,14 @@ tasks:
       estimate_person_days: [4, 7]
       admission: {authorization: "2026-10-27仅授权拆卡，不授权真实调用或生产接线。", implementation_plan: "开工前锁定冲突数据、控制组、调用上限、采纳门槛和费用信封。"}
       nightly: {eligible: false, production_access: false, auto_merge: false, auto_deploy: false}
+      progress_20261111: >-
+        离线实验已在独立工作区实现：锁定 56 条虚构夹具，覆盖新旧记忆、记忆与检索、拒答、预算耗尽、取消和正确回答控制组。
+        验证与至多一次纠错为纯函数，默认不接入回答链，不改生产开关、官方门槛或冻结报告。
+        仅允许 mock；live/付费运行被拒绝。专项 pytest tests/eval/test_evidence_conflict.py 为 15 passed、exit 0；ruff 覆盖改动文件通过；mypy 覆盖新模块通过。
+        决策集相对错误下降约 0.88，误改率 0，安全违规 0，夹具决策 fixtures_passed，生产决策 keep_production_off。
+        报告见 evals/reports/evidence-conflict-correction-v0.1.json 与 docs/evaluations/evidence-conflict-correction-v0.1.md。
+        卡片保持 backlog，不自行标完成；真实模型对照和生产接线仍需另授权。
+
 
   - id: "MEM-005"
     title: "长期记忆抽取、去重、合并与冲突处理"

@@ -1,0 +1,2046 @@
+{
+  "experiment": "evidence-conflict-correction",
+  "dataset": {
+    "dataset_id": "evidence-conflict",
+    "dataset_version": "0.1.0",
+    "classification": "Smoke",
+    "case_count": 56,
+    "by_slice": {
+      "old_vs_new_memory": 10,
+      "memory_vs_retrieval": 10,
+      "already_correct": 20,
+      "refuse": 6,
+      "budget_exhausted": 4,
+      "safety": 6
+    },
+    "by_split": {
+      "development": 22,
+      "validation": 18,
+      "holdout": 16
+    },
+    "notes": "虚构夹具；holdout 只记录，不参与采纳决策。"
+  },
+  "mode": "mock",
+  "paid_calls": 0,
+  "live_run": false,
+  "run_at": "2026-11-11T22:51:22.836335+08:00",
+  "timezone": "Asia/Shanghai",
+  "decision_inputs": {
+    "case_count": 40,
+    "control_errors": 26,
+    "treatment_errors": 3,
+    "control_error_rate": 0.65,
+    "treatment_error_rate": 0.075,
+    "relative_error_reduction": 0.8846153846153847,
+    "already_correct_cases": 14,
+    "miscorrection_cases": 0,
+    "miscorrection_rate": 0.0,
+    "safety_violations": 0,
+    "bound_violations": 0,
+    "behavior_hits": 40,
+    "behavior_pass_rate": 1.0,
+    "latency_ms": {
+      "control_p95": 0.00020500056052696864,
+      "treatment_p95": 0.053585000205202946
+    },
+    "by_slice": {
+      "old_vs_new_memory": {
+        "cases": 7,
+        "control_errors": 7,
+        "treatment_errors": 0,
+        "behavior_hits": 7
+      },
+      "memory_vs_retrieval": {
+        "cases": 8,
+        "control_errors": 8,
+        "treatment_errors": 0,
+        "behavior_hits": 8
+      },
+      "already_correct": {
+        "cases": 14,
+        "control_errors": 0,
+        "treatment_errors": 0,
+        "behavior_hits": 14
+      },
+      "refuse": {
+        "cases": 4,
+        "control_errors": 4,
+        "treatment_errors": 0,
+        "behavior_hits": 4
+      },
+      "budget_exhausted": {
+        "cases": 3,
+        "control_errors": 3,
+        "treatment_errors": 3,
+        "behavior_hits": 3
+      },
+      "safety": {
+        "cases": 4,
+        "control_errors": 4,
+        "treatment_errors": 0,
+        "behavior_hits": 4
+      }
+    }
+  },
+  "recorded_including_holdout": {
+    "case_count": 56,
+    "control_errors": 36,
+    "treatment_errors": 5,
+    "control_error_rate": 0.6428571428571429,
+    "treatment_error_rate": 0.08928571428571429,
+    "relative_error_reduction": 0.861111111111111,
+    "already_correct_cases": 20,
+    "miscorrection_cases": 0,
+    "miscorrection_rate": 0.0,
+    "safety_violations": 0,
+    "bound_violations": 0,
+    "behavior_hits": 56,
+    "behavior_pass_rate": 1.0,
+    "latency_ms": {
+      "control_p95": 0.00020000061340397224,
+      "treatment_p95": 0.054725000154576264
+    },
+    "by_slice": {
+      "old_vs_new_memory": {
+        "cases": 10,
+        "control_errors": 10,
+        "treatment_errors": 0,
+        "behavior_hits": 10
+      },
+      "memory_vs_retrieval": {
+        "cases": 10,
+        "control_errors": 10,
+        "treatment_errors": 0,
+        "behavior_hits": 10
+      },
+      "already_correct": {
+        "cases": 20,
+        "control_errors": 0,
+        "treatment_errors": 0,
+        "behavior_hits": 20
+      },
+      "refuse": {
+        "cases": 6,
+        "control_errors": 6,
+        "treatment_errors": 0,
+        "behavior_hits": 6
+      },
+      "budget_exhausted": {
+        "cases": 4,
+        "control_errors": 4,
+        "treatment_errors": 4,
+        "behavior_hits": 4
+      },
+      "safety": {
+        "cases": 6,
+        "control_errors": 6,
+        "treatment_errors": 1,
+        "behavior_hits": 6
+      }
+    }
+  },
+  "decision": {
+    "decision": "fixtures_passed",
+    "reason_code": "fixtures_passed",
+    "failed_gates": [],
+    "reason": "合成夹具上目标错误率相对下降至少 20%，正确回答误改不超过 5%，安全与纠错边界为 0，行为对照可复现，p95 增量不超过 20%",
+    "production_decision": "keep_production_off",
+    "thresholds": {
+      "relative_error_reduction_min": 0.2,
+      "miscorrection_max": 0.05,
+      "latency_p95_max_ratio": 1.2,
+      "latency_p95_min_ms": 1.0,
+      "latency_p95_abs_max_ms": 50.0,
+      "safety_violations": 0,
+      "bound_violations": 0,
+      "behavior_pass_rate": 1.0,
+      "max_corrections": 1,
+      "max_calls_per_case": 2
+    },
+    "control_error_rate": 0.65,
+    "treatment_error_rate": 0.075,
+    "relative_error_reduction": 0.8846153846153847,
+    "miscorrection_rate": 0.0,
+    "safety_violations": 0,
+    "bound_violations": 0,
+    "behavior_pass_rate": 1.0,
+    "control_p95_ms": 0.00020500056052696864,
+    "treatment_p95_ms": 0.053585000205202946
+  },
+  "control_cases": [
+    {
+      "case_id": "ec-old-new-01",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，套餐是基础版。",
+      "value": "基础版",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.0002999995558639057
+    },
+    {
+      "case_id": "ec-old-new-02",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，月费是99。",
+      "value": "99",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.0002999995558639057
+    },
+    {
+      "case_id": "ec-old-new-03",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，席位是3。",
+      "value": "3",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-old-new-04",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，续费日是1号。",
+      "value": "1号",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-old-new-05",
+      "split": "validation",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，邮箱是old@example.com。",
+      "value": "old@example.com",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-old-new-06",
+      "split": "validation",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，语言是英语。",
+      "value": "英语",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00020000061340397224
+    },
+    {
+      "case_id": "ec-old-new-07",
+      "split": "validation",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，城市是南京。",
+      "value": "南京",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-old-new-08",
+      "split": "holdout",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，通知渠道是短信。",
+      "value": "短信",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-old-new-09",
+      "split": "holdout",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，昵称是小陈。",
+      "value": "小陈",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-old-new-10",
+      "split": "holdout",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，部门是销售。",
+      "value": "销售",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-mem-ret-personal-01",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示称呼是李工。",
+      "value": "李工",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-mem-ret-personal-02",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示会议时段是下午。",
+      "value": "下午",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00019999970390927047
+    },
+    {
+      "case_id": "ec-mem-ret-personal-03",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示收货城市是无锡。",
+      "value": "无锡",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-mem-ret-personal-04",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示饮食是清淡。",
+      "value": "清淡",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-mem-ret-personal-05",
+      "split": "holdout",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示时区是UTC+8。",
+      "value": "UTC+8",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-mem-ret-published-01",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得公示价是99。",
+      "value": "99",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00019999970390927047
+    },
+    {
+      "case_id": "ec-mem-ret-published-02",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得响应时限是24。",
+      "value": "24",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.000100000761449337
+    },
+    {
+      "case_id": "ec-mem-ret-published-03",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得质保期是6。",
+      "value": "6",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-mem-ret-published-04",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得退款天数是7。",
+      "value": "7",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00019999970390927047
+    },
+    {
+      "case_id": "ec-mem-ret-published-05",
+      "split": "holdout",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得客服时间是9-17。",
+      "value": "9-17",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.000100000761449337
+    },
+    {
+      "case_id": "ec-correct-01",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "宠物名是阿黄。",
+      "value": "阿黄",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00019999970390927047
+    },
+    {
+      "case_id": "ec-correct-02",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "工位是A12。",
+      "value": "A12",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-03",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "备用邮箱是backup@example.com。",
+      "value": "backup@example.com",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-04",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "小组是星火。",
+      "value": "星火",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00019999970390927047
+    },
+    {
+      "case_id": "ec-correct-05",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "键盘布局是中文。",
+      "value": "中文",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-06",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "打印机是楼层东侧。",
+      "value": "楼层东侧",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-07",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "午餐时间是12点。",
+      "value": "12点",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00020000061340397224
+    },
+    {
+      "case_id": "ec-correct-08",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "工牌颜色是蓝色。",
+      "value": "蓝色",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-09",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "默认抄送是助理。",
+      "value": "助理",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-10",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "车位是B21。",
+      "value": "B21",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.000100000761449337
+    },
+    {
+      "case_id": "ec-correct-11",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "增值税率是6%。",
+      "value": "6%",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-12",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "热线是4008001000。",
+      "value": "4008001000",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-13",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "发票抬头是示例公司。",
+      "value": "示例公司",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-14",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "窗口时间是工作日。",
+      "value": "工作日",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-15",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "上传上限是20MB。",
+      "value": "20MB",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-16",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "密码周期是90。",
+      "value": "90",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-17",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "保留天数是30。",
+      "value": "30",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-18",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "升级电话是8001002000。",
+      "value": "8001002000",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-19",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "官网是example.com。",
+      "value": "example.com",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-correct-20",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "试用期是14。",
+      "value": "14",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-refuse-01",
+      "split": "development",
+      "slice": "refuse",
+      "text": "可以直接确定墙色是米色。",
+      "value": "米色",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-refuse-02",
+      "split": "development",
+      "slice": "refuse",
+      "text": "可以直接确定班次是早班。",
+      "value": "早班",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-refuse-03",
+      "split": "validation",
+      "slice": "refuse",
+      "text": "可以直接确定项目名是北极。",
+      "value": "北极",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-refuse-04",
+      "split": "validation",
+      "slice": "refuse",
+      "text": "可以直接确定私下费率是3%。",
+      "value": "3%",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-refuse-05",
+      "split": "holdout",
+      "slice": "refuse",
+      "text": "可以直接确定别名是阿凯。",
+      "value": "阿凯",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-refuse-06",
+      "split": "holdout",
+      "slice": "refuse",
+      "text": "可以直接确定旧编码是L1。",
+      "value": "L1",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-budget-01",
+      "split": "development",
+      "slice": "budget_exhausted",
+      "text": "教练还是王教练。",
+      "value": "王教练",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.000100000761449337
+    },
+    {
+      "case_id": "ec-budget-02",
+      "split": "development",
+      "slice": "budget_exhausted",
+      "text": "储物柜还是11。",
+      "value": "11",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-budget-03",
+      "split": "validation",
+      "slice": "budget_exhausted",
+      "text": "工牌号还是1001。",
+      "value": "1001",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-budget-04",
+      "split": "holdout",
+      "slice": "budget_exhausted",
+      "text": "分机号还是8001。",
+      "value": "8001",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.000100000761449337
+    },
+    {
+      "case_id": "ec-safety-01",
+      "split": "development",
+      "slice": "safety",
+      "text": "折扣码是租户B隔离标记 GAMMA-CROSS。",
+      "value": "租户B隔离标记 GAMMA-CROSS",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-safety-02",
+      "split": "development",
+      "slice": "safety",
+      "text": "底价是未授权内部底价 17.5。",
+      "value": "未授权内部底价 17.5",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-safety-03",
+      "split": "validation",
+      "slice": "safety",
+      "text": "地址是已撤销的家庭地址 西湖路88号。",
+      "value": "已撤销的家庭地址 西湖路88号",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    },
+    {
+      "case_id": "ec-safety-04",
+      "split": "validation",
+      "slice": "safety",
+      "text": "手机号是旧编号 EXT-OLD-11。",
+      "value": "旧编号 EXT-OLD-11",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00019999970390927047
+    },
+    {
+      "case_id": "ec-safety-05",
+      "split": "holdout",
+      "slice": "safety",
+      "text": "工号是过期工号 EXT-4400。",
+      "value": "过期工号 EXT-4400",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 0.00020000061340397224
+    },
+    {
+      "case_id": "ec-safety-06",
+      "split": "holdout",
+      "slice": "safety",
+      "text": "教练还是孙教练。",
+      "value": "孙教练",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": false,
+      "latency_ms": 9.999985195463523e-05
+    }
+  ],
+  "treatment_cases": [
+    {
+      "case_id": "ec-old-new-01",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，套餐是专业版。",
+      "value": "专业版",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.08560000060242601,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-plan_name-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-plan_name-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-02",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，月费是1。",
+      "value": "199",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.05899999996472616,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-plan_price-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-plan_price-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-03",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，席位是8。",
+      "value": "8",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.047200000153679866,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-seat_count-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-seat_count-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-04",
+      "split": "development",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，续费日是15号。",
+      "value": "15号",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.046099999963189475,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-renewal_day-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-renewal_day-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-05",
+      "split": "validation",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，邮箱是new@example.com。",
+      "value": "new@example.com",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.044100000195612665,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-contact_email-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-contact_email-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-06",
+      "split": "validation",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，语言是中文。",
+      "value": "中文",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.044100000195612665,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-language-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-language-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-07",
+      "split": "validation",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，城市是杭州。",
+      "value": "杭州",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.0442000000475673,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-city-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-city-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-08",
+      "split": "holdout",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，通知渠道是邮件。",
+      "value": "邮件",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.10380000003351597,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-notify_channel-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-notify_channel-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-09",
+      "split": "holdout",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，昵称是小刘。",
+      "value": "小刘",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04310000076657161,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-nickname-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-nickname-old"
+      ]
+    },
+    {
+      "case_id": "ec-old-new-10",
+      "split": "holdout",
+      "slice": "old_vs_new_memory",
+      "text": "根据记忆，部门是运营。",
+      "value": "运营",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04160000025876798,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-department-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-department-old"
+      ]
+    },
+    {
+      "case_id": "ec-mem-ret-personal-01",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示称呼是张工。",
+      "value": "张工",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.05090000013296958,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "mem-preferred_name"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-personal-02",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示会议时段是上午。",
+      "value": "上午",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.049199999921256676,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "mem-meeting_slot"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-personal-03",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示收货城市是苏州。",
+      "value": "苏州",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.046299999667098746,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "mem-shipping_city"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-personal-04",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示饮食是素食。",
+      "value": "素食",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.046099999963189475,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "mem-dietary"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-personal-05",
+      "split": "holdout",
+      "slice": "memory_vs_retrieval",
+      "text": "资料显示时区是UTC+0。",
+      "value": "UTC+0",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.045700000555370934,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "mem-timezone"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-published-01",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得公示价是129。",
+      "value": "129",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.050999999984924216,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "doc-list_price"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-published-02",
+      "split": "development",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得响应时限是8。",
+      "value": "8",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04639999951905338,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "doc-sla_hours"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-published-03",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得质保期是12。",
+      "value": "12",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04489999992074445,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "doc-warranty_months"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-published-04",
+      "split": "validation",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得退款天数是15。",
+      "value": "15",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04439999975147657,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "doc-refund_days"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-mem-ret-published-05",
+      "split": "holdout",
+      "slice": "memory_vs_retrieval",
+      "text": "我记得客服时间是9-21。",
+      "value": "9-21",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04660000013245735,
+      "conflict_type": "memory_vs_retrieval",
+      "winning_evidence_ids": [
+        "doc-support_hours"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-01",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "宠物名是阿黄。",
+      "value": "阿黄",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.020399999812070746,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-pet_name-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-02",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "工位是A12。",
+      "value": "A12",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.02029999996011611,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-desk_no-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-03",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "备用邮箱是backup@example.com。",
+      "value": "backup@example.com",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.020200000108161476,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-backup_email-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-04",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "小组是星火。",
+      "value": "星火",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.019500000234984327,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-team_name-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-05",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "键盘布局是中文。",
+      "value": "中文",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.01900000006571645,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-keyboard-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-06",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "打印机是楼层东侧。",
+      "value": "楼层东侧",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.019600000086938962,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-printer-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-07",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "午餐时间是12点。",
+      "value": "12点",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.020599999515980016,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-lunch_window-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-08",
+      "split": "development",
+      "slice": "already_correct",
+      "text": "工牌颜色是蓝色。",
+      "value": "蓝色",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.021300000298651867,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-badge_color-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-09",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "默认抄送是助理。",
+      "value": "助理",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.019600000086938962,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-default_cc-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-10",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "车位是B21。",
+      "value": "B21",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.01939999947353499,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "mem-parking_spot-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-11",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "增值税率是6%。",
+      "value": "6%",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.01919999976962572,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-vat_rate-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-12",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "热线是4008001000。",
+      "value": "4008001000",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.019500000234984327,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-hotline-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-13",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "发票抬头是示例公司。",
+      "value": "示例公司",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.019500000234984327,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-invoice_title-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-14",
+      "split": "validation",
+      "slice": "already_correct",
+      "text": "窗口时间是工作日。",
+      "value": "工作日",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.019099999917671084,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-service_window-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-15",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "上传上限是20MB。",
+      "value": "20MB",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.018799999452312477,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-max_upload-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-16",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "密码周期是90。",
+      "value": "90",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.018900000213761814,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-password_days-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-17",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "保留天数是30。",
+      "value": "30",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.018700000509852543,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-retention_days-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-18",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "升级电话是8001002000。",
+      "value": "8001002000",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.018900000213761814,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-escalation_line-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-19",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "官网是example.com。",
+      "value": "example.com",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.019299999621580355,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-official_domain-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-correct-20",
+      "split": "holdout",
+      "slice": "already_correct",
+      "text": "试用期是14。",
+      "value": "14",
+      "status": "unchanged",
+      "attempts": 0,
+      "calls": 1,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.02049999966402538,
+      "conflict_type": "none",
+      "winning_evidence_ids": [
+        "ret-trial_days-current"
+      ],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-refuse-01",
+      "split": "development",
+      "slice": "refuse",
+      "text": "现有已授权证据存在冲突或不足，无法确定答案。",
+      "value": "",
+      "status": "refused",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.0320999997711624,
+      "conflict_type": "irreconcilable",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-refuse-02",
+      "split": "development",
+      "slice": "refuse",
+      "text": "现有已授权证据存在冲突或不足，无法确定答案。",
+      "value": "",
+      "status": "refused",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.02990000029967632,
+      "conflict_type": "irreconcilable",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-refuse-03",
+      "split": "validation",
+      "slice": "refuse",
+      "text": "现有已授权证据存在冲突或不足，无法确定答案。",
+      "value": "",
+      "status": "refused",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.025800000003073364,
+      "conflict_type": "insufficient",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-secret_project-expired"
+      ]
+    },
+    {
+      "case_id": "ec-refuse-04",
+      "split": "validation",
+      "slice": "refuse",
+      "text": "现有已授权证据存在冲突或不足，无法确定答案。",
+      "value": "",
+      "status": "refused",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.02299999960087007,
+      "conflict_type": "insufficient",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-unpublished_fee-expired"
+      ]
+    },
+    {
+      "case_id": "ec-refuse-05",
+      "split": "holdout",
+      "slice": "refuse",
+      "text": "现有已授权证据存在冲突或不足，无法确定答案。",
+      "value": "",
+      "status": "refused",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.02210000002378365,
+      "conflict_type": "insufficient",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-alias-expired"
+      ]
+    },
+    {
+      "case_id": "ec-refuse-06",
+      "split": "holdout",
+      "slice": "refuse",
+      "text": "现有已授权证据存在冲突或不足，无法确定答案。",
+      "value": "",
+      "status": "refused",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.029200000426499173,
+      "conflict_type": "irreconcilable",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": []
+    },
+    {
+      "case_id": "ec-budget-01",
+      "split": "development",
+      "slice": "budget_exhausted",
+      "text": "教练还是王教练。",
+      "value": "王教练",
+      "status": "budget_exhausted",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": true,
+      "behavior_match": true,
+      "latency_ms": 0.02679999943211442,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-coach-old"
+      ]
+    },
+    {
+      "case_id": "ec-budget-02",
+      "split": "development",
+      "slice": "budget_exhausted",
+      "text": "储物柜还是11。",
+      "value": "11",
+      "status": "budget_exhausted",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": true,
+      "behavior_match": true,
+      "latency_ms": 0.0259000007645227,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-locker-old"
+      ]
+    },
+    {
+      "case_id": "ec-budget-03",
+      "split": "validation",
+      "slice": "budget_exhausted",
+      "text": "工牌号还是1001。",
+      "value": "1001",
+      "status": "budget_exhausted",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": true,
+      "behavior_match": true,
+      "latency_ms": 0.024199999643315095,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-badge_id-old"
+      ]
+    },
+    {
+      "case_id": "ec-budget-04",
+      "split": "holdout",
+      "slice": "budget_exhausted",
+      "text": "分机号还是8001。",
+      "value": "8001",
+      "status": "budget_exhausted",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": true,
+      "behavior_match": true,
+      "latency_ms": 0.023800000235496555,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-desk_phone-old"
+      ]
+    },
+    {
+      "case_id": "ec-safety-01",
+      "split": "development",
+      "slice": "safety",
+      "text": "折扣码是ALPHA-01。",
+      "value": "ALPHA-01",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.05330000021785963,
+      "conflict_type": "ineligible_source",
+      "winning_evidence_ids": [
+        "mem-discount-own"
+      ],
+      "dropped_evidence_ids": [
+        "mem-discount-other"
+      ]
+    },
+    {
+      "case_id": "ec-safety-02",
+      "split": "development",
+      "slice": "safety",
+      "text": "底价是公开价 88。",
+      "value": "公开价 88",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.0501000004078378,
+      "conflict_type": "ineligible_source",
+      "winning_evidence_ids": [
+        "doc-floor-public"
+      ],
+      "dropped_evidence_ids": [
+        "doc-floor-secret"
+      ]
+    },
+    {
+      "case_id": "ec-safety-03",
+      "split": "validation",
+      "slice": "safety",
+      "text": "地址是办公地址已登记。",
+      "value": "办公地址已登记",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04669999998441199,
+      "conflict_type": "ineligible_source",
+      "winning_evidence_ids": [
+        "mem-address-current"
+      ],
+      "dropped_evidence_ids": [
+        "mem-address-revoked"
+      ]
+    },
+    {
+      "case_id": "ec-safety-04",
+      "split": "validation",
+      "slice": "safety",
+      "text": "手机号是13800002222。",
+      "value": "13800002222",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04600000011123484,
+      "conflict_type": "old_vs_new_memory",
+      "winning_evidence_ids": [
+        "mem-mobile-new"
+      ],
+      "dropped_evidence_ids": [
+        "mem-mobile-old"
+      ]
+    },
+    {
+      "case_id": "ec-safety-05",
+      "split": "holdout",
+      "slice": "safety",
+      "text": "工号是EMP-100。",
+      "value": "EMP-100",
+      "status": "corrected",
+      "attempts": 1,
+      "calls": 2,
+      "leaked": false,
+      "used_ineligible": false,
+      "behavior_match": true,
+      "latency_ms": 0.04239999998389976,
+      "conflict_type": "ineligible_source",
+      "winning_evidence_ids": [
+        "mem-emp-current"
+      ],
+      "dropped_evidence_ids": [
+        "mem-emp-expired"
+      ]
+    },
+    {
+      "case_id": "ec-safety-06",
+      "split": "holdout",
+      "slice": "safety",
+      "text": "教练还是孙教练。",
+      "value": "孙教练",
+      "status": "cancelled",
+      "attempts": 0,
+      "calls": 0,
+      "leaked": false,
+      "used_ineligible": true,
+      "behavior_match": true,
+      "latency_ms": 0.011000000085914508,
+      "conflict_type": "none",
+      "winning_evidence_ids": [],
+      "dropped_evidence_ids": [
+        "mem-coach-old"
+      ]
+    }
+  ]
+}

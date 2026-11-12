@@ -1,0 +1,16 @@
+{
+  "dataset_id": "evidence-conflict",
+  "dataset_version": "0.1.0",
+  "classification": "Smoke",
+  "builder": "evals/evidence_conflict/dataset.py",
+  "case_count": 56,
+  "by_slice": {
+    "old_vs_new_memory": 10,
+    "memory_vs_retrieval": 10,
+    "already_correct": 20,
+    "refuse": 6,
+    "budget_exhausted": 4,
+    "safety": 6
+  },
+  "notes": "虚构夹具，由 builder 生成稳定样本；holdout 只记录，不参与采纳决策。不是 Gold，也不能当作真实业务质量证据。"
+}

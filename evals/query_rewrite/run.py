@@ -45,6 +45,23 @@ def _load_semantic_helpers():
 helpers = _load_semantic_helpers()
 runner = helpers.runner
 
+
+def _sanitize_git_commits(payload: Any) -> Any:
+    """给报告里的裸 40 位 SHA 加上 git 前缀，避免钩子误报高熵密钥。"""
+    if isinstance(payload, dict):
+        return {
+            key: (
+                helpers._hook_safe_git_commit(value)
+                if key == "git_commit" and isinstance(value, str)
+                else _sanitize_git_commits(value)
+            )
+            for key, value in payload.items()
+        }
+    if isinstance(payload, list):
+        return [_sanitize_git_commits(item) for item in payload]
+    return payload
+
+
 REWRITE_RRF_K = 60
 REWRITE_DEPTH = 10
 DEFAULT_DB = REPO_ROOT / "data" / "eval_rag_v01_query_rewrite.db"
@@ -126,8 +143,13 @@ def render_markdown(comparison: dict[str, Any]) -> str:
         f"- Embedding：`{comparison['embedding_provider']}` / `{comparison['embedding_model']}` / {comparison['embedding_dim']} 维",
         f"- 代码：`{comparison['git_commit']}`；命令：`{comparison['command']}`",
         "- 进入条件（已落盘）：任一切片 Recall@5 跌破 0.90 即实施。AGENTS.md §14 仍写 overall 口径，本卡未改该文件。",
+        f"- 官方决策配置：进程内 RAG_EFFECTIVE_DATE_FILTER={'true' if comparison.get('effective_date_filter_for_decision') else 'false'}；未改 .env / config.py 生产默认",
         "",
-        "## 冻结配置下的单变量结果（RAG_EFFECTIVE_DATE_FILTER=false）",
+        (
+            "## 官方决策对照（进程内 RAG_EFFECTIVE_DATE_FILTER=true，改写开 vs 关；未改生产默认）"
+            if comparison.get("effective_date_filter_for_decision")
+            else "## 冻结配置下的单变量结果（RAG_EFFECTIVE_DATE_FILTER=false）"
+        ),
         "",
         "| 指标 | 对照（原查询） | 处理（改写） |",
         "| --- | --- | --- |",
@@ -138,8 +160,14 @@ def render_markdown(comparison: dict[str, Any]) -> str:
         f"| holdout Recall@5（仅记录） | {control['holdout']} | {treatment['holdout']} |",
         f"| 越权案例 | {control['violations']} | {treatment['violations']} |",
         "",
-        "官方冻结配置只检索 `is_current` 文档。`doc-billing-future` 属于 scheduled 预告，"
-        "在此配置下不会进入候选集；改写单独无法召回 rag-031，这是已知限制，不是把过滤开关偷偷打开。",
+        (
+            "本跑经授权把生效日过滤纳入官方决策配置，仅在评测进程内覆盖冻结值，不修改生产开关，也不放宽门槛。"
+            if comparison.get("effective_date_filter_for_decision")
+            else (
+                "官方冻结配置只检索 `is_current` 文档。`doc-billing-future` 属于 scheduled 预告，"
+                "在此配置下不会进入候选集；改写单独无法召回 rag-031，这是已知限制，不是把过滤开关偷偷打开。"
+            )
+        ),
         "",
     ]
     if diagnostic:
@@ -147,7 +175,11 @@ def render_markdown(comparison: dict[str, Any]) -> str:
         d_treatment = diagnostic["treatment_slices"]
         lines.extend(
             [
-                "## 诊断：临时打开生效日过滤（不作为单变量改写结论，不改生产默认）",
+                (
+                    "## 参考：冻结配置关闭生效日过滤（不作为本次官方决策）"
+                    if comparison.get("effective_date_filter_for_decision")
+                    else "## 诊断：临时打开生效日过滤（不作为单变量改写结论，不改生产默认）"
+                ),
                 "",
                 "| 指标 | 过滤开 + 原查询 | 过滤开 + 改写 |",
                 "| --- | --- | --- |",
@@ -207,7 +239,12 @@ async def _run_experiment(args: argparse.Namespace) -> int:
         if not isinstance(store, LocalVectorStore):
             raise SystemExit("查询改写实验只使用本地向量库")
         cases = sorted(load_cases(), key=lambda item: item["case_id"])
-        print(f"[2/4] 冻结配置下对照 {len(cases)} 条案例")
+        decision_filter = bool(getattr(args, "decision_effective_date_filter", False))
+        settings.RAG_EFFECTIVE_DATE_FILTER = decision_filter
+        print(
+            f"[2/4] 官方决策对照 {len(cases)} 条案例"
+            f"（进程内 RAG_EFFECTIVE_DATE_FILTER={str(decision_filter).lower()}，改写开 vs 关）"
+        )
         control_outcomes = await _run_arm(
             store=store, provider=provider, cache=cache, cases=cases, index=index, rewrite=False
         )
@@ -215,17 +252,22 @@ async def _run_experiment(args: argparse.Namespace) -> int:
             store=store, provider=provider, cache=cache, cases=cases, index=index, rewrite=True
         )
 
-        print("[3/4] 诊断：临时打开生效日过滤（不改生产默认，不作为单变量结论）")
-        settings.RAG_EFFECTIVE_DATE_FILTER = True
-        try:
-            diag_control = await _run_arm(
-                store=store, provider=provider, cache=cache, cases=cases, index=index, rewrite=False
-            )
-            diag_treatment = await _run_arm(
-                store=store, provider=provider, cache=cache, cases=cases, index=index, rewrite=True
-            )
-        finally:
-            settings.RAG_EFFECTIVE_DATE_FILTER = False
+        # 仅在决策臂关闭过滤时保留“临时打开过滤”诊断；决策臂已打开过滤时不再重复跑对照面。
+        if not decision_filter:
+            print("[3/4] 诊断：临时打开生效日过滤（不改生产默认，不作为单变量结论）")
+            settings.RAG_EFFECTIVE_DATE_FILTER = True
+            try:
+                diag_control = await _run_arm(
+                    store=store, provider=provider, cache=cache, cases=cases, index=index, rewrite=False
+                )
+                diag_treatment = await _run_arm(
+                    store=store, provider=provider, cache=cache, cases=cases, index=index, rewrite=True
+                )
+            finally:
+                settings.RAG_EFFECTIVE_DATE_FILTER = False
+        else:
+            print("[3/4] 跳过关闭过滤的重复诊断；本次官方决策已使用生效日过滤")
+            settings.RAG_EFFECTIVE_DATE_FILTER = decision_filter
     finally:
         index.close()
 
@@ -235,11 +277,16 @@ async def _run_experiment(args: argparse.Namespace) -> int:
     config["indexed_chunks"] = index.chunk_total
     config["variable"] = "query_rewrite"
     config["machine"] = runner.machine_spec()
+    decision_filter = bool(getattr(args, "decision_effective_date_filter", False))
     command = (
         "python evals/query_rewrite/run.py --mode official"
         if args.mode == "official"
         else "python evals/query_rewrite/run.py --mode smoke"
     )
+    if getattr(args, "report_stem", None):
+        command += f" --report-stem {args.report_stem}"
+    if decision_filter:
+        command += " --decision-effective-date-filter"
     config["command"] = command
     config["working_directory"] = str(REPO_ROOT)
     control_report = runner.make_report(config, control_outcomes)
@@ -287,7 +334,8 @@ async def _run_experiment(args: argparse.Namespace) -> int:
         "quality_evidence": quality_evidence,
         "holdout_used_for_decision": False,
         "production_enabled_default": False,
-        "effective_date_filter_for_decision": False,
+        "effective_date_filter_for_decision": decision_filter,
+        "effective_date_filter_override": "in-process only",
         "embedding_provider": inner_name,
         "embedding_model": config.get("embedding_model"),
         "embedding_dim": config.get("embedding_dim"),
@@ -326,9 +374,22 @@ async def _run_experiment(args: argparse.Namespace) -> int:
     }
 
     suffix = "" if args.mode == "official" else "-smoke"
-    report_path = REPORT_DIR / f"rag-v0.1-query-rewrite-20261110{suffix}.json"
-    doc_path = EVAL_DOC_DIR / f"rag-v0.1-query-rewrite-20261110{suffix}.md"
+    stem = args.report_stem or f"rag-v0.1-query-rewrite-{datetime.now().astimezone().strftime('%Y%m%d')}"
+    if stem.endswith("-smoke"):
+        stem = stem[: -len("-smoke")]
+    report_path = REPORT_DIR / f"{stem}{suffix}.json"
+    doc_path = EVAL_DOC_DIR / f"{stem}{suffix}.md"
+    comparison = _sanitize_git_commits(comparison)
     runner.refuse_frozen(report_path)
+    frozen_stems = {
+        "rag-v0.1-query-rewrite-20261110",
+        "rag-v0.1-query-rewrite-20261110-smoke",
+        "rag-v0.1-query-rewrite-20261111",
+    }
+    if report_path.stem in frozen_stems or doc_path.stem in frozen_stems:
+        raise SystemExit(f"拒绝覆盖冻结查询改写报告：{report_path}")
+    if report_path.exists() or doc_path.exists():
+        raise SystemExit(f"拒绝覆盖已有报告：{report_path} / {doc_path}")
     report_path.write_text(json.dumps(comparison, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     doc_path.write_text(render_markdown(comparison), encoding="utf-8")
     print(f"[4/4] {report_path}")
@@ -349,6 +410,18 @@ def main() -> int:
     parser.add_argument("--db", default=str(DEFAULT_DB))
     parser.add_argument("--rrf-k", dest="rrf_k", type=int, default=REWRITE_RRF_K)
     parser.add_argument("--retrieval-depth", dest="retrieval_depth", type=int, default=REWRITE_DEPTH)
+    parser.add_argument(
+        "--report-stem",
+        dest="report_stem",
+        default=None,
+        help="报告文件名主干，不含扩展名和 -smoke 后缀。默认 rag-v0.1-query-rewrite-YYYYMMDD，避免覆盖冻结报告。",
+    )
+    parser.add_argument(
+        "--decision-effective-date-filter",
+        dest="decision_effective_date_filter",
+        action="store_true",
+        help="在官方决策臂进程内打开生效日过滤（改写开 vs 关仍对照）。不改生产默认。",
+    )
     args = parser.parse_args()
     return asyncio.run(run_experiment(args))
 

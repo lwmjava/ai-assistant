@@ -78,11 +78,15 @@ class AuthorizedCacheScope:
             return None
         if self.session.in_transaction():
             connection = self.session.connection()
-            if connection.info.get(_WRITE_MARKER):
-                return None
+            wrote = bool(connection.info.get(_WRITE_MARKER))
             # SQLite DBAPI writes can bypass SQLAlchemy's execution hooks entirely.
-            if (self.bind.dialect.name == "sqlite"
-                    and getattr(connection.connection.driver_connection, "in_transaction", False)):
+            if self.bind.dialect.name == "sqlite" and getattr(
+                connection.connection.driver_connection, "in_transaction", False
+            ):
+                wrote = True
+            if wrote:
+                # Core/DBAPI updates leave the identity map on the pre-write state.
+                self.session.expire_all()
                 return None
         with Session(self.bind) as fresh:
             user = self._reader(fresh)

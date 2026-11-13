@@ -30,7 +30,11 @@ def test_feedback_upgrade_is_idempotent(tmp_path, monkeypatch, created, target):
                 "VALUES ('test','t','u','pending',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"
             )
         )
-    refusal = "data exists" if target != "head" else "data exists|Authorization confirmations must be retained"
+    refusal = (
+        "data exists"
+        if target != "head"
+        else "data exists|Authorization confirmations must be retained|Prompt publication history must be retained"
+    )
     with pytest.raises(RuntimeError, match=refusal):
         command.downgrade(cfg, "c6d9e2f10a33")  # pragma: allowlist secret
     with engine.connect() as connection:

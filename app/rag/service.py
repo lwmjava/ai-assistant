@@ -59,7 +59,6 @@ from app.rag.cleaning import CleaningResult, clean_document, text_hash
 from app.rag.document_parsers.base import ParsedDocument
 from app.rag.document_storage import delete_source_file, resolve_source_file_path
 from app.rag.effective_date import retrieval_window
-from app.rag.query_rewrite import query_rewrite_enabled, rewrite_query
 from app.rag.embeddings.base import EmbeddingProvider
 from app.rag.embeddings.factory import get_embedding_provider
 from app.rag.embeddings.mock import tokenize
@@ -74,6 +73,7 @@ from app.rag.index_registry import (
     resolve_read_index_for,
     resolve_write_index,
 )
+from app.rag.query_rewrite import query_rewrite_enabled, rewrite_query
 from app.rag.retrieval_guard import drop_injected_chunks
 from app.rag.retriever import HybridRetriever
 from app.rag.vectorstore.base import ChunkResult, VectorStore, l2_normalize

@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from app.models.rag import Document
 from app.core.config import Settings
+from app.models.rag import Document
 from app.rag.effective_date import (
     SCHEDULED_NOTICE,
     parse_query_schedule_at,

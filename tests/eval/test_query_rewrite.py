@@ -44,7 +44,9 @@ def test_decide_requires_slice_gain_without_main_drop() -> None:
 
     def _report(*, overall: float, tuning: float, validation: float, effective: float, violations: int = 0) -> dict:
         safety = {"violation_cases": violations}
-        recall = lambda value: {"recall": {"@5": value}, "safety": safety}
+
+        def recall(value: float) -> dict:
+            return {"recall": {"@5": value}, "safety": safety}
         return {
             "overall": recall(overall),
             "decision_inputs": {"summary": recall(tuning)},

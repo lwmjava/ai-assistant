@@ -84,5 +84,8 @@ def decide_effective_date_filter(
         "slice_gains": slice_gains,
         "slice_crossed_0_90": slice_crossed,
         "future_doc_recalled_by_query_date": True,
-        "reason": "打开生效日过滤后，按查询日召回了未来生效文档，触发切片 Recall@5 提升，且未破坏越权切片与 overall/调参集",
+        "reason": (
+            "打开生效日过滤后，按查询日召回了未来生效文档，"
+            "触发切片 Recall@5 提升，且未破坏越权切片与 overall/调参集"
+        ),
     }

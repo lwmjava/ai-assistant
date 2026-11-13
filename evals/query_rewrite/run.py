@@ -140,10 +140,17 @@ def render_markdown(comparison: dict[str, Any]) -> str:
         f"- 决策：`{comparison['decision']}`（holdout 不参与）",
         f"- 原因：{comparison['reason']}",
         "- 改写：确定性扩展，不调用聊天模型；生产路径默认关闭，可用 `RAG_QUERY_REWRITE_ENABLED=true` 开启",
-        f"- Embedding：`{comparison['embedding_provider']}` / `{comparison['embedding_model']}` / {comparison['embedding_dim']} 维",
+        (
+            f"- Embedding：`{comparison['embedding_provider']}` / "
+            f"`{comparison['embedding_model']}` / {comparison['embedding_dim']} 维"
+        ),
         f"- 代码：`{comparison['git_commit']}`；命令：`{comparison['command']}`",
         "- 进入条件（已落盘）：任一切片 Recall@5 跌破 0.90 即实施。AGENTS.md §14 仍写 overall 口径，本卡未改该文件。",
-        f"- 官方决策配置：进程内 RAG_EFFECTIVE_DATE_FILTER={'true' if comparison.get('effective_date_filter_for_decision') else 'false'}；未改 .env / config.py 生产默认",
+        (
+            "- 官方决策配置：进程内 RAG_EFFECTIVE_DATE_FILTER="
+            f"{'true' if comparison.get('effective_date_filter_for_decision') else 'false'}"
+            "；未改 .env / config.py 生产默认"
+        ),
         "",
         (
             "## 官方决策对照（进程内 RAG_EFFECTIVE_DATE_FILTER=true，改写开 vs 关；未改生产默认）"

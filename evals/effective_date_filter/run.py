@@ -154,7 +154,10 @@ def render_markdown(comparison: dict[str, Any]) -> str:
         f"- 决策：`{comparison['decision']}`（holdout 不参与）",
         f"- 是否按查询日召回未来生效文档（rag-031）：{recalled_text}",
         f"- 原因：{comparison['reason']}",
-        f"- Embedding：`{comparison['embedding_provider']}` / `{comparison['embedding_model']}` / {comparison['embedding_dim']} 维",
+        (
+            f"- Embedding：`{comparison['embedding_provider']}` / "
+            f"`{comparison['embedding_model']}` / {comparison['embedding_dim']} 维"
+        ),
         f"- 代码：`{comparison['git_commit']}`；命令：`{comparison['command']}`",
         "- 生产默认：`RAG_EFFECTIVE_DATE_FILTER=false`，本实验仅在评测进程内覆盖打开处理组",
         "",

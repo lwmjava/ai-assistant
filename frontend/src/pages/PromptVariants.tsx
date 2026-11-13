@@ -193,7 +193,7 @@ export default function PromptVariantsPage() {
       <section className="rounded border p-4">
         <h2 className="mb-3 font-medium">人工发布 / 回滚</h2>
         <p className="mb-3 text-sm text-muted-foreground">
-          当前发布：{publication ? ${publication.active_variant_id} @ rev  : '尚未发布'}
+          当前发布：{publication ? `${publication.active_variant_id} @ rev ${publication.revision}` : '尚未发布'}
         </p>
         <div className="flex gap-2">
           <button

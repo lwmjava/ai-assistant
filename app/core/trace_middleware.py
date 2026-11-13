@@ -35,9 +35,12 @@ class TraceIdMiddleware(BaseHTTPMiddleware):
         response: Response | None = None
         status_code = 500
         try:
-            response = await call_next(request)
-            status_code = response.status_code
-            return response
+            produced = await call_next(request)
+            if not isinstance(produced, Response):
+                produced = Response(status_code=status_code)
+            response = produced
+            status_code = produced.status_code
+            return produced
         finally:
             record_http_request(request.url.path, status_code, time.perf_counter() - started)
             log_context.clear()

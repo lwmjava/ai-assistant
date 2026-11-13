@@ -60,7 +60,7 @@ export function usePromptSlots(enabled: boolean) {
   const user = useAuthStore((s) => s.user)
   return useQuery({
     queryKey: ['prompt-slots', user?.id, user?.tenant_id, user?.role],
-    queryFn: () => api.get<PromptSlot[]>(${base}/slots),
+    queryFn: () => api.get<PromptSlot[]>(`${base}/slots`),
     enabled,
   })
 }
@@ -68,7 +68,7 @@ export function usePromptSlots(enabled: boolean) {
 export function usePromptVariants(slotKey: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['prompt-variants', slotKey],
-    queryFn: () => api.get<PromptVariant[]>(${base}/slots//variants),
+    queryFn: () => api.get<PromptVariant[]>(`${base}/slots/${slotKey}/variants`),
     enabled: enabled && slotKey !== null,
   })
 }
@@ -76,7 +76,7 @@ export function usePromptVariants(slotKey: string | null, enabled: boolean) {
 export function usePromptPublication(slotKey: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['prompt-publication', slotKey],
-    queryFn: () => api.get<PromptPublication | null>(${base}/slots//publication),
+    queryFn: () => api.get<PromptPublication | null>(`${base}/slots/${slotKey}/publication`),
     enabled: enabled && slotKey !== null,
   })
 }
@@ -85,7 +85,7 @@ export function useCreatePromptVariant() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { slotKey: string; label: string; body: string; notes?: string }) =>
-      api.post<PromptVariant>(${base}/slots//variants, {
+      api.post<PromptVariant>(`${base}/slots/${input.slotKey}/variants`, {
         label: input.label,
         body: input.body,
         notes: input.notes,
@@ -105,7 +105,7 @@ export function useCreatePromptCompare() {
       dataset_id: string
       dataset_version_id: string
     }) =>
-      api.post<PromptCompare>(${base}/compares, {
+      api.post<PromptCompare>(`${base}/compares`, {
         provider: 'fake',
         max_external_calls: 0,
         ...input,
@@ -123,7 +123,7 @@ export function usePublishPromptVariant() {
       note?: string
       compare_run_id?: string
     }) =>
-      api.post<PromptPublication>(${base}/slots//publish, {
+      api.post<PromptPublication>(`${base}/slots/${input.slotKey}/publish`, {
         variant_id: input.variant_id,
         expected_revision: input.expected_revision,
         note: input.note,
@@ -145,7 +145,7 @@ export function useRollbackPromptVariant() {
       to_variant_id?: string
       note?: string
     }) =>
-      api.post<PromptPublication>(${base}/slots//rollback, {
+      api.post<PromptPublication>(`${base}/slots/${input.slotKey}/rollback`, {
         expected_revision: input.expected_revision,
         to_variant_id: input.to_variant_id,
         note: input.note,

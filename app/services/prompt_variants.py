@@ -127,7 +127,7 @@ def _summarize_variant(
         "billing_mode": "fake_unmetered",
         "explain": "fake provider records zero billable spend; not a production cost proof",
     }
-    calls = {
+    calls: dict[str, Any] = {
         "total": 0,
         "external": 0,
         "cache_hits": 0,

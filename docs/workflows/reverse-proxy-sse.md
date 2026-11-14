@@ -109,6 +109,8 @@ curl -N --http1.1 \
 
 不要把令牌或证书内容写进日志。隔离演练通过只证明代理配置本身正确，不能代替一次经授权的真实对话验收。
 
+2026-11-14 在 Docker 28.5.1 上执行 `python scripts/check_reverse_proxy.py drill`，退出码 0。演练使用一次性自签证书和模拟 SSE 上游，确认流式事件经代理持续到达、空闲约 20 秒仍有心跳、HTTPS 响应带有 HSTS、`X-Content-Type-Options` 和 CSP，并且 HTTP 跳转到 HTTPS。没有启动生产编排，也没有读取工作区 `.env`。
+
 ## 回滚
 
 去掉覆盖文件即可回到只发布应用 loopback 端口的编排：

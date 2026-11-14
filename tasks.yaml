@@ -371,7 +371,8 @@ tasks:
 
   - id: "V1C-006"
     title: "测量并优化技能匹配与意图分流开销"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P1"
     module: "Agent/响应效率"
     target_version: "1.0"
@@ -410,7 +411,7 @@ tasks:
       admission:
         authorization: "2026-10-27仅授权把A03映射及依赖补入现有任务；真实模型、费用、生产启用和业务实现仍须另行授权。"
         condition: "先形成真实基线，只选择一项模型档位路由策略做单变量实验；有效负结果允许关闭而不采纳。"
-      progress: "2026-11-11已实现阶段耗时、用途、调用次数和测评版本记录，以及默认关闭的模型档位单变量接线。Mock 对照决策为 not_a_real_baseline，不能作为采纳或不采纳依据。2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_skill_intent_overhead.py 8 passed。已实现部分通过，生产开关仍关闭。真实模型基线未授权，不能标 done，状态改为 in_review。"
+      progress: "2026-11-11已实现阶段耗时、用途、调用次数和测评版本记录，以及默认关闭的模型档位单变量接线。Mock 对照决策为 not_a_real_baseline。2026-11-14 用户授权真实模型验收：评测版本 skill-intent-overhead-0.1.0，8 次流式调用，模型 deepseek-flash。意图档没有单独配置，简单路径只改用途名，实际模型不变。路由、技能、工具正确率均为 1.00。首 token 平均 1268.6 ms 对 1281.8 ms，P95 1861.5 ms 对 1562.2 ms。同模型波动不作为档位收益，结论 not_adopted，生产开关保持关闭。检索和工具未执行。记录 docs/evaluations/skill-intent-overhead-real-20261114.md。pytest tests/test_skill_intent_overhead.py 含于 16 passed。"
 
   - id: "RAG-044"
     title: "修复索引不可用时对话初始化失败"
@@ -6444,7 +6445,8 @@ tasks:
 
   - id: "NFR-008"
     title: "审计日志保留不少于 90 天"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P2"
     module: "审计日志"
     target_version: "1.0"
@@ -6490,7 +6492,7 @@ tasks:
       delivery_order: 33
       delivery_stage: "V1-4"
       owner: "个人开发者"
-      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_audit_retention.py 8 passed。默认不少于 90 天，超期先归档再移除，清理本身留审计。全量 CI 未核验，不标 done。"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_audit_retention.py 8 passed。默认不少于 90 天，超期先归档再移除，清理本身留审计。2026-11-14 用户要求关闭。最终提交 769c3ac 的 GitHub Actions run 43444473122：Backend（job 131950190387）Pytest 与平台覆盖通过，Frontend（job 131950191085）通过。"
       nightly:
         eligible: false
         production_access: false
@@ -6499,7 +6501,8 @@ tasks:
 
   - id: "OPS-005"
     title: "数据合规删除：个人信息与租户彻底清除"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P2"
     module: "数据合规"
     target_version: "1.0"
@@ -6554,7 +6557,7 @@ tasks:
       delivery_order: 38
       delivery_stage: "V1-4"
       owner: "个人开发者"
-      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_tenant_purge.py 9 passed。只允许清除名称以 test- 开头且成员全是测试用户的租户。真实个人信息和任意租户彻底清除未覆盖，不能标 done。"
+      progress: "2026-11-13 pytest tests/test_tenant_purge.py 9 passed。2026-11-14 用户授权隔离库验收：data/validation/ops005-20261114/isolated.db，环境 isolated-acceptance。非 test- 租户返回 non_test_tenant_refused 且租户保留。test-acceptance-purge 经人工确认后清除，verified=true，对话、文档、分块和 1 个源文件剩余为 0，审计为 tenant_purge_confirmed 与 tenant_purge。未使用默认应用库或生产环境。库内联系信息为合成数据。"
       nightly:
         eligible: false
         production_access: false
@@ -6563,7 +6566,8 @@ tasks:
 
   - id: "OPS-006"
     title: "依赖许可证与漏洞审计"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P2"
     module: "依赖合规"
     target_version: "1.0"
@@ -6608,7 +6612,7 @@ tasks:
       delivery_order: 37
       delivery_stage: "V1-4"
       owner: "个人开发者"
-      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：scripts/license_audit.py check 退出码 0，72 个直接依赖，2 项例外已有处置。同一交付没有漏洞扫描和漏洞处置，不能标 done。"
+      progress: "2026-11-14 用户授权扫描且不升级依赖。scripts/license_audit.py check 退出码 0，72 个直接依赖，2 项例外维持既有处置。python-audit 退出码 0，漏洞 0。npm-audit 只读锁定文件，退出码 0，414 个依赖，漏洞 0。处置见 docs/operations/dependency-vulnerabilities.md。"
       nightly:
         eligible: true
         production_access: false
@@ -6746,7 +6750,8 @@ tasks:
 
   - id: "NFR-004"
     title: "反向代理与 SSE 长连接配置"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P2"
     module: "部署/SSE"
     target_version: "1.0"
@@ -6794,7 +6799,7 @@ tasks:
       delivery_order: 34
       delivery_stage: "V1-4"
       owner: "个人开发者"
-      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：scripts/check_reverse_proxy.py static 退出码 0。配置已关闭缓冲，超时与心跳对齐，并写明代理终止 TLS。未做真实代理流式钻取，不能标 done。"
+      progress: "2026-11-14 用户授权隔离演练。Docker 28.5.1 上 python scripts/check_reverse_proxy.py drill 退出码 0。一次性自签证书和模拟 SSE 上游确认流式事件持续到达、约 20 秒空闲心跳、HSTS 与 X-Content-Type-Options 与 CSP，以及 HTTP 跳转 HTTPS。未启动生产编排，未读取工作区 .env。记录见 docs/workflows/reverse-proxy-sse.md。"
       nightly:
         eligible: false
         production_access: false
@@ -6963,7 +6968,8 @@ tasks:
 
   - id: "OPS-007"
     title: "运行时指标与基础告警"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P2"
     module: "可观测性"
     target_version: "1.0"
@@ -7013,7 +7019,7 @@ tasks:
       estimate_person_days: [2, 4]
       admission:
         authorization: "2026-10-27仅授权登记O02映射，不授权接入外部监控、告警平台或生产环境。"
-      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_runtime_metrics.py 8 passed。指标端点可返回基础指标。现有材料只有阈值建议，没有实际告警发送或告警记录，不能标 done。"
+      progress: "2026-11-14 用户按卡面验收授权关闭。GET /api/v1/metrics 可返回存活、错误率和延迟；阈值建议见 docs/workflows/runtime-metrics-alerts.md。不接入外部告警平台。pytest tests/test_runtime_metrics.py 含于 16 passed、退出码 0。"
       nightly:
         eligible: true
         production_access: false
@@ -8014,7 +8020,8 @@ tasks:
 
   - id: "EVO-001"
     title: "Reflect 与夜间蒸馏可锁定运行"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P1"
     module: "Reflect/自演进"
     target_version: "1.0"
@@ -8065,7 +8072,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: "2026-11-12 打开总开关和反思开关后，一次对话会留下反思记录；异步模式下任务引用保留到写完，同步模式在已有事件循环时由对话入口等待。蒸馏开关打开且落在配置窗口内时，调度器 tick 会留下蒸馏记录。默认关闭不能当作完成。同日用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_evolution_run_records.py tests/test_evolution_candidates.py tests/test_evolution_distill_smoke.py 34 passed，ruff 三文件通过，结论可合并。全量 CI 尚未对最终 SHA 通过，状态保持 in_review，不标 done。"
+      progress: "2026-11-12 打开总开关和反思开关后，一次对话会留下反思记录；异步模式下任务引用保留到写完，同步模式在已有事件循环时由对话入口等待。蒸馏开关打开且落在配置窗口内时，调度器 tick 会留下蒸馏记录。默认关闭不能当作完成。同日用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_evolution_run_records.py tests/test_evolution_candidates.py tests/test_evolution_distill_smoke.py 34 passed，ruff 三文件通过，结论可合并。2026-11-14 用户要求关闭。最终提交 769c3ac 的 GitHub Actions run 43444473122：Backend（job 131950190387）Pytest 与平台覆盖通过，Frontend（job 131950191085）通过。"
 
   - id: "AUTH-005"
     title: "对话读取权限与矩阵一致"
@@ -8216,7 +8223,8 @@ tasks:
 
   - id: "INV-004"
     title: "邀请码角色有效期次数可配置"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P2"
     module: "用户/租户"
     target_version: "1.0"
@@ -8261,7 +8269,7 @@ tasks:
       delivery_order: 39
       delivery_stage: "V1-4"
       owner: "个人开发者"
-      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_invitations.py 8 passed。默认 member、7 天、1 次；改配置后新邀请码使用新的角色、有效期和次数。全量 CI 未核验，不标 done。"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_invitations.py 8 passed。默认 member、7 天、1 次；改配置后新邀请码使用新的角色、有效期和次数。2026-11-14 用户要求关闭。最终提交 769c3ac 的 GitHub Actions run 43444473122：Backend（job 131950190387）Pytest 与平台覆盖通过，Frontend（job 131950191085）通过。"
       nightly:
         eligible: false
         production_access: false
@@ -8919,7 +8927,8 @@ tasks:
 
   - id: "EVO-002"
     title: "Reflect 改技能与待办提取"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P1"
     module: "Reflect/自演进"
     target_version: "1.0"
@@ -8976,7 +8985,7 @@ tasks:
       admission:
         authorization: "2026-10-27仅授权登记F02映射与前置，不授权自动修改或发布Skill。"
         condition: "候选只可查、可审；未经人工确认不得生效。"
-      progress: "2026-11-12 反思成功后写入待审技能候选和待办。接受待办不改技能；拒绝不建技能；提升只生成未启用草稿，确认接口 POST /skills/{id}/confirm 之后才进入对话。默认关闭不提取。同日用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_evolution_candidates.py 10 passed，结论行为通过。该角色指出全量 CI 与 required checks 未核验，因此不标 done，状态保持 in_review。"
+      progress: "2026-11-12 反思成功后写入待审技能候选和待办。接受待办不改技能；拒绝不建技能；提升只生成未启用草稿，确认接口 POST /skills/{id}/confirm 之后才进入对话。默认关闭不提取。同日用户委托独立测试角色验收（非人工亲自操作）：pytest tests/test_evolution_candidates.py 10 passed，结论行为通过。2026-11-14 用户要求关闭。最终提交 769c3ac 的 GitHub Actions run 43444473122：Backend（job 131950190387）Pytest 与平台覆盖通过，Frontend（job 131950191085）通过。Agent official baseline 本次跳过。"
       nightly:
         eligible: false
         production_access: false
@@ -9145,7 +9154,8 @@ tasks:
 
   - id: "NFR-013"
     title: "硬编码 URL 扫描"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P1"
     module: "安全检查"
     target_version: "1.0"
@@ -9196,7 +9206,7 @@ tasks:
       delivery_order: 32
       delivery_stage: "V1-4"
       owner: "个人开发者"
-      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest scripts/test_hardcoded_url_scan.py 8 passed。故意放入的内网和生产 URL 被拦截，白名单外命中使门禁失败。全量 CI 未核验，不标 done。"
+      progress: "2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest scripts/test_hardcoded_url_scan.py 8 passed。故意放入的内网和生产 URL 被拦截，白名单外命中使门禁失败。2026-11-14 用户要求关闭。最终提交 769c3ac 的 GitHub Actions run 43444473122：Backend（job 131950190387）Pytest 与平台覆盖通过，Frontend（job 131950191085）通过。"
       nightly:
         eligible: false
         production_access: false
@@ -9929,7 +9939,8 @@ tasks:
 
   - id: "SKILL-004"
     title: "技能效果评估与自动淘汰"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P1"
     module: "Skill"
     target_version: "1.0"
@@ -9980,7 +9991,7 @@ tasks:
         production_access: false
         auto_merge: false
         auto_deploy: false
-      progress: "2026-11-12 评估记录、低效私有技能下线与回滚接在蒸馏成功之后。总开关默认关闭时只记录不执行。租户窗口不修改系统全局技能。同一租户同一名称只要多于一条记录就一律不下线，不再按启用或生命周期挑一条。同日用户委托独立测试角色两轮验收（非人工亲自操作）：首轮指出停用同名记录仍会下线另一条，修复后 pytest tests/test_evolution_skill_eval.py 12 passed，复验通过。全量 CI 未核验，不标 done。"
+      progress: "2026-11-12 评估记录、低效私有技能下线与回滚接在蒸馏成功之后。总开关默认关闭时只记录不执行。租户窗口不修改系统全局技能。同一租户同一名称只要多于一条记录就一律不下线，不再按启用或生命周期挑一条。同日用户委托独立测试角色两轮验收（非人工亲自操作）：首轮指出停用同名记录仍会下线另一条，修复后 pytest tests/test_evolution_skill_eval.py 12 passed，复验通过。2026-11-14 用户要求关闭。最终提交 769c3ac 的 GitHub Actions run 43444473122：Backend（job 131950190387）Pytest 与平台覆盖通过，Frontend（job 131950191085）通过。"
 
   - id: "RAG-017"
     title: "召回率持续测评门禁：基线挂 CI 作 1.0 发布门禁"
@@ -13112,7 +13123,8 @@ tasks:
 
   - id: "AGT-005"
     title: "证据冲突验证与有限纠错离线实验"
-    status: "in_review"
+    status: "done"
+    completed_at: "2026-11-14"
     priority: "P1"
     module: "Agent/证据纠错"
     target_version: "1.0"
@@ -13148,9 +13160,10 @@ tasks:
         仅允许 mock；live/付费运行被拒绝。专项 pytest tests/eval/test_evidence_conflict.py 为 15 passed、exit 0；ruff 覆盖改动文件通过；mypy 覆盖新模块通过。
         决策集相对错误下降约 0.88，误改率 0，安全违规 0，夹具决策 fixtures_passed，生产决策 keep_production_off。
         报告见 evals/reports/evidence-conflict-correction-v0.1.json 与 docs/evaluations/evidence-conflict-correction-v0.1.md。
-        卡片保持不自行标完成；真实模型对照和生产接线仍需另授权。
+        真实模型对照和生产接线仍需另授权，不在本卡关闭范围内。
         2026-11-13 用户委托独立测试角色验收（非人工亲自操作）：pytest tests/eval/test_evidence_conflict.py 15 passed。
-        结论为夹具通过、生产决策 keep_production_off，默认回答链未接入。全量 CI 未核验，不标 done。
+        结论为夹具通过、生产决策 keep_production_off，默认回答链未接入。
+        2026-11-14 用户要求按负结果关闭，不创建生产接线。最终提交 769c3ac 的 GitHub Actions run 43444473122：Backend（job 131950190387）Pytest 与平台覆盖通过，Frontend（job 131950191085）通过。
 
 
   - id: "MEM-005"
